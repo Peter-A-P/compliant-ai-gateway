@@ -1,0 +1,26 @@
+# Price list. USD per million tokens. Repricing is a new dated file, never an edit to this
+# one; every ledger row records the file it was costed with.
+#
+# A model missing here is written to the ledger as uncosted. A cache or batch rate missing
+# here makes a call that used that feature uncosted. The library never fills a rate in.
+#
+# Anthropic entries are the list prices recorded in PLAN.md section 6 as of 2026-09-06.
+# OpenAI, Google and the open-weights host are copied from their price pages on Sep 10,
+# with the date, into the next file.
+
+version: 1
+date: 2026-09-07
+currency: USD
+source: "PLAN.md section 6, Anthropic list prices as of 2026-09-06; other vendors follow on 2026-09-10"
+
+per_million_tokens:
+  anthropic:
+    claude-haiku-4-5-20251001:
+      input: 1.00
+      output: 5.00
+    claude-sonnet-5:
+      input: 2.00
+      output: 10.00
+    claude-opus-5:
+      input: 5.00
+      output: 25.00

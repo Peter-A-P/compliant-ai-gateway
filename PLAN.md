@@ -337,7 +337,9 @@ Whichever produces the clearest evidence becomes `docs/rejected.md`.
 - [ ] v0.2: Foundry, Bedrock and Vertex exercised once each, calls in the ledger; Anthropic batches; `ledger merge` and `report`
 - [ ] Ledger-against-invoice difference recorded in the plan repository's STATUS from October
 - [ ] One rejected approach documented with evidence (Rule C)
-- [ ] Repository public with the first measured numbers; `v0.1.0` tagged
+- [ ] `v0.1.0` tagged. The repository stays private at the tag (decided 2026-09-07): the 02
+      and 03 runners install it with a fine-grained read-only GitHub token held as an Actions
+      secret, and it goes public when the plan repository's action 6 decides the timing
 
 ---
 

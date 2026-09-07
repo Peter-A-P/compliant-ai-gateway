@@ -1,0 +1,73 @@
+# boundary configuration: providers, routes and defaults.
+#
+# Paths are relative to this file. Keys come from environment variables named in
+# api_key_env and never from this file. Changing a route below moves every call that uses
+# that alias; callers that pass provider/model-id explicitly are never moved.
+
+version: 1
+
+providers:
+  anthropic:
+    kind: anthropic
+    base_url: https://api.anthropic.com
+    api_key_env: ANTHROPIC_API_KEY
+    api_version: "2023-06-01"
+  openai:
+    kind: openai_compat
+    base_url: https://api.openai.com/v1
+    api_key_env: OPENAI_API_KEY
+  google:
+    kind: google
+    base_url: https://generativelanguage.googleapis.com
+    api_key_env: GOOGLE_API_KEY
+    api_version: v1beta
+  # Open-weights host for the 03 control arm. The provider is chosen with action 3 in the
+  # plan repository; the entry is renamed then and the ledger keeps the name.
+  openweights:
+    kind: openai_compat
+    base_url: https://api.together.xyz/v1
+    api_key_env: OPENWEIGHTS_API_KEY
+  # Local server for 02 at price zero. No key.
+  local:
+    kind: openai_compat
+    base_url: http://127.0.0.1:11434/v1
+    price_zero: true
+
+# Aliases. Standard mode only; pass-through refuses them.
+routes:
+  fast:
+    provider: anthropic
+    model: claude-haiku-4-5-20251001
+  balanced:
+    provider: anthropic
+    model: claude-sonnet-5
+  judge:
+    provider: anthropic
+    model: claude-sonnet-5
+  frontier:
+    provider: anthropic
+    model: claude-opus-5
+
+prices: prices
+caps: caps.yaml
+
+defaults:
+  max_tokens: 1024
+  timeouts:
+    connect_s: 10
+    read_s: 120
+
+retry:
+  max_attempts: 4
+  base_delay_s: 0.5
+  max_delay_s: 30
+
+ledger:
+  path: ../boundary.sqlite
+
+telemetry:
+  exporter: none
+
+cache:
+  enabled: false
+  path: ../.cache/boundary

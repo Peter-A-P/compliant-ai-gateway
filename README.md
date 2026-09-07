@@ -5,7 +5,9 @@ personal data ever leaving the boundary, with a tamper-evident record of every c
 hard cap on every team's spend. The blocker most regulated organisations cite for AI
 adoption, removed, with the latency overhead measured and published rather than promised.
 
-**Status: planning.** Nothing has run yet. Both parts are planned in [PLAN.md](PLAN.md):
+**Status: Part A in progress since 2026-09-07.** Nothing has been measured yet; the interface
+draft is in [docs/interface.md](docs/interface.md) and freezes on Sep 9. Both parts are planned
+in [PLAN.md](PLAN.md):
 Part A, the `boundary` library that every project in this portfolio calls models through,
 built Sep 7 to 13 2026; Part B, the full gateway with redaction, residency routing, audit
 log, cache, budgets and the portfolio-wide observability dashboard, built May 2027.
