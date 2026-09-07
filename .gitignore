@@ -1,0 +1,36 @@
+# Private working notes, never committed
+CLAUDE.local.md
+
+# Secrets and credentials
+.env
+.env.*
+*.key
+*.pem
+service-account*.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+dist/
+build/
+*.egg-info/
+
+# Local ledgers, caches and raw stores (merged copies are committed by their owners, never here)
+*.sqlite
+*.sqlite3
+.cache/
+rawstore/
+loadtest/results/raw/
+
+# Data (loaders fetch and verify; nothing raw is committed)
+data/raw/
+
+# OS and editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
