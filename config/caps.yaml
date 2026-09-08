@@ -2,21 +2,22 @@
 # first line is the hard cap in each vendor's console (plan repository action 3).
 #
 # Amounts are USD because vendors bill in USD. Raise a cap here, deliberately, in a
-# commit; never bypass it in code. September 2026 amounts, revisited at each budget review.
+# commit; never bypass it in code. Amounts set by Peter on 2026-09-08 (double the plan's first
+# draft, to leave room for the two dry runs plus the official run); revisited at each budget review.
 
 version: 1
-portfolio_monthly_usd: 60
+portfolio_monthly_usd: 200
 
 projects:
   # 03 drift runs: about US$9 per full run; two dry runs plus the Sep 27 official run.
   ai-release-gate:
-    monthly_usd: 30
-    per_run_usd: 15
+    monthly_usd: 60
+    per_run_usd: 30
   # 04 itself: smoke calls, one short request per provider per adapter change.
   compliant-ai-gateway:
-    monthly_usd: 5
-    per_run_usd: 1
+    monthly_usd: 10
+    per_run_usd: 2
 
 default:
-  monthly_usd: 5
-  per_run_usd: 2
+  monthly_usd: 10
+  per_run_usd: 4

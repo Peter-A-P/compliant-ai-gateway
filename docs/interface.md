@@ -1,7 +1,7 @@
 # The `boundary` interface
 
-**Status: draft for review, written 2026-09-07. Freezes 2026-09-09.** After the freeze,
-changes within a major version are additive only: new optional fields, new methods, new
+**Status: frozen 2026-09-08** (draft written 2026-09-07, reviewed and frozen by Peter a day
+early). From here, changes within a major version are additive only: new optional fields, new methods, new
 error subclasses. Anything removed or renamed is a major version and a note in the plan of
 every project that pins the old one.
 
@@ -142,9 +142,9 @@ configuration file is secret.
 Streaming, typed tool calls, embeddings, any server, any content inspection. See PLAN.md
 section 2.8. Tool-use fields pass through inside `messages` and `extra` untouched.
 
-## 11. Open for review until Sep 9
+## 11. Choices the plan left open
 
-Questions the plan left open that this draft answers; say if you would answer differently.
+Answered in the draft and accepted at the freeze on 2026-09-08.
 
 1. `ChatResponse` has five fields beyond the plan's list (`provider`, `model_requested`,
    `mode`, `retries`, `cached`, `price_list`, `trace_id`). All are also ledger columns;

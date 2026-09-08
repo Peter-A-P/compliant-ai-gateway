@@ -41,9 +41,11 @@ def test_relative_paths_resolve_against_config_file(repo_config: BoundaryConfig)
 
 def test_repo_caps_load_and_default_applies(repo_config: BoundaryConfig) -> None:
     caps = load_caps(repo_config.caps)
-    assert caps.for_project("ai-release-gate").monthly_usd == 30
+    drift = caps.for_project("ai-release-gate")
+    assert drift.per_run_usd is not None and drift.per_run_usd <= drift.monthly_usd
     assert caps.for_project("some-new-project") is caps.default
-    assert caps.portfolio_monthly_usd >= caps.for_project("ai-release-gate").monthly_usd
+    # The portfolio cap must be able to hold every named project's month at once.
+    assert caps.portfolio_monthly_usd >= sum(c.monthly_usd for c in caps.projects.values())
 
 
 def test_repo_price_lists_load_and_latest_is_by_date(repo_config: BoundaryConfig) -> None:
