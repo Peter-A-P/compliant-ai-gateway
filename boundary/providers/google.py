@@ -69,7 +69,15 @@ class GoogleAdapter:
             gen["stopSequences"] = list(request.stop)
         if gen:
             body["generationConfig"] = gen
-        body.update(request.extra)
+        # Extra fields merge verbatim and last, like every adapter. Gemini nests the fields a
+        # caller most often needs to fix (thinkingConfig, responseMimeType) under
+        # generationConfig, so that one key merges into the built generationConfig instead of
+        # replacing it and silently dropping maxOutputTokens and temperature.
+        extra = dict(request.extra)
+        extra_gen = extra.pop("generationConfig", None)
+        if isinstance(extra_gen, dict):
+            body["generationConfig"] = {**gen, **extra_gen}
+        body.update(extra)
         headers: dict[str, str] = {"content-type": "application/json", **provider.headers}
         if api_key:
             headers["x-goog-api-key"] = api_key

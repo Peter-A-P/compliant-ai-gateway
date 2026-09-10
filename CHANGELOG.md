@@ -3,9 +3,11 @@
 Versions follow the plan's handover table (PLAN.md section 7). Interface changes within a
 major version are additive only; see docs/interface.md.
 
-## 0.1.0 (unreleased; tag after one live call per provider)
+## 0.1.0 (2026-09-10)
 
-First version of the `boundary` library, Part A of the Compliant AI Gateway.
+First version of the `boundary` library, Part A of the Compliant AI Gateway. Tagged after
+one live call per provider succeeded and was costed (run from GitHub Actions on
+2026-09-10: Anthropic, OpenAI, Google, Together; ten calls in all, US$0.0009).
 
 - Adapters over raw HTTP with pinned API version headers, no vendor SDKs: Anthropic
   Messages, OpenAI-compatible chat completions (OpenAI, Together, local servers) and
@@ -29,7 +31,12 @@ First version of the `boundary` library, Part A of the Compliant AI Gateway.
   undated request, which the price list did not know: the ledger now prices by the returned
   id and falls back to the requested id, never further. Price file `2026-09-10.yaml` adds
   the current Gemini and GPT lines. The smoke call sends `reasoning_effort: minimal` to
-  OpenAI so a reasoning model produces text within the smoke budget.
+  OpenAI so a reasoning model produces text within the smoke budget (the gpt-5.4 family
+  wants `none` instead; the value belongs to the caller, not the library).
+- Gemini `extra` fields under `generationConfig` merge into the built one instead of
+  replacing it, so a caller can fix `thinkingConfig` without losing `maxOutputTokens`.
+  Found when `gemini-flash-latest` (resolving to `gemini-3.8-flash`) spent a 64-token
+  budget on thinking and returned no text.
 - TLS verification against the operating system trust store.
 - Price files 2026-09-07 (Anthropic list prices from the plan) and 2026-09-09 (Anthropic,
   OpenAI, Google and Together, copied from their price pages).

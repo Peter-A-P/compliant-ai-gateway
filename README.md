@@ -5,7 +5,7 @@ personal data ever leaving the boundary, with a tamper-evident record of every c
 hard cap on every team's spend. The blocker most regulated organisations cite for AI
 adoption, removed, with the latency overhead measured and published rather than promised.
 
-**Status: Part A built, `v0.1.0` pending one live call per provider.** The interface is frozen
+**Status: Part A released as `v0.1.0` on 2026-09-10**, after one live call per provider. The interface is frozen
 ([docs/interface.md](docs/interface.md)); the library table below is measured. Both parts are planned
 in [PLAN.md](PLAN.md):
 Part A, the `boundary` library that every project in this portfolio calls models through,

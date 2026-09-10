@@ -80,6 +80,28 @@ def test_google_golden_request(repo_config: BoundaryConfig) -> None:
     )
 
 
+def test_google_extra_generation_config_merges_instead_of_replacing(
+    repo_config: BoundaryConfig,
+) -> None:
+    """A caller fixing thinkingConfig must not lose maxOutputTokens (seen 2026-09-10 when
+    gemini-flash-latest spent the whole budget thinking). Top-level extras still merge last."""
+    ref = resolve(MODEL, repo_config, Mode.PASSTHROUGH)
+    req = _req(
+        temperature=0.0,
+        extra={
+            "generationConfig": {"thinkingConfig": {"thinkingBudget": 0}, "temperature": 0.5},
+            "safetySettings": [],
+        },
+    )
+    body = json.loads(GoogleAdapter().build_request(ref, req, ref.provider_config, "k").body)
+    assert body["generationConfig"] == {
+        "maxOutputTokens": 8,
+        "temperature": 0.5,  # the caller's extra wins, as extras do everywhere
+        "thinkingConfig": {"thinkingBudget": 0},
+    }
+    assert body["safetySettings"] == []
+
+
 def test_google_list_content_passes_through_as_parts(repo_config: BoundaryConfig) -> None:
     ref = resolve(MODEL, repo_config, Mode.STANDARD)
     parts = [{"text": "look"}, {"inlineData": {"mimeType": "image/png", "data": "AAAA"}}]
