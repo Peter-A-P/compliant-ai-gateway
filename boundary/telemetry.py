@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Iterator
-from typing import IO
 from contextlib import contextmanager
 from dataclasses import dataclass
+from typing import IO
 
 from opentelemetry import trace
 from opentelemetry.sdk.resources import Resource
