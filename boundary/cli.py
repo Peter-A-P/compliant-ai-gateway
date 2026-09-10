@@ -172,6 +172,29 @@ def cmd_ledger_report(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_bench(args: argparse.Namespace) -> int:
+    import tempfile
+
+    from boundary import bench
+
+    with tempfile.TemporaryDirectory(prefix="boundary-bench-") as tmp:
+        results = bench.run(
+            args.config,
+            Path(tmp),
+            calls=args.calls,
+            per_fault=args.per_fault,
+            fidelity_requests=args.fidelity,
+        )
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    args.out.write_text(bench.to_json(results) + "\n", encoding="utf-8")
+    print(results.readme_row())
+    if args.write_readme:
+        readme = args.config.resolve().parent.parent / "README.md"
+        bench.write_readme(readme, results.readme_row())
+        print(f"README row written to {readme}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="boundary", description=f"boundary {__version__}")
     parser.add_argument("--config", type=Path, default=_default_config())
@@ -195,6 +218,16 @@ def main(argv: list[str] | None = None) -> int:
     prices.add_parser("check", help="validate price files and warn when stale").set_defaults(
         func=cmd_prices_check
     )
+
+    bench = sub.add_parser(
+        "bench", help="measure overhead, completeness, caps and fidelity against a mock"
+    )
+    bench.add_argument("--calls", type=int, default=1000)
+    bench.add_argument("--per-fault", dest="per_fault", type=int, default=50)
+    bench.add_argument("--fidelity", type=int, default=500)
+    bench.add_argument("--out", type=Path, default=Path("bench/results.json"))
+    bench.add_argument("--write-readme", dest="write_readme", action="store_true")
+    bench.set_defaults(func=cmd_bench)
 
     ledger = sub.add_parser("ledger", help="ledger commands").add_subparsers(
         dest="sub", required=True

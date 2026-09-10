@@ -5,8 +5,8 @@ personal data ever leaving the boundary, with a tamper-evident record of every c
 hard cap on every team's spend. The blocker most regulated organisations cite for AI
 adoption, removed, with the latency overhead measured and published rather than promised.
 
-**Status: Part A in progress since 2026-09-07.** Nothing has been measured yet; the interface
-draft is in [docs/interface.md](docs/interface.md) and freezes on Sep 9. Both parts are planned
+**Status: Part A built, `v0.1.0` pending one live call per provider.** The interface is frozen
+([docs/interface.md](docs/interface.md)); the library table below is measured. Both parts are planned
 in [PLAN.md](PLAN.md):
 Part A, the `boundary` library that every project in this portfolio calls models through,
 built Sep 7 to 13 2026; Part B, the full gateway with redaction, residency routing, audit
@@ -14,14 +14,21 @@ log, cache, budgets and the portfolio-wide observability dashboard, built May 20
 
 ## Result
 
-Not yet measured. Part A fills the first table in September 2026; Part B fills the second
-in May 2027.
+Part A's table is measured against an in-process mock; the live-call column fills from October.
+Part B fills the second table in May 2027.
 
 **Library (Part A)**
 
 | Overhead p50 / p95 (95% CI) | Ledger completeness under fault injection | Ledger vs invoice, monthly | Calls past a spend cap | Pass-through byte fidelity |
 |---|---|---|---|---|
-| _not yet_ | | | | |
+<!-- bench:start -->
+| 2.61 ms (2.58 to 2.64) / 4.62 ms (4.42 to 4.97), n = 1,000 | 600/600 = 100.0% across ok, 500, 400, timeout, malformed and a kill mid-call, both modes (100 rows left in flight by the kills, as designed) | _from October_ | 17 attempted, 0 reached the upstream | 500/500 = 100% |
+<!-- bench:end -->
+
+Filled by `boundary bench --write-readme` against an in-process mock upstream; the raw
+results are in `bench/results.json`. Overhead is the library's own cost per call on the
+machine that ran it: resolving, building, cap checks, two ledger writes, telemetry and
+parsing, with the upstream answering instantly.
 
 **Gateway (Part B)**
 

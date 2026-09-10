@@ -1,0 +1,40 @@
+{
+  "boundary_version": "0.1.0.dev2",
+  "ran_utc": "2026-09-10T13:16:39+00:00",
+  "overhead": {
+    "calls": 1000,
+    "p50_ms": 2.61060000048019,
+    "p50_ci_ms": [
+      2.580699998361524,
+      2.6384999946458265
+    ],
+    "p95_ms": 4.624500004865695,
+    "p95_ci_ms": [
+      4.419999997480772,
+      4.971700000169221
+    ],
+    "mean_ms": 4.26360279993969
+  },
+  "completeness": {
+    "attempted": 600,
+    "rows": 600,
+    "by_fault": {
+      "ok": 100,
+      "http_500": 100,
+      "http_400": 100,
+      "timeout": 100,
+      "malformed": 100,
+      "kill": 100
+    },
+    "in_flight_rows": 100
+  },
+  "caps": {
+    "attempted_past_cap": 17,
+    "reached_upstream_past_cap": 0,
+    "calls_before_cap": 3
+  },
+  "fidelity": {
+    "requests": 500,
+    "identical": 500
+  }
+}
