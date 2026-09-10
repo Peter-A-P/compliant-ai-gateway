@@ -1,11 +1,10 @@
 """boundary: the one library every model call in the portfolio goes through.
 
-Public interface (frozen 2026-09-09, see docs/interface.md):
-    Gateway, ChatRequest, ChatResponse, Usage, Mode, and the errors below.
-
-`Gateway` is exported once the adapters land (Sep 8 to 9); the types and errors are
-final from day one so that callers can be written against them now.
+Public interface (frozen 2026-09-08, see docs/interface.md):
+    Gateway, ChatRequest, ChatResponse, Usage, Mode, RawResponse, and the errors below.
 """
+
+__version__ = "0.1.0.dev2"
 
 from boundary.errors import (
     BoundaryError,
@@ -16,18 +15,19 @@ from boundary.errors import (
     UnknownAlias,
     UnknownPrice,
 )
+from boundary.gateway import Gateway, RawResponse
 from boundary.types import ChatRequest, ChatResponse, Mode, Usage
-
-__version__ = "0.1.0.dev1"
 
 __all__ = [
     "BoundaryError",
     "ChatRequest",
     "ChatResponse",
     "ConfigError",
+    "Gateway",
     "Mode",
     "PassthroughViolation",
     "ProviderError",
+    "RawResponse",
     "SpendCapExceeded",
     "UnknownAlias",
     "UnknownPrice",

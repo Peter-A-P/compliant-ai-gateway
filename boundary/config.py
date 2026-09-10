@@ -47,6 +47,9 @@ class ProviderConfig(_Strict):
     region: str | None = None
     price_zero: bool = False
     headers: dict[str, str] = Field(default_factory=dict)
+    # OpenAI-compatible hosts only: OpenAI's newer models take max_completion_tokens, every
+    # other compatible host takes max_tokens. Ignored by other adapter kinds.
+    max_tokens_field: Literal["max_tokens", "max_completion_tokens"] = "max_tokens"
 
 
 class Route(_Strict):
