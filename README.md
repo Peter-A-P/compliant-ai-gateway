@@ -46,7 +46,7 @@ in May 2027.
 
 ## How it works
 
-See [PLAN.md](PLAN.md). Part A: a Python library with raw-HTTP adapters for Anthropic,
+In plain language: [docs/explained.md](docs/explained.md). In full: [PLAN.md](PLAN.md). Part A: a Python library with raw-HTTP adapters for Anthropic,
 OpenAI, Google, OpenAI-compatible hosts and the three hyperscaler model platforms
 (Microsoft Foundry, Amazon Bedrock, Vertex AI); routing by a configuration file; one
 OpenTelemetry span and one cost-ledger row per call, computed from returned usage and a
