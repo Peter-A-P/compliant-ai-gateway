@@ -42,7 +42,7 @@ def test_success_row_is_complete_and_costed(gw: Gateway) -> None:
     assert (row["input_tokens"], row["output_tokens"]) == (100, 10)
     # Haiku 4.5 list price: $1 in, $5 out per million tokens.
     assert row["cost_usd"] == pytest.approx(100 / 1e6 * 1.0 + 10 / 1e6 * 5.0)
-    assert row["costed"] == 1 and row["price_list"] == "2026-09-07"
+    assert row["costed"] == 1 and row["price_list"] == gw.prices.name
     assert resp.cost_usd == pytest.approx(row["cost_usd"]) and resp.costed
     assert row["request_sha256"] and row["response_sha256"] and row["boundary_version"]
     assert row["mode"] == "standard" and row["alias"] is None and row["run_id"] == "r1"

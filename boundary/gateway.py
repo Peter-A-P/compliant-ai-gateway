@@ -25,6 +25,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Self
 
+from opentelemetry.trace import Span
+
 from boundary import __version__
 from boundary.cache import ExactMatchCache
 from boundary.config import (
@@ -52,6 +54,7 @@ from boundary.providers import ADAPTERS
 from boundary.providers.base import Adapter, BuiltRequest, ParsedResponse
 from boundary.rawstore import RawStore, sha256_hex
 from boundary.routes import ModelRef, resolve
+from boundary.telemetry import Telemetry
 from boundary.transport import TRANSPORT_ERRORS, HttpResult, Transport
 from boundary.types import ChatRequest, ChatResponse, Mode, Usage
 
@@ -87,6 +90,7 @@ class _Call:
     mode: Mode
     row: LedgerRow
     price_entry: PriceEntry | None
+    span: Span
     cached: HttpResult | None = None
 
 
@@ -114,6 +118,7 @@ class Gateway:
         self.raw_store = RawStore(raw_store) if raw_store is not None else None
         self.cache = ExactMatchCache(config.cache.path) if config.cache.enabled else None
         self.transport = transport or Transport(config.defaults.timeouts)
+        self.telemetry = Telemetry(config.telemetry, version=__version__)
         self._sleep = sleep
         self._asleep = asleep
 
@@ -216,6 +221,9 @@ class Gateway:
             request_sha256=sha256_hex(built.body),
         )
         self._check_caps(run_id, estimate=0.0)
+        span = self.telemetry.start("boundary.raw")
+        ids = Telemetry.ids(span)
+        row.trace_id, row.span_id = ids.trace_id, ids.span_id
         self.ledger.begin(row)
         call = _Call(
             request=ChatRequest(
@@ -227,6 +235,7 @@ class Gateway:
             mode=mode,
             row=row,
             price_entry=None,
+            span=span,
         )
         result, error_type, retries = self._send_sync(call)
         usage = Usage()
@@ -263,10 +272,12 @@ class Gateway:
     def close(self) -> None:
         self.transport.close()
         self.ledger.close()
+        self.telemetry.shutdown()
 
     async def aclose(self) -> None:
         await self.transport.aclose()
         self.ledger.close()
+        self.telemetry.shutdown()
 
     def __enter__(self) -> Self:
         return self
@@ -367,6 +378,9 @@ class Gateway:
             cost_usd=estimate if entry is not None else None,
             request_sha256=sha256_hex(built.body),
         )
+        span = self.telemetry.start("boundary.chat")
+        ids = Telemetry.ids(span)
+        row.trace_id, row.span_id = ids.trace_id, ids.span_id
         self.ledger.begin(row)
 
         cached: HttpResult | None = None
@@ -380,6 +394,7 @@ class Gateway:
             mode=mode,
             row=row,
             price_entry=entry,
+            span=span,
             cached=cached,
         )
 
@@ -531,7 +546,7 @@ class Gateway:
             retries=retries,
             cached=cached,
             price_list=self.prices.name if cost is not None else None,
-            trace_id=None,
+            trace_id=call.row.trace_id,
         )
 
     def _record(
@@ -575,3 +590,36 @@ class Gateway:
         row.response_sha256 = sha256_hex(result.body) if result is not None else None
         row.raw_path = raw_path
         self.ledger.complete(row)
+        self._end_span(call, parsed, error_type)
+
+    def _end_span(self, call: _Call, parsed: ParsedResponse | None, error_type: str | None) -> None:
+        row = call.row
+        Telemetry.set_attributes(
+            call.span,
+            {
+                "gen_ai.operation.name": "chat",
+                "gen_ai.system": call.ref.provider_config.kind.value,
+                "gen_ai.request.model": call.ref.model,
+                "gen_ai.response.model": row.model_returned,
+                "gen_ai.usage.input_tokens": row.input_tokens,
+                "gen_ai.usage.output_tokens": row.output_tokens,
+                "gen_ai.response.finish_reasons": parsed.finish_reason if parsed else None,
+                "http.response.status_code": row.http_status,
+                "boundary.project": row.project,
+                "boundary.purpose": row.purpose,
+                "boundary.run_id": row.run_id,
+                "boundary.mode": row.mode,
+                "boundary.alias": row.alias,
+                "boundary.provider": row.provider,
+                "boundary.cost_usd": row.cost_usd,
+                "boundary.costed": row.costed,
+                "boundary.cached": row.cached,
+                "boundary.retries": row.retries,
+                "boundary.latency_ms": row.latency_ms,
+                "boundary.ledger_id": row.id,
+                "boundary.version": row.boundary_version,
+            },
+        )
+        if error_type is not None:
+            Telemetry.mark_error(call.span, error_type)
+        call.span.end()
