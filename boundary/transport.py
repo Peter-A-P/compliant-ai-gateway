@@ -6,11 +6,13 @@ the gateway, so that pass-through can never retry by accident.
 
 from __future__ import annotations
 
+import ssl
 import time
 from collections.abc import Mapping
 from dataclasses import dataclass
 
 import httpx
+import truststore
 
 from boundary.config import Timeouts
 from boundary.providers.base import BuiltRequest
@@ -46,8 +48,13 @@ class Transport:
             write=timeouts.read_s,
             pool=timeouts.connect_s,
         )
-        self._sync = sync_client or httpx.Client(timeout=t, follow_redirects=False)
-        self._async = async_client or httpx.AsyncClient(timeout=t, follow_redirects=False)
+        # Verify against the operating system's trust store. certifi's bundle does not know a
+        # workplace proxy's inspection certificate; the OS store does, and so does the browser.
+        ctx = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        self._sync = sync_client or httpx.Client(timeout=t, follow_redirects=False, verify=ctx)
+        self._async = async_client or httpx.AsyncClient(
+            timeout=t, follow_redirects=False, verify=ctx
+        )
         # The exact bytes of the last request body handed to httpx. The pass-through
         # byte-equality test compares this with what the adapter built.
         self.last_sent_body: bytes | None = None

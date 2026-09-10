@@ -92,6 +92,7 @@ class _Call:
     price_entry: PriceEntry | None
     span: Span
     cached: HttpResult | None = None
+    error_detail: str = ""
 
 
 class Gateway:
@@ -435,6 +436,7 @@ class Gateway:
             try:
                 return self.transport.send(call.built), None, 0
             except TRANSPORT_ERRORS as e:
+                call.error_detail = str(e)
                 return None, type(e).__name__, 0
         attempts = self.config.retry.max_attempts
         error_type: str | None = None
@@ -445,6 +447,7 @@ class Gateway:
                 error_type = None
             except TRANSPORT_ERRORS as e:
                 result, error_type = None, type(e).__name__
+                call.error_detail = str(e)
             if result is not None and result.status not in RETRY_STATUSES:
                 return result, None, attempt - 1
             if attempt < attempts:
@@ -456,6 +459,7 @@ class Gateway:
             try:
                 return await self.transport.asend(call.built), None, 0
             except TRANSPORT_ERRORS as e:
+                call.error_detail = str(e)
                 return None, type(e).__name__, 0
         attempts = self.config.retry.max_attempts
         error_type: str | None = None
@@ -466,6 +470,7 @@ class Gateway:
                 error_type = None
             except TRANSPORT_ERRORS as e:
                 result, error_type = None, type(e).__name__
+                call.error_detail = str(e)
             if result is not None and result.status not in RETRY_STATUSES:
                 return result, None, attempt - 1
             if attempt < attempts:
@@ -484,7 +489,9 @@ class Gateway:
         parsed: ParsedResponse | None = None
         failure: ProviderError | None = None
         if result is None:
-            failure = ProviderError(call.ref.provider, error_type or "error", "", retries)
+            failure = ProviderError(
+                call.ref.provider, error_type or "error", call.error_detail, retries
+            )
         elif 200 <= result.status < 300:
             try:
                 parsed = call.adapter.parse_response(result.status, result.headers, result.body)

@@ -49,8 +49,9 @@ def cmd_smoke(args: argparse.Namespace) -> int:
             ChatRequest(
                 model=model,
                 messages=[{"role": "user", "content": "Reply with the single word OK."}],
-                max_tokens=5,
-                temperature=0.0,
+                # No temperature: reasoning models accept only their default, and a smoke
+                # call is about the plumbing, not the sampling.
+                max_tokens=64,
             ),
             purpose="smoke",
             run_id=args.run_id,

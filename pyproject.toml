@@ -16,6 +16,10 @@ dependencies = [
   # One span per call. The API and SDK move together; 1.x is the stable line.
   "opentelemetry-api>=1,<2",
   "opentelemetry-sdk>=1,<2",
+  # TLS verification against the operating system's trust store rather than a bundled list,
+  # so a machine behind a TLS-inspecting proxy (a workplace laptop) verifies the same chain
+  # the browser does. Below 1.0 because the API is still settling.
+  "truststore>=0.10,<1",
 ]
 
 [dependency-groups]
