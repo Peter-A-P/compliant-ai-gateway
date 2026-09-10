@@ -24,8 +24,14 @@ SMOKE_MODELS: dict[str, str] = {
     # entry name or model can be given with --model.
     "anthropic": "anthropic/claude-haiku-4-5-20251001",
     "openai": "openai/gpt-5-nano",
-    "google": "google/gemini-2.5-flash-lite",
+    # gemini-2.5-flash-lite is closed to new API users (404 on 2026-09-10).
+    "google": "google/gemini-3.5-flash-lite",
     "openweights": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+}
+# Vendor fields the smoke call needs to produce visible text within its small max_tokens.
+# OpenAI's gpt-5 family reasons first and spends the whole budget on it otherwise.
+SMOKE_EXTRA: dict[str, dict[str, object]] = {
+    "openai": {"reasoning_effort": "minimal"},
 }
 
 
@@ -52,6 +58,7 @@ def cmd_smoke(args: argparse.Namespace) -> int:
                 # No temperature: reasoning models accept only their default, and a smoke
                 # call is about the plumbing, not the sampling.
                 max_tokens=64,
+                extra=SMOKE_EXTRA.get(args.provider, {}),
             ),
             purpose="smoke",
             run_id=args.run_id,

@@ -508,8 +508,18 @@ class Gateway:
         usage = parsed.usage if parsed is not None else Usage()
         cost: float | None = None
         if parsed is not None:
-            model_for_price = parsed.model_returned or call.ref.model
-            entry = self._price_for(call.ref.provider_config, call.ref.provider, model_for_price)
+            # Price by the identifier the vendor returned; if the price list does not know it,
+            # by the identifier that was requested. OpenAI answers a request for `gpt-5-nano`
+            # with `gpt-5-nano-2025-08-07` and prices both the same; the ledger row keeps both
+            # identifiers, so which one priced the call is always auditable. Never guessed
+            # beyond that: a returned id and a requested id both unknown is an uncosted row.
+            entry = None
+            if parsed.model_returned:
+                entry = self._price_for(
+                    call.ref.provider_config, call.ref.provider, parsed.model_returned
+                )
+            if entry is None:
+                entry = self._price_for(call.ref.provider_config, call.ref.provider, call.ref.model)
             cost = cost_usd(usage, entry) if entry is not None else None
 
         if cached and call.mode is Mode.STANDARD:

@@ -23,6 +23,13 @@ First version of the `boundary` library, Part A of the Compliant AI Gateway.
 - One OpenTelemetry span per call with an attribute allow list enforced in code and no
   content; console exporter. Trace and span ids written to the ledger row.
 - Exact-match development cache, standard mode only.
+- Live calls from GitHub Actions on 2026-09-10 (the laptop's network inspects TLS): Anthropic,
+  OpenAI and Together answered; Google refused `gemini-2.5-flash-lite` as closed to new
+  users, so the smoke default is `gemini-3.5-flash-lite`. OpenAI returned a dated id for an
+  undated request, which the price list did not know: the ledger now prices by the returned
+  id and falls back to the requested id, never further. Price file `2026-09-10.yaml` adds
+  the current Gemini and GPT lines. The smoke call sends `reasoning_effort: minimal` to
+  OpenAI so a reasoning model produces text within the smoke budget.
 - TLS verification against the operating system trust store.
 - Price files 2026-09-07 (Anthropic list prices from the plan) and 2026-09-09 (Anthropic,
   OpenAI, Google and Together, copied from their price pages).

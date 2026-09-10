@@ -155,7 +155,8 @@ def test_unknown_price_writes_an_uncosted_row_unless_strict(
     try:
         with respx.mock(assert_all_called=True) as mock:
             mock.post(ANTHROPIC_URL).mock(return_value=anthropic_ok(model="claude-unpriced-9"))
-            resp = g.chat(_req(), purpose="dev")
+            # Neither the returned nor the requested identifier is priced: uncosted, no guess.
+            resp = g.chat(_req(model="anthropic/claude-unpriced-9"), purpose="dev")
         assert (
             resp.ok and resp.costed is False and resp.cost_usd is None and resp.price_list is None
         )
@@ -169,7 +170,7 @@ def test_unknown_price_writes_an_uncosted_row_unless_strict(
         with respx.mock(assert_all_called=True) as mock:
             mock.post(ANTHROPIC_URL).mock(return_value=anthropic_ok(model="claude-unpriced-9"))
             with pytest.raises(UnknownPrice):
-                strict.chat(_req(), purpose="dev")
+                strict.chat(_req(model="anthropic/claude-unpriced-9"), purpose="dev")
         assert strict.ledger.count() == 1, "the row is written before UnknownPrice is raised"
     finally:
         strict.close()
@@ -194,6 +195,27 @@ def test_openai_cached_tokens_need_a_cache_rate_to_be_costed(
             resp = g.chat(_req(model="openai/gpt-x"), purpose="dev")
         assert resp.usage.input_tokens == 40 and resp.usage.cache_read_tokens == 60
         assert resp.costed is False
+    finally:
+        g.close()
+
+
+def test_returned_id_without_a_price_falls_back_to_the_requested_id(
+    repo_config: BoundaryConfig, tmp_path: Path, keys: None
+) -> None:
+    """OpenAI answers a request for gpt-5-nano with gpt-5-nano-2025-08-07; the price list
+    names the undated id. The call is costed by the requested id, and the row keeps both
+    identifiers (seen on the first live call, 2026-09-10)."""
+    g = make_gateway(repo_config, tmp_path)
+    try:
+        with respx.mock(assert_all_called=True) as mock:
+            # The fixture returns model "gpt-x-2026-01-01" for any request.
+            mock.post(OPENAI_URL).mock(return_value=openai_ok(prompt=100, cached=0))
+            resp = g.chat(_req(model="openai/gpt-5-nano"), purpose="dev")
+        assert resp.model_returned == "gpt-x-2026-01-01"
+        assert resp.costed is True and resp.cost_usd is not None and resp.cost_usd > 0
+        row = g.ledger.rows()[-1]
+        assert row["model_requested"] == "openai/gpt-5-nano"
+        assert row["model_returned"] == "gpt-x-2026-01-01"
     finally:
         g.close()
 
