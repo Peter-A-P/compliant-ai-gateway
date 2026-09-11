@@ -20,8 +20,8 @@ projects:
   # 02 own-run panel. Its plan puts the full suite at about US$25 with the Anthropic share
   # batched, and the whole project's API line at about US$60. A month holds one full suite
   # plus a rerun; a run holds one full suite with room for the frontier subset beside it.
-  # Provisional, set here so 02 is not silently refused by the US$10 default: confirm the
-  # amounts before its first own-run call, and raise them here in a commit if they bind.
+  # Confirmed by Peter 2026-09-11. Raise them here, deliberately, in a commit if they bind;
+  # never bypass a cap in code.
   model-selection-tenth-cost:
     monthly_usd: 40
     per_run_usd: 30
