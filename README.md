@@ -6,10 +6,10 @@ hard cap on every team's spend. The blocker most regulated organisations cite fo
 adoption, removed, with the latency overhead measured and published rather than promised.
 
 **Status: Part A released as `v0.1.0` on 2026-09-10**, after one live call per provider. The interface is frozen
-([docs/interface.md](docs/interface.md)); the library table below is measured. Work since the tag is
-0.2: ledger merge across environments and Anthropic Message Batches are in, and merging no
-longer writes to the ledgers it reads. A local model server answers through it at price
-zero, exercised live. Still to come in 0.2 are one live batch call and the adapters for the
+([docs/interface.md](docs/interface.md)); the library table below is measured. **`v0.2.0` followed on 2026-09-11**: ledger merge
+across environments, Anthropic Message Batches collected at half price, and merging that no
+longer writes to the ledgers it reads. Every provider and the batch path were exercised
+live, and a local model server answers at price zero. Still to come are the adapters for the
 three hyperscaler model platforms. Both parts are planned in [PLAN.md](PLAN.md):
 Part A, the `boundary` library that every project in this portfolio calls models through,
 built Sep 7 to 13 2026; Part B, the full gateway with redaction, residency routing, audit

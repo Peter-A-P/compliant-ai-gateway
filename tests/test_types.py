@@ -3,14 +3,27 @@
 from __future__ import annotations
 
 import dataclasses
+import re
 
 import pytest
 
 from boundary import ChatRequest, ChatResponse, Mode, Usage, __version__
 
 
-def test_version_is_a_dev_prerelease_until_the_tag() -> None:
-    assert __version__.startswith("0.2.0.dev")
+def test_the_version_matches_the_packaging_metadata() -> None:
+    """A ledger row records the library version that wrote it, so the version in the package
+    and the version the wheel is built with have to be the same string. They sat in two files
+    and drifted once already, when the lockfile still said the previous one."""
+    import tomllib
+    from pathlib import Path
+
+    pyproject = Path(__file__).resolve().parent.parent / "pyproject.toml"
+    declared = tomllib.loads(pyproject.read_text(encoding="utf-8"))["project"]["version"]
+    assert __version__ == declared
+
+    # A release is a plain three-part version; work after one carries a .devN suffix until
+    # the next tag, which is what keeps an untagged build from claiming to be a release.
+    assert re.fullmatch(r"\d+\.\d+\.\d+(\.dev\d+)?", __version__), __version__
 
 
 def test_chat_request_minimal_and_explicit_flag() -> None:

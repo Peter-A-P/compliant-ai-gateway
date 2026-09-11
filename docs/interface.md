@@ -11,10 +11,10 @@ ledger row. The 02 runner (November) needs standard mode, batches (v0.2) and the
 price-zero host.
 
 Column "since" is the version each item first appeared in. Everything added after the
-freeze is listed here with its version: 0.2 (in progress, September 2026) adds the `env`
-argument and configuration key, ledger schema v2's two columns and v3's one, Anthropic
-Message Batches, `boundary ledger merge` and `boundary experiment`. Nothing that 0.1.0
-offered has changed shape.
+freeze is listed here with its version: 0.2 (released 2026-09-11) adds the `env` argument
+and configuration key, ledger schema v2's two columns and v3's one, Anthropic Message
+Batches with their command-line collection, `boundary ledger merge` and
+`boundary experiment`. Nothing that 0.1.0 offered has changed shape.
 
 ## 1. Importing
 

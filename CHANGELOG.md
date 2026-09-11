@@ -3,7 +3,7 @@
 Versions follow the plan's handover table (PLAN.md section 7). Interface changes within a
 major version are additive only; see docs/interface.md.
 
-## Unreleased (0.2.0)
+## 0.2.0 (2026-09-11)
 
 - **Anthropic Message Batches.** `Gateway.batch_submit(requests, purpose=, run_id=)` returns
   a `BatchHandle`; `batch_results(handle, wait_s=, poll_s=)` completes the rows;
@@ -75,7 +75,15 @@ major version are additive only; see docs/interface.md.
 - The mock upstream and the request corpus behind `boundary bench` moved to
   `boundary/_mock.py` so the experiment measures the same code path against the same
   corpus. The three deterministic bench numbers are unchanged by the move.
-- Version is `0.2.0.dev0` until the 0.2.0 tag, so a ledger row says which library wrote it.
+- **Live calls, 2026-09-11, which are what the tag waited on.** All four providers answered
+  under 0.2 from GitHub Actions. A real two-request Anthropic batch was submitted and polled,
+  the vendor reporting its own counts; it had not ended within fifteen minutes, so it was
+  collected by a second run in collect mode, from the first run's ledger artefact and with
+  nothing carried between them but the batch id. Both rows completed at 16 input and 4 output
+  tokens for US$0.000018 each, which is Haiku 4.5's list price times the 0.5 batch
+  multiplier, computed from the returned usage and not estimated. Zero errors and zero
+  uncosted rows in the report. A local Ollama server answered at price zero, costed rather
+  than left unknown. Ten live calls in all this day, well under a cent.
 
 - **A local OpenAI-compatible host, exercised live.** Ollama 0.34.0 with `llama3.2:3b` on
   the laptop, answering through the `local` provider entry at price zero: ledger row 5,
