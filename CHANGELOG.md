@@ -3,6 +3,39 @@
 Versions follow the plan's handover table (PLAN.md section 7). Interface changes within a
 major version are additive only; see docs/interface.md.
 
+## Unreleased (0.2.0, October 2026)
+
+- **Ledger schema v2, additive.** Two columns: `call_uid`, a uid minted in the process that
+  makes the call, and `env`, which environment made it. A v1 file is upgraded in place the
+  first time this version opens it, with `call_uid` backfilled from each row's own contents
+  so that two copies of one v1 file still merge to one row per call. No value a call
+  recorded is changed, and no column moved.
+- **`boundary ledger merge --into <dest> <sources...>`.** Combines one ledger per
+  environment into a central file, matching on `call_uid` and never on `id`. Idempotent:
+  merging the same source again inserts nothing, which is what makes "run it again" the
+  answer to a merge that failed. A row held as `in_flight` is completed when the source has
+  since completed it, so a central file settles on actual costs; a completed row is never
+  reverted by an older copy. One source is one transaction. `--dry-run` reports without
+  writing.
+- **`env` on the gateway and in the configuration.** `Gateway(..., env=...)`, else
+  `BOUNDARY_ENV`, else `ledger.env` in `boundary.yaml` (default `local`). Written to every
+  ledger row and carried on the span as `boundary.env`. `ledger report` groups by it.
+- **Rule C: `docs/rejected.md`.** A central ledger written over the network, measured
+  against local-first plus merge over 100 runs with an outage in each, by
+  `boundary experiment remote-ledger`. The strict remote design finished none of the runs;
+  the best-effort one finished them all and left 8.8% of the calls it had paid for with no
+  record, and made 981 calls with no cap check, because the cap cannot be checked when the
+  host holding the totals is unreachable. Local-first lost nothing. The table in the doc
+  and the figures in the README are filled from `bench/remote-ledger.json` and a test
+  fails if they drift.
+- The mock upstream and the request corpus behind `boundary bench` moved to
+  `boundary/_mock.py` so the experiment measures the same code path against the same
+  corpus. The three deterministic bench numbers are unchanged by the move.
+- Version is `0.2.0.dev0` until the 0.2.0 tag, so a ledger row says which library wrote it.
+
+Still deferred to the 0.2.0 tag: Foundry, Bedrock and Vertex adapters; Anthropic Message
+Batches; local OpenAI-compatible hosts at price zero. OTLP export arrives with Part B.
+
 ## 0.1.0 (2026-09-10)
 
 First version of the `boundary` library, Part A of the Compliant AI Gateway. Tagged after
@@ -47,4 +80,4 @@ one live call per provider succeeded and was costed (run from GitHub Actions on
   `bench/results.json`.
 
 Deferred to 0.2 (October 2026): Foundry, Bedrock and Vertex adapters; Anthropic Message
-Batches; `ledger merge`; OTLP exporter arrives with Part B.
+Batches; `ledger merge` (done, see above); OTLP exporter arrives with Part B.

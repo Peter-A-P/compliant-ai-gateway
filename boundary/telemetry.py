@@ -35,6 +35,7 @@ ALLOWED_ATTRIBUTES: frozenset[str] = frozenset(
         "gen_ai.response.finish_reasons",
         "http.response.status_code",
         "error.type",
+        "boundary.env",
         "boundary.project",
         "boundary.purpose",
         "boundary.run_id",

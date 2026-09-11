@@ -22,10 +22,8 @@ import contextlib
 import json
 import random
 import statistics
-import string
 import time
-from collections.abc import Callable, Iterator
-from contextlib import contextmanager
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -33,49 +31,17 @@ from typing import Any
 import httpx
 
 from boundary import __version__
+from boundary._mock import MODEL, MockUpstream, mock_gateway, ok_body, sample_request
 from boundary.config import BoundaryConfig, CapsConfig, ProjectCap, load_config
 from boundary.errors import ProviderError, SpendCapExceeded
-from boundary.gateway import Gateway
 from boundary.ledger.store import IN_FLIGHT
 from boundary.providers.anthropic import AnthropicAdapter
 from boundary.providers.base import BuiltRequest
 from boundary.transport import HttpResult, Transport
 from boundary.types import ChatRequest, Mode
 
-MODEL = "anthropic/claude-haiku-4-5-20251001"
 README_START = "<!-- bench:start -->"
 README_END = "<!-- bench:end -->"
-
-
-def _ok_body(input_tokens: int = 40, output_tokens: int = 3) -> dict[str, Any]:
-    return {
-        "id": "msg_bench",
-        "type": "message",
-        "role": "assistant",
-        "model": "claude-haiku-4-5-20251001",
-        "content": [{"type": "text", "text": "B"}],
-        "stop_reason": "end_turn",
-        "usage": {"input_tokens": input_tokens, "output_tokens": output_tokens},
-    }
-
-
-class _MockUpstream:
-    """An httpx transport that answers according to a script, and counts what it sees."""
-
-    def __init__(self, script: Callable[[int], httpx.Response | Exception] | None = None) -> None:
-        self.calls = 0
-        self._script = script or (lambda _i: httpx.Response(200, json=_ok_body()))
-
-    def handler(self, request: httpx.Request) -> httpx.Response:
-        i = self.calls
-        self.calls += 1
-        out = self._script(i)
-        if isinstance(out, Exception):
-            raise out
-        return out
-
-    def client(self) -> httpx.Client:
-        return httpx.Client(transport=httpx.MockTransport(self.handler))
 
 
 class _KillSometimes(Transport):
@@ -92,55 +58,6 @@ class _KillSometimes(Transport):
         if i in self.kill_on:
             raise KeyboardInterrupt
         return super().send(built)
-
-
-@contextmanager
-def _gateway(
-    config: BoundaryConfig,
-    work: Path,
-    upstream: _MockUpstream,
-    *,
-    caps: CapsConfig | None = None,
-    transport: Transport | None = None,
-    project: str = "bench",
-) -> Iterator[Gateway]:
-    caps = caps or CapsConfig(
-        version=1,
-        portfolio_monthly_usd=1000.0,
-        projects={project: ProjectCap(monthly_usd=1000.0, per_run_usd=1000.0)},
-    )
-    gw = Gateway(
-        config,
-        project=project,
-        ledger_path=work / f"{project}.sqlite",
-        raw_store=work / "raw",
-        transport=transport or Transport(config.defaults.timeouts, sync_client=upstream.client()),
-        caps=caps,
-        sleep=lambda _s: None,
-    )
-    try:
-        yield gw
-    finally:
-        gw.close()
-
-
-def _req(i: int, rng: random.Random) -> ChatRequest:
-    words = " ".join(
-        "".join(rng.choices(string.ascii_lowercase, k=rng.randint(2, 9)))
-        for _ in range(rng.randint(3, 40))
-    )
-    extra: dict[str, Any] = {}
-    if rng.random() < 0.3:
-        extra["metadata"] = {"user_id": f"u{rng.randint(1, 999)}"}
-    return ChatRequest(
-        model=MODEL,
-        messages=[{"role": "user", "content": f"{i}: {words}"}],
-        system="Answer with the letter only." if rng.random() < 0.5 else None,
-        max_tokens=rng.choice([1, 8, 64]),
-        temperature=rng.choice([None, 0.0, 0.7]),
-        stop=["\n"] if rng.random() < 0.2 else None,
-        extra=extra,
-    )
 
 
 def _bootstrap_ci(
@@ -170,11 +87,11 @@ def measure_overhead(
     config: BoundaryConfig, work: Path, *, calls: int, seed: int
 ) -> OverheadResult:
     rng = random.Random(seed)
-    upstream = _MockUpstream()
+    upstream = MockUpstream()
     times: list[float] = []
-    with _gateway(config, work / "overhead", upstream) as gw:
+    with mock_gateway(config, work / "overhead", upstream) as gw:
         for i in range(calls):
-            req = _req(i, rng)
+            req = sample_request(i, rng)
             t0 = time.perf_counter()
             gw.chat(req, purpose="bench", run_id="overhead", mode=Mode.STANDARD)
             times.append((time.perf_counter() - t0) * 1000.0)
@@ -226,7 +143,7 @@ def measure_completeness(
             return httpx.ReadTimeout("slow")
         if fault == "malformed":
             return httpx.Response(200, content=b"<html>")
-        return httpx.Response(200, json=_ok_body())
+        return httpx.Response(200, json=ok_body())
 
     by_fault: dict[str, int] = dict.fromkeys(FAULTS, 0)
     attempted = 0
@@ -235,10 +152,10 @@ def measure_completeness(
     for mode in (Mode.STANDARD, Mode.PASSTHROUGH):
         # Standard mode retries 500s and timeouts, so the upstream sees several requests per
         # call; the script indexes by upstream request, so it is rebuilt per gateway call.
-        upstream = _MockUpstream(script)
+        upstream = MockUpstream(script)
         kill_indexes: set[int] = set()
         transport = _KillSometimes(upstream.client(), kill_indexes, config.defaults.timeouts)
-        with _gateway(
+        with mock_gateway(
             config, work / f"completeness-{mode.value}", upstream, transport=transport
         ) as gw:
             for i, fault in enumerate(plan):
@@ -248,7 +165,9 @@ def measure_completeness(
                     transport.kill_on = {transport.n}
                 attempted += 1
                 with contextlib.suppress(ProviderError, KeyboardInterrupt):
-                    gw.chat(_req(i, rng), purpose="bench", run_id=f"c-{mode.value}", mode=mode)
+                    gw.chat(
+                        sample_request(i, rng), purpose="bench", run_id=f"c-{mode.value}", mode=mode
+                    )
                 by_fault[fault] += 1
             rows = gw.ledger.rows()
             total_rows += len(rows)
@@ -267,7 +186,7 @@ class CapsResult:
 
 def measure_caps(config: BoundaryConfig, work: Path, *, attempts: int, seed: int) -> CapsResult:
     rng = random.Random(seed)
-    upstream = _MockUpstream()
+    upstream = MockUpstream()
     entry_in, entry_out = 1.0, 5.0  # haiku list price in the checked-in file
     # A cap that admits roughly three calls: three times the actual cost of a 40/3 call plus
     # a little, so the fourth pessimistic estimate trips it.
@@ -281,7 +200,7 @@ def measure_caps(config: BoundaryConfig, work: Path, *, attempts: int, seed: int
     past = 0
     reached_after = 0
     tripped = False
-    with _gateway(config, work / "caps", upstream, caps=caps) as gw:
+    with mock_gateway(config, work / "caps", upstream, caps=caps) as gw:
         for i in range(attempts):
             seen = upstream.calls
             try:
@@ -321,13 +240,13 @@ def measure_fidelity(
     config: BoundaryConfig, work: Path, *, requests: int, seed: int
 ) -> FidelityResult:
     rng = random.Random(seed)
-    upstream = _MockUpstream()
+    upstream = MockUpstream()
     identical = 0
     adapter = AnthropicAdapter()
-    with _gateway(config, work / "fidelity", upstream) as gw:
+    with mock_gateway(config, work / "fidelity", upstream) as gw:
         ref = gw.resolve(MODEL, Mode.PASSTHROUGH)
         for i in range(requests):
-            req = _req(i, rng)
+            req = sample_request(i, rng)
             expected = adapter.build_request(ref, req, ref.provider_config, "bench-key").body
             gw.chat(req, purpose="bench", run_id="fidelity", mode=Mode.PASSTHROUGH)
             if gw.transport.last_sent_body == expected:

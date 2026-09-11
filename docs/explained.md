@@ -6,7 +6,7 @@ interface is [interface.md](interface.md).
 
 ## Why it exists
 
-This portfolio is ten projects built over a year to show, in public and with numbers a
+This portfolio is fifteen projects built over a year to show, in public and with numbers a
 stranger can check, how production machine learning and AI systems are built. Eight of
 the ten call AI models from vendors such as Anthropic, OpenAI and Google.
 
@@ -50,6 +50,16 @@ token counts the vendor returns and a dated price file copied from the vendor's 
 page. If the price is not in the file, the row says "uncosted". The library never guesses
 a price. Column by column: [ledger.md](ledger.md).
 
+**One ledger per machine, combined afterwards.** The database is a file on whichever
+machine made the call: a laptop, a GitHub Actions runner, a small server. `boundary ledger
+merge` copies them into one file when a total across all of them is needed, and it is safe
+to run twice, because every row carries a uid minted where the call was made. The obvious
+alternative, one central database every call writes to over the network, was tried and
+measured first: when the network went down it either stopped the run or lost the record of
+calls that had already been paid for, and the spend cap stopped working at the same moment,
+because a cap can only be checked against a total it can reach. The numbers are in
+[rejected.md](rejected.md).
+
 **Spend caps.** Before each call the library adds up this month's spend for the project,
 adds the pessimistic estimate for this call, and refuses if the total would pass the cap.
 A refused call makes no request. There are caps per project per month, per run, and for
@@ -69,8 +79,9 @@ file for anything shaped like an API key.
 ## What happens next
 
 Version 0.1.0 is the library the portfolio's other projects pin. Small additions follow in
-October as projects need them: adapters for the three large cloud platforms, the
-half-price batch endpoint, and merging ledgers from different machines. In 2027 the same
+October as projects need them: adapters for the three large cloud platforms and the
+half-price batch endpoint. Merging ledgers from different machines is already in, ahead of
+the plan, because the experiment above needed it to argue against. In 2027 the same
 library becomes the core of the full gateway, which adds reversible redaction of personal
 data, routing by data classification, a tamper-evident audit trail and a published latency
 budget, the things regulated organisations ask about before they let a model near their

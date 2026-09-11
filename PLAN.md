@@ -9,7 +9,7 @@ Two parts, one repository, one Python package called `boundary`:
 | **A. Version 0, the library** | Every model call in the portfolio goes through one library: provider adapters over raw HTTP, routing by configuration, an OpenTelemetry span and a cost record per call, spend caps, and a pass-through mode the drift runs can trust | One week, Sep 7 to Sep 13 2026, tagged `v0.1.0`; small follow-ups in October as projects need them | Part A |
 | **B. The full gateway** | An OpenAI-compatible proxy on top of the library: reversible PII redaction, residency routing by data classification, semantic cache, prompt-injection screening, per-team budgets, a hash-chained audit log, a published latency-overhead budget, and the portfolio-wide observability dashboard at gateway.peterparker.ca | Three weeks, May 3 to May 23 2027, tagged `v1.0.0` | Part B |
 
-Part A exists because the model landscape changes monthly and ten projects calling vendors
+Part A exists because the model landscape changes monthly and fifteen projects calling vendors
 directly would mean ten places to change when a model is retired, repriced or replaced.
 It is built first because the 03 drift runner is written against it from Sep 16 and the
 first official drift run is Sep 27. Part B is the keyword slot done properly: the
@@ -187,15 +187,24 @@ boundary/
                    aws_bedrock.py      Claude on Amazon Bedrock, SigV4 via botocore signer (v0.2)
                    gcp_vertex.py       Claude or Gemini on Vertex AI, token via google-auth (v0.2)
   transport.py     pinned httpx client, timeouts (connect 10 s, read 120 s), retry policy (standard only)
-  ledger/          schema.sql (v1), store.py (SQLite, one row per call, written before return),
-                   prices.py (versioned price files, cost arithmetic incl. cache and batch rates),
-                   merge.py (combine ledgers from environments), report.py (per project, model, month)
+  ledger/          schema.sql (v1; v2 in 0.2 adds call_uid and env), store.py (SQLite, one row
+                   per call, written before return; merge_from combines another environment's
+                   file, keyed on call_uid, idempotent),
+                   prices.py (versioned price files, cost arithmetic incl. cache and batch rates)
+                   Revised 2026-09-10: merge and report were planned as ledger/merge.py and
+                   ledger/report.py. Merge needs the schema, the connection and the same
+                   insert path as a write, so it is a method on the store rather than a
+                   module that reaches into it; report is a projection for the operator, so
+                   it lives in cli.py with the other commands.
   caps.py          monthly, per-run and portfolio caps; pre-call estimate; post-call actual
   telemetry.py     one span per call, GenAI semantic-convention attributes, no content;
                    exporters: none, console, OTLP (OTLP used from Part B)
   cache.py         exact-match development cache keyed by sha256 of the canonical request; standard mode only
   rawstore.py      pass-through request and response bytes plus headers, JSONL, caller-owned path
-  cli.py           boundary smoke <provider> | routes show | prices check | ledger report | ledger merge
+  cli.py           boundary smoke <provider> | routes show | prices check | ledger report |
+                   ledger merge | bench | experiment remote-ledger
+  _mock.py         in-process upstream and request corpus shared by bench and experiment
+  experiment/      the Rule C measurements behind docs/rejected.md
 config/
   boundary.yaml    routes and defaults
   prices/2026-09-07.yaml
@@ -204,17 +213,22 @@ tests/
   mock upstream (respx) per provider with golden requests and responses, including error shapes
   test_passthrough.py   byte equality; exactly one upstream call; aliases refused
   test_ledger.py        completeness under fault injection (500, timeout, malformed body, SIGKILL
-                        simulated by writing before return), merge idempotence
+                        simulated by writing before return)
+  test_merge.py         merge idempotence, in-flight rows completed by a later merge, the v1
+                        upgrade, and a failed merge leaving the destination untouched
+  test_experiment.py    the claims on docs/rejected.md, at a size CI can afford
   test_caps.py          refusal at the cap with zero upstream calls; estimate is never below actual on the golden corpus
   test_prices.py        cost arithmetic against each vendor's published pricing examples, to the cent
   test_adapters.py      request builder and response parser per adapter against goldens
   test_routes.py        alias change moves the model in the ledger
 docs/
   interface.md     the frozen interface, with the version it changed in
-  ledger.md        the row schema, field by field
+  ledger.md        the row schema, field by field, and how merge matches rows
+  explained.md     the library in plain language
+  rejected.md      Rule C: the central remote ledger, and the numbers that rejected it
 ```
 
-### Ledger row (schema v1)
+### Ledger row (schema v1; v2 in 0.2)
 
 `id, ts_utc, boundary_version, project, purpose, run_id, mode, provider, alias,
 model_requested, model_returned, region, input_tokens, output_tokens, cache_read_tokens,
@@ -222,6 +236,13 @@ cache_write_tokens, price_list, cost_usd, costed, cached, latency_ms, http_statu
 error_type, retries, request_sha256, response_sha256, trace_id, span_id, raw_path`
 
 Schema changes are additive only. A column is never renamed or removed.
+
+v2 (2026-09-10, with `ledger merge`) adds `call_uid` and `env`. The plan did not name them
+because it did not say how merge would identify a row across files. `id` cannot: it is
+per file, so every environment holds an id 1 for a different call. `call_uid` is minted in
+the process that makes the call, which is what lets merge be idempotent; `env` says which
+environment a row came from, and therefore which machine's raw store its `raw_path` points
+into. A v1 file is upgraded in place on open.
 
 ### Adapters in version 0
 
@@ -260,7 +281,7 @@ Each is a day or less, done alongside 01 before the project that needs it:
 
 | Item | Needed by | When |
 |---|---|---|
-| `ledger merge` across environments and the monthly `ledger report` that feeds the STATUS budget review | The first budget review | Before Oct 1 |
+| `ledger merge` across environments and the monthly `ledger report` that feeds the STATUS budget review | The first budget review | Before Oct 1. **Done 2026-09-10**, brought forward because the Rule C experiment needed it to exist to be measured against |
 | Foundry, Bedrock and Vertex adapters, exercised once each | Definition of done; nothing else this year | Mid October, after action 9 |
 | Anthropic Message Batches: `batch_submit`, `batch_results`, ledger rows written at result time at the batch rate | 02 | Before Nov 1 |
 | Local OpenAI-compatible hosts at price zero | 02 | Before Nov 1 |
@@ -284,7 +305,7 @@ ledger-against-invoice difference is recorded there monthly (section 1).
 | Version | Date | What downstream imports |
 |---|---|---|
 | `boundary` v0.1.0 | Sep 13 2026 | `Gateway`, `ChatRequest`, `ChatResponse`, `Mode`, errors; ledger schema v1; four adapters |
-| v0.2.x | October 2026 | Batches, hyperscaler adapters, `ledger merge` and `report`, local hosts |
+| v0.2.x | October 2026 | Batches, hyperscaler adapters, `ledger merge` and `report`, local hosts; ledger schema v2 (`call_uid`, `env`), additive; `Gateway(env=)` |
 | v1.0.0 | May 23 2027 | Everything in Part B; `boundary.redact` for 07; the proxy for 13 and 14 |
 
 03 pins `boundary>=0.1,<0.3` for Part A and moves to `>=1.0` when its Part B is built
@@ -323,6 +344,16 @@ Three approaches expected not to work, each with the evidence it would leave beh
 
 Whichever produces the clearest evidence becomes `docs/rejected.md`.
 
+**Outcome (2026-09-10): candidate 3.** Written up in `docs/rejected.md` and measured by
+`boundary experiment remote-ledger`: 100 runs per design, an outage in each, three designs
+over the same corpus. The strict remote ledger finished none of the runs; the best-effort
+one finished all of them and left 8.8% of the calls it had already paid for with no record
+at all, and made 981 calls with no cap check, because a remote ledger cannot answer "what
+has been spent" when it is the unreachable thing. Local-first lost nothing and a second
+merge inserted nothing. Candidate 1 (vendor SDKs) needs two SDK releases to diff and
+candidate 2 (tokenizer estimates) needs a corpus of live calls, so both move to v0.2 in
+October; Rule C asks for one, and it is done.
+
 ## 10. Definition of done, Part A
 
 - [ ] `boundary` v0.1.0 tagged by Sep 13 2026; interface frozen Sep 9 and documented
@@ -336,7 +367,7 @@ Whichever produces the clearest evidence becomes `docs/rejected.md`.
 - [ ] Used by the 03 dry runs (Sep 16 onward) and pinned by the 02 and 03 repositories
 - [ ] v0.2: Foundry, Bedrock and Vertex exercised once each, calls in the ledger; Anthropic batches; `ledger merge` and `report`
 - [ ] Ledger-against-invoice difference recorded in the plan repository's STATUS from October
-- [ ] One rejected approach documented with evidence (Rule C)
+- [x] One rejected approach documented with evidence (Rule C): `docs/rejected.md`, 2026-09-10
 - [ ] `v0.1.0` tagged. The repository stays private at the tag (decided 2026-09-07): the 02
       and 03 runners install it with a fine-grained read-only GitHub token held as an Actions
       secret, and it goes public when the plan repository's action 6 decides the timing

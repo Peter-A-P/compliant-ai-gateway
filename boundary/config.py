@@ -84,6 +84,12 @@ class RetryPolicy(_Strict):
 
 class LedgerConfig(_Strict):
     path: Path = Path("boundary.sqlite")
+    # Which environment writes this file. Recorded in every row (schema v2) so that a
+    # central ledger built by `boundary ledger merge` can still say where a call was made
+    # and which raw store its `raw_path` points into. The BOUNDARY_ENV environment
+    # variable overrides it, which is how a runner labels itself without editing a
+    # checked-in file.
+    env: str = Field(default="local", min_length=1, pattern=r"^[a-z0-9][a-z0-9._-]*$")
 
 
 class TelemetryConfig(_Strict):

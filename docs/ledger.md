@@ -1,7 +1,9 @@
-# The ledger, schema v1
+# The ledger, schema v2
 
 One SQLite file per environment (`ledger.path` in `boundary.yaml`, or `ledger_path` on the
-gateway). One row per call. Rows are written in two phases:
+gateway), combined by `boundary ledger merge`. Writing locally rather than to one central
+service is a decision with evidence behind it: [rejected.md](rejected.md). One row per
+call. Rows are written in two phases:
 
 1. **Before the request leaves the process**: the row is inserted with
    `error_type = 'in_flight'` and `cost_usd` set to the pessimistic pre-call estimate.
@@ -10,11 +12,20 @@ gateway). One row per call. Rows are written in two phases:
    counts against the caps at its estimate. Nothing escapes the ledger.
 
 Columns are additive only. A column is never renamed or removed. `schema_version` records
-the version that created the file.
+every version the file has been through.
+
+**v2 (0.2)** adds `call_uid` and `env`, the two columns merging needs, and nothing else. A
+v1 file is upgraded in place the first time this version opens it: the columns are added,
+`call_uid` is backfilled for the rows already there, and the unique index is built. The
+upgrade changes no value a call recorded. `env` stays null on those rows, because which
+machine made a call written before the column existed is not recoverable, and a guess in
+the ledger would be worse than a null.
 
 | Column | Type | Meaning |
 |---|---|---|
-| `id` | integer | Row id, returned to the caller as `ledger_id` |
+| `id` | integer | Row id, returned to the caller as `ledger_id`. Local to one file: after a merge the destination assigns its own |
+| `call_uid` | text | Uid for the call, minted in the process that made it (v2). What identifies a row across files, so merging the same file twice is one row per call |
+| `env` | text or null | Which environment made the call: `ledger.env` in the configuration, or `BOUNDARY_ENV`. Null for rows written before v2 |
 | `ts_utc` | text | Insert time, ISO 8601 UTC with milliseconds, `Z` suffix |
 | `boundary_version` | text | Library version that wrote the row |
 | `project` | text | The gateway's project; the key into `caps.yaml` |
@@ -50,7 +61,34 @@ estimates count and uncosted rows do not. Uncosted successful calls are counted 
 by `uncosted_count()` and should be zero; the README reports the figure.
 
 The portfolio cap is checked against the ledger the gateway can see, which is one
-environment's file until `ledger merge` (v0.2) combines them.
+environment's file until `ledger merge` combines them. That gap is real and is stated in
+[rejected.md](rejected.md): the merge before the monthly budget review is what closes it,
+and the ledger-against-invoice check is what would catch a review that skipped it.
+
+## Merging
+
+```
+boundary ledger merge --into central.sqlite laptop.sqlite actions.sqlite
+boundary ledger merge --into central.sqlite laptop.sqlite --dry-run
+```
+
+Rows are matched on `call_uid`, never on `id`:
+
+- A call the destination does not hold is inserted, with a new `id`. Everything else, `env`
+  and `raw_path` included, is copied verbatim, so a pass-through row still points into the
+  raw store on the machine that made the call.
+- A call it already holds is left alone, which is what makes a second merge of the same
+  file a no-op. Merge is safe to re-run, and re-running is the answer to a merge that
+  failed half way: one source is one transaction, so a failure leaves the destination as
+  it was.
+- The exception is a row the destination holds as `in_flight` and the source now has
+  complete: that row is completed, so a central file built by repeated merges settles on
+  actual costs instead of freezing the first estimate it saw. A completed row is never
+  reverted by an older copy of the same call.
+- A v1 source is upgraded in place first (additive, as above). `--dry-run` suppresses the
+  writes to the destination, not that upgrade.
+- Merging a file into itself, or a file whose schema is newer than the library, is refused
+  rather than attempted.
 
 ## Costing rules
 

@@ -10,7 +10,7 @@ from boundary import ChatRequest, ChatResponse, Mode, Usage, __version__
 
 
 def test_version_is_a_dev_prerelease_until_the_tag() -> None:
-    assert __version__.startswith("0.1.0")
+    assert __version__.startswith("0.2.0.dev")
 
 
 def test_chat_request_minimal_and_explicit_flag() -> None:

@@ -10,7 +10,10 @@ written from Sep 16 and needs `Gateway.chat` in pass-through mode, the raw store
 ledger row. The 02 runner (November) needs standard mode, batches (v0.2) and the local
 price-zero host.
 
-Column "since" is the version each item first appeared in.
+Column "since" is the version each item first appeared in. Everything added after the
+freeze is listed here with its version: 0.2 (in progress, October 2026) adds the `env`
+argument and configuration key, ledger schema v2's two columns, `boundary ledger merge`
+and `boundary experiment`. Nothing that 0.1.0 offered has changed shape.
 
 ## 1. Importing
 
@@ -31,7 +34,7 @@ from boundary import (
 
 | Item | Signature | Since | Notes |
 |---|---|---|---|
-| Construct from a file | `Gateway.from_config(path, *, project, ledger_path=None, raw_store=None, strict_cost=False)` | 0.1 | `project` is the ledger's project column and the key into `caps.yaml`. `ledger_path` overrides the config's ledger path (the Actions runner passes a path inside the checkout). `raw_store` is a directory the caller owns; required for any pass-through call. `strict_cost=True` raises `UnknownPrice` instead of writing an uncosted row |
+| Construct from a file | `Gateway.from_config(path, *, project, ledger_path=None, raw_store=None, strict_cost=False, env=None)` | 0.1, `env` 0.2 | `project` is the ledger's project column and the key into `caps.yaml`. `ledger_path` overrides the config's ledger path (the Actions runner passes a path inside the checkout). `raw_store` is a directory the caller owns; required for any pass-through call. `strict_cost=True` raises `UnknownPrice` instead of writing an uncosted row. `env` labels the rows this gateway writes, so a merged ledger says where a call was made; it defaults to `BOUNDARY_ENV`, then `ledger.env` in the configuration |
 | Synchronous call | `gw.chat(request, *, purpose, run_id=None, mode=Mode.STANDARD) -> ChatResponse` | 0.1 | `purpose` is a short free-text label for the ledger ("drift-run", "grader-dev"). `run_id` groups rows and is what the per-run cap is measured against |
 | Asynchronous call | `await gw.achat(request, *, purpose, run_id=None, mode=Mode.STANDARD) -> ChatResponse` | 0.1 | Same adapter code path as `chat`; concurrency is the caller's business |
 | Escape hatch | `gw.raw(provider, method, path, json, *, purpose, run_id=None, mode=Mode.STANDARD) -> RawResponse` | 0.1 | For a vendor feature the library does not model. Traced and ledgered; costed when the body carries usage in a shape the adapter knows, otherwise written uncosted |
@@ -108,24 +111,36 @@ All subclass `BoundaryError`.
 | `PassthroughViolation` | Alias, cache, or missing `max_tokens` in pass-through mode; pass-through without a raw store | message | 0.1 |
 | `ProviderError` | Non-2xx after retries (standard) or transport failure. In pass-through the same information is returned as a `ChatResponse` instead | `provider`, `status`, `body`, `retries`, `headers` | 0.1 |
 
-## 7. The ledger row (schema v1)
+## 7. The ledger row (schema v2)
 
 One row per call, written before the response is returned, including failures. Columns
 are additive only; never renamed or removed. Field-by-field notes in `docs/ledger.md`
-(Sep 8).
+(Sep 8, v2 Sep 10).
 
 ```
 id, ts_utc, boundary_version, project, purpose, run_id, mode, provider, alias,
 model_requested, model_returned, region, input_tokens, output_tokens, cache_read_tokens,
 cache_write_tokens, price_list, cost_usd, costed, cached, latency_ms, http_status,
 error_type, retries, request_sha256, response_sha256, trace_id, span_id, raw_path
+call_uid, env                                                             -- added in 0.2
 ```
+
+`call_uid` identifies the call across files and `env` says which environment made it;
+together they are what lets `ledger merge` combine one file per environment and be safe to
+run again. A v1 file is upgraded in place on open, additively. A reader written against v1
+still works: nothing moved, and `SELECT` by name is unaffected.
+
+One thing for a repository that pins `boundary>=0.1,<0.3`: the upgrade is one way. Once a
+0.2 gateway has opened a ledger file, 0.1.0 refuses to write to it, by design, rather than
+adding rows with no `call_uid` that a later merge would duplicate. It raises at
+construction with the schema versions named. Either pin one version per ledger file, or
+give each version its own file and merge them.
 
 ## 8. Configuration files
 
 | File | Contents | Owner |
 |---|---|---|
-| `config/boundary.yaml` | `providers` (name, kind, base URL, key environment variable, pinned API version), `routes` (alias to provider, model, optional API version and region; may point at a separate `routes.yaml`), `defaults`, `retry`, `ledger`, `telemetry`, `cache`, and the paths to the two files below | This repository; a project may ship its own |
+| `config/boundary.yaml` | `providers` (name, kind, base URL, key environment variable, pinned API version), `routes` (alias to provider, model, optional API version and region; may point at a separate `routes.yaml`), `defaults`, `retry`, `ledger` (`path`, and `env` since 0.2), `telemetry`, `cache`, and the paths to the two files below | This repository; a project may ship its own |
 | `config/caps.yaml` | `portfolio_monthly_usd`, per-project `monthly_usd` and `per_run_usd`, a `default` | This repository |
 | `config/prices/YYYY-MM-DD.yaml` | USD per million tokens per provider and model: `input`, `output`, optional `cache_read`, `cache_write`, `batch_multiplier`; `source` names where the numbers came from. The newest date is used. A new price is a new file | This repository |
 
@@ -134,8 +149,15 @@ configuration file is secret.
 
 ## 9. Command line
 
-`boundary smoke <provider>`, `boundary routes show`, `boundary prices check`,
-`boundary ledger report`, `boundary ledger merge` (merge and report in 0.2). Sep 10 to 12.
+| Command | Since | What it does |
+|---|---|---|
+| `boundary smoke <provider>` | 0.1 | One short standard-mode call, costed, with the ledger row id |
+| `boundary routes show` | 0.1 | What every alias points at, and the provider entries |
+| `boundary prices check` | 0.1 | Validates every price file, warns when the newest is not this month, lists routes with no price |
+| `boundary ledger report` | 0.1 | Calls, tokens and cost by month, environment, project and model |
+| `boundary bench` | 0.1 | The README's measured row, against an in-process mock |
+| `boundary ledger merge --into <dest> <sources...>` | 0.2 | Combines per-environment ledgers. Idempotent; `--dry-run` reports without writing |
+| `boundary experiment remote-ledger` | 0.2 | The Rule C measurement behind `docs/rejected.md` |
 
 ## 10. What is deliberately not here in 0.x
 

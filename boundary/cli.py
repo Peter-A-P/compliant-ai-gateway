@@ -1,7 +1,8 @@
-"""Command line: boundary smoke <provider> | routes show | prices check | ledger report.
+"""Command line: boundary smoke <provider> | routes show | prices check |
+ledger report | ledger merge | bench | experiment remote-ledger.
 
-`ledger merge` arrives in v0.2. Every command takes --config (default: config/boundary.yaml
-next to the current directory or the installed package's config) and --project.
+Every command takes --config (default: config/boundary.yaml next to the current directory
+or the installed package's config) and --project.
 """
 
 from __future__ import annotations
@@ -140,11 +141,16 @@ def cmd_ledger_report(args: argparse.Namespace) -> int:
         month = args.month
         if month:
             rows = [r for r in rows if str(r["ts_utc"]).startswith(month)]
-        by: dict[tuple[str, str, str], dict[str, float]] = defaultdict(
+        by: dict[tuple[str, str, str, str], dict[str, float]] = defaultdict(
             lambda: {"calls": 0, "errors": 0, "uncosted": 0, "cost": 0.0, "in": 0, "out": 0}
         )
         for r in rows:
-            key = (str(r["ts_utc"])[:7], str(r["project"]), str(r["model_requested"]))
+            key = (
+                str(r["ts_utc"])[:7],
+                str(r["env"] or "-"),
+                str(r["project"]),
+                str(r["model_requested"]),
+            )
             b = by[key]
             b["calls"] += 1
             b["in"] += int(r["input_tokens"] or 0)
@@ -156,17 +162,17 @@ def cmd_ledger_report(args: argparse.Namespace) -> int:
             if r["cost_usd"] is not None and r["costed"]:
                 b["cost"] += float(r["cost_usd"])
         print(
-            f"{'month':<8} {'project':<24} {'model':<44} {'calls':>6} {'err':>4} {'unc':>4} {'in':>9} {'out':>8} {'USD':>10}"
+            f"{'month':<8} {'env':<8} {'project':<24} {'model':<44} {'calls':>6} {'err':>4} {'unc':>4} {'in':>9} {'out':>8} {'USD':>10}"
         )
         total = 0.0
-        for (m, p, model), b in sorted(by.items()):
+        for (m, e, p, model), b in sorted(by.items()):
             total += b["cost"]
             print(
-                f"{m:<8} {p:<24} {model:<44} {int(b['calls']):>6} {int(b['errors']):>4} "
+                f"{m:<8} {e:<8} {p:<24} {model:<44} {int(b['calls']):>6} {int(b['errors']):>4} "
                 f"{int(b['uncosted']):>4} {int(b['in']):>9} {int(b['out']):>8} {b['cost']:>10.4f}"
             )
         print(
-            f"{'total':<8} {'':<24} {'':<44} {len(rows):>6} {'':>4} {store.uncosted_count():>4} {'':>9} {'':>8} {total:>10.4f}"
+            f"{'total':<8} {'':<8} {'':<24} {'':<44} {len(rows):>6} {'':>4} {store.uncosted_count():>4} {'':>9} {'':>8} {total:>10.4f}"
         )
         in_flight = sum(1 for r in rows if r["error_type"] == "in_flight")
         if in_flight:
@@ -174,6 +180,38 @@ def cmd_ledger_report(args: argparse.Namespace) -> int:
                 f"warning: {in_flight} row(s) still in_flight (process killed mid-call)",
                 file=sys.stderr,
             )
+    finally:
+        store.close()
+    return 0
+
+
+def cmd_ledger_merge(args: argparse.Namespace) -> int:
+    """Combine per-environment ledgers into one file. Idempotent: a second run of the same
+    sources inserts nothing, which is the property the local-first design rests on."""
+    cfg = load_config(args.config)
+    dest = Path(args.into) if args.into else cfg.ledger.path
+    store = LedgerStore(dest)
+    try:
+        before = store.count()
+        total_inserted = total_completed = total_skipped = 0
+        for src in args.sources:
+            stats = store.merge_from(Path(src), dry_run=args.dry_run)
+            print(stats)
+            total_inserted += stats.inserted
+            total_completed += stats.completed
+            total_skipped += stats.skipped
+        after = store.count()
+        verb = "would hold" if args.dry_run else "holds"
+        print(
+            f"{dest}: {before} row(s) before, {verb} {before + total_inserted} after "
+            f"({total_inserted} inserted, {total_completed} completed, {total_skipped} already held)"
+        )
+        if not args.dry_run and after != before + total_inserted:
+            print(
+                f"error: {dest} holds {after} rows, expected {before + total_inserted}",
+                file=sys.stderr,
+            )
+            return 1
     finally:
         store.close()
     return 0
@@ -199,6 +237,30 @@ def cmd_bench(args: argparse.Namespace) -> int:
         readme = args.config.resolve().parent.parent / "README.md"
         bench.write_readme(readme, results.readme_row())
         print(f"README row written to {readme}")
+    return 0
+
+
+def cmd_experiment_remote_ledger(args: argparse.Namespace) -> int:
+    """Rule C candidate 3: a central remote ledger against local-first plus merge."""
+    import tempfile
+
+    from boundary.experiment import remote_ledger
+
+    with tempfile.TemporaryDirectory(prefix="boundary-experiment-") as tmp:
+        result = remote_ledger.run(
+            args.config,
+            Path(tmp),
+            repetitions=args.repetitions,
+            calls=args.calls,
+        )
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    args.out.write_text(remote_ledger.to_json(result) + "\n", encoding="utf-8")
+    print(result.doc_rows())
+    print(f"results written to {args.out}")
+    if args.write_doc:
+        doc = args.config.resolve().parent.parent / "docs" / "rejected.md"
+        remote_ledger.write_doc(doc, result.doc_rows())
+        print(f"table written to {doc}")
     return 0
 
 
@@ -243,6 +305,35 @@ def main(argv: list[str] | None = None) -> int:
     report.add_argument("--month", help="YYYY-MM filter")
     report.add_argument("--ledger", help="path to a ledger file (default from config)")
     report.set_defaults(func=cmd_ledger_report)
+    merge = ledger.add_parser(
+        "merge", help="copy rows from other environments' ledgers into one file"
+    )
+    merge.add_argument("sources", nargs="+", help="ledger files to merge in")
+    merge.add_argument("--into", help="destination ledger (default from config)")
+    merge.add_argument(
+        "--dry-run",
+        dest="dry_run",
+        action="store_true",
+        help="report what would be inserted without writing to the destination",
+    )
+    merge.set_defaults(func=cmd_ledger_merge)
+
+    experiment = sub.add_parser(
+        "experiment", help="the measurements behind docs/rejected.md (Rule C)"
+    ).add_subparsers(dest="sub", required=True)
+    remote = experiment.add_parser(
+        "remote-ledger", help="a central remote ledger against local-first plus merge"
+    )
+    remote.add_argument("--repetitions", type=int, default=100)
+    remote.add_argument("--calls", type=int, default=40)
+    remote.add_argument("--out", type=Path, default=Path("bench/remote-ledger.json"))
+    remote.add_argument(
+        "--write-doc",
+        dest="write_doc",
+        action="store_true",
+        help="fill the table in docs/rejected.md between its markers",
+    )
+    remote.set_defaults(func=cmd_experiment_remote_ledger)
 
     args = parser.parse_args(argv)
     try:

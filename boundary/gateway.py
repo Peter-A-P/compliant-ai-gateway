@@ -107,6 +107,7 @@ class Gateway:
         transport: Transport | None = None,
         caps: CapsConfig | None = None,
         prices: PriceList | None = None,
+        env: str | None = None,
         sleep: Callable[[float], None] = time.sleep,
         asleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
     ) -> None:
@@ -120,6 +121,9 @@ class Gateway:
         self.cache = ExactMatchCache(config.cache.path) if config.cache.enabled else None
         self.transport = transport or Transport(config.defaults.timeouts)
         self.telemetry = Telemetry(config.telemetry, version=__version__)
+        # A runner labels itself with BOUNDARY_ENV rather than by editing a checked-in
+        # configuration file; an explicit argument beats both.
+        self.env = env or os.environ.get("BOUNDARY_ENV", "").strip() or config.ledger.env
         self._sleep = sleep
         self._asleep = asleep
 
@@ -132,6 +136,7 @@ class Gateway:
         ledger_path: Path | None = None,
         raw_store: Path | None = None,
         strict_cost: bool = False,
+        env: str | None = None,
         dotenv: Path | None = None,
     ) -> Self:
         """Load boundary.yaml and, for local use, a gitignored .env: the one given, or the
@@ -147,6 +152,7 @@ class Gateway:
             ledger_path=ledger_path,
             raw_store=raw_store,
             strict_cost=strict_cost,
+            env=env,
         )
 
     # -- public -------------------------------------------------------------------------
@@ -220,6 +226,7 @@ class Gateway:
             region=pc.region,
             price_list=self.prices.name,
             request_sha256=sha256_hex(built.body),
+            env=self.env,
         )
         self._check_caps(run_id, estimate=0.0)
         span = self.telemetry.start("boundary.raw")
@@ -378,6 +385,7 @@ class Gateway:
             price_list=self.prices.name,
             cost_usd=estimate if entry is not None else None,
             request_sha256=sha256_hex(built.body),
+            env=self.env,
         )
         span = self.telemetry.start("boundary.chat")
         ids = Telemetry.ids(span)
@@ -622,6 +630,7 @@ class Gateway:
                 "gen_ai.usage.output_tokens": row.output_tokens,
                 "gen_ai.response.finish_reasons": parsed.finish_reason if parsed else None,
                 "http.response.status_code": row.http_status,
+                "boundary.env": row.env,
                 "boundary.project": row.project,
                 "boundary.purpose": row.purpose,
                 "boundary.run_id": row.run_id,

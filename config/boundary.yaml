@@ -65,6 +65,10 @@ retry:
 
 ledger:
   path: ../boundary.sqlite
+  # Written into every row, so a ledger merged from several machines still says where each
+  # call was made. BOUNDARY_ENV overrides it, which is how a runner labels itself
+  # (BOUNDARY_ENV=actions) without editing this file.
+  env: local
 
 telemetry:
   exporter: none

@@ -6,8 +6,9 @@ hard cap on every team's spend. The blocker most regulated organisations cite fo
 adoption, removed, with the latency overhead measured and published rather than promised.
 
 **Status: Part A released as `v0.1.0` on 2026-09-10**, after one live call per provider. The interface is frozen
-([docs/interface.md](docs/interface.md)); the library table below is measured. Both parts are planned
-in [PLAN.md](PLAN.md):
+([docs/interface.md](docs/interface.md)); the library table below is measured. Work since the tag is
+0.2 (October 2026): ledger merge across environments is in, the hyperscaler adapters and
+Anthropic batches are not. Both parts are planned in [PLAN.md](PLAN.md):
 Part A, the `boundary` library that every project in this portfolio calls models through,
 built Sep 7 to 13 2026; Part B, the full gateway with redaction, residency routing, audit
 log, cache, budgets and the portfolio-wide observability dashboard, built May 2027.
@@ -51,6 +52,19 @@ parsing, with the upstream answering instantly.
   but the public class.
 - Redaction is not perfect, and the results table says by how much, per entity type.
 
+## What did not work
+
+A central ledger written over the network, instead of one file per environment combined by
+`boundary ledger merge`. It would have closed a real gap: until a merge runs, the portfolio
+spend cap is checked against one machine's view. Measured over 100 simulated runs with a
+network outage in each (`bench/remote-ledger.json`), the central design either stopped
+every one of them part way, or finished and left 8.8% of the calls it had already paid for
+with no record at all, and made 981 calls with no cap check at all, because the cap cannot
+be checked when the host holding the totals is the thing that is unreachable. Local-first
+lost nothing. The evidence, the method and what was kept from the idea are in
+[docs/rejected.md](docs/rejected.md), reproducible with
+`boundary experiment remote-ledger`.
+
 ## How it works
 
 In plain language: [docs/explained.md](docs/explained.md). In full: [PLAN.md](PLAN.md). Part A: a Python library with raw-HTTP adapters for Anthropic,
@@ -67,7 +81,7 @@ and costs.
 
 ## Part of a portfolio
 
-One of ten projects built over twelve months. This one is the plumbing the others share:
+One of fifteen projects built over twelve months. This one is the plumbing the others share:
 every model call in the portfolio goes through it, the release-gate project measures the
 quality cost of its redaction, and the access-to-information redaction project builds on
 its redaction engine.
