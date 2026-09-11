@@ -147,3 +147,87 @@ def test_smoke_batch_submits_and_collects(
     assert f"submitted batch {BATCH_ID}" in out
     assert len(submitted) == 2, "the smoke batch is two requests"
     assert out.count("200 model claude-haiku-4-5-20251001") == 2
+
+
+def _submit_a_batch(repo_config: BoundaryConfig, tmp_path: Path) -> tuple[Path, list[str]]:
+    """Leave a ledger holding one submitted, uncollected batch, as a killed or timed-out
+    process would."""
+    from tests.test_batches import BATCHES_URL, _requests, _submitted
+
+    gw = make_gateway(repo_config, tmp_path, project="compliant-ai-gateway")
+    try:
+        with respx.mock(assert_all_called=True) as mock:
+            mock.post(BATCHES_URL).mock(return_value=_submitted())
+            handle = gw.batch_submit(_requests(2), purpose="smoke-batch")
+        return gw.ledger.path, list(handle.custom_ids)
+    finally:
+        gw.close()
+
+
+def test_batch_collect_completes_rows_from_the_ledger_that_submitted_them(
+    repo_config: BoundaryConfig, tmp_path: Path, keys: None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The cross-process path, which is the whole point of keeping the batch id in a column:
+    a second process, holding nothing but that id and the ledger, finishes the rows."""
+    from tests.test_batches import (
+        BATCH_ID,
+        RESULTS_URL,
+        STATUS_URL,
+        _results,
+        _status,
+        _succeeded,
+    )
+
+    ledger, custom_ids = _submit_a_batch(repo_config, tmp_path)
+    capsys.readouterr()
+
+    with respx.mock(assert_all_called=True) as mock:
+        mock.get(STATUS_URL).mock(return_value=_status())
+        mock.get(RESULTS_URL).mock(return_value=_results([_succeeded(uid) for uid in custom_ids]))
+        code = main(["--config", CONFIG, "batch", "collect", BATCH_ID, "--ledger", str(ledger)])
+
+    out = capsys.readouterr().out
+    assert code == 0, out
+    assert "collected 2 request(s) at the batch rate" in out
+    from boundary.ledger.store import LedgerStore
+
+    store = LedgerStore(ledger)
+    try:
+        rows = store.rows_for_batch(BATCH_ID)
+        assert {r["error_type"] for r in rows} == {None}, "no row is left in flight"
+        assert all(r["costed"] and r["cost_usd"] for r in rows)
+    finally:
+        store.close()
+
+
+def test_batch_status_says_not_ended_without_changing_anything(
+    repo_config: BoundaryConfig, tmp_path: Path, keys: None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from boundary.ledger.store import IN_FLIGHT, LedgerStore
+    from tests.test_batches import BATCH_ID, STATUS_URL, _status
+
+    ledger, _ = _submit_a_batch(repo_config, tmp_path)
+    capsys.readouterr()
+
+    with respx.mock(assert_all_called=True) as mock:
+        mock.get(STATUS_URL).mock(return_value=_status("in_progress", results_url=None))
+        code = main(["--config", CONFIG, "batch", "status", BATCH_ID, "--ledger", str(ledger)])
+
+    out = capsys.readouterr().out
+    assert code == 1, "not ended is a non-zero exit, so a script can wait on it"
+    assert "in_progress" in out and "2 request(s)" in out
+    store = LedgerStore(ledger)
+    try:
+        assert {r["error_type"] for r in store.rows_for_batch(BATCH_ID)} == {IN_FLIGHT}
+    finally:
+        store.close()
+
+
+def test_collecting_a_batch_the_ledger_does_not_hold_is_refused(
+    repo_config: BoundaryConfig, tmp_path: Path, keys: None
+) -> None:
+    """The wrong ledger, or the wrong run's artefact. Better to say so than to report that a
+    batch had no requests in it."""
+    ledger, _ = _submit_a_batch(repo_config, tmp_path)
+    with pytest.raises(ValueError, match="no rows for batch"):
+        main(["--config", CONFIG, "batch", "collect", "msgbatch_nope", "--ledger", str(ledger)])

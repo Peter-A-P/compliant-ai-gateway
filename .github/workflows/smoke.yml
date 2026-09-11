@@ -11,9 +11,22 @@ name: smoke
 # Manual only, and it costs a few cents. Every call writes a ledger row like any other, and
 # the report at the end is what the run is for: the numbers, not the exit code.
 #
-# It needs four repository secrets before it will do anything: ANTHROPIC_API_KEY,
-# OPENAI_API_KEY, GOOGLE_API_KEY and OPENWEIGHTS_API_KEY. The local provider is not smoked
-# here; a local server is a laptop thing and its call cannot leave the machine anyway.
+# Two modes:
+#
+#   submit   (default) one short call per vendor, then a two-request Anthropic batch
+#            submitted and collected. If the vendor has not finished the batch inside
+#            `batch_wait` the step fails on purpose, naming the batch id, because a green
+#            tick must not mean "the batch was collected" when it was not. The rows stay in
+#            flight at their estimate and the ledger artefact holds them.
+#
+#   collect  finish a batch submitted by an earlier run: set `collect_batch_id` and
+#            `ledger_run_id`, and this restores that run's ledger artefact and completes the
+#            rows from it. This is the library's cross-process path, used for real rather
+#            than described, and it is how a batch is recovered when the vendor was slow.
+#
+# It needs four repository secrets: ANTHROPIC_API_KEY, OPENAI_API_KEY, GOOGLE_API_KEY and
+# OPENWEIGHTS_API_KEY. The local provider is not smoked here; a local server is a laptop
+# thing and its call cannot leave the machine anyway.
 
 on:
   workflow_dispatch:
@@ -27,22 +40,31 @@ on:
         required: false
         default: "true"
       batch_wait:
-        description: "seconds to wait for the batch to end before giving up"
+        description: "seconds to wait for the batch to end before failing"
         required: false
-        default: "900"
+        default: "1200"
       extra_models:
         description: "space-separated provider/model-id list to smoke as well"
+        required: false
+        default: ""
+      collect_batch_id:
+        description: "collect this already-submitted batch instead of sending anything new"
+        required: false
+        default: ""
+      ledger_run_id:
+        description: "the run whose smoke-ledger artefact holds that batch's rows"
         required: false
         default: ""
 
 permissions:
   contents: read
+  # Reading another run's artefact, which is how a batch submitted by an earlier run is
+  # collected by a later one.
+  actions: read
 
 jobs:
   smoke:
     runs-on: ubuntu-24.04
-    # The batch is the long pole: a small one usually ends in a couple of minutes, but the
-    # vendor promises only twenty-four hours, so the job gives up rather than idles.
     timeout-minutes: 30
     env:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -59,25 +81,45 @@ jobs:
       - run: uv sync --frozen
       - run: uv run python -c "import boundary; print('boundary', boundary.__version__)"
 
+      # -- collect mode ----------------------------------------------------------------
+      - name: Restore the ledger that submitted the batch
+        if: inputs.collect_batch_id != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: smoke-ledger
+          run-id: ${{ inputs.ledger_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Where the batch had got to
+        if: inputs.collect_batch_id != ''
+        continue-on-error: true
+        run: uv run boundary batch status ${{ inputs.collect_batch_id }} --ledger boundary.sqlite
+      - name: Collect the batch
+        if: inputs.collect_batch_id != ''
+        run: >
+          uv run boundary batch collect ${{ inputs.collect_batch_id }}
+          --ledger boundary.sqlite
+          --wait ${{ inputs.batch_wait }}
+
+      # -- submit mode -----------------------------------------------------------------
       # One step per vendor, and none stops the others, so one bad key does not hide the rest.
       - name: Smoke anthropic
-        if: inputs.single == 'true'
+        if: inputs.collect_batch_id == '' && inputs.single == 'true'
         continue-on-error: true
         run: uv run boundary smoke anthropic --run-id smoke-actions
       - name: Smoke openai
-        if: inputs.single == 'true'
+        if: inputs.collect_batch_id == '' && inputs.single == 'true'
         continue-on-error: true
         run: uv run boundary smoke openai --run-id smoke-actions
       - name: Smoke google
-        if: inputs.single == 'true'
+        if: inputs.collect_batch_id == '' && inputs.single == 'true'
         continue-on-error: true
         run: uv run boundary smoke google --run-id smoke-actions
       - name: Smoke openweights
-        if: inputs.single == 'true'
+        if: inputs.collect_batch_id == '' && inputs.single == 'true'
         continue-on-error: true
         run: uv run boundary smoke openweights --run-id smoke-actions
       - name: Smoke the extra models
-        if: inputs.extra_models != ''
+        if: inputs.collect_batch_id == '' && inputs.extra_models != ''
         continue-on-error: true
         run: |
           for m in ${{ inputs.extra_models }}; do
@@ -85,21 +127,22 @@ jobs:
             uv run boundary smoke "$p" --model "$m" --run-id smoke-actions || echo "FAILED $m"
           done
 
-      # The v0.2.0 gate: submit, poll, collect, and cost from the returned usage at the batch
-      # rate. Anthropic is the only provider with batch support in this version.
+      # The v0.2.0 gate. No continue-on-error: if the vendor has not finished the batch in
+      # time this step fails and names the id, so the run says what actually happened and
+      # the batch can be collected by a later run in collect mode.
       - name: Smoke the Anthropic batch path
-        if: inputs.batch == 'true'
-        continue-on-error: true
+        if: inputs.collect_batch_id == '' && inputs.batch == 'true'
         run: >
           uv run boundary smoke anthropic --batch
           --run-id smoke-actions-batch
           --wait ${{ inputs.batch_wait }}
 
-      # What the run is actually for. Rows still in flight are reported as a warning, which is
-      # what an unfinished batch looks like.
+      # -- always ----------------------------------------------------------------------
+      # What the run is actually for. Rows still in flight are reported as a warning, which
+      # is what an unfinished batch looks like.
       - name: Ledger rows for every call this run made
         if: always()
-        run: uv run boundary ledger report
+        run: uv run boundary ledger report --ledger boundary.sqlite
 
       - name: Keep the ledger as an artefact
         if: always()

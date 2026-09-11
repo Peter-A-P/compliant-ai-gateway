@@ -86,6 +86,17 @@ major version are additive only; see docs/interface.md.
 - **`boundary smoke <provider> --batch`** submits two short requests as a real vendor batch
   and collects them, so the batch path can be exercised live the way a single call already
   could. `--wait` and `--poll` control how long it will sit there.
+- **`boundary batch status <id>` and `boundary batch collect <id>`.** A batch the vendor has
+  not finished is the ordinary case, not a failure, so there has to be a way to come back to
+  one. `collect` rebuilds the handle from the ledger and completes the rows; `--ledger`
+  points at the ledger that submitted it, which for a hosted runner means one restored from
+  that run's artefact. `status` exits non-zero until the batch has ended, so a script can
+  wait on it. Added after the first live run: the vendor had not finished a two-request batch
+  within fifteen minutes, and abandoning it would have meant paying for work with no record
+  and no result.
+- The smoke workflow gained a collect mode for the same reason, and lost the
+  `continue-on-error` on its batch step. A green tick that meant "the batch was submitted"
+  when nothing had been collected is worse than a red one.
 - **A `smoke` workflow in this repository**, manual only, running one call per vendor and
   the batch path on GitHub's runners, because the laptop's usual network inspects TLS and a
   vendor call from there would hand a personal key and a prompt to the employer's proxy. It

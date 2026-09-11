@@ -194,6 +194,8 @@ configuration file is secret.
 | `boundary ledger report` | 0.1 | Calls, tokens and cost by month, environment, project and model |
 | `boundary bench` | 0.1 | The README's measured row, against an in-process mock |
 | `boundary ledger merge --into <dest> <sources...>` | 0.2 | Combines per-environment ledgers. Idempotent; `--dry-run` reports without writing |
+| `boundary batch status <id>` | 0.2 | Where the vendor has got to with a batch. Writes nothing; exits non-zero until it has ended, so a script can wait on it |
+| `boundary batch collect <id>` | 0.2 | Completes the ledger rows of a batch submitted earlier, possibly by another process. `--ledger` points at the ledger that submitted it |
 | `boundary experiment remote-ledger` | 0.2 | The Rule C measurement behind `docs/rejected.md` |
 
 ## 10. What is deliberately not here in 0.x

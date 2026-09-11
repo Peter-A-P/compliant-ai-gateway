@@ -1,5 +1,6 @@
 """Command line: boundary smoke <provider> | routes show | prices check |
-ledger report | ledger merge | bench | experiment remote-ledger.
+ledger report | ledger merge | batch status | batch collect | bench |
+experiment remote-ledger.
 
 Every command takes --config (default: config/boundary.yaml next to the current directory
 or the installed package's config) and --project.
@@ -112,6 +113,58 @@ def _smoke_batch(args: argparse.Namespace, model: str) -> int:
                 f"  {r.status} model {r.model_returned} text {r.text!r} "
                 f"tokens {r.usage.input_tokens}/{r.usage.output_tokens} {cost} row {r.ledger_id}"
             )
+    return 0 if all(r.ok for r in responses) else 1
+
+
+def _batch_gateway(args: argparse.Namespace) -> Gateway:
+    """A gateway pointed at the ledger that holds the batch.
+
+    A batch is collected from the ledger that submitted it, which for a run on a hosted
+    runner means a ledger restored from that run's artefact rather than the configured one.
+    """
+    return Gateway.from_config(
+        args.config,
+        project=args.project,
+        ledger_path=Path(args.ledger) if args.ledger else None,
+    )
+
+
+def cmd_batch_status(args: argparse.Namespace) -> int:
+    with _batch_gateway(args) as gw:
+        handle = gw.batch_handle(args.batch_id)
+        progress = gw.batch_status(handle)
+    counts = ", ".join(f"{k} {v}" for k, v in sorted(progress.counts.items()))
+    print(
+        f"{progress.batch_id}: {progress.processing_status}"
+        f"{' (ended)' if progress.ended else ''}, {len(handle)} request(s)"
+        + (f", {counts}" if counts else "")
+    )
+    return 0 if progress.ended else 1
+
+
+def cmd_batch_collect(args: argparse.Namespace) -> int:
+    """Complete the ledger rows of a batch submitted earlier, possibly by another process.
+
+    This is the path the library exists to make safe: the batch id is the only thing the
+    caller kept, and everything else is rebuilt from the ledger.
+    """
+    with _batch_gateway(args) as gw:
+        handle = gw.batch_handle(args.batch_id)
+        print(f"{handle.batch_id}: {len(handle)} request(s), ledger rows {list(handle.ledger_ids)}")
+        try:
+            responses = gw.batch_results(handle, wait_s=args.wait, poll_s=args.poll)
+        except BatchNotReady as e:
+            print(f"{e}", file=sys.stderr)
+            return 1
+        total = 0.0
+        for r in responses:
+            cost = f"US${r.cost_usd:.6f}" if r.cost_usd is not None else "uncosted"
+            total += r.cost_usd or 0.0
+            print(
+                f"  {r.status} model {r.model_returned} text {r.text!r} "
+                f"tokens {r.usage.input_tokens}/{r.usage.output_tokens} {cost} row {r.ledger_id}"
+            )
+        print(f"collected {len(responses)} request(s) at the batch rate, US${total:.6f} in all")
     return 0 if all(r.ok for r in responses) else 1
 
 
@@ -370,6 +423,24 @@ def main(argv: list[str] | None = None) -> int:
         help="report what would be inserted without writing to the destination",
     )
     merge.set_defaults(func=cmd_ledger_merge)
+
+    batch = sub.add_parser(
+        "batch", help="a vendor batch submitted earlier: ask after it, or collect it"
+    ).add_subparsers(dest="sub", required=True)
+    for name, help_text, func in (
+        ("status", "where the vendor has got to; writes nothing", cmd_batch_status),
+        ("collect", "complete the ledger rows of a finished batch", cmd_batch_collect),
+    ):
+        sp = batch.add_parser(name, help=help_text)
+        sp.add_argument("batch_id")
+        sp.add_argument(
+            "--ledger",
+            help="the ledger holding the batch's rows (default from config); a batch is "
+            "collected from the ledger that submitted it",
+        )
+        sp.add_argument("--wait", type=float, default=0.0, help="seconds to wait for the batch")
+        sp.add_argument("--poll", type=float, default=20.0, help="seconds between polls")
+        sp.set_defaults(func=func)
 
     experiment = sub.add_parser(
         "experiment", help="the measurements behind docs/rejected.md (Rule C)"
