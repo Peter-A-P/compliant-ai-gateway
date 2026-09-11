@@ -1,4 +1,4 @@
-# The ledger, schema v2
+# The ledger, schema v3
 
 One SQLite file per environment (`ledger.path` in `boundary.yaml`, or `ledger_path` on the
 gateway), combined by `boundary ledger merge`. Writing locally rather than to one central
@@ -21,11 +21,21 @@ upgrade changes no value a call recorded. `env` stays null on those rows, becaus
 machine made a call written before the column existed is not recoverable, and a guess in
 the ledger would be worse than a null.
 
+**v3 (0.2)** adds `batch_id` and nothing else. A batch is submitted in one process and
+collected in another, often hours later, so the rows written at submit have to be findable
+again by something the vendor also knows.
+
+The upgrade runs one step at a time, so what a step does depends on where the file started
+rather than where it ended. That matters for the uid backfill: uids are invented only for a
+file that predates the column. A null `call_uid` in a v2 or later file was put there by
+hand, and inventing one would let the same call merge twice.
+
 | Column | Type | Meaning |
 |---|---|---|
 | `id` | integer | Row id, returned to the caller as `ledger_id`. Local to one file: after a merge the destination assigns its own |
 | `call_uid` | text | Uid for the call, minted in the process that made it (v2). What identifies a row across files, so merging the same file twice is one row per call |
 | `env` | text or null | Which environment made the call: `ledger.env` in the configuration, or `BOUNDARY_ENV`. Null for rows written before v2 |
+| `batch_id` | text or null | The vendor's batch identifier (v3). Null for every ordinary call. Set once the vendor has accepted the batch and named it, which is the one field that cannot be known before the submit leaves |
 | `ts_utc` | text | Insert time, ISO 8601 UTC with milliseconds, `Z` suffix |
 | `boundary_version` | text | Library version that wrote the row |
 | `project` | text | The gateway's project; the key into `caps.yaml` |
@@ -85,8 +95,14 @@ Rows are matched on `call_uid`, never on `id`:
   complete: that row is completed, so a central file built by repeated merges settles on
   actual costs instead of freezing the first estimate it saw. A completed row is never
   reverted by an older copy of the same call.
-- A v1 source is upgraded in place first (additive, as above). `--dry-run` suppresses the
-  writes to the destination, not that upgrade.
+- **A source is never written to.** Whatever schema it is at, the rows are read from a
+  temporary copy and the copy is what gets upgraded. This matters because opening a ledger
+  upgrades it, and an older library then refuses to write to the upgraded file by design:
+  a merge that upgraded its sources would stop the environment that owns one appending to
+  it. Project 03 pins boundary 0.1.0 and commits one ledger per arm per month, and the
+  monthly invoice check merges exactly those files. A v1 source still merges to the same
+  uids, because the backfill derives them from the rows rather than inventing them.
+- `--dry-run` suppresses the writes to the destination. There were never any to a source.
 - Merging a file into itself, or a file whose schema is newer than the library, is refused
   rather than attempted.
 
@@ -99,3 +115,32 @@ Rows are matched on `call_uid`, never on `id`:
 - A call that used cache or batch features is costed only if the price entry has those
   rates; otherwise it is uncosted, never approximated.
 - A development-cache hit costs zero and is marked `cached`.
+- A batched call is costed at the price entry's `batch_multiplier`, from the usage the
+  vendor returns per request. An entry with no batch rate leaves the row uncosted rather
+  than costing it at the full rate, which is the same rule as for cache rates.
+
+## Batches
+
+One row per request, written before the submit leaves the process, in flight and carrying
+the estimate at the batch rate. The vendor bills for every request the moment it accepts
+the batch, so the rows exist even if the process dies before the answer comes back.
+
+- The `custom_id` sent to the vendor is the row's `call_uid`. A result maps back to exactly
+  one row in any process, whatever order the results file is in.
+- `batch_id` is set after the vendor names the batch. Until then the rows are in flight
+  with no batch id, which is what a failed submit leaves behind before it completes them
+  as failures.
+- A submit the vendor refused completes every row as a failure with no cost: nothing was
+  billed. A submit the vendor accepted whose body cannot be read leaves the rows in flight
+  at their estimate, because the batch will be billed and recording it as failed would
+  understate the month.
+- At result time each row is completed with the returned usage, the batch-rate cost, and
+  `http_status` 200 for a request the vendor answered, even though it had no response of
+  its own. That is deliberate: it keeps an uncosted batch success inside `uncosted_count`,
+  the figure that has to stay at zero.
+- `latency_ms` stays null. A batched request has no wall time of its own; it waited in the
+  vendor's queue for as long as the batch did, and a number here would be an invention.
+- `trace_id` and `span_id` are null until the results are collected, because the span that
+  describes a call is the one that knows how it turned out.
+- A request the results file never mentions is completed as `batch_missing`. A batch that
+  has ended will not mention it later either.

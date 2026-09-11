@@ -1,6 +1,6 @@
 # Plan: Compliant AI Gateway
 
-**Written:** 2026-09-06. **Status:** plan only, nothing built.
+**Written:** 2026-09-06. **Status (2026-09-11):** Part A released as `v0.1.0` on 2026-09-10, three days ahead of the Sep 13 target, after one live call per provider. Version 0.2 is in progress on `main` (section 5.1). Part B is unchanged, May 2027.
 
 Two parts, one repository, one Python package called `boundary`:
 
@@ -36,7 +36,7 @@ The numbers a stranger can check:
 |---|---|
 | Library overhead per call, p50 and p95 in milliseconds, against a local mock upstream, 1,000 calls, 95% bootstrap CI | The plumbing costs nothing worth arguing about |
 | Ledger completeness under fault injection: cost records written divided by calls attempted, across upstream 500s, timeouts, malformed responses and a process kill mid-call | No call escapes the ledger |
-| Ledger against invoice: monthly difference between the ledger's cost and each vendor's billing console, in percent, recorded in the plan repository's STATUS every month | The cost figures every other project reports are believable |
+| Ledger against invoice: monthly difference between the ledger's cost and each vendor's billing console, in percent, recorded in the portfolio's monthly budget review | The cost figures every other project reports are believable |
 | Spend cap enforcement: calls attempted past a cap, and calls that reached the vendor past it (must be zero) | The cap is a cap |
 | Pass-through fidelity: share of requests where the bytes sent to the vendor equal the bytes the caller built, on a corpus of 500 recorded requests (must be 100%) | The gateway cannot be a confound in the drift record |
 | Redirect test: a one-line change to the routes file moves every call of an alias to a different model, shown in the ledger | The reason the library exists |
@@ -86,7 +86,7 @@ zero; the library never guesses a price. Repricing is a new price file, never an
 
 ### 2.5 Caps in the library are the second line, not the first
 
-Hard spend caps in every vendor console come first (plan repository action 3). The library
+Hard spend caps in every vendor console come first, set before the first call. The library
 adds a per-project monthly cap, a per-run cap, and a portfolio monthly cap in
 `config/caps.yaml`. Before each call it sums the month's ledger for the project and adds a
 conservative estimate of this call (input characters divided by 3.5 times the input price,
@@ -257,8 +257,8 @@ into. A v1 file is upgraded in place on open.
 | Vertex AI | Claude via rawPredict or Gemini via generateContent; OAuth2 token via google-auth | Service account from env | v0.2 |
 
 The three hyperscaler adapters are the portfolio's one example of each ecosystem's model
-platform. They wait for v0.2 because they need accounts with billing alerts first (plan
-repository action 9), and nothing in September needs them. Each is exercised at least once
+platform. They wait for v0.2 because they need accounts with billing alerts first, and
+nothing in September needs them. Each is exercised at least once
 with the call recorded in the ledger; that is a definition-of-done item.
 
 ## 5. Week by week
@@ -268,12 +268,21 @@ with the call recorded in the ledger; that is a definition-of-done item.
 | Sep 7 (Mon) | Repository scaffold, `pyproject.toml`, config schema, `ChatRequest` and `ChatResponse`, `Adapter` protocol, `docs/interface.md` draft | Interface draft reviewed against what the 03 and 02 plans call |
 | Sep 8 to 9 | Anthropic and OpenAI-compatible adapters with goldens; transport; pass-through mode and raw store; ledger schema and store | Both adapters pass golden tests; pass-through byte-equality test passes; **interface frozen Sep 9** |
 | Sep 10 to 11 | Google adapter; price files and cost arithmetic; caps; telemetry spans (console exporter) | Cost matches vendor pricing examples to the cent; cap test refuses with zero upstream calls |
-| Sep 12 (Sat) | Fault injection; overhead benchmark against the mock; `ledger report`; one smoke call per provider once vendor caps exist (action 3) | Numbers from section 1 in the README |
+| Sep 12 (Sat) | Fault injection; overhead benchmark against the mock; `ledger report`; one smoke call per provider once the vendor console caps exist | Numbers from section 1 in the README |
 | Sep 13 (Sun) | Docs, `v0.1.0` tag; 03 and 02 repositories pin it | Tagged; the 03 runner can start on Sep 16 |
 
 First to drop if behind: the overhead benchmark and `ledger report` (to v0.2), and the
 configurable telemetry exporter (console only). None is in the drift-run dependency. The
 Google adapter cannot be dropped: 03 runs Google from the first dry run.
+
+**Outcome (2026-09-11):** `v0.1.0` tagged 2026-09-10, three days early. Day 2 slipped a
+day and Day 3 recovered it. The smoke calls ran from GitHub Actions through a manual
+workflow in the 03 repository because the laptop's network inspects TLS (decided
+2026-09-10). Ten live calls across four vendors cost US$0.0009 and found three
+things the goldens could not: OpenAI returns dated identifiers, `gemini-2.5-flash-lite` is
+closed to new users, and Gemini `extra` fields replaced `generationConfig` instead of
+merging into it. All three were fixed before the tag. Nothing was dropped; the overhead
+benchmark and `ledger report` shipped in 0.1.0.
 
 ### Version 0.2 follow-ups, October 2026
 
@@ -282,9 +291,61 @@ Each is a day or less, done alongside 01 before the project that needs it:
 | Item | Needed by | When |
 |---|---|---|
 | `ledger merge` across environments and the monthly `ledger report` that feeds the STATUS budget review | The first budget review | Before Oct 1. **Done 2026-09-10**, brought forward because the Rule C experiment needed it to exist to be measured against |
-| Foundry, Bedrock and Vertex adapters, exercised once each | Definition of done; nothing else this year | Mid October, after action 9 |
-| Anthropic Message Batches: `batch_submit`, `batch_results`, ledger rows written at result time at the batch rate | 02 | Before Nov 1 |
-| Local OpenAI-compatible hosts at price zero | 02 | Before Nov 1 |
+| Foundry, Bedrock and Vertex adapters, exercised once each | Definition of done; nothing else this year | Mid October, once their accounts have billing alerts |
+| Anthropic Message Batches: `batch_submit`, `batch_results`, ledger rows written at result time at the batch rate | 02 | Before Nov 1. **Pulled forward to the week of Sep 21** (section 5.1): 02 built its public-data half on 2026-09-11, seven weeks early, and its own-run panel is blocked on this |
+| Local OpenAI-compatible hosts at price zero | 02 | Before Nov 1. The costing path exists (`price_zero` on a provider entry); what remains is one exercised call against a local server, with a golden for its response shape |
+
+### 5.1 Version 0.2 in detail (written 2026-09-11)
+
+**Where 0.2 stands (2026-09-11).** On `main`: ledger schema v2 and v3, `ledger merge`,
+`env`, `boundary experiment remote-ledger` and `docs/rejected.md`; Anthropic Message
+Batches; merge no longer writing to its sources; the local price-zero host under goldens; a
+cap line for 02. Version `0.2.0.dev0`; 139 tests, `ruff` and `mypy --strict` clean. Left
+before the tag: one live batch call and one live local call. Left after it: the three
+hyperscaler adapters and the first ledger-against-invoice check.
+
+**Ordering principle: by who is waiting.** 02 is waiting now. Nothing is waiting on the
+hyperscalers, and Bedrock cannot start before the AWS account opens in the first week of
+October. 03 needs 04 to stay still until its first official run on Sep 27, which the tag
+pin already guarantees, so `main` moving costs it nothing. So the tag splits: `v0.2.0`
+carries what 02 needs and goes out as soon as its two live calls are made; the hyperscalers
+follow as `v0.2.1` and `v0.2.2` when their accounts allow. The CHANGELOG had all of it
+under one October tag; this is the change, and the reason is that 02 should not wait on an
+AWS account it does not use.
+
+| # | Item | When | Done when |
+|---|---|---|---|
+| 1 | **Stay still for 03.** No change to anything `v0.1.0` exposes; the tag never moves; a fix the Sep 27 run needs is a `v0.1.1` branched from the tag, not from `main` | Sep 12 to Sep 27 | The official run completes on the tag it pinned |
+| 2 | **Done 2026-09-11. Merge never writes to a source.** `ledger merge` used to upgrade a v1 source in place, and 0.1.0 then refuses to write to that file. 03 pins 0.1.0 and commits one ledger per arm per month, so merging the checkout's copies would break the runner's next write to any file it reopens. Fix: merge copies a v1 source to a temporary file and upgrades the copy, or reads it without upgrading; `docs/ledger.md` and `tests/test_merge.py` change with it | Done 2026-09-11 | Done: rows are read from a temporary copy, and `test_merge_never_writes_to_a_source` asserts the source's bytes are unchanged and that it is still v1 without the v2 columns. A ledger that fails to open no longer leaks its file handle either, which on Windows had turned one file's error into another's |
+| 3 | **Anthropic Message Batches**, the signatures frozen in `docs/interface.md` section 2. Raw HTTP with the pinned `anthropic-version` header: create the batch, poll its status, fetch the results file. Standard mode only. Cap check on the whole batch before submit, at the batch rate; one `in_flight` row per request at submit, so a process that dies between submit and results still has every call on record; rows completed at result time from returned usage times `batch_multiplier`. `BatchHandle` is rebuildable from the ledger alone, so 02 can submit in one process and collect hours later in another: schema v3 adds one nullable column, `batch_id`, additive. The development cache is not consulted for batch requests in 0.2, and the doc says so. Goldens from the Anthropic batch documentation, including a partial failure (one `errored` result among successes) and an expired batch | Done 2026-09-11 | Done, with 17 tests in `tests/test_batches.py`: submit, partial failure, expired, missing, not-ready, polling, collection by a second process, a results URL on another host refused before the key is sent, the cache never answering, and the cap refusing a batch with nothing sent. One live batch call is still owed before the tag |
+| 4 | **Local price-zero host.** Ollama or llama.cpp on the laptop, so nothing leaves the machine. **Goldens done 2026-09-11** in `tests/test_local_host.py`: Ollama's response shape parses, the call is costed at zero and marked costed rather than left uncosted, no key is sent, and repeated local calls never move a cap. **Outstanding:** neither Ollama nor llama.cpp is installed on this machine, so the live exercise waits on installing one | Live call before the 0.2.0 tag | A row in the ledger at cost zero with `costed = 1` |
+| 5 | **Caps entry for 02.** **Added 2026-09-11** as `model-selection-tenth-cost`, US$40 a month and US$30 a run, with the reasoning in a comment beside it. The amounts are provisional and are Peter's to confirm: they were set so that 02 is not silently refused by the US$10 default, not because anyone has priced its panel to the dollar | Confirm before 02's first own-run call | 02's first call is admitted or refused by its own line, not by `default` |
+| 6 | **Tag `v0.2.0`**, once items 3 and 4 have each been exercised live: one batch call and one local call, both in the ledger. The batch call runs from GitHub Actions, as the 0.1.0 smoke calls did, because this network inspects TLS. Then CHANGELOG dated, the `since` column in `docs/interface.md` checked, version `0.2.0`, 02 pins `>=0.2,<1`. No need to wait for Sep 27: 03 pins the `v0.1.0` tag, so nothing on `main` can reach it | As soon as the two live calls are made | Tagged; 02 installs from the tag with the same read-only token 03 uses |
+| 7 | **First ledger-against-invoice check, for September.** Sources: the laptop's `boundary.sqlite` (four zero-cost rows from the TLS-proxy attempt, which stay), and the 03 repository's per-arm ledgers for the dry runs and the Sep 27 run. The ten smoke calls from Actions (US$0.0009) count only if the 03 smoke workflow kept its ledger; if not, the gap is noted, not hidden. Merge into a central file kept outside git, run `ledger report`, compare per vendor with the four consoles, record the percent difference in the monthly budget review; above 5% is investigated before the October run (section 8). Same day: re-check the four price pages and write `config/prices/2026-10-01.yaml` even when nothing changed, so `prices check` stays quiet and every October row carries an October price date | Oct 1 to 3, then the first days of every month | A line in the budget review with the four differences |
+| 8 | **Foundry and Vertex adapters.** The Azure and GCP budgets have existed since Sep 8 and Sep 10. Foundry: Claude on a Foundry endpoint with the Anthropic Messages body and the Azure key header, endpoint and shape verified against the current documentation first, as the adapter table says. Vertex: Claude via `rawPredict` or Gemini via `generateContent`, token from `google-auth`, used for the token only. Both in optional dependency groups so 03's install gains nothing. The `region` field is recorded on every row; the Canadian regions are the worked example, which is what Part B's residency policy builds on. Price files keyed by each platform's own model identifiers, with sources; an unknown identifier is an uncosted row, never a guess. One live call each from GitHub Actions or a non-inspected network, in the ledger | Mid October, one day each, alongside 01 | `v0.2.1` tagged; two costed rows in the ledger |
+| 9 | **Bedrock adapter.** `InvokeModel` with the Anthropic Messages body and `anthropic_version: bedrock-2023-05-31`; SigV4 through the botocore signer only, in an optional dependency group. One live call recorded | After the AWS account opens (first week of October) and its budget alarms exist | `v0.2.2` tagged; a costed row in the ledger |
+| 10 | **Rule C candidate 2 becomes cheap after Sep 27**, and is optional. The drift run leaves about 16,800 rows with returned usage and a raw store holding every request body, with no personal data by construction. Tokenizer estimates over those bodies against the returned counts, per vendor, is an afternoon. Rule C is already met; this would be a second row in "What did not work" only if the evidence is clear | October, if time allows | A dated table in `docs/rejected.md`, or nothing |
+
+**Still not in 0.2:** streaming, typed tool calls, embeddings, any server, OTLP export,
+content inspection (section 2.8). Nothing between now and May 2027 needs them.
+
+**Between 0.2 and Part B (November 2026 to April 2027).** Nothing is built here. Three
+things accumulate or are decided elsewhere and matter in May: the shared VPS (needed by
+project 03's dashboard in January anyway) is where the proxy, Postgres and Redis
+will run; every month's drift run adds to the replayed-traffic corpus the semantic cache
+is tuned on; and the monthly invoice check builds the ledger's credibility. In the last
+week of April, before Part B starts: re-check Part B's prices, Presidio's current version
+and the corpora licences (B3), and re-read B5 against what 03 Part B actually shipped in
+January.
+
+**Risks specific to 0.2**
+
+| Risk | Handling |
+|---|---|
+| Version skew: 03 on 0.1.0, 02 on 0.2, one merge across both | Item 2 makes merge read-only on its sources; each repository owns its ledger files; the interface doc already says one library version per ledger file |
+| Batch results arrive hours later, and the in-flight rows count against caps at the pessimistic estimate meanwhile | Correct by design, and documented: `ledger report` shows them as `in_flight` until `batch_results` completes them; a `SpendCapExceeded` in that window names the estimate |
+| Hyperscaler model identifiers and prices differ from the vendors' direct APIs | Price files keyed by the platform's own identifiers; uncosted rows until they exist, and the `unc` column of `ledger report` would show it |
+| October is 01's build, and 0.2 eats the month | Each item above is a day or less; items 8 to 10 drop first, and nothing this year needs them |
 
 ## 6. Cost
 
@@ -297,15 +358,16 @@ in and $5 out, Sonnet 5 at $2 in and $10 out, Opus 5 at $5 in and $25 out; the o
 vendors' prices are copied into the first price file on Sep 10 from their price pages, with
 the date).
 
-Actuals go in the plan repository's STATUS next to the estimate, and from October the
-ledger-against-invoice difference is recorded there monthly (section 1).
+Actuals are recorded next to the estimate in the portfolio's monthly budget review, and
+from October the ledger-against-invoice difference is recorded there too (section 1).
 
 ## 7. Handover
 
 | Version | Date | What downstream imports |
 |---|---|---|
 | `boundary` v0.1.0 | Sep 13 2026 | `Gateway`, `ChatRequest`, `ChatResponse`, `Mode`, errors; ledger schema v1; four adapters |
-| v0.2.x | October 2026 | Batches, hyperscaler adapters, `ledger merge` and `report`, local hosts; ledger schema v2 (`call_uid`, `env`), additive; `Gateway(env=)` |
+| v0.2.0 | Early October 2026 (split proposed 2026-09-11; was one October tag) | `ledger merge` and `report`, ledger schema v2 (`call_uid`, `env`), `Gateway(env=)`, Anthropic batches with schema v3 (`batch_id`), local price-zero host exercised. Tagged as soon as batches land so 02 can pin `>=0.2` without waiting for the AWS account |
+| v0.2.1, v0.2.2 | Mid to late October 2026 | Foundry and Vertex adapters (0.2.1); Bedrock after the AWS account opens (0.2.2). Optional dependency groups, so 03's install gains neither botocore nor google-auth |
 | v1.0.0 | May 23 2027 | Everything in Part B; `boundary.redact` for 07; the proxy for 13 and 14 |
 
 03 pins `boundary>=0.1,<0.3` for Part A and moves to `>=1.0` when its Part B is built
@@ -356,21 +418,22 @@ October; Rule C asks for one, and it is done.
 
 ## 10. Definition of done, Part A
 
-- [ ] `boundary` v0.1.0 tagged by Sep 13 2026; interface frozen Sep 9 and documented
-- [ ] Anthropic, OpenAI, Google and OpenAI-compatible adapters pass golden tests
-- [ ] Pass-through mode: byte equality and single-upstream-call tests pass; aliases refused
-- [ ] Every call, including failures, writes a ledger row before returning; fault-injection completeness reported
-- [ ] Cost from returned usage and a dated price file; no guessed prices; uncosted count reported
-- [ ] Spend caps refuse with zero upstream calls; test proves it
-- [ ] One OpenTelemetry span per call with no content
-- [ ] Overhead p50 and p95 with CIs in the README
-- [ ] Used by the 03 dry runs (Sep 16 onward) and pinned by the 02 and 03 repositories
-- [ ] v0.2: Foundry, Bedrock and Vertex exercised once each, calls in the ledger; Anthropic batches; `ledger merge` and `report`
-- [ ] Ledger-against-invoice difference recorded in the plan repository's STATUS from October
+- [x] `boundary` v0.1.0 tagged by Sep 13 2026; interface frozen Sep 9 and documented. **Tagged 2026-09-10; frozen 2026-09-08**
+- [x] Anthropic, OpenAI, Google and OpenAI-compatible adapters pass golden tests, **and one live call each on 2026-09-10**
+- [x] Pass-through mode: byte equality and single-upstream-call tests pass; aliases refused. **500/500 in the README**
+- [x] Every call, including failures, writes a ledger row before returning; fault-injection completeness reported. **600/600 across six fault types, both modes**
+- [x] Cost from returned usage and a dated price file; no guessed prices; uncosted count reported. **The `unc` column of `ledger report`; ten live calls, all costed**
+- [x] Spend caps refuse with zero upstream calls; test proves it. **17 attempted past a cap, 0 reached the upstream**
+- [x] One OpenTelemetry span per call with no content. **Attribute allow list enforced in code; a test asserts the prompt never appears in the export**
+- [x] Overhead p50 and p95 with CIs in the README. **2.61 ms and 4.62 ms, n = 1,000, against an in-process mock**
+- [ ] Used by the 03 dry runs (Sep 16 onward) and pinned by the 02 and 03 repositories. **03 pinned the tag 2026-09-10 and its first Actions install worked; dry runs from Sep 16; 02 pins at `v0.2.0` (section 5.1, item 6)**
+- [ ] v0.2: Foundry, Bedrock and Vertex exercised once each, calls in the ledger; Anthropic batches; `ledger merge` and `report`. **`merge` and `report` done 2026-09-10; the rest is section 5.1**
+- [ ] Ledger-against-invoice difference recorded in the monthly budget review from October (section 5.1, item 7)
 - [x] One rejected approach documented with evidence (Rule C): `docs/rejected.md`, 2026-09-10
-- [ ] `v0.1.0` tagged. The repository stays private at the tag (decided 2026-09-07): the 02
+- [x] `v0.1.0` tagged. The repository stays private at the tag (decided 2026-09-07): the 02
       and 03 runners install it with a fine-grained read-only GitHub token held as an Actions
-      secret, and it goes public when the plan repository's action 6 decides the timing
+      secret, and it goes public with the rest of the portfolio's repositories.
+      **Tagged 2026-09-10; private; 03's token install confirmed the same day**
 
 ---
 
@@ -594,7 +657,7 @@ the ledger and the spans as its production signal.
 | Redis vault loss mid-request | TTL is short and a lost vault fails the request with a clear error rather than returning redacted text as if final |
 | Crowded category | Differentiate on the audit anchor, the residency policy and the published overhead, not on feature parity; the README says which commercial gateways exist |
 | The dashboard turns into a product of its own | It is read-only pages over the ledger; anything beyond calls, cost, latency and errors by project and model is out |
-| VPS not ready (plan repository action 2b) | Needed by January for 03 anyway; if it slips, Part B deploys on a free-tier container host for the demo month and the load test notes the host |
+| VPS not ready | Needed by January for 03 anyway; if it slips, Part B deploys on a free-tier container host for the demo month and the load test notes the host |
 | Employer boundary | Generic compliance infrastructure with public data; no internal architecture, prompts or thresholds. Rule G stays in force |
 
 ## B9. Rule C candidates

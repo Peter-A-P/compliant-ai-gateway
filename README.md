@@ -7,8 +7,9 @@ adoption, removed, with the latency overhead measured and published rather than 
 
 **Status: Part A released as `v0.1.0` on 2026-09-10**, after one live call per provider. The interface is frozen
 ([docs/interface.md](docs/interface.md)); the library table below is measured. Work since the tag is
-0.2 (October 2026): ledger merge across environments is in, the hyperscaler adapters and
-Anthropic batches are not. Both parts are planned in [PLAN.md](PLAN.md):
+0.2: ledger merge across environments and Anthropic Message Batches are in, and merging no
+longer writes to the ledgers it reads. Still to come in 0.2 are one live batch call and the
+adapters for the three hyperscaler model platforms. Both parts are planned in [PLAN.md](PLAN.md):
 Part A, the `boundary` library that every project in this portfolio calls models through,
 built Sep 7 to 13 2026; Part B, the full gateway with redaction, residency routing, audit
 log, cache, budgets and the portfolio-wide observability dashboard, built May 2027.

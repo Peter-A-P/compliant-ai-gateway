@@ -72,6 +72,31 @@ class PassthroughViolation(BoundaryError):
     """
 
 
+class BatchNotReady(BoundaryError):
+    """Results were asked for before the vendor finished the batch.
+
+    Not a failure: a batch is submitted in one process and collected later, often hours
+    later, so "not yet" is the ordinary answer. The processing status and the vendor's
+    own counts are carried so a caller can decide whether to wait or come back.
+    """
+
+    def __init__(
+        self,
+        batch_id: str,
+        processing_status: str,
+        counts: Mapping[str, int] | None = None,
+    ) -> None:
+        self.batch_id = batch_id
+        self.processing_status = processing_status
+        self.counts: Mapping[str, int] = dict(counts or {})
+        detail = ", ".join(f"{k} {v}" for k, v in sorted(self.counts.items()))
+        super().__init__(
+            f"batch {batch_id} is {processing_status}, not ended"
+            + (f" ({detail})" if detail else "")
+            + ". Its ledger rows stay in flight at their estimate until it ends."
+        )
+
+
 class ProviderError(BoundaryError):
     """The vendor returned an error status, or the transport failed.
 

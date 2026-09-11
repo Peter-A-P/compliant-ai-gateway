@@ -8,7 +8,7 @@ the bytes it sends are exactly the bytes the adapter built.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, ClassVar, Protocol
 
@@ -94,3 +94,90 @@ class Adapter(Protocol):
         headers: Mapping[str, str],
         body: bytes,
     ) -> ProviderError: ...
+
+
+# -- batches ------------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class BatchSubmitted:
+    """What the vendor said when it accepted a batch."""
+
+    batch_id: str
+    processing_status: str
+    raw: Any = field(default=None)
+
+
+@dataclass(frozen=True, slots=True)
+class BatchProgress:
+    """Where a batch has got to. `ended` is the only thing the gateway decides on; the
+    vendor's own word for it is kept beside it for the error message."""
+
+    batch_id: str
+    processing_status: str
+    ended: bool
+    results_url: str | None
+    counts: Mapping[str, int]
+    raw: Any = field(default=None)
+
+
+@dataclass(frozen=True, slots=True)
+class BatchItemResult:
+    """One request's outcome inside a batch, matched back by `custom_id`.
+
+    outcome is the vendor's word: succeeded, errored, canceled or expired. Only a
+    succeeded item has a parsed response, and only it is billed for output.
+    """
+
+    custom_id: str
+    outcome: str
+    parsed: ParsedResponse | None = field(default=None)
+    error: str | None = field(default=None)
+
+    @property
+    def succeeded(self) -> bool:
+        return self.outcome == "succeeded"
+
+
+# One item of a batch as it is handed to an adapter: the custom_id that will identify it in
+# the results, the model it goes to, and the request itself.
+BatchItem = tuple[str, ModelRef, ChatRequest]
+
+
+class BatchAdapter(Protocol):
+    """The batch endpoints, for providers that have them.
+
+    Separate from Adapter because only some providers offer batches. A provider without
+    them should fail with a clear message naming the provider, rather than carry three
+    methods that raise.
+
+    The gateway sets `custom_id` to the ledger row's `call_uid`, so a result maps back to
+    exactly one row, in any process, however the vendor orders the results file.
+    """
+
+    def build_batch_submit(
+        self,
+        items: Sequence[BatchItem],
+        provider: ProviderConfig,
+        api_key: str | None,
+    ) -> BuiltRequest: ...
+
+    def parse_batch_submit(
+        self, status: int, headers: Mapping[str, str], body: bytes
+    ) -> BatchSubmitted: ...
+
+    def build_batch_status(
+        self, batch_id: str, provider: ProviderConfig, api_key: str | None
+    ) -> BuiltRequest: ...
+
+    def parse_batch_status(
+        self, status: int, headers: Mapping[str, str], body: bytes
+    ) -> BatchProgress: ...
+
+    def build_batch_results(
+        self, results_url: str, provider: ProviderConfig, api_key: str | None
+    ) -> BuiltRequest: ...
+
+    def parse_batch_results(
+        self, status: int, headers: Mapping[str, str], body: bytes
+    ) -> list[BatchItemResult]: ...

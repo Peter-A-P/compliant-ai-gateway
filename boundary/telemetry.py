@@ -49,6 +49,10 @@ ALLOWED_ATTRIBUTES: frozenset[str] = frozenset(
         "boundary.latency_ms",
         "boundary.ledger_id",
         "boundary.version",
+        # Batches (0.2). An identifier the vendor minted and a count of requests; both are
+        # already ledger columns, and neither can carry a prompt.
+        "boundary.batch_id",
+        "boundary.batch_requests",
     }
 )
 

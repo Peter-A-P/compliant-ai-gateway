@@ -11,9 +11,10 @@ ledger row. The 02 runner (November) needs standard mode, batches (v0.2) and the
 price-zero host.
 
 Column "since" is the version each item first appeared in. Everything added after the
-freeze is listed here with its version: 0.2 (in progress, October 2026) adds the `env`
-argument and configuration key, ledger schema v2's two columns, `boundary ledger merge`
-and `boundary experiment`. Nothing that 0.1.0 offered has changed shape.
+freeze is listed here with its version: 0.2 (in progress, September 2026) adds the `env`
+argument and configuration key, ledger schema v2's two columns and v3's one, Anthropic
+Message Batches, `boundary ledger merge` and `boundary experiment`. Nothing that 0.1.0
+offered has changed shape.
 
 ## 1. Importing
 
@@ -40,7 +41,10 @@ from boundary import (
 | Escape hatch | `gw.raw(provider, method, path, json, *, purpose, run_id=None, mode=Mode.STANDARD) -> RawResponse` | 0.1 | For a vendor feature the library does not model. Traced and ledgered; costed when the body carries usage in a shape the adapter knows, otherwise written uncosted |
 | Resolve without calling | `gw.resolve(model, mode=Mode.STANDARD) -> ModelRef` | 0.1 | What an alias points at right now. Lets a runner print the identifiers it is about to use |
 | Close | `gw.close()`, and `with Gateway.from_config(...) as gw:` | 0.1 | Flushes the ledger and telemetry, closes the HTTP client |
-| Batches | `gw.batch_submit(requests, *, purpose, run_id) -> BatchHandle`, `gw.batch_results(handle) -> list[ChatResponse]` | 0.2 | Anthropic Message Batches; ledger rows written at result time at the batch rate |
+| Submit a batch | `gw.batch_submit(requests, *, purpose, run_id=None) -> BatchHandle` | 0.2 | Anthropic Message Batches. Standard mode by definition; the development cache is not consulted. One ledger row per request, written before the submit leaves and carrying the estimate at the batch rate. The caps are checked once, for the whole batch |
+| Collect a batch | `gw.batch_results(handle, *, wait_s=0.0, poll_s=30.0) -> list[ChatResponse]` | 0.2 | Completes one row per request from the returned usage at the batch rate. Does not wait by default: `BatchNotReady` is the ordinary answer to "is it done". Responses come back in submission order |
+| Ask after a batch | `gw.batch_status(handle) -> BatchProgress` | 0.2 | `processing_status`, `ended`, `results_url` and the vendor's counts. Writes nothing |
+| Rebuild a handle | `gw.batch_handle(batch_id) -> BatchHandle` | 0.2 | From the ledger, so a batch can be collected by a process that did not submit it. The batch id is the only thing a caller has to keep |
 
 ## 3. `ChatRequest`
 
@@ -87,6 +91,28 @@ errors in pass-through mode (where an error is a result).
 | `trace_id` | `str \| None` | 0.1 | OpenTelemetry trace id, hex, or None when telemetry is off |
 | `ok` | property `bool` | 0.1 | 2xx status |
 
+## 4a. `BatchHandle`
+
+Frozen dataclass, returned by `batch_submit` and rebuildable with `batch_handle`. Every
+field is also a ledger column, which is what makes "submit now, collect hours later in
+another process" work.
+
+| Field | Type | Since | Notes |
+|---|---|---|---|
+| `provider` | `str` | 0.2 | The providers key the batch went to. One batch goes to one provider |
+| `batch_id` | `str` | 0.2 | The vendor's identifier, written to every row of the batch |
+| `project`, `purpose`, `run_id` | `str`, `str`, `str \| None` | 0.2 | As passed at submit |
+| `custom_ids` | `tuple[str, ...]` | 0.2 | The `call_uid` of each row, in submission order. Sent to the vendor as `custom_id`, which is how a result is matched back to exactly one row |
+| `ledger_ids` | `tuple[int, ...]` | 0.2 | Row ids in the same order |
+
+`len(handle)` is the number of requests.
+
+`BatchProgress` (from `batch_status`) carries `batch_id`, `processing_status`, `ended`,
+`results_url` and `counts`. Each `ChatResponse` from `batch_results` has `latency_ms` of
+0.0 and no headers: a batched request has no wall time or response of its own. Its `status`
+is 200 when the vendor answered it, and otherwise the vendor's word for what happened
+(`errored`, `expired`, `canceled`) or `missing`.
+
 ## 5. `Mode`
 
 | Value | Retries | Cache | Rewriting | Raw bytes stored | Aliases |
@@ -109,9 +135,10 @@ All subclass `BoundaryError`.
 | `UnknownPrice` | Strict costing asked for and the returned model has no price | `provider`, `model`, `price_list` | 0.1 |
 | `SpendCapExceeded` | The pre-call estimate would pass a cap. **No request was made** | `scope`, `cap_usd`, `spent_usd`, `estimate_usd` | 0.1 |
 | `PassthroughViolation` | Alias, cache, or missing `max_tokens` in pass-through mode; pass-through without a raw store | message | 0.1 |
+| `BatchNotReady` | Results were asked for before the vendor finished the batch. Not a failure: "not yet" is the ordinary answer | `batch_id`, `processing_status`, `counts` | 0.2 |
 | `ProviderError` | Non-2xx after retries (standard) or transport failure. In pass-through the same information is returned as a `ChatResponse` instead | `provider`, `status`, `body`, `retries`, `headers` | 0.1 |
 
-## 7. The ledger row (schema v2)
+## 7. The ledger row (schema v3)
 
 One row per call, written before the response is returned, including failures. Columns
 are additive only; never renamed or removed. Field-by-field notes in `docs/ledger.md`
@@ -123,18 +150,27 @@ model_requested, model_returned, region, input_tokens, output_tokens, cache_read
 cache_write_tokens, price_list, cost_usd, costed, cached, latency_ms, http_status,
 error_type, retries, request_sha256, response_sha256, trace_id, span_id, raw_path
 call_uid, env                                                             -- added in 0.2
+batch_id                                                                  -- added in 0.2
 ```
 
 `call_uid` identifies the call across files and `env` says which environment made it;
 together they are what lets `ledger merge` combine one file per environment and be safe to
-run again. A v1 file is upgraded in place on open, additively. A reader written against v1
-still works: nothing moved, and `SELECT` by name is unaffected.
+run again. `batch_id` (v3) names the vendor batch a row belongs to, and is null for every
+ordinary call. A file is upgraded in place on open, one version at a time and additively. A
+reader written against v1 still works: nothing moved, and `SELECT` by name is unaffected.
 
 One thing for a repository that pins `boundary>=0.1,<0.3`: the upgrade is one way. Once a
 0.2 gateway has opened a ledger file, 0.1.0 refuses to write to it, by design, rather than
 adding rows with no `call_uid` that a later merge would duplicate. It raises at
 construction with the schema versions named. Either pin one version per ledger file, or
 give each version its own file and merge them.
+
+**Merging never writes to a source** (changed in 0.2, 2026-09-11). The rows are read from a
+temporary copy and the copy is what gets upgraded, so a file stays at the version its owner
+wrote it at and that owner can carry on appending to it. This is what lets a 0.2 gateway
+merge the ledgers a 0.1.0 runner commits each month without disturbing the next run. Before
+this change, merging a source upgraded it and the older library then refused to write to
+it.
 
 ## 8. Configuration files
 

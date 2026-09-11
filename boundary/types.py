@@ -96,6 +96,31 @@ class Usage:
 
 
 @dataclass(frozen=True, slots=True)
+class BatchHandle:
+    """A submitted batch, and the ledger rows waiting for its results.
+
+    Every field is also in the ledger, so a handle can be rebuilt from a batch id alone
+    with `Gateway.batch_handle`. That is the point: project 02 submits thousands of
+    requests in one process and collects them hours later in another, and nothing about
+    the batch should live only in the memory of the process that submitted it.
+
+    custom_ids are the `call_uid` of each row, in submission order, which is how a result
+    is matched back to exactly one row whatever order the vendor returns them in.
+    """
+
+    provider: str
+    batch_id: str
+    project: str
+    purpose: str
+    run_id: str | None
+    custom_ids: tuple[str, ...]
+    ledger_ids: tuple[int, ...]
+
+    def __len__(self) -> int:
+        return len(self.custom_ids)
+
+
+@dataclass(frozen=True, slots=True)
 class ChatResponse:
     """What a call returned, plus the ledger row it wrote.
 

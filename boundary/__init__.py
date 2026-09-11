@@ -7,6 +7,7 @@ Public interface (frozen 2026-09-08, see docs/interface.md):
 __version__ = "0.2.0.dev0"
 
 from boundary.errors import (
+    BatchNotReady,
     BoundaryError,
     ConfigError,
     PassthroughViolation,
@@ -16,9 +17,14 @@ from boundary.errors import (
     UnknownPrice,
 )
 from boundary.gateway import Gateway, RawResponse
-from boundary.types import ChatRequest, ChatResponse, Mode, Usage
+from boundary.providers.base import BatchItemResult, BatchProgress
+from boundary.types import BatchHandle, ChatRequest, ChatResponse, Mode, Usage
 
 __all__ = [
+    "BatchHandle",
+    "BatchItemResult",
+    "BatchNotReady",
+    "BatchProgress",
     "BoundaryError",
     "ChatRequest",
     "ChatResponse",

@@ -68,10 +68,10 @@ def _write(store: LedgerStore, env: str, n: int, *, complete: bool = True) -> li
     return rows
 
 
-def test_a_new_file_is_v2_with_a_unique_index_on_call_uid(tmp_path: Path) -> None:
+def test_a_new_file_is_current_with_a_unique_index_on_call_uid(tmp_path: Path) -> None:
     store = _store(tmp_path, "fresh")
     try:
-        assert store.schema_version == SCHEMA_VERSION == 2
+        assert store.schema_version == SCHEMA_VERSION == 3
         row = _row("laptop")
         store.begin(row)
         assert store.rows()[0]["call_uid"] == row.call_uid
@@ -202,7 +202,7 @@ def test_a_v1_file_is_upgraded_in_place_and_keeps_its_rows(tmp_path: Path) -> No
 
     store = LedgerStore(path)
     try:
-        assert store.schema_version == 2
+        assert store.schema_version == SCHEMA_VERSION
         rows = store.rows()
         assert len(rows) == 1
         assert rows[0]["cost_usd"] == pytest.approx(0.0009)
@@ -217,6 +217,58 @@ def test_a_v1_file_is_upgraded_in_place_and_keeps_its_rows(tmp_path: Path) -> No
         assert reopened.rows()[0]["call_uid"] == uid, "the uid is stable across opens"
     finally:
         reopened.close()
+
+
+def _v1_file(path: Path, rows: int = 2) -> None:
+    conn = sqlite3.connect(path)
+    conn.executescript(V1_SCHEMA)
+    for i in range(rows):
+        conn.execute(
+            "INSERT INTO ledger (ts_utc, boundary_version, project, purpose, mode, provider,"
+            " model_requested, cost_usd, costed, http_status, request_sha256)"
+            " VALUES (?, '0.1.0', 'ai-release-gate', 'drift-run', 'passthrough', 'anthropic',"
+            " ?, 0.0009, 1, 200, ?)",
+            (f"2026-09-27T12:00:0{i}.000Z", HAIKU, f"sha{i}"),
+        )
+    conn.commit()
+    conn.close()
+
+
+def test_merge_never_writes_to_a_source(tmp_path: Path) -> None:
+    """Merging must leave a source exactly as its owner left it.
+
+    Project 03 pins boundary 0.1.0 and commits one ledger per arm per month. Opening one of
+    those files upgrades it, and 0.1.0 then refuses to write to it by design, so a merge
+    that upgraded its sources would stop the drift runner appending to its own ledgers. The
+    bytes are the assertion because that is the only thing the next run cares about.
+    """
+    src = tmp_path / "arm.sqlite"
+    _v1_file(src, rows=2)
+    before = src.read_bytes()
+
+    central = _store(tmp_path, "central")
+    try:
+        stats = central.merge_from(src)
+        assert stats.inserted == 2, "the rows still have to arrive"
+        assert src.read_bytes() == before, "the source was modified by a merge"
+        # No write-ahead log or shared-memory file left beside it either.
+        assert sorted(p.name for p in tmp_path.iterdir() if p.name.startswith("arm")) == [
+            "arm.sqlite"
+        ]
+
+        # Still v1, still without the v2 columns, so 0.1.0 can carry on writing to it.
+        conn = sqlite3.connect(src)
+        try:
+            assert conn.execute("SELECT MAX(version) FROM schema_version").fetchone()[0] == 1
+            columns = {r[1] for r in conn.execute("PRAGMA table_info(ledger)")}
+            assert "call_uid" not in columns and "batch_id" not in columns
+        finally:
+            conn.close()
+
+        # And the uids are still derived from the rows, so a second merge inserts nothing.
+        assert central.merge_from(src).changed == 0
+    finally:
+        central.close()
 
 
 def test_two_copies_of_one_v1_file_merge_to_one_row_per_call(tmp_path: Path) -> None:

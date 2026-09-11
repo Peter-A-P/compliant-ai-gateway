@@ -1,4 +1,4 @@
--- Ledger schema v2. Columns are additive only: never renamed, never removed.
+-- Ledger schema v3. Columns are additive only: never renamed, never removed.
 -- One row per call. A row is inserted before the request leaves the process
 -- (error_type = 'in_flight', cost_usd = the pre-call estimate) and completed after,
 -- so a process killed mid-call still leaves its row.
@@ -10,8 +10,18 @@
 --             both hold an id 1 for different calls.
 --   env       which environment made the call (laptop, actions, vps). After a merge the
 --             destination holds rows from several, and a row has to say which.
--- A v1 file is migrated in place on open: the columns are added, call_uid is backfilled
--- deterministically from the row's own contents, then the unique index is built.
+-- v3 (0.2, September 2026) adds one column for the Anthropic Message Batches support:
+--   batch_id  the vendor's batch identifier, null for every ordinary call. A batch is
+--             submitted in one process and its results collected in another, possibly
+--             hours later, so the rows written at submit have to be findable again by
+--             something the vendor also knows. The per-request custom_id sent to the
+--             vendor is the row's call_uid, so a result maps back to exactly one row.
+--
+-- A file is migrated in place on open, one step at a time and additively: v1 gains
+-- call_uid and env with call_uid backfilled deterministically from the row's own
+-- contents, v2 gains batch_id. A uid is only ever invented during the v1 step; a null
+-- call_uid in a v2 or later file was put there by hand and stays null, because merging a
+-- row whose identity was guessed would duplicate it.
 
 CREATE TABLE IF NOT EXISTS ledger (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -44,9 +54,13 @@ CREATE TABLE IF NOT EXISTS ledger (
     response_sha256     TEXT,
     trace_id            TEXT,
     span_id             TEXT,
-    raw_path            TEXT
+    raw_path            TEXT,
+    batch_id            TEXT
 );
 
+-- Indexes over columns that every schema version has. The indexes over call_uid and
+-- batch_id are built by the migration instead, because this script also runs against a
+-- file written by an older version, where those columns do not exist yet.
 CREATE INDEX IF NOT EXISTS ledger_project_ts ON ledger (project, ts_utc);
 CREATE INDEX IF NOT EXISTS ledger_project_run ON ledger (project, run_id);
 
