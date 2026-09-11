@@ -90,5 +90,60 @@ def test_smoke_uses_the_gateway(
 
 
 def test_smoke_unknown_provider_needs_a_model(capsys: pytest.CaptureFixture[str]) -> None:
-    assert main(["--config", CONFIG, "smoke", "local"]) == 2
+    """A provider with no default model is refused before anything is built, which is also
+    what keeps this test from making a call. `local` used to be the example here; it has a
+    default now, and with one it reached a real server and wrote to the real ledger."""
+    assert main(["--config", CONFIG, "smoke", "aws_bedrock"]) == 2
     assert "--model" in capsys.readouterr().err
+
+
+def test_smoke_batch_submits_and_collects(
+    tmp_path: Path, keys: None, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`boundary smoke anthropic --batch` is what the smoke workflow runs to exercise the
+    batch path live. The wiring deserves its own test: a mistake in it would show up only as
+    a failed job, after a real batch had been submitted and billed."""
+    import json
+
+    import httpx
+
+    from boundary.config import load_config
+    from tests.test_batches import (
+        BATCH_ID,
+        BATCHES_URL,
+        RESULTS_URL,
+        STATUS_URL,
+        _results,
+        _status,
+        _submitted,
+        _succeeded,
+    )
+
+    # The command builds its own gateway from the configuration, which would write to this
+    # repository's real ledger. Point it at a temporary one instead.
+    def fake_from_config(path: str, **kw: object) -> object:
+        return make_gateway(load_config(path), tmp_path, project="compliant-ai-gateway")
+
+    monkeypatch.setattr("boundary.cli.Gateway.from_config", fake_from_config)
+
+    submitted: list[str] = []
+
+    def on_submit(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        submitted.extend(item["custom_id"] for item in body["requests"])
+        return _submitted()
+
+    def on_results(request: httpx.Request) -> httpx.Response:
+        return _results([_succeeded(custom_id) for custom_id in submitted])
+
+    with respx.mock(assert_all_called=True) as mock:
+        mock.post(BATCHES_URL).mock(side_effect=on_submit)
+        mock.get(STATUS_URL).mock(return_value=_status())
+        mock.get(RESULTS_URL).mock(side_effect=on_results)
+        code = main(["--config", CONFIG, "smoke", "anthropic", "--batch", "--wait", "0"])
+
+    out = capsys.readouterr().out
+    assert code == 0, out
+    assert f"submitted batch {BATCH_ID}" in out
+    assert len(submitted) == 2, "the smoke batch is two requests"
+    assert out.count("200 model claude-haiku-4-5-20251001") == 2

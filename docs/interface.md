@@ -187,7 +187,8 @@ configuration file is secret.
 
 | Command | Since | What it does |
 |---|---|---|
-| `boundary smoke <provider>` | 0.1 | One short standard-mode call, costed, with the ledger row id |
+| `boundary smoke <provider>` | 0.1 | One short standard-mode call, costed, with the ledger row id. `local` defaults to `llama3.2:3b` on a local server at price zero |
+| `boundary smoke <provider> --batch` | 0.2 | Two short requests as a real vendor batch, submitted and collected. `--wait` and `--poll` set how long it will sit there |
 | `boundary routes show` | 0.1 | What every alias points at, and the provider entries |
 | `boundary prices check` | 0.1 | Validates every price file, warns when the newest is not this month, lists routes with no price |
 | `boundary ledger report` | 0.1 | Calls, tokens and cost by month, environment, project and model |

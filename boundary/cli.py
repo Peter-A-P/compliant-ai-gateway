@@ -15,7 +15,7 @@ from pathlib import Path
 
 from boundary import __version__
 from boundary.config import latest_price_list, load_config, load_price_list, price_files
-from boundary.errors import BoundaryError
+from boundary.errors import BatchNotReady, BoundaryError
 from boundary.gateway import Gateway
 from boundary.ledger.store import LedgerStore
 from boundary.types import ChatRequest, Mode
@@ -28,6 +28,9 @@ SMOKE_MODELS: dict[str, str] = {
     # gemini-2.5-flash-lite is closed to new API users (404 on 2026-09-10).
     "google": "google/gemini-3.5-flash-lite",
     "openweights": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+    # A local server at price zero. Nothing leaves the machine, so this is the one smoke
+    # call that can run from a network that inspects TLS. `ollama pull llama3.2:3b` first.
+    "local": "local/llama3.2:3b",
 }
 # Vendor fields the smoke call needs to produce visible text within its small max_tokens.
 # OpenAI's gpt-5 family reasons first and spends the whole budget on it otherwise.
@@ -51,6 +54,8 @@ def cmd_smoke(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 2
+    if args.batch:
+        return _smoke_batch(args, model)
     with Gateway.from_config(args.config, project=args.project) as gw:
         resp = gw.chat(
             ChatRequest(
@@ -72,6 +77,42 @@ def cmd_smoke(args: argparse.Namespace) -> int:
         f"{cost}, {resp.latency_ms:.0f} ms, retries {resp.retries}, ledger row {resp.ledger_id}"
     )
     return 0 if resp.ok else 1
+
+
+def _smoke_batch(args: argparse.Namespace, model: str) -> int:
+    """One tiny real batch: submit, wait, collect. Exercises the whole path the way a single
+    smoke call exercises the single-request path, for a couple of hundred tokens."""
+    with Gateway.from_config(args.config, project=args.project) as gw:
+        requests = [
+            ChatRequest(
+                model=model,
+                messages=[{"role": "user", "content": f"Reply with the single word OK ({n})."}],
+                max_tokens=16,
+                extra=SMOKE_EXTRA.get(args.provider, {}),
+            )
+            for n in (1, 2)
+        ]
+        handle = gw.batch_submit(requests, purpose="smoke-batch", run_id=args.run_id)
+        print(
+            f"submitted batch {handle.batch_id}: {len(handle)} request(s), "
+            f"ledger rows {list(handle.ledger_ids)}"
+        )
+        try:
+            responses = gw.batch_results(handle, wait_s=args.wait, poll_s=args.poll)
+        except BatchNotReady as e:
+            print(f"{e}", file=sys.stderr)
+            print(
+                f"the rows stay in flight; collect it later with the batch id {handle.batch_id}",
+                file=sys.stderr,
+            )
+            return 1
+        for r in responses:
+            cost = f"US${r.cost_usd:.6f}" if r.cost_usd is not None else "uncosted"
+            print(
+                f"  {r.status} model {r.model_returned} text {r.text!r} "
+                f"tokens {r.usage.input_tokens}/{r.usage.output_tokens} {cost} row {r.ledger_id}"
+            )
+    return 0 if all(r.ok for r in responses) else 1
 
 
 def cmd_routes_show(args: argparse.Namespace) -> int:
@@ -274,6 +315,18 @@ def main(argv: list[str] | None = None) -> int:
     smoke.add_argument("provider")
     smoke.add_argument("--model", help="provider/model-id; default per provider where known")
     smoke.add_argument("--run-id", dest="run_id", default=None)
+    smoke.add_argument(
+        "--batch",
+        action="store_true",
+        help="submit two requests as a vendor batch and collect them, instead of one call",
+    )
+    smoke.add_argument(
+        "--wait",
+        type=float,
+        default=900.0,
+        help="seconds to wait for a batch to end before giving up (default 900)",
+    )
+    smoke.add_argument("--poll", type=float, default=20.0, help="seconds between batch polls")
     smoke.set_defaults(func=cmd_smoke)
 
     routes = sub.add_parser("routes", help="routes commands").add_subparsers(

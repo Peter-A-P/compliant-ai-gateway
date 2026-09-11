@@ -1,0 +1,110 @@
+name: smoke
+
+# Live calls through this library, on GitHub's runners.
+#
+# It exists because the laptop's usual network inspects TLS, so a vendor call from there
+# would hand a personal API key and a prompt to the employer's proxy. The v0.1.0 smoke calls
+# ran from the release-gate repository, where the keys already lived as secrets; this
+# workflow brings them here, where the library is, and adds the batch path that v0.2.0 needs
+# exercised before it can be tagged.
+#
+# Manual only, and it costs a few cents. Every call writes a ledger row like any other, and
+# the report at the end is what the run is for: the numbers, not the exit code.
+#
+# It needs four repository secrets before it will do anything: ANTHROPIC_API_KEY,
+# OPENAI_API_KEY, GOOGLE_API_KEY and OPENWEIGHTS_API_KEY. The local provider is not smoked
+# here; a local server is a laptop thing and its call cannot leave the machine anyway.
+
+on:
+  workflow_dispatch:
+    inputs:
+      single:
+        description: "one short call per vendor"
+        required: false
+        default: "true"
+      batch:
+        description: "submit a two-request Anthropic batch and collect it"
+        required: false
+        default: "true"
+      batch_wait:
+        description: "seconds to wait for the batch to end before giving up"
+        required: false
+        default: "900"
+      extra_models:
+        description: "space-separated provider/model-id list to smoke as well"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    # The batch is the long pole: a small one usually ends in a couple of minutes, but the
+    # vendor promises only twenty-four hours, so the job gives up rather than idles.
+    timeout-minutes: 30
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+      OPENWEIGHTS_API_KEY: ${{ secrets.OPENWEIGHTS_API_KEY }}
+      # Labels every row this run writes, so a merged ledger says where the call was made.
+      BOUNDARY_ENV: actions
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+      - run: uv sync --frozen
+      - run: uv run python -c "import boundary; print('boundary', boundary.__version__)"
+
+      # One step per vendor, and none stops the others, so one bad key does not hide the rest.
+      - name: Smoke anthropic
+        if: inputs.single == 'true'
+        continue-on-error: true
+        run: uv run boundary smoke anthropic --run-id smoke-actions
+      - name: Smoke openai
+        if: inputs.single == 'true'
+        continue-on-error: true
+        run: uv run boundary smoke openai --run-id smoke-actions
+      - name: Smoke google
+        if: inputs.single == 'true'
+        continue-on-error: true
+        run: uv run boundary smoke google --run-id smoke-actions
+      - name: Smoke openweights
+        if: inputs.single == 'true'
+        continue-on-error: true
+        run: uv run boundary smoke openweights --run-id smoke-actions
+      - name: Smoke the extra models
+        if: inputs.extra_models != ''
+        continue-on-error: true
+        run: |
+          for m in ${{ inputs.extra_models }}; do
+            p="${m%%/*}"
+            uv run boundary smoke "$p" --model "$m" --run-id smoke-actions || echo "FAILED $m"
+          done
+
+      # The v0.2.0 gate: submit, poll, collect, and cost from the returned usage at the batch
+      # rate. Anthropic is the only provider with batch support in this version.
+      - name: Smoke the Anthropic batch path
+        if: inputs.batch == 'true'
+        continue-on-error: true
+        run: >
+          uv run boundary smoke anthropic --batch
+          --run-id smoke-actions-batch
+          --wait ${{ inputs.batch_wait }}
+
+      # What the run is actually for. Rows still in flight are reported as a warning, which is
+      # what an unfinished batch looks like.
+      - name: Ledger rows for every call this run made
+        if: always()
+        run: uv run boundary ledger report
+
+      - name: Keep the ledger as an artefact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-ledger
+          path: boundary.sqlite
+          if-no-files-found: warn

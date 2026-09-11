@@ -77,9 +77,23 @@ major version are additive only; see docs/interface.md.
   corpus. The three deterministic bench numbers are unchanged by the move.
 - Version is `0.2.0.dev0` until the 0.2.0 tag, so a ledger row says which library wrote it.
 
-Local OpenAI-compatible hosts at price zero are covered by goldens (Ollama's response
-shape, costed at zero and marked costed, never moving a cap) and wait only on being run
-once against a real local server.
+- **A local OpenAI-compatible host, exercised live.** Ollama 0.34.0 with `llama3.2:3b` on
+  the laptop, answering through the `local` provider entry at price zero: ledger row 5,
+  status 200, 32 input and 2 output tokens, `costed = 1` and cost 0.00, uncosted count
+  still zero. It is the one live call that can be made from a network that inspects TLS,
+  because nothing leaves the machine. `boundary smoke local` now has that model as its
+  default.
+- **`boundary smoke <provider> --batch`** submits two short requests as a real vendor batch
+  and collects them, so the batch path can be exercised live the way a single call already
+  could. `--wait` and `--poll` control how long it will sit there.
+- **A `smoke` workflow in this repository**, manual only, running one call per vendor and
+  the batch path on GitHub's runners, because the laptop's usual network inspects TLS and a
+  vendor call from there would hand a personal key and a prompt to the employer's proxy. It
+  needs the four vendor keys as repository secrets before it will do anything; until now
+  those lived only on the release-gate repository.
+- A CLI test reached a real local server and wrote to this repository's own ledger once
+  `smoke local` gained a default model. It no longer does, and the test that covers "a
+  provider with no default model is refused" now uses one that really has none.
 
 Still deferred past the 0.2.0 tag, to 0.2.1 and 0.2.2: the Foundry, Vertex and Bedrock
 adapters, which need their accounts and billing alerts first and which nothing is waiting
