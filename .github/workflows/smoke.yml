@@ -3,7 +3,8 @@ name: smoke
 # Live calls through this library, on GitHub's runners.
 #
 # It exists because the laptop's usual network inspects TLS, so a vendor call from there
-# would hand a personal API key and a prompt to the employer's proxy. The v0.1.0 smoke calls
+# would pass a personal API key and a prompt through an intermediary that should see
+# neither. The v0.1.0 smoke calls
 # ran from the release-gate repository, where the keys already lived as secrets; this
 # workflow brings them here, where the library is, and adds the batch path that v0.2.0 needs
 # exercised before it can be tagged.

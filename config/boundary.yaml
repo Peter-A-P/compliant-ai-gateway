@@ -22,8 +22,8 @@ providers:
     base_url: https://generativelanguage.googleapis.com
     api_key_env: GOOGLE_API_KEY
     api_version: v1beta
-  # Open-weights host for the 03 control arm. The provider is chosen with action 3 in the
-  # plan repository; the entry is renamed then and the ledger keeps the name.
+  # Open-weights host for the 03 control arm. Renaming this entry is a change to the data:
+  # the ledger records the provider name, so a rename shows up in every row written after it.
   openweights:
     kind: openai_compat
     base_url: https://api.together.xyz/v1

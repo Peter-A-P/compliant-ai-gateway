@@ -107,7 +107,8 @@ major version are additive only; see docs/interface.md.
   when nothing had been collected is worse than a red one.
 - **A `smoke` workflow in this repository**, manual only, running one call per vendor and
   the batch path on GitHub's runners, because the laptop's usual network inspects TLS and a
-  vendor call from there would hand a personal key and a prompt to the employer's proxy. It
+  vendor call from there would pass a personal key and a prompt through an intermediary that
+  should see neither. It
   needs the four vendor keys as repository secrets before it will do anything; until now
   those lived only on the release-gate repository.
 - A CLI test reached a real local server and wrote to this repository's own ledger once

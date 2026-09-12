@@ -1,5 +1,5 @@
 # Spend caps enforced by the library before a call is made. Second line of defence: the
-# first line is the hard cap in each vendor's console (plan repository action 3).
+# first line is the hard cap set in each vendor's own console.
 #
 # Amounts are USD because vendors bill in USD. Raise a cap here, deliberately, in a
 # commit; never bypass it in code. Amounts set by Peter on 2026-09-08 (double the plan's first

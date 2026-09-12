@@ -1,0 +1,21 @@
+Copyright (c) 2026 Peter Parker. All rights reserved.
+
+This repository is published so that the results in README.md can be checked and
+the engineering behind them can be read. That is its whole purpose, and reading
+it is explicitly welcome.
+
+It is not open source. No licence is granted to use, copy, modify, merge,
+publish, distribute, sublicense or sell this software, or works derived from it,
+in whole or in part. The absence of a permissive licence here is deliberate
+rather than an oversight.
+
+Two things are permitted beyond reading. Reproducing the measurements by running
+the benchmark and evaluation commands against your own vendor accounts, which is
+the point of publishing them. And the forking that GitHub's terms of service
+already extend to anyone who can see a public repository.
+
+If you want to use any of this for anything else, please ask first by opening an
+issue on this repository. The answer is likely to be yes.
+
+Third-party dependencies keep their own licences, which are recorded in
+pyproject.toml and resolved in uv.lock. Nothing above applies to them.

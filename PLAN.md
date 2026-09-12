@@ -12,9 +12,8 @@ Two parts, one repository, one Python package called `boundary`:
 Part A exists because the model landscape changes monthly and fifteen projects calling vendors
 directly would mean ten places to change when a model is retired, repriced or replaced.
 It is built first because the 03 drift runner is written against it from Sep 16 and the
-first official drift run is Sep 27. Part B is the keyword slot done properly: the
-compliance layer regulated buyers actually ask about, with its overhead measured rather
-than promised.
+first official drift run is Sep 27. Part B is the compliance layer regulated buyers
+actually ask about, built with its overhead measured rather than promised.
 
 **Fed by:** 03 (measurement; the gate measures the quality cost of redaction in Part B).
 **Feeds:** every project that calls a model, from September 2026 (01 does not call models;
@@ -658,7 +657,7 @@ the ledger and the spans as its production signal.
 | Crowded category | Differentiate on the audit anchor, the residency policy and the published overhead, not on feature parity; the README says which commercial gateways exist |
 | The dashboard turns into a product of its own | It is read-only pages over the ledger; anything beyond calls, cost, latency and errors by project and model is out |
 | VPS not ready | Needed by January for 03 anyway; if it slips, Part B deploys on a free-tier container host for the demo month and the load test notes the host |
-| Employer boundary | Generic compliance infrastructure with public data; no internal architecture, prompts or thresholds. Rule G stays in force |
+| Employer boundary | Generic compliance infrastructure with public data; no internal architecture, prompts or thresholds, and nothing that mirrors a system built at work |
 
 ## B9. Rule C candidates
 

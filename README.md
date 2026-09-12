@@ -94,3 +94,9 @@ Design, methodology, evaluation choices and judgement are Peter Parker's. AI cod
 assistants (Claude Code) were used for implementation and drafting, the way a senior
 engineer uses them in 2026. Every number in the results tables is reproducible from this
 repository with one command, and that reproducibility is the evidence that matters.
+
+## Licence
+
+All rights reserved ([LICENSE](LICENSE)). Published to be read and to have its numbers
+checked, which is what it is for. Reproducing the measurements against your own vendor
+accounts is welcome; reusing the code needs a word first, and the answer is likely to be yes.
