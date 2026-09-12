@@ -425,14 +425,20 @@ October; Rule C asks for one, and it is done.
 - [x] Spend caps refuse with zero upstream calls; test proves it. **17 attempted past a cap, 0 reached the upstream**
 - [x] One OpenTelemetry span per call with no content. **Attribute allow list enforced in code; a test asserts the prompt never appears in the export**
 - [x] Overhead p50 and p95 with CIs in the README. **2.61 ms and 4.62 ms, n = 1,000, against an in-process mock**
-- [ ] Used by the 03 dry runs (Sep 16 onward) and pinned by the 02 and 03 repositories. **03 pinned the tag 2026-09-10 and its first Actions install worked; dry runs from Sep 16; 02 pins at `v0.2.0` (section 5.1, item 6)**
+- [ ] Used by the 03 dry runs (Sep 16 onward) and pinned by the 02 and 03 repositories. **Both pins done: 03 on `v0.1.0` 2026-09-10, first Actions install worked; 02 on `v0.2.0` 2026-09-11. Waiting only on the 03 dry runs**
 - [ ] v0.2: Foundry, Bedrock and Vertex exercised once each, calls in the ledger; Anthropic batches; `ledger merge` and `report`. **`merge` and `report` done 2026-09-10; the rest is section 5.1**
 - [ ] Ledger-against-invoice difference recorded in the monthly budget review from October (section 5.1, item 7)
 - [x] One rejected approach documented with evidence (Rule C): `docs/rejected.md`, 2026-09-10
-- [x] `v0.1.0` tagged. The repository stays private at the tag (decided 2026-09-07): the 02
-      and 03 runners install it with a fine-grained read-only GitHub token held as an Actions
-      secret, and it goes public with the rest of the portfolio's repositories.
-      **Tagged 2026-09-10; private; 03's token install confirmed the same day**
+- [x] `v0.1.0` tagged. The repository was private at the tag (decided 2026-09-07): the 02
+      and 03 runners installed it with a fine-grained read-only GitHub token held as an
+      Actions secret, and it went public once its results could be checked.
+      **Tagged 2026-09-10; 03's token install confirmed the same day. Public 2026-09-11**,
+      after `v0.2.0` and a commit-by-commit audit of all 18 commits for credentials,
+      employer identifiers and plan-repository links. The history was not rewritten, on
+      purpose: 02 and 03 pin exact commit SHAs, and rewriting the library that produced
+      September's measurements would weaken the reproducibility claim the repository exists
+      to make. Both tokens and both CI authentication steps stay until after 03's Sep 27
+      run, then come out.
 
 ---
 
