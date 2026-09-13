@@ -5,27 +5,36 @@
 # commit; never bypass it in code. Amounts set by Peter on 2026-09-08 (double the plan's first
 # draft, to leave room for the two dry runs plus the official run); revisited at each budget review.
 
+# **September 2026 is deliberately loose, and goes back to normal at the October budget
+# review (04's PLAN.md section 5.1, Oct 1 to 3).**
+#
+# Peter is away 2026-09-25 to 10-08 and is pushing several projects ahead of that, so a
+# monthly cap that refuses work in week three is the expensive failure and a cap that allows
+# more than planned is the cheap one. Measured from the ledgers on 2026-09-12: 03 at US$23.45
+# across seven dry runs, 02 at US$10.02, 04 at US$0.00, US$33 of a US$200 portfolio.
+#
+# **The monthly caps are loosened. The per-run caps are NOT, and that is the point.** A
+# monthly cap only gates how much planned work may happen; a per-run cap is what catches a
+# single run going wrong, which is the failure that actually burns money without anyone
+# watching. On 2026-09-12 the control arm looped on one item and filled 4,096 tokens
+# restarting the same derivation; that is what a per-run cap is for, and loosening it while
+# nobody is at the laptop would be exactly the wrong trade.
+#
+# Raising these does NOT raise the vendor console caps, which are the hard stop and fail far
+# less gracefully: an internal cap refuses a call cleanly before it leaves, a console cap
+# returns errors partway through a four-hour run.
+
 version: 1
-portfolio_monthly_usd: 200
+portfolio_monthly_usd: 350
 
 projects:
   # 03 drift runs: about US$9 per full run; two dry runs plus the Sep 27 official run.
-  # Raised 60 -> 90 on 2026-09-12, for September only.
-  #
-  # September carries what no other month will: seven dry runs at US$23.45, which found eight
-  # vendor behaviours that would otherwise have landed in the twelve-month record, plus two
-  # official runs at about US$20 each because the Sep/Oct pair was pulled forward into one
-  # month. 23.45 + 40 is 63.45 against a cap of 60, so the second run would have been refused
-  # partway through, which is the cap working and the wrong month for it to work.
-  #
-  # 90 covers that with one rerun's headroom. A normal month is one run at US$20 and the cap
-  # belongs back at 60; the October budget review (04's PLAN, Oct 1 to 3) is where that happens.
   ai-release-gate:
-    monthly_usd: 90
+    monthly_usd: 150
     per_run_usd: 30
   # 04 itself: smoke calls, one short request per provider per adapter change.
   compliant-ai-gateway:
-    monthly_usd: 10
+    monthly_usd: 30
     per_run_usd: 2
   # 02 own-run panel. Its plan puts the full suite at about US$25 with the Anthropic share
   # batched, and the whole project's API line at about US$60. A month holds one full suite
@@ -33,7 +42,7 @@ projects:
   # Confirmed by Peter 2026-09-11. Raise them here, deliberately, in a commit if they bind;
   # never bypass a cap in code.
   model-selection-tenth-cost:
-    monthly_usd: 40
+    monthly_usd: 100
     per_run_usd: 30
 
 default:
