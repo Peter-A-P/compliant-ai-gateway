@@ -23,6 +23,15 @@
 # Raising these does NOT raise the vendor console caps, which are the hard stop and fail far
 # less gracefully: an internal cap refuses a call cleanly before it leaves, a console cap
 # returns errors partway through a four-hour run.
+#
+# **Vendor console caps, raised by Peter 2026-09-12** (CAD as set in each console, USD at the
+# portfolio's 1.35 rate), so the October reconciliation has both numbers in one place:
+#
+#   Anthropic  CA$210  ~US$156     OpenAI  CA$100  ~US$74
+#   Together   CA$ 55  ~US$ 41     Google  CA$ 80  ~US$59  (alerts only, never a hard stop)
+#
+# Google is the exception worth remembering: its budget raises alerts and does not stop a
+# call, so for that vendor the boundary cap below is the only hard stop there is.
 
 version: 1
 portfolio_monthly_usd: 350
