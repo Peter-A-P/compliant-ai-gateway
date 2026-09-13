@@ -10,8 +10,18 @@ portfolio_monthly_usd: 200
 
 projects:
   # 03 drift runs: about US$9 per full run; two dry runs plus the Sep 27 official run.
+  # Raised 60 -> 90 on 2026-09-12, for September only.
+  #
+  # September carries what no other month will: seven dry runs at US$23.45, which found eight
+  # vendor behaviours that would otherwise have landed in the twelve-month record, plus two
+  # official runs at about US$20 each because the Sep/Oct pair was pulled forward into one
+  # month. 23.45 + 40 is 63.45 against a cap of 60, so the second run would have been refused
+  # partway through, which is the cap working and the wrong month for it to work.
+  #
+  # 90 covers that with one rerun's headroom. A normal month is one run at US$20 and the cap
+  # belongs back at 60; the October budget review (04's PLAN, Oct 1 to 3) is where that happens.
   ai-release-gate:
-    monthly_usd: 60
+    monthly_usd: 90
     per_run_usd: 30
   # 04 itself: smoke calls, one short request per provider per adapter change.
   compliant-ai-gateway:
