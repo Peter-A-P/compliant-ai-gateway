@@ -25,6 +25,22 @@ major version are additive only; see docs/interface.md.
   dated then; a rate written weeks early carries a date that lies about when it was checked.
   Foundry bills in Claude Consumption Units at US$0.01 per CCU rated at standard USD rates, so
   the invoice check divides the Azure line item by 100 before comparing.
+- **The Azure-hosted Claude deployment is quota-gated, so the weaker residency posture is the
+  one you can actually have.** Deploying `claude-haiku-4-5` Global Standard version 2 (Hosted
+  on Azure) in `eastus2` on 2026-09-14 was refused for insufficient quota: Azure-hosted
+  capacity is allocated per subscription and a new pay-as-you-go one starts with none. Version
+  1 (Hosted on Anthropic) deploys immediately and runs outside Azure entirely. So the option
+  that keeps prompts and completions inside Azure needs a quota request and a wait, and the
+  option available today does not keep them there at all. Recorded in
+  `docs/hyperscaler-setup.md` with the exact refusal, and in PLAN.md B2.2 as a procurement
+  fact for Part B rather than a technical one. Neither version changes anything in this
+  library: same endpoint, same body, same header, same rates, one price entry.
+- **Microsoft's own wording for the distinction**, quoted in the setup document because it is
+  the vendor's rather than ours: "Data might be processed globally, outside the resource's
+  Azure geography, but data storage remains in the AI resource's Azure geography." Processing
+  is global, storage is regional. A requirement written about storage can be met; one written
+  about processing cannot, on this deployment type, and the two are commonly written as if
+  they were one.
 - **Foundry offers no Claude model in a Canadian region, which is a finding rather than a
   blocker.** A Foundry resource created in Canada Central on 2026-09-14 had no Anthropic model
   to deploy, and Microsoft's own region table agrees: every `claude-*` row reads `-` against

@@ -499,6 +499,23 @@ failing closed than a policy that always finds a route. It also fixes the wordin
 throughout: `region` records where a request was **sent**, which is what a gateway controls,
 and never where tokens were **processed**, which the vendor controls and mostly does not
 guarantee. See `docs/hyperscaler-setup.md`.
+
+**Amended again the same day, after the deployment was attempted.** Two things came out of
+trying rather than reading. Microsoft's own deployment dialog states the distinction this
+plan had been circling: "Data might be processed globally, outside the resource's Azure
+geography, but data storage remains in the AI resource's Azure geography." Processing is
+global, storage is regional, and a requirement written about one is routinely read as
+covering the other. Part B's policy language should separate them explicitly rather than
+say "residency".
+
+And the hosting option that would keep processing inside Azure is the one a new customer
+cannot get: Claude version 2, Hosted on Azure, was refused in `eastus2` for insufficient
+quota, because Azure-hosted capacity is allocated per subscription and a new pay-as-you-go
+subscription has none. Version 1 deploys immediately and runs on Anthropic's infrastructure
+outside Azure. So the weaker posture is the default and the stronger one is gated behind a
+quota request. That is worth stating in Part B's write-up as a procurement fact rather than
+a technical one: the control exists, and getting it is an administrative exercise with a
+lead time.
 The gateway never guesses a classification from content; a gateway that did would be
 making a compliance decision nobody reviewed. Violations are refused with a reason and
 audited.

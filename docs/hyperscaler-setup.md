@@ -51,12 +51,33 @@ Four choices here, and three of them are permanent or cost money:
   zone is the United States**: Europe and Asia Pacific read "Not available" and there is no
   Canadian one. US Data Zone keeps inference in the United States and costs 1.1x. It is not
   in the price file, so if you pick it, it needs its own entry with its own numbers.
-- **Model version.** Each hosting option is a separate version: version 1 is Hosted on
-  Anthropic, version 2 is Hosted on Azure. Hosted on Azure keeps prompts and completions
-  inside Azure and supports fewer features.
+- **Model version, which is the hosting option and matters more than its name suggests.**
+  Version 1 is Hosted on Anthropic: the model runs on Anthropic's own infrastructure,
+  **outside Azure**. Version 2 is Hosted on Azure: it runs on Azure infrastructure end to
+  end, prompts and completions stay within Azure, and only usage metadata and
+  safety-flagged content egress to Anthropic. Version 2 is the stronger compliance
+  position and it supports fewer features.
 
-For a first smoke call, deploy **claude-haiku-4-5**, Global, and whichever hosting option the
-portal offers by default. It is the cheapest thing to prove the path with.
+  **Expect version 2 to fail on a new subscription.** Tried on 2026-09-14 in `eastus2`:
+  Global Standard with version 2 was refused with *"Insufficient quota ... cannot be
+  deployed to your current project"*. Azure-hosted capacity is quota-allocated per
+  subscription and region, and a new pay-as-you-go subscription starts with none. Version 1
+  does not draw on that quota and deploys immediately.
+
+  So the ordering is the finding, and it is the wrong way round: the option that keeps data
+  inside Azure is quota-gated and effectively unavailable to a new customer, while the one
+  that is available sends the data out of Azure altogether. Getting version 2 means asking
+  for a quota increase and waiting, which a proof of concept will not do and a procurement
+  exercise should budget for.
+
+  Nothing in this library cares which you deploy. Both are `POST
+  /anthropic/v1/messages` with the same body, the same `api-key` header and the same
+  standard rates billed in CCUs, so one price entry serves both. What changes is the
+  residency claim, and only the ledger's operator knows which version is behind a
+  deployment name.
+
+For a first smoke call, deploy **claude-haiku-4-5**, Global Standard, **version 1**. It is
+the cheapest thing to prove the path with, and version 2 will probably refuse.
 
 ### 4. Collect the two values
 
@@ -220,13 +241,31 @@ different things and they fail differently:
 
 | | Deployment in Canada | Processing guaranteed in Canada |
 |---|---|---|
-| Foundry, Claude | **not offered** | not offered |
+| Foundry, Claude, Hosted on Azure (v2) | **not offered** | no, and quota-gated anyway |
+| Foundry, Claude, Hosted on Anthropic (v1) | **not offered** | no, it runs outside Azure |
 | Foundry, other partner models | Canada Central and Canada East | no, Global Standard routes anywhere |
 | Vertex, Claude | `northamerica-northeast1` exists, older models only | no |
 
 Even where a Canadian deployment exists, it is commonly still served by a global deployment,
 so the tokens may be processed elsewhere. Dedicated, guaranteed in-country processing is the
 rare and expensive exception, and for Claude on Foundry it is not on the menu at any price.
+
+Microsoft states the distinction plainly in the deployment dialog itself, and it is worth
+quoting because it is the vendor's own wording rather than this project's reading of it:
+
+> Global Standard: Pay per API call with the highest rate limits. Data might be processed
+> globally, outside the resource's Azure geography, but data storage remains in the AI
+> resource's Azure geography.
+
+**Processing is global; storage is regional.** A residency requirement that is really about
+where data is stored can be met. One about where it is processed cannot, on this deployment
+type. Those are different obligations and they are commonly written as if they were one, which
+is exactly where a compliance product earns its keep or fails quietly.
+
+There is a second gate behind that one. The hosting option that would keep processing inside
+Azure, version 2, is quota-allocated and a new subscription has none of it, so the available
+choice is version 1, which runs outside Azure entirely. See the Model version note in step 3.
+The stronger posture is the one a new customer cannot have.
 
 So the claim this gateway can support is, at most, **"deployed in Canada"**, and for some
 platform and model pairs not even that. It is never **"processed only in Canada"**. Those are
