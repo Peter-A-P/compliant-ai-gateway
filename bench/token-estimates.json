@@ -1,0 +1,260 @@
+{
+  "run_dir": "2026-09",
+  "run_id": "drift-2026-09",
+  "calls_scored": 15996,
+  "tiktoken_available": true,
+  "results": [
+    {
+      "estimator": "chars/4",
+      "provider": "anthropic",
+      "calls": 6000,
+      "returned_tokens": 3210770,
+      "estimated_tokens": 2845792,
+      "median_rel_error": -16.20103686635945,
+      "median_rel_error_ci": [
+        -16.781230133502863,
+        -15.625
+      ],
+      "mean_abs_rel_error": 18.513735728176293,
+      "mean_abs_rel_error_ci": [
+        18.161105962002267,
+        18.857289753489756
+      ],
+      "worst_abs_rel_error": 66.93548387096774,
+      "within_5pc": 20.166666666666664,
+      "within_10pc": 36.25,
+      "billed_share": 11.206935
+    },
+    {
+      "estimator": "chars/4",
+      "provider": "google",
+      "calls": 3998,
+      "returned_tokens": 1772152,
+      "estimated_tokens": 1896997,
+      "median_rel_error": 4.807692307692308,
+      "median_rel_error_ci": [
+        4.487179487179487,
+        5.434782608695652
+      ],
+      "mean_abs_rel_error": 10.692075534311837,
+      "mean_abs_rel_error_ci": [
+        10.427823368284477,
+        10.98025191410204
+      ],
+      "worst_abs_rel_error": 48.06201550387597,
+      "within_5pc": 34.26713356678339,
+      "within_10pc": 58.27913956978489,
+      "billed_share": 4.744847025
+    },
+    {
+      "estimator": "chars/4",
+      "provider": "openai",
+      "calls": 4000,
+      "returned_tokens": 1778880,
+      "estimated_tokens": 1897195,
+      "median_rel_error": -6.6130298273155415,
+      "median_rel_error_ci": [
+        -7.02247191011236,
+        -6.018518518518518
+      ],
+      "mean_abs_rel_error": 11.581038945403309,
+      "mean_abs_rel_error_ci": [
+        11.265825800362961,
+        11.889960998210444
+      ],
+      "worst_abs_rel_error": 45.45454545454545,
+      "within_5pc": 27.0,
+      "within_10pc": 59.5,
+      "billed_share": 2.0055492
+    },
+    {
+      "estimator": "chars/4",
+      "provider": "openweights",
+      "calls": 1998,
+      "returned_tokens": 947832,
+      "estimated_tokens": 948442,
+      "median_rel_error": -31.222345132743364,
+      "median_rel_error_ci": [
+        -32.02479338842975,
+        -30.729166666666668
+      ],
+      "mean_abs_rel_error": 31.695500160730905,
+      "mean_abs_rel_error_ci": [
+        31.018998993416275,
+        32.35593555060139
+      ],
+      "worst_abs_rel_error": 73.91304347826086,
+      "within_5pc": 3.5035035035035036,
+      "within_10pc": 11.01101101101101,
+      "billed_share": 1.23820008
+    },
+    {
+      "estimator": "words x 1.3",
+      "provider": "anthropic",
+      "calls": 6000,
+      "returned_tokens": 3210770,
+      "estimated_tokens": 2674640,
+      "median_rel_error": -20.869565217391308,
+      "median_rel_error_ci": [
+        -21.315789473684205,
+        -20.142857142857146
+      ],
+      "mean_abs_rel_error": 22.775251163798313,
+      "mean_abs_rel_error_ci": [
+        22.43943424729345,
+        23.119050857145716
+      ],
+      "worst_abs_rel_error": 73.44086021505376,
+      "within_5pc": 8.333333333333332,
+      "within_10pc": 22.0,
+      "billed_share": 11.206935
+    },
+    {
+      "estimator": "words x 1.3",
+      "provider": "google",
+      "calls": 3998,
+      "returned_tokens": 1772152,
+      "estimated_tokens": 1782924,
+      "median_rel_error": -0.8083441981747016,
+      "median_rel_error_ci": [
+        -1.1111111111111087,
+        -0.33333333333332626
+      ],
+      "mean_abs_rel_error": 7.713905187792027,
+      "mean_abs_rel_error_ci": [
+        7.467483029495829,
+        7.963742817587807
+      ],
+      "worst_abs_rel_error": 57.674418604651166,
+      "within_5pc": 46.24812406203102,
+      "within_10pc": 74.23711855927964,
+      "billed_share": 4.744847025
+    },
+    {
+      "estimator": "words x 1.3",
+      "provider": "openai",
+      "calls": 4000,
+      "returned_tokens": 1778880,
+      "estimated_tokens": 1783093,
+      "median_rel_error": -11.864406779661017,
+      "median_rel_error_ci": [
+        -11.979166666666668,
+        -11.363636363636363
+      ],
+      "mean_abs_rel_error": 14.519629351335542,
+      "mean_abs_rel_error_ci": [
+        14.166747649044323,
+        14.866112306034985
+      ],
+      "worst_abs_rel_error": 55.24590163934426,
+      "within_5pc": 21.25,
+      "within_10pc": 42.25,
+      "billed_share": 2.0055492
+    },
+    {
+      "estimator": "words x 1.3",
+      "provider": "openweights",
+      "calls": 1998,
+      "returned_tokens": 947832,
+      "estimated_tokens": 891398,
+      "median_rel_error": -35.0,
+      "median_rel_error_ci": [
+        -35.714285714285715,
+        -34.26966292134831
+      ],
+      "mean_abs_rel_error": 35.70130968184876,
+      "mean_abs_rel_error_ci": [
+        35.04721943659773,
+        36.34361184333128
+      ],
+      "worst_abs_rel_error": 77.3913043478261,
+      "within_5pc": 4.2542542542542545,
+      "within_10pc": 5.255255255255255,
+      "billed_share": 1.23820008
+    },
+    {
+      "estimator": "tiktoken o200k",
+      "provider": "anthropic",
+      "calls": 6000,
+      "returned_tokens": 3210770,
+      "estimated_tokens": 2608320,
+      "median_rel_error": -19.913793103448278,
+      "median_rel_error_ci": [
+        -20.256410256410255,
+        -19.607843137254903
+      ],
+      "mean_abs_rel_error": 23.69235145988383,
+      "mean_abs_rel_error_ci": [
+        23.406566691386534,
+        23.99024439831672
+      ],
+      "worst_abs_rel_error": 75.26881720430107,
+      "within_5pc": 0.0,
+      "within_10pc": 6.833333333333333,
+      "billed_share": 11.206935
+    },
+    {
+      "estimator": "tiktoken o200k",
+      "provider": "google",
+      "calls": 3998,
+      "returned_tokens": 1772152,
+      "estimated_tokens": 1738720,
+      "median_rel_error": -3.133114312856238,
+      "median_rel_error_ci": [
+        -3.296703296703297,
+        -3.076923076923077
+      ],
+      "mean_abs_rel_error": 4.416325429938846,
+      "mean_abs_rel_error_ci": [
+        4.3039838799358465,
+        4.530998468978095
+      ],
+      "worst_abs_rel_error": 21.91780821917808,
+      "within_5pc": 64.75737868934466,
+      "within_10pc": 94.02201100550275,
+      "billed_share": 4.744847025
+    },
+    {
+      "estimator": "tiktoken o200k",
+      "provider": "openai",
+      "calls": 4000,
+      "returned_tokens": 1778880,
+      "estimated_tokens": 1738880,
+      "median_rel_error": -12.82051282051282,
+      "median_rel_error_ci": [
+        -12.987012987012985,
+        -12.345679012345679
+      ],
+      "mean_abs_rel_error": 14.931478140039442,
+      "mean_abs_rel_error_ci": [
+        14.65830523192628,
+        15.188992050534791
+      ],
+      "worst_abs_rel_error": 50.0,
+      "within_5pc": 6.75,
+      "within_10pc": 31.0,
+      "billed_share": 2.0055492
+    },
+    {
+      "estimator": "tiktoken o200k",
+      "provider": "openweights",
+      "calls": 1998,
+      "returned_tokens": 947832,
+      "estimated_tokens": 869285,
+      "median_rel_error": -34.61538461538461,
+      "median_rel_error_ci": [
+        -34.92855834401905,
+        -33.61344537815126
+      ],
+      "mean_abs_rel_error": 36.0808778308254,
+      "mean_abs_rel_error_ci": [
+        35.45894097101621,
+        36.758283305440706
+      ],
+      "worst_abs_rel_error": 77.77777777777779,
+      "within_5pc": 5.005005005005005,
+      "within_10pc": 5.005005005005005,
+      "billed_share": 1.23820008
+    }
+  ]
+}

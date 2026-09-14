@@ -31,6 +31,11 @@ dev = [
   "mypy>=1,<2",
   "ruff>=0.13,<1",
   "types-PyYAML>=6,<7",
+  # OpenAI's real BPE vocabulary, used only by `boundary experiment token-estimates` to give
+  # the estimating design its strongest case (Rule C candidate 2). Development only and
+  # deliberately not a runtime dependency: needing a tokenizer to state a cost is the design
+  # that experiment rejects. Below 1.0 because the encoding registry is still settling.
+  "tiktoken>=0.8,<1",
 ]
 
 [project.scripts]
@@ -42,6 +47,10 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["boundary"]
+# The dated price files ship with the library, so a project that pins a version gets the rates
+# that version was released with. Costing is then reproducible from the pin alone, instead of
+# depending on a price directory each project copies and lets drift.
+artifacts = ["boundary/prices/*.yaml"]
 
 [tool.ruff]
 line-length = 100

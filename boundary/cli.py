@@ -334,6 +334,30 @@ def cmd_bench(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_experiment_token_estimates(args: argparse.Namespace) -> int:
+    """Rule C candidate 2: a local token estimate against the vendor's returned usage."""
+    from boundary.experiment import token_estimates
+
+    result = token_estimates.run(args.run_dir, bootstrap=args.bootstrap)
+    if not result.tiktoken_available:
+        print(
+            "note: tiktoken is not installed, so the strongest-case row is missing "
+            "(uv sync --group dev)",
+            file=sys.stderr,
+        )
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    args.out.write_text(token_estimates.to_json(result) + "\n", encoding="utf-8")
+    rows = token_estimates.format_rows(result)
+    print(f"{result.calls_scored} call(s) scored from {result.run_id or args.run_dir}")
+    print(rows)
+    print(f"results written to {args.out}")
+    if args.write_doc:
+        doc = args.config.resolve().parent.parent / "docs" / "rejected.md"
+        token_estimates.write_doc(doc, rows)
+        print(f"table written to {doc}")
+    return 0
+
+
 def cmd_experiment_remote_ledger(args: argparse.Namespace) -> int:
     """Rule C candidate 3: a central remote ledger against local-first plus merge."""
     import tempfile
@@ -458,6 +482,26 @@ def main(argv: list[str] | None = None) -> int:
         help="fill the table in docs/rejected.md between its markers",
     )
     remote.set_defaults(func=cmd_experiment_remote_ledger)
+
+    tokens = experiment.add_parser(
+        "token-estimates",
+        help="a local token estimate against the vendor's returned usage",
+    )
+    tokens.add_argument(
+        "run_dir",
+        type=Path,
+        help="a drift run directory holding one sub-directory per arm, each with a "
+        "ledger.sqlite and a raw store",
+    )
+    tokens.add_argument("--bootstrap", type=int, default=1000)
+    tokens.add_argument("--out", type=Path, default=Path("bench/token-estimates.json"))
+    tokens.add_argument(
+        "--write-doc",
+        dest="write_doc",
+        action="store_true",
+        help="fill the table in docs/rejected.md between its markers",
+    )
+    tokens.set_defaults(func=cmd_experiment_token_estimates)
 
     args = parser.parse_args(argv)
     try:

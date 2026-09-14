@@ -1,9 +1,16 @@
-# What did not work: a central ledger written over the network
+# What did not work
 
 Rule C of the portfolio plan says every project names an approach it tried and rejected,
 with the evidence. This is that page for Part A. PLAN.md section 9 listed three candidates
-before any of them was measured; this is the third, and it is the one that shaped the code,
-so it is the one written up.
+before any of them was measured. Two are now measured and written up here:
+
+1. **A central ledger written over the network**, the one that shaped the code.
+2. **Costing a call from a local token estimate**, measured on 2026-09-14 once project
+   03's first official run had produced 16,800 real calls to measure against.
+
+---
+
+# A central ledger written over the network
 
 **The approach:** keep the cost ledger in one place from day one. Every call writes its row
 to a central service over the network, so `boundary ledger report` and the portfolio spend
@@ -98,11 +105,134 @@ recorded here rather than hidden: the merge before the monthly budget review is 
 that closes it, and the ledger-against-invoice check from October is what would catch it
 if the step were skipped.
 
-## The other two candidates
+---
 
-PLAN.md section 9 also listed vendor SDKs against raw HTTP, and estimating cost from a
-tokenizer before the call against costing from returned usage. Both need something this
-experiment did not: two SDK releases to diff, and a corpus of live calls whose returned
-usage can be compared with a tokenizer's guess. They stay candidates for v0.2 in October,
-when there are live calls to measure against. Rule C asks for one rejected approach with
-evidence, and this is it.
+# Costing a call from a local token estimate
+
+**The approach:** count the prompt's tokens locally before the call and cost it from that,
+instead of waiting for the usage the vendor returns. Then `costed` would never have to be 0,
+an unknown price would not have to write an uncosted row, and a caller could know what a call
+cost before the response arrived.
+
+**Why it was attractive:** it removes the library's dependence on what each vendor chooses to
+return, and it makes a spend cap exact rather than pessimistic. Caps are checked *before* a
+call, so today the check uses an estimate built from `max_tokens`, which is deliberately
+generous. A real token count would make the cap tight. It would also close the uncosted-row
+gap that the September invoice check had to bound
+([docs/invoice-check.md](invoice-check.md)).
+
+**Why it was rejected:** the estimate is not close enough to bill from, and the way it fails
+is worse than being merely inaccurate. It is accurate in aggregate and wrong per call, which
+is the combination most likely to be trusted and then to mislead.
+
+## The measurement
+
+`boundary experiment token-estimates <run-dir>` scores three estimators against what the
+vendors actually returned, over **15,996 successful calls** from project 03's first official
+drift run of 2026-09-13. Nothing is called and nothing is spent: the run already happened,
+its raw store holds every request body, and its ledgers hold every returned count. The join
+is per arm on the ledger id, and it was checked against the request hashes that the two sides
+record independently.
+
+    chars/4        the universal rule of thumb, no dependency, every vendor
+    words x 1.3    the other common rule of thumb, same properties
+    tiktoken       OpenAI's real BPE vocabulary (o200k_base), the strongest case available
+
+The three are not equally available, and the asymmetry is part of the answer. tiktoken is
+OpenAI's own tokenizer. Anthropic publishes no local tokenizer, and Google's counts come from
+a network call to Google. So for two of the four vendors the best row below is not reachable
+offline even in principle; running o200k_base against them is generous to the estimating
+design, not unfair to it.
+
+The comparison is against the whole prompt the vendor tokenised, `input_tokens +
+cache_read_tokens`. That detail is not cosmetic, and getting it wrong the first time is
+recorded here because it is the kind of error this table exists to catch. Compared against
+`input_tokens` alone, tiktoken's worst OpenAI call looked like a 3,334 percent error and its
+mean absolute error looked like 85.6 percent. Both were artefacts of prompt caching rather
+than of any estimator: on this run OpenAI served 473,600 cached prompt tokens against 433,780
+fresh ones, so the fresh column alone measures how much of the prompt OpenAI happened to have
+cached, which is a property of the vendor's infrastructure. Corrected, the same cell is 14.9
+percent. The two columns are separate because they bill at different rates, and reading the
+wrong one is an easy mistake to make twice.
+
+<!-- token-estimates:start -->
+| Estimator | Vendor | Calls | Median error (95% CI) | Mean absolute error (95% CI) | Worst | Within 10% | Month's input count out by |
+|---|---|---:|---:|---:|---:|---:|---:|
+| chars/4 | anthropic | 6,000 | -16.2% (-16.8 to -15.6) | 18.5% (18.2 to 18.9) | 67% | 36.2% | -11.4% |
+| chars/4 | google | 3,998 | +4.8% (+4.5 to +5.4) | 10.7% (10.4 to 11.0) | 48% | 58.3% | +7.0% |
+| chars/4 | openai | 4,000 | -6.6% (-7.0 to -6.0) | 11.6% (11.3 to 11.9) | 45% | 59.5% | +6.7% |
+| chars/4 | openweights | 1,998 | -31.2% (-32.0 to -30.7) | 31.7% (31.0 to 32.4) | 74% | 11.0% | +0.1% |
+| words x 1.3 | anthropic | 6,000 | -20.9% (-21.3 to -20.1) | 22.8% (22.4 to 23.1) | 73% | 22.0% | -16.7% |
+| words x 1.3 | google | 3,998 | -0.8% (-1.1 to -0.3) | 7.7% (7.5 to 8.0) | 58% | 74.2% | +0.6% |
+| words x 1.3 | openai | 4,000 | -11.9% (-12.0 to -11.4) | 14.5% (14.2 to 14.9) | 55% | 42.2% | +0.2% |
+| words x 1.3 | openweights | 1,998 | -35.0% (-35.7 to -34.3) | 35.7% (35.0 to 36.3) | 77% | 5.3% | -6.0% |
+| tiktoken o200k | anthropic | 6,000 | -19.9% (-20.3 to -19.6) | 23.7% (23.4 to 24.0) | 75% | 6.8% | -18.8% |
+| tiktoken o200k | google | 3,998 | -3.1% (-3.3 to -3.1) | 4.4% (4.3 to 4.5) | 22% | 94.0% | -1.9% |
+| tiktoken o200k | openai | 4,000 | -12.8% (-13.0 to -12.3) | 14.9% (14.7 to 15.2) | 50% | 31.0% | -2.2% |
+| tiktoken o200k | openweights | 1,998 | -34.6% (-34.9 to -33.6) | 36.1% (35.5 to 36.8) | 78% | 5.0% | -8.3% |
+<!-- token-estimates:end -->
+
+## What the numbers say
+
+**No estimator is usable per call.** The best cell in the table is tiktoken against Google, at
+4.4 percent mean absolute error with 94.0 percent of calls within 10 percent. It is also the
+one cell that cannot be obtained offline in practice, and the least deserved: o200k_base is
+not Google's tokenizer, and it happens to fit. Everywhere else the share of calls landing
+within 10 percent of the truth runs from 59.5 percent down to **5.0 percent**. For an
+open-weights Llama model, every estimator is out by about a third on a typical call.
+
+**The monthly total hides all of it, which is the actual finding.** Compare the last column
+with the one before it. chars/4 on the open-weights host gets the month's input count right to
+**+0.1 percent** while getting the typical call wrong by **-31.2 percent**, landing within 10
+percent on 11.0 percent of calls. words x 1.3 on OpenAI is +0.2 percent for the month and 42.2
+percent within 10 percent per call. Over-estimates and under-estimates cancel, so a monthly
+reconciliation against an invoice would look healthy while nearly every individual row was
+wrong.
+
+That is fatal for what this library uses the number for. A spend cap is checked before a
+single call. A per-team budget in Part B refuses a single request. A per-call cost is what
+goes in the ledger row, and the ledger is the product (PLAN.md section 2.4). An estimator that
+is right on average and wrong in every row is useless for all three, and worse than useless
+because the monthly check that is supposed to catch errors would not catch this one.
+
+**Even the vendor's own tokenizer misses, and always in the same direction.** tiktoken against
+OpenAI has a median error of -12.8 percent (-13.0 to -12.3): consistently under, never
+centred. The estimators see the message text, and the vendor counts the chat template around
+it too, which a caller cannot see before the call. A signed, consistent bias is the shape of a
+missing constant rather than of noise, so it is tempting to correct it with a per-vendor fudge
+factor. That was not done and should not be. The factor would be fitted on one run of one
+suite, and the next model version would move it silently, which is the same class of mistake
+as guessing a price.
+
+## What was kept from the idea
+
+Nothing about the costing path changed. The rule stands: cost comes from returned usage and a
+dated price file, and an unknown price writes an uncosted row rather than an estimate.
+
+What the measurement did change is the confidence in a number that was already there. The
+pre-call cap check has to estimate, because before the request leaves there is nothing else to
+estimate from. It estimates from `max_tokens`, which is a bound rather than a guess, and it is
+deliberately pessimistic: it refuses early rather than late. This experiment says that making
+it "smarter" with a tokenizer would trade a bound that is honest for an estimate wrong by 5 to
+35 percent per call with no bound at all. The pessimistic check is the right one, and there is
+now evidence for it rather than a preference.
+
+The uncosted row stays too. Nine rows in September were uncosted because a price entry did not
+exist yet, worth about US$0.0025 in total. The alternative on offer was to fill those nine
+rows with a number wrong by about a third. Nine honest gaps are worth more than 70,834
+plausible fictions.
+
+## Reproducing this
+
+    boundary experiment token-estimates path/to/03/drift/runs/2026-09
+
+About three minutes, no network, no cost. `bench/token-estimates.json` holds the full result
+including the per-vendor token totals. tiktoken is a development dependency and deliberately
+not a runtime one: needing a tokenizer to state a cost is the design this experiment rejects.
+
+---
+
+## The remaining candidate
+
+PLAN.md section 9 also listed vendor SDKs against raw HTTP. That one needs two SDK releases to
+diff, which this project does not have yet. It stays a candidate.
