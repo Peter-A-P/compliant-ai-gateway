@@ -33,6 +33,13 @@ results are in `bench/results.json`. Overhead is the library's own cost per call
 machine that ran it: resolving, building, cap checks, two ledger writes, telemetry and
 parsing, with the upstream answering instantly.
 
+The invoice column stays empty until the vendors issue September's invoices in October.
+The rest of that check is already done and written up in
+[docs/invoice-check.md](docs/invoice-check.md): 70,834 real calls across three projects
+merged into one ledger, US$61.3551 to 2026-09-14, reconciling with project 03's independent
+accounting to within US$0.000001 over 35,728 of those calls. Nine rows are uncosted, which is
+the no-guessed-prices rule doing its job, and the document bounds what they hide.
+
 **Gateway (Part B)**
 
 | Layer | Load (rps) | Overhead p50 / p95 / p99 ms (95% CI) |
