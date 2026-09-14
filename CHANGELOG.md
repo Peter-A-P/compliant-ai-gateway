@@ -28,10 +28,15 @@ major version are additive only; see docs/interface.md.
 - **Claude on Foundry is unavailable to a Free Trial subscription, and the error does not say
   so.** Deploying `claude-haiku-4-5` Global Standard in `eastus2` on 2026-09-14 was refused
   with "Insufficient quota" on **both** offered model versions. Microsoft's quota table gives
-  the documented default for that subscription type: 80 RPM, on either version. So the
-  observation contradicts the table and **the cause is not established**. Recorded in
-  `docs/hyperscaler-setup.md` step 3a as an open question with the diagnosis, rather than an
-  answer.
+  the documented default for that subscription type: 80 RPM, on either version. **Measured
+  through the ARM API rather than inferred from the error**: all 19 Claude quota entries in
+  `eastus2` read zero, while 159 other AIServices quotas in the same region are non-zero, so
+  the subscription is provisioned normally and only the Anthropic models are at zero. Same in
+  `eastus`, `centralus` and `swedencentral`, on both hosting versions; `canadacentral` has no
+  Claude quota entry at all, which confirms the region finding from the resource provider
+  rather than the documentation. The documented default is a ceiling you may request, not an
+  allowance you receive. `docs/hyperscaler-setup.md` step 3a has the one-line `az` command
+  that reproduces it.
 
   **Two wrong explanations were published here first and are corrected rather than deleted**,
   because one of them reached the portfolio site. The first said the Azure-hosted version was

@@ -98,47 +98,59 @@ Two corrections fall out of that table:
 - **The hosting version is not the gate.** Both versions are marked quota-allocatable for
   haiku on pay-as-you-go, with the same default. Neither is privileged.
 
-**The cause here is not yet established, and this section has been wrong twice.** The
-observation is: a **pay-as-you-go** subscription, a resource in `eastus2`, `claude-haiku-4-5`
-on Global Standard, both offered model versions (`2` and `20251011`) refused with
-"Insufficient quota". That contradicts the table directly, which gives pay-as-you-go 80 RPM
-for exactly that model and deployment type on either version.
+**Answered 2026-09-14 by asking the API instead of reading the error.** The published
+default and the allocated default are not the same number. Microsoft's table says a
+pay-as-you-go subscription gets 80 RPM for `claude-haiku-4-5` on Global Standard. What a real
+pay-as-you-go subscription actually has is **zero, for every Claude model, in every region
+that offers them**.
 
-Two explanations were written here and both were wrong: that the Azure-hosted version was
-rationed while the Anthropic-hosted one was not (the table marks both allocatable with the
-same default), and that the subscription must be a Free Trial (it is not). Both were inferred
-from the error message. Neither was checked against the number the portal will simply show
-you. So the rest of this section is the diagnosis rather than an answer.
+Reproduce it in one command, which is the point of writing this down:
 
-**Read the actual allocation first.** The Quota page in the Foundry portal, or the "Manage
-quota" button in the deployment dialog, shows the quota this subscription really has per model
-and deployment type. Everything below depends on what that number is, and nothing should be
-concluded before reading it.
+```
+az cognitiveservices usage list -l eastus2 \
+  --query "[?contains(to_string(name.value),'laude')].{quota:name.value, limit:limit}" -o table
+```
 
-- **If it shows the documented default (80 RPM for haiku)** then the deployment is failing for
-  a reason the message misattributes, and the next thing to check is the project rather than
-  the subscription. The dialog says "cannot be deployed to your current **project**" and
-  offers "Select another project" as its first remedy. A Foundry project belongs to a region,
-  and a project left in Canada Central would refuse every Claude model, because none is offered
-  there. Confirm which region the *selected project* is in, not which region was being browsed.
-- **If it shows zero** then the documented default has not been applied to this subscription,
-  which is a quota request rather than a configuration problem. The
-  [request form](https://aka.ms/oai/stuquotarequest) is the route, and requests are "evaluated
-  individually and aren't guaranteed to be approved".
-- **Either way, do not change the region to work around it.** Quota is allocated per
-  subscription and shared across regions for Global Standard, so moving the resource cannot
-  change the number.
+What that returned here, on subscription quota id `PayAsYouGo_2014-09-01` with the spending
+limit off:
 
-Worth also confirming once, because both are prerequisites that fail late rather than early:
-the Azure Marketplace terms were accepted on the first Claude deployment, and the
-`Microsoft.SaaS` resource provider is registered on the subscription.
+| Check | Result |
+|---|---|
+| Claude quota entries in `eastus2` | 19 |
+| ...of which non-zero | **0** |
+| `claude-haiku-4-5` in `eastus`, `centralus`, `swedencentral` | limit 0, both versions |
+| `claude-haiku-4-5` in `canadacentral` | **no quota entry at all** |
+| Non-Claude AIServices quotas in `eastus2` | **159 non-zero** (`OpenAI.Standard.gpt-35-turbo` at 200, and so on) |
 
-**Why this is in a compliance project's notes at all.** The failure presents as a
-per-deployment capacity message. That reads like a transient regional shortage and invites
-changing the region, the model or the version, and on this platform quota is per subscription,
-so none of those can move it. Whatever the cause turns out to be here, the error points away
-from it. That is a procurement observation worth having before a pilot is scheduled around
-this platform, and it is the part of this section that has survived being wrong twice.
+The last row is what makes the rest meaningful. The subscription is provisioned normally and
+has working allocations for everything else in the same service. Only the Anthropic models are
+at zero, and they are at zero everywhere, on both hosting versions: the API exposes them
+separately as `AIServices.GlobalStandard.claude-haiku-4-5` and
+`...claude-haiku-4-5.Azure`, and both read 0.
+
+So the earlier readings were wrong for an interesting reason rather than a careless one. This
+is not a Free Trial, not a regional shortage, and not a property of the hosting option. **The
+documented "default" describes a ceiling you may request, not an allowance you receive.** On
+this platform Claude quota starts at zero and stays there until somebody grants it, through
+[the request form](https://aka.ms/oai/stuquotarequest), which is "evaluated individually and
+aren't guaranteed to be approved".
+
+The `canadacentral` row is worth noticing on its own: the region has no Claude quota *entries*,
+where the others have entries set to zero. That is the region-availability finding confirmed
+from a second, independent source, the resource provider rather than the documentation table.
+
+**Why a compliance project writes this down.** Three separate readings of the same failure
+were wrong before the number was looked up, and each wrong reading was plausible, actionable
+and would have wasted a day: change the hosting version, change the subscription, change the
+region. The error message supports all three and none of them is the cause. A team evaluating
+this platform on a schedule will burn that time, and the honest thing to put in a procurement
+note is that Claude on Foundry has a gate before the first call which is neither technical nor
+priced: an approval, with an unknown lead time and no guarantee. That belongs in a go-live
+plan, not in a troubleshooting appendix.
+
+**What it means for this repository.** The Foundry adapter stays written, tested against
+goldens, and uncalled. It owes one live row and cannot have one until the quota request is
+granted. That is recorded as the reason rather than left as an unticked box.
 
 ### 4. Collect the two values
 

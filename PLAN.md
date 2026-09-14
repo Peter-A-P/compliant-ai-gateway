@@ -511,10 +511,13 @@ say "residency".
 **Corrected the same day, after reading the quota table rather than inferring from the
 error.** The refusal was not about the hosting option. Both Claude versions were refused in
 `eastus2` on a pay-as-you-go subscription, which the quota table says should have 80 RPM for
-that model on either version. The cause is **not established**; two explanations were written
-here the same day and both were wrong, each inferred from the error message rather than read
-from the portal's own quota page. `docs/hyperscaler-setup.md` carries the diagnosis and the
-open question rather than a third guess.
+that model on either version. **Measured the same day through the ARM API**: the subscription
+holds 19 Claude quota entries in `eastus2` and every one reads zero, while 159 other
+AIServices quotas in the same region are non-zero. The same zero holds in `eastus`,
+`centralus` and `swedencentral`, on both hosting versions, and `canadacentral` has no Claude
+quota entry at all. So the documented default describes a ceiling that may be requested, not
+an allowance that is granted, and Claude on Foundry has an approval gate before the first
+call. `docs/hyperscaler-setup.md` has the command that reproduces it.
 
 What has survived being wrong twice, and is the part Part B should state: quota on this
 platform is allocated per subscription and shared across regions, so a per-deployment capacity
