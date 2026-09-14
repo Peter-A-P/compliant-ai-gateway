@@ -128,9 +128,7 @@ class GoogleBatchAdapter(GoogleAdapter):
         raw = self._object(status, headers, body)
         name = raw.get("name")
         if not isinstance(name, str) or not name:
-            raise ProviderError(
-                "google", status, "batch create returned no name", headers=headers
-            )
+            raise ProviderError("google", status, "batch create returned no name", headers=headers)
         return BatchSubmitted(
             batch_id=name,
             processing_status=str(raw.get("state", "JOB_STATE_PENDING")),
@@ -244,9 +242,7 @@ class GoogleBatchAdapter(GoogleAdapter):
             )
         return f"{provider.base_url.rstrip('/')}/{version}/{safe}"
 
-    def _object(
-        self, status: int, headers: Mapping[str, str], body: bytes
-    ) -> dict[str, Any]:
+    def _object(self, status: int, headers: Mapping[str, str], body: bytes) -> dict[str, Any]:
         if not 200 <= status < 300:
             raise ProviderError(
                 "google", status, body.decode("utf-8", "replace")[:500], headers=headers

@@ -210,9 +210,7 @@ class UploadingBatchAdapter(BatchAdapter, Protocol):
         api_key: str | None,
     ) -> BuiltRequest: ...
 
-    def parse_batch_upload(
-        self, status: int, headers: Mapping[str, str], body: bytes
-    ) -> str:
+    def parse_batch_upload(self, status: int, headers: Mapping[str, str], body: bytes) -> str:
         """The uploaded file's id, which the create call names."""
         ...
 

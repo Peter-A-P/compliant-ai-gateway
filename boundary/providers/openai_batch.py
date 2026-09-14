@@ -327,9 +327,7 @@ class OpenAICompatBatchAdapter(OpenAICompatAdapter):
             headers["authorization"] = f"Bearer {api_key}"
         return headers
 
-    def _object(
-        self, status: int, headers: Mapping[str, str], body: bytes
-    ) -> dict[str, Any]:
+    def _object(self, status: int, headers: Mapping[str, str], body: bytes) -> dict[str, Any]:
         if not 200 <= status < 300:
             raise ProviderError(
                 "openai_compat", status, body.decode("utf-8", "replace")[:500], headers=headers
@@ -341,9 +339,7 @@ class OpenAICompatBatchAdapter(OpenAICompatAdapter):
                 "openai_compat", status, body.decode("utf-8", "replace")[:500], headers=headers
             ) from e
         if not isinstance(raw, dict):
-            raise ProviderError(
-                "openai_compat", status, "expected a JSON object", headers=headers
-            )
+            raise ProviderError("openai_compat", status, "expected a JSON object", headers=headers)
         return raw
 
 

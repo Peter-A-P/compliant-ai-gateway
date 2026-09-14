@@ -56,9 +56,7 @@ def _google_provider(**kw: object) -> ProviderConfig:
     return ProviderConfig(**defaults)
 
 
-def _items(
-    provider: ProviderConfig, n: int = 2, model: str = "gpt-5-nano"
-) -> list[BatchItem]:
+def _items(provider: ProviderConfig, n: int = 2, model: str = "gpt-5-nano") -> list[BatchItem]:
     out: list[BatchItem] = []
     for i in range(n):
         ref = ModelRef(provider="openai", model=model, provider_config=provider)
@@ -214,8 +212,18 @@ def test_results_parse_successes_errors_and_non_2xx_lines() -> None:
         },
         "error": None,
     }
-    failed = {"id": "b2", "custom_id": "uid-1", "response": None, "error": {"code": "rate_limit", "message": "slow down"}}
-    http_err = {"id": "b3", "custom_id": "uid-2", "response": {"status_code": 400, "body": {}}, "error": None}
+    failed = {
+        "id": "b2",
+        "custom_id": "uid-1",
+        "response": None,
+        "error": {"code": "rate_limit", "message": "slow down"},
+    }
+    http_err = {
+        "id": "b3",
+        "custom_id": "uid-2",
+        "response": {"status_code": 400, "body": {}},
+        "error": None,
+    }
     body = ("\n".join(json.dumps(x) for x in (ok, failed, http_err))).encode()
 
     out = {r.custom_id: r for r in a.parse_batch_results(200, {}, body)}
@@ -231,8 +239,22 @@ def test_results_parse_successes_errors_and_non_2xx_lines() -> None:
 def test_results_are_matched_by_custom_id_not_by_order() -> None:
     a = OpenAICompatBatchAdapter()
     rows = [
-        {"custom_id": "uid-1", "response": {"status_code": 200, "body": {"choices": [{"message": {"content": "second"}}]}}, "error": None},
-        {"custom_id": "uid-0", "response": {"status_code": 200, "body": {"choices": [{"message": {"content": "first"}}]}}, "error": None},
+        {
+            "custom_id": "uid-1",
+            "response": {
+                "status_code": 200,
+                "body": {"choices": [{"message": {"content": "second"}}]},
+            },
+            "error": None,
+        },
+        {
+            "custom_id": "uid-0",
+            "response": {
+                "status_code": 200,
+                "body": {"choices": [{"message": {"content": "first"}}]},
+            },
+            "error": None,
+        },
     ]
     body = ("\n".join(json.dumps(x) for x in rows)).encode()
     out = {r.custom_id: r for r in a.parse_batch_results(200, {}, body)}

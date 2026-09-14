@@ -56,9 +56,7 @@ def _uploaded() -> httpx.Response:
 
 
 def _created() -> httpx.Response:
-    return httpx.Response(
-        200, json={"id": BATCH_ID, "object": "batch", "status": "validating"}
-    )
+    return httpx.Response(200, json={"id": BATCH_ID, "object": "batch", "status": "validating"})
 
 
 def _completed() -> httpx.Response:
@@ -85,9 +83,7 @@ def _results(custom_ids: list[str]) -> httpx.Response:
                         "status_code": 200,
                         "body": {
                             "model": "gpt-5-nano",
-                            "choices": [
-                                {"message": {"content": f"a{i}"}, "finish_reason": "stop"}
-                            ],
+                            "choices": [{"message": {"content": f"a{i}"}, "finish_reason": "stop"}],
                             "usage": {"prompt_tokens": 7, "completion_tokens": 3},
                         },
                     },

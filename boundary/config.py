@@ -34,9 +34,7 @@ class ProviderKind(StrEnum):
 
 # Which provider kinds serve a batch endpoint unless a provider entry says otherwise. See
 # ProviderConfig.batches for why openai_compat is not in here.
-_BATCHES_BY_DEFAULT = frozenset(
-    {ProviderKind.ANTHROPIC, ProviderKind.GOOGLE}
-)
+_BATCHES_BY_DEFAULT = frozenset({ProviderKind.ANTHROPIC, ProviderKind.GOOGLE})
 
 
 class _Strict(BaseModel):
@@ -71,6 +69,7 @@ class ProviderConfig(_Strict):
         if self.batches is not None:
             return self.batches
         return self.kind in _BATCHES_BY_DEFAULT
+
     # OpenAI-compatible hosts only: OpenAI's newer models take max_completion_tokens, every
     # other compatible host takes max_tokens. Ignored by other adapter kinds.
     max_tokens_field: Literal["max_tokens", "max_completion_tokens"] = "max_tokens"

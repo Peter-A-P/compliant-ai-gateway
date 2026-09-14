@@ -289,7 +289,8 @@ def run(run_dir: Path, *, seed: int = 20260913, bootstrap: int = 1000) -> Experi
                     estimated_tokens=estimated,
                     median_rel_error=statistics.median(rel) * 100.0,
                     median_rel_error_ci=tuple(  # type: ignore[arg-type]
-                        v * 100.0 for v in _bootstrap_ci(rel, statistics.median, n=bootstrap, rng=rng)
+                        v * 100.0
+                        for v in _bootstrap_ci(rel, statistics.median, n=bootstrap, rng=rng)
                     ),
                     mean_abs_rel_error=statistics.fmean(abs_rel) * 100.0,
                     mean_abs_rel_error_ci=tuple(  # type: ignore[arg-type]
