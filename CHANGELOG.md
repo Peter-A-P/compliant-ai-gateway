@@ -25,6 +25,18 @@ major version are additive only; see docs/interface.md.
   dated then; a rate written weeks early carries a date that lies about when it was checked.
   Foundry bills in Claude Consumption Units at US$0.01 per CCU rated at standard USD rates, so
   the invoice check divides the Azure line item by 100 before comparing.
+- **Foundry offers no Claude model in a Canadian region, which is a finding rather than a
+  blocker.** A Foundry resource created in Canada Central on 2026-09-14 had no Anthropic model
+  to deploy, and Microsoft's own region table agrees: every `claude-*` row reads `-` against
+  `canadacentral` and `canadaeast`, in both hosting versions. The Data Zone deployment type,
+  the one narrower control on offer, exists only for the United States. So Foundry gives a
+  Canadian buyer two choices for Claude, global routing or the US, and neither is Canada.
+  `docs/hyperscaler-setup.md` carries the region lists and the source; PLAN.md B2.2 is amended
+  because Part B's residency design had assumed the Canadian set was non-empty. It can be
+  empty, and the worked example should show that refusal rather than design around it, which
+  demonstrates failing closed better than a policy that always finds a route. The earlier
+  wording in this repository said a Canadian deployment "is achievable"; for Claude on Foundry
+  that was wrong and it is corrected.
 - **Batches for OpenAI, Together and Gemini**, which until now only Anthropic had. Project
   02's own-run panel batched 9,292 of its 9,298 Anthropic calls and none of the other 18,000,
   because there was nothing to batch them with: US$11.24 of that run went at full price where

@@ -4,7 +4,8 @@ The two adapters are written and tested. Neither has been called, because neithe
 exists. This is what has to be created, where, and in what order, and what to bring back into
 this repository afterwards.
 
-Read the two warnings at the bottom before you start. One of them may change what you set up.
+Read the two warnings at the bottom before you start. The first one decides which Azure region
+you create the Foundry resource in, and a Canadian one will not work, so read it first.
 
 ---
 
@@ -19,6 +20,11 @@ inside it.
 In the [Foundry portal](https://ai.azure.com/), create a Foundry resource, or create a Foundry
 project which creates one for you. A **resource** holds the security and billing configuration;
 **deployments** inside it are what you actually call.
+
+**The region matters, and Canada will not work.** A resource in Canada Central or Canada East
+offers no Anthropic model at all; see the residency section below, which is the finding rather
+than an aside. Use `eastus2` for the widest Claude coverage, or `eastus` or `centralus` for
+`claude-haiku-4-5`.
 
 Note the **resource name**. It becomes the host: `https://{resource}.services.ai.azure.com`.
 
@@ -41,9 +47,10 @@ Four choices here, and three of them are permanent or cost money:
   Keep the default (`claude-haiku-4-5`) unless you have a reason not to: the price file
   already has entries for the default names, and a custom name needs its own entry or its
   calls are uncosted.
-- **Region scope.** `Global`, or `Data Zone` for models hosted on Azure. **Data Zone keeps
-  inference in the United States and costs 1.1x.** It is not in the price file. If you pick
-  it, it needs its own entry with its own numbers.
+- **Region scope.** `Global`, or `Data Zone` for models hosted on Azure. **The only data
+  zone is the United States**: Europe and Asia Pacific read "Not available" and there is no
+  Canadian one. US Data Zone keeps inference in the United States and costs 1.1x. It is not
+  in the price file, so if you pick it, it needs its own entry with its own numbers.
 - **Model version.** Each hosting option is a separate version: version 1 is Hosted on
   Anthropic, version 2 is Hosted on Azure. Hosted on Azure keeps prompts and completions
   inside Azure and supports fewer features.
@@ -186,51 +193,65 @@ boundary smoke vertex
 
 ### What "Canadian residency" can and cannot mean
 
-This is the thing to get right before Part B is built on it, and the honest answer is
-narrower than the phrase suggests.
+Tried on 2026-09-14, and the answer is narrower than the phrase suggests and narrower again
+than this document first claimed.
 
-**What is achievable:** a resource group and a deployment in a Canadian region, Canada Central
-or Canada East on Azure, `northamerica-northeast1` (Montreal) or `northamerica-northeast2`
-(Toronto) on Google Cloud. The resource lives in Canada, the deployment lives in Canada, and
-that is a real and checkable property.
+**On Foundry, for Claude, there is no Canadian option at all.** A Foundry resource created in
+Canada Central offers no Anthropic model to deploy. That is not a quirk of one subscription:
+Microsoft's own region table for partner models shows `-` against `canadacentral` and
+`canadaeast` for every `claude-*` row, in both hosting versions
+([Region availability by deployment type](https://learn.microsoft.com/en-us/azure/foundry/foundry-models/concepts/models-from-partners#region-availability-by-deployment-type),
+read 2026-09-14). The partner models that *are* offered in the Canadian regions are Mistral,
+Codestral, Ministral and Llama-4-Scout, none of which speak the Anthropic Messages shape this
+adapter is built for.
 
-**What is usually not achievable:** a guarantee that inference itself runs in Canada. A model
-deployed into a Canadian resource group is commonly still served on a *global* deployment, so
-the tokens may be processed elsewhere. Dedicated, guaranteed in-country processing is the
-exception rather than the rule: where it exists at all it is expensive, and for many models it
-simply is not offered.
+Where Claude can be deployed on Global Standard in the Americas: `centralus`, `eastus`,
+`eastus2`, `northcentralus`, `southcentralus`, `westcentralus`, `westus`, `westus3`. Not
+`canadacentral`, not `canadaeast`, not `brazilsouth`, not `westus2`. In Europe the single
+region is `swedencentral`.
 
-So the claim this gateway can support is **"deployed in Canada"**, not **"processed only in
-Canada"**. Those are different claims and only one of them is true, which is exactly the kind
-of distinction a compliance product exists to keep straight. A gateway that logged a Canadian
-region and let a reader infer Canadian processing would be doing the thing this project was
-built to stop.
+And the narrower deployment type does not help: **Data Zone Standard exists only for the
+United States.** Europe and Asia Pacific both read "Not available", and there is no Canadian
+data zone to ask for. So Foundry offers a Canadian buyer exactly two choices for Claude,
+global routing or the US data zone, and neither is Canada.
 
-The practical consequences:
+**The general shape, across platforms.** Deployment region and processing region are
+different things and they fail differently:
 
-- `region` in the ledger is the **deployment region**. It is not evidence of where inference
-  ran. Part B's residency policy enforces where a request is *allowed to be sent*, which is a
-  routing decision, and that is all it should ever claim.
-- Vertex's three endpoint types differ in what they serve, and the regional ones lag:
+| | Deployment in Canada | Processing guaranteed in Canada |
+|---|---|---|
+| Foundry, Claude | **not offered** | not offered |
+| Foundry, other partner models | Canada Central and Canada East | no, Global Standard routes anywhere |
+| Vertex, Claude | `northamerica-northeast1` exists, older models only | no |
 
-  | Type | Host | Models |
-  |---|---|---|
-  | Global | `aiplatform.googleapis.com` | all, no premium |
-  | Multi-region | `aiplatform.{us,eu}.rep.googleapis.com` | `us` and `eu` only, 10 percent premium |
-  | Regional | `{region}-aiplatform.googleapis.com` | Claude Sonnet 4.6 and earlier, 10 percent premium |
+Even where a Canadian deployment exists, it is commonly still served by a global deployment,
+so the tokens may be processed elsewhere. Dedicated, guaranteed in-country processing is the
+rare and expensive exception, and for Claude on Foundry it is not on the menu at any price.
 
-  There is no Canadian multi-region. So `northamerica-northeast1` with **Claude Sonnet 4.6** is
-  the combination to try first; a newest-generation model pinned to Montreal may not exist.
-- Where a platform does offer a narrower inference geography, it is a separate, priced thing
-  and it is worth taking. Foundry's **US Data Zone** deployment keeps inference in the United
-  States at 1.1x, which is the same lever as `inference_geo: "us"` on the Claude API. There is
-  no Canadian equivalent. It is listed here because it shows the shape such a control takes
-  when it exists, and its absence for Canada is the finding.
+So the claim this gateway can support is, at most, **"deployed in Canada"**, and for some
+platform and model pairs not even that. It is never **"processed only in Canada"**. Those are
+different claims and a compliance product that let a reader slide from the first to the second
+would be doing the thing this project exists to stop.
 
-Check what Model Garden and the Foundry catalogue actually offer in the Canadian regions while
-you are in there, and write down what you find. "Deployed in Canada, processed globally" is a
-perfectly defensible position for most regulated workloads, and it is defensible precisely
-because it is stated rather than implied.
+The practical consequences, which Part B is written against:
+
+- `region` in the ledger is **where the request was sent**. It is the thing the gateway
+  controls and the thing a routing policy can enforce. It is not evidence of where inference
+  ran, and nothing in this repository should be read as claiming it is.
+- A residency policy that fails closed will, on real vendor availability, sometimes refuse the
+  work rather than find a compliant route. That is the correct behaviour and it is also the
+  honest finding: for a Canadian buyer wanting Claude on Azure today, the compliant set is
+  empty. Part B's Canadian worked example has to show that outcome rather than design around
+  it.
+- Where a platform does offer a narrower inference geography it is a separate, priced thing
+  and worth taking. Foundry's US Data Zone keeps inference in the United States at 1.1x, the
+  same lever as `inference_geo: "us"` on the Claude API. Its Canadian counterpart does not
+  exist, and that absence is the measurement.
+
+For the smoke call, then: create the Foundry resource in a region that actually serves Claude.
+`eastus2` has the widest coverage; `eastus` or `centralus` will serve `claude-haiku-4-5`,
+which is the cheapest way to prove the path. Keep the Canada Central resource if you like. It
+costs nothing idle and it is the evidence.
 
 ### The Vertex token expires hourly, and nothing here refreshes it
 

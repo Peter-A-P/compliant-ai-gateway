@@ -487,6 +487,18 @@ Each request carries `X-Data-Class`: `public`, `internal`, `personal` or `sensit
 Absent means `personal`: fail closed. The policy file maps a class to allowed providers and
 regions and to required layers (for example, `personal` requires redaction and forbids the
 cache). Residency is expressed as region sets; the Canadian set is the worked example.
+
+**Amended 2026-09-14, from the vendor tables rather than from the plan's assumption.** The
+Canadian set can be empty, and for the most obvious case it is. Microsoft Foundry offers no
+Anthropic model in `canadacentral` or `canadaeast` in either hosting version, and its only
+Data Zone is the United States; Vertex has a Montreal regional endpoint but it serves Sonnet
+4.6 and earlier, and there is no Canadian multi-region. So for a Canadian buyer wanting a
+current Claude model on Azure today, the compliant provider set is empty. The worked example
+has to *show* that refusal rather than design around it, which is a better demonstration of
+failing closed than a policy that always finds a route. It also fixes the wording of the claim
+throughout: `region` records where a request was **sent**, which is what a gateway controls,
+and never where tokens were **processed**, which the vendor controls and mostly does not
+guarantee. See `docs/hyperscaler-setup.md`.
 The gateway never guesses a classification from content; a gateway that did would be
 making a compliance decision nobody reviewed. Violations are refused with a reason and
 audited.
