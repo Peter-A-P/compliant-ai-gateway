@@ -17,6 +17,9 @@ providers:
     base_url: https://api.openai.com/v1
     api_key_env: OPENAI_API_KEY
     max_tokens_field: max_completion_tokens
+    # This host has /v1/files and /v1/batches. `openai_compat` does not imply that, because
+    # most compatible hosts serve chat completions and nothing else, so each one says.
+    batches: true
   google:
     kind: google
     base_url: https://generativelanguage.googleapis.com
@@ -28,11 +31,51 @@ providers:
     kind: openai_compat
     base_url: https://api.together.xyz/v1
     api_key_env: OPENWEIGHTS_API_KEY
+    # Together's batch endpoint is OpenAI-shaped. Note that its discount is per model rather
+    # than across the board: only Llama-3.3-70B-Instruct-Turbo runs at half price, and
+    # gpt-oss-120b runs at the standard rate, which is what the price file says.
+    batches: true
   # Local server for 02 at price zero. No key.
   local:
     kind: openai_compat
     base_url: http://127.0.0.1:11434/v1
     price_zero: true
+
+  # -- hyperscaler platforms (v0.2, adapters written 2026-09-14) ---------------------------
+  #
+  # Both entries are inert until their credentials exist: nothing routes to them, and the
+  # key is only read when a call actually uses the provider. Neither has been exercised
+  # live, and neither has a price entry yet, so a call through either one writes an
+  # UNCOSTED row today. That is the designed behaviour, not an oversight: a price is
+  # copied from the vendor's page on the day the account exists and is dated then, because
+  # a rate written weeks early carries a date that lies about when it was checked.
+  #
+  # Claude on Microsoft Foundry. base_url is the resource's Target URI from the Foundry
+  # portal, ending in /anthropic. The deployment name goes in the model identifier and may
+  # differ from the model id, so the price file is keyed by deployment name.
+  # Billing: Azure Marketplace, in Claude Consumption Units at US$0.01 per CCU, rated at the
+  # standard per-model USD rates. So the ledger costs in USD and the Azure line item is in
+  # CCUs: 100 CCU is US$1.00, and the invoice check divides before it compares.
+  # A US Data Zone deployment carries a 1.1x multiplier and is a separate price entry.
+  foundry:
+    kind: azure_foundry
+    base_url: https://REPLACE-ME.services.ai.azure.com/anthropic
+    api_key_env: AZURE_FOUNDRY_API_KEY
+    api_version: "2023-06-01"
+
+  # Claude on Google Vertex AI via rawPredict. `project` is the Google Cloud project id,
+  # which Vertex carries in the URL. `region` is a residency decision and the host must
+  # agree with it: the adapter refuses a base_url whose region differs from the route's,
+  # rather than quietly sending data to the other geography.
+  # northamerica-northeast1 is Montreal, which is the Canadian worked example Part B's
+  # residency policy builds on. Regional and multi-region endpoints carry a 10 percent
+  # premium over global, so the region is part of the price key and not only of the route.
+  vertex:
+    kind: gcp_vertex
+    base_url: https://northamerica-northeast1-aiplatform.googleapis.com
+    region: northamerica-northeast1
+    project: REPLACE-ME
+    api_key_env: GOOGLE_VERTEX_ACCESS_TOKEN
 
 # Aliases. Standard mode only; pass-through refuses them.
 routes:
@@ -49,7 +92,11 @@ routes:
     provider: anthropic
     model: claude-opus-5
 
-prices: prices
+# The price files live in the package, at boundary/prices/, and ship with it. `builtin`
+# means those, and every project that installs boundary reads the same ones at whatever
+# version it pinned. Point this at a directory instead only to try a rate before it is
+# released, and never to keep a second copy.
+prices: builtin
 caps: caps.yaml
 
 defaults:

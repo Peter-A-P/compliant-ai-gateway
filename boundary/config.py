@@ -32,6 +32,13 @@ class ProviderKind(StrEnum):
     GCP_VERTEX = "gcp_vertex"  # v0.2
 
 
+# Which provider kinds serve a batch endpoint unless a provider entry says otherwise. See
+# ProviderConfig.batches for why openai_compat is not in here.
+_BATCHES_BY_DEFAULT = frozenset(
+    {ProviderKind.ANTHROPIC, ProviderKind.GOOGLE}
+)
+
+
 class _Strict(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -45,8 +52,25 @@ class ProviderConfig(_Strict):
     api_key_env: str | None = None
     api_version: str | None = None
     region: str | None = None
+    # gcp_vertex only: the Google Cloud project id, which Vertex carries in the URL rather
+    # than in a header. Additive and optional, so every existing configuration still loads.
+    project: str | None = None
+    # Whether this host serves a batch endpoint. None means "the default for this kind":
+    # on for anthropic and google, where batches are part of the vendor's API, and OFF for
+    # openai_compat, where they are not part of the compatibility surface. Ollama, vLLM and
+    # a dozen other hosts answer /v1/chat/completions and have no /v1/batches, so a
+    # compatible host has to say so rather than be assumed to have one. Set it explicitly to
+    # override either default.
+    batches: bool | None = None
     price_zero: bool = False
     headers: dict[str, str] = Field(default_factory=dict)
+
+    @property
+    def serves_batches(self) -> bool:
+        """Whether a batch may be submitted to this provider entry."""
+        if self.batches is not None:
+            return self.batches
+        return self.kind in _BATCHES_BY_DEFAULT
     # OpenAI-compatible hosts only: OpenAI's newer models take max_completion_tokens, every
     # other compatible host takes max_tokens. Ignored by other adapter kinds.
     max_tokens_field: Literal["max_tokens", "max_completion_tokens"] = "max_tokens"
@@ -200,6 +224,22 @@ def _read_yaml(path: Path) -> dict[str, Any]:
     return data
 
 
+# A `prices:` value of exactly this means the price files that ship inside the package,
+# rather than a directory beside the configuration file. It is how a project that installs
+# `boundary` gets the same rates the library was released with, without copying them: the
+# version pin then determines the costing, which is what makes a published cost table
+# reproducible from a checkout alone. See docs/prices.md.
+BUILTIN_PRICES = "builtin"
+
+PACKAGED_PRICES = Path(__file__).resolve().parent / "prices"
+
+
+def _resolve_prices(base: Path, p: Path) -> Path:
+    if str(p) == BUILTIN_PRICES:
+        return PACKAGED_PRICES
+    return _resolve(base, p)
+
+
 def _resolve(base: Path, p: Path) -> Path:
     return p if p.is_absolute() else (base / p).resolve()
 
@@ -223,7 +263,7 @@ def load_config(path: str | Path) -> BoundaryConfig:
         raise ConfigError(f"{path} is invalid:\n{e}") from e
     return cfg.model_copy(
         update={
-            "prices": _resolve(base, cfg.prices),
+            "prices": _resolve_prices(base, cfg.prices),
             "caps": _resolve(base, cfg.caps),
             "ledger": cfg.ledger.model_copy(update={"path": _resolve(base, cfg.ledger.path)}),
             "cache": cfg.cache.model_copy(update={"path": _resolve(base, cfg.cache.path)}),

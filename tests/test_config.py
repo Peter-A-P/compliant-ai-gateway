@@ -9,6 +9,7 @@ import pytest
 import yaml
 
 from boundary.config import (
+    PACKAGED_PRICES,
     BoundaryConfig,
     ProviderKind,
     latest_price_list,
@@ -33,10 +34,59 @@ def test_repo_config_loads(repo_config: BoundaryConfig) -> None:
 
 
 def test_relative_paths_resolve_against_config_file(repo_config: BoundaryConfig) -> None:
-    assert repo_config.prices.is_absolute()
-    assert repo_config.prices == (CONFIG_DIR / "prices").resolve()
     assert repo_config.caps == (CONFIG_DIR / "caps.yaml").resolve()
     assert repo_config.ledger.path == (CONFIG_DIR / ".." / "boundary.sqlite").resolve()
+
+
+def test_builtin_prices_resolve_into_the_package(repo_config: BoundaryConfig) -> None:
+    """`prices: builtin` is the packaged directory, not a path beside the config file.
+
+    This is what lets another repository install boundary and cost with the same rates the
+    version it pinned was released with, instead of keeping its own copy that drifts.
+    """
+    assert repo_config.prices.is_absolute()
+    assert repo_config.prices == PACKAGED_PRICES
+    assert repo_config.prices.parent.name == "boundary"
+    assert not (CONFIG_DIR / "prices").exists(), (
+        "the second copy of the price files must not come back"
+    )
+
+
+def test_packaged_prices_are_loadable_and_dated(repo_config: BoundaryConfig) -> None:
+    files = price_files(repo_config.prices)
+    assert files, "the package must ship at least one dated price file"
+    for f in files:
+        pl = load_price_list(f)
+        assert pl.date.isoformat() == f.stem
+    # Newest last, which is what latest_price_list relies on.
+    assert [f.stem for f in files] == sorted(f.stem for f in files)
+
+
+def test_a_price_directory_path_still_works(tmp_path: Path) -> None:
+    """`builtin` is a sentinel, not a replacement: a directory path still resolves.
+
+    Trying an unreleased rate has to stay possible without editing the installed package.
+    """
+    cfg_dir = tmp_path / "config"
+    (cfg_dir / "prices").mkdir(parents=True)
+    (cfg_dir / "caps.yaml").write_text(
+        "version: 1\nportfolio_monthly_usd: 10\ndefault:\n  monthly_usd: 10\n",
+        encoding="utf-8",
+    )
+    (cfg_dir / "boundary.yaml").write_text(
+        "version: 1\n"
+        "providers:\n"
+        "  anthropic:\n"
+        "    kind: anthropic\n"
+        "    base_url: https://api.anthropic.com\n"
+        "routes: {}\n"
+        "prices: prices\n"
+        "caps: caps.yaml\n",
+        encoding="utf-8",
+    )
+    cfg = load_config(cfg_dir / "boundary.yaml")
+    assert cfg.prices == (cfg_dir / "prices").resolve()
+    assert cfg.prices != PACKAGED_PRICES
 
 
 def test_repo_caps_load_and_default_applies(repo_config: BoundaryConfig) -> None:
