@@ -508,14 +508,23 @@ global, storage is regional, and a requirement written about one is routinely re
 covering the other. Part B's policy language should separate them explicitly rather than
 say "residency".
 
-And the hosting option that would keep processing inside Azure is the one a new customer
-cannot get: Claude version 2, Hosted on Azure, was refused in `eastus2` for insufficient
-quota, because Azure-hosted capacity is allocated per subscription and a new pay-as-you-go
-subscription has none. Version 1 deploys immediately and runs on Anthropic's infrastructure
-outside Azure. So the weaker posture is the default and the stronger one is gated behind a
-quota request. That is worth stating in Part B's write-up as a procurement fact rather than
-a technical one: the control exists, and getting it is an administrative exercise with a
-lead time.
+**Corrected the same day, after reading the quota table rather than inferring from the
+error.** The refusal was not about the hosting option. Both Claude versions were refused in
+`eastus2`, and Microsoft's quota table gives the reason: quota is allocated per subscription
+and shared across regions, and a **Free Trial or credits-only subscription is allotted zero
+for every Claude model, every version, every deployment type**. A pay-as-you-go subscription
+gets 80 RPM for `claude-haiku-4-5` by default, on either hosting option, and needs to ask
+nobody. So the gate is billing posture, and it is invariant to region, model and version.
+
+That is the procurement fact Part B should state, and it is sharper than the one first
+written here: the platform does not decline the workload, it declines the customer, and the
+error it returns is a per-deployment capacity message that reads like a transient regional
+shortage. An evaluation that never gets past it concludes the wrong thing about why.
+
+The hosting options remain the residency lever once the subscription is eligible: version 2
+keeps prompts and completions inside Azure, version 1 runs on Anthropic's infrastructure
+outside it. Nothing on the wire distinguishes them, so an audit trail that depends on which
+one is deployed has to record it at configuration time. The ledger cannot recover it.
 The gateway never guesses a classification from content; a gateway that did would be
 making a compliance decision nobody reviewed. Violations are refused with a reason and
 audited.

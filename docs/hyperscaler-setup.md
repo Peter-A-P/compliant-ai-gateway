@@ -58,26 +58,68 @@ Four choices here, and three of them are permanent or cost money:
   safety-flagged content egress to Anthropic. Version 2 is the stronger compliance
   position and it supports fewer features.
 
-  **Expect version 2 to fail on a new subscription.** Tried on 2026-09-14 in `eastus2`:
-  Global Standard with version 2 was refused with *"Insufficient quota ... cannot be
-  deployed to your current project"*. Azure-hosted capacity is quota-allocated per
-  subscription and region, and a new pay-as-you-go subscription starts with none. Version 1
-  does not draw on that quota and deploys immediately.
+  Nothing in this library cares which you deploy. Both are `POST /anthropic/v1/messages`
+  with the same body, the same `api-key` header and the same standard rates billed in CCUs,
+  so one price entry serves both. What changes is the residency claim, and **nothing on the
+  wire records which version is behind a deployment name**: the ledger cannot tell you, so
+  if a residency claim depends on the hosting version, something has to record it at
+  configuration time.
 
-  So the ordering is the finding, and it is the wrong way round: the option that keeps data
-  inside Azure is quota-gated and effectively unavailable to a new customer, while the one
-  that is available sends the data out of Azure altogether. Getting version 2 means asking
-  for a quota increase and waiting, which a proof of concept will not do and a procurement
-  exercise should budget for.
+  The version does **not** decide whether you can deploy. See the quota section below, which
+  corrects an earlier reading of this.
 
-  Nothing in this library cares which you deploy. Both are `POST
-  /anthropic/v1/messages` with the same body, the same `api-key` header and the same
-  standard rates billed in CCUs, so one price entry serves both. What changes is the
-  residency claim, and only the ledger's operator knows which version is behind a
-  deployment name.
+For a first smoke call, deploy **claude-haiku-4-5**, Global Standard, either version. It is
+the cheapest thing to prove the path with. Whether it deploys at all depends on the
+subscription, not on any of these four choices.
 
-For a first smoke call, deploy **claude-haiku-4-5**, Global Standard, **version 1**. It is
-the cheapest thing to prove the path with, and version 2 will probably refuse.
+### 3a. If the deployment is refused for quota, check the subscription type
+
+This is the wall, and it is not where it looks like it is.
+
+Deploying `claude-haiku-4-5` Global Standard in `eastus2` on 2026-09-14 was refused with
+*"Insufficient quota ... cannot be deployed to your current project"*, on **both** offered
+model versions. The first reading of that, recorded here and then corrected, was that
+Azure-hosted capacity is rationed per region and the Anthropic-hosted version escapes it.
+Both halves of that are wrong, and Microsoft's quota table says so
+([Claude model quotas and rate limits](https://learn.microsoft.com/en-us/azure/foundry/foundry-models/concepts/claude-models-quotas-limits),
+read 2026-09-14):
+
+| Subscription type | `claude-haiku-4-5`, Global Standard | Every other Claude model |
+|---|---|---|
+| Pay-as-you-go | 80 RPM, 80,000 ITPM, 16,000 OTPM | 40 to 80 RPM, except the Fable line at 0 |
+| **Free Trial** | **0 RPM, 0 ITPM, 0 OTPM** | **0 across the board** |
+| Enterprise and MCA-E | 10,000 RPM | 4,000 to 10,000 RPM |
+
+Two corrections fall out of that table:
+
+- **Quota is per subscription, not per region.** "Resources and regions share quota instead
+  of receiving separate allocations": every Global Standard deployment of a model draws from
+  one pool across all regions. Moving the resource to another region changes nothing.
+- **The hosting version is not the gate.** Both versions are marked quota-allocatable for
+  haiku on pay-as-you-go, with the same default. Neither is privileged.
+
+So a refusal on *both* versions has one likely cause: **a Free Trial or credits-only
+subscription, which is allotted exactly zero for every Claude model, every version, every
+deployment type.** Not throttled. Zero. Anthropic's own terms say the same thing from the
+other direction: subscriptions without an active pay-as-you-go billing method, including
+free trial, student and credit-based accounts, and sponsored subscriptions using only Azure
+credits, are not supported.
+
+**Check:** Azure portal, Subscriptions, your subscription, Overview, and read the offer type.
+If it is Free Trial, converting it to Pay-As-You-Go with a payment method on file is the fix,
+and it is the only fix. The Quota page in the Foundry portal shows what you actually have.
+A genuine increase beyond the defaults goes through
+[the request form](https://aka.ms/oai/stuquotarequest) and is "evaluated individually and
+aren't guaranteed to be approved".
+
+**Why this belongs in a compliance project's notes rather than a troubleshooting FAQ.** The
+failure presents as a per-deployment capacity message, which reads like a transient
+regional shortage and invites exactly the wrong response: change the region, change the
+model, change the version, wait and retry. The actual constraint is billing posture, it is
+invariant to all four, and nothing in the error says so. An evaluation that never gets past
+this concludes the platform is at capacity when it has in fact declined the customer. That
+is a procurement fact with a lead time, and it is worth knowing before a pilot is scheduled
+around it.
 
 ### 4. Collect the two values
 
@@ -241,7 +283,7 @@ different things and they fail differently:
 
 | | Deployment in Canada | Processing guaranteed in Canada |
 |---|---|---|
-| Foundry, Claude, Hosted on Azure (v2) | **not offered** | no, and quota-gated anyway |
+| Foundry, Claude, Hosted on Azure (v2) | **not offered** | inside Azure, but not inside Canada |
 | Foundry, Claude, Hosted on Anthropic (v1) | **not offered** | no, it runs outside Azure |
 | Foundry, other partner models | Canada Central and Canada East | no, Global Standard routes anywhere |
 | Vertex, Claude | `northamerica-northeast1` exists, older models only | no |
@@ -262,10 +304,11 @@ where data is stored can be met. One about where it is processed cannot, on this
 type. Those are different obligations and they are commonly written as if they were one, which
 is exactly where a compliance product earns its keep or fails quietly.
 
-There is a second gate behind that one. The hosting option that would keep processing inside
-Azure, version 2, is quota-allocated and a new subscription has none of it, so the available
-choice is version 1, which runs outside Azure entirely. See the Model version note in step 3.
-The stronger posture is the one a new customer cannot have.
+There is a second gate behind that one, and it sits earlier than expected: on a Free Trial or
+credits-only subscription the quota for every Claude model is zero, so neither hosting option
+is reachable and the residency question never arises. See step 3a. The choice between keeping
+processing inside Azure and sending it to Anthropic only becomes available once the
+subscription is pay-as-you-go, at which point both are.
 
 So the claim this gateway can support is, at most, **"deployed in Canada"**, and for some
 platform and model pairs not even that. It is never **"processed only in Canada"**. Those are
