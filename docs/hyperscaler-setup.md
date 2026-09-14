@@ -98,28 +98,47 @@ Two corrections fall out of that table:
 - **The hosting version is not the gate.** Both versions are marked quota-allocatable for
   haiku on pay-as-you-go, with the same default. Neither is privileged.
 
-So a refusal on *both* versions has one likely cause: **a Free Trial or credits-only
-subscription, which is allotted exactly zero for every Claude model, every version, every
-deployment type.** Not throttled. Zero. Anthropic's own terms say the same thing from the
-other direction: subscriptions without an active pay-as-you-go billing method, including
-free trial, student and credit-based accounts, and sponsored subscriptions using only Azure
-credits, are not supported.
+**The cause here is not yet established, and this section has been wrong twice.** The
+observation is: a **pay-as-you-go** subscription, a resource in `eastus2`, `claude-haiku-4-5`
+on Global Standard, both offered model versions (`2` and `20251011`) refused with
+"Insufficient quota". That contradicts the table directly, which gives pay-as-you-go 80 RPM
+for exactly that model and deployment type on either version.
 
-**Check:** Azure portal, Subscriptions, your subscription, Overview, and read the offer type.
-If it is Free Trial, converting it to Pay-As-You-Go with a payment method on file is the fix,
-and it is the only fix. The Quota page in the Foundry portal shows what you actually have.
-A genuine increase beyond the defaults goes through
-[the request form](https://aka.ms/oai/stuquotarequest) and is "evaluated individually and
-aren't guaranteed to be approved".
+Two explanations were written here and both were wrong: that the Azure-hosted version was
+rationed while the Anthropic-hosted one was not (the table marks both allocatable with the
+same default), and that the subscription must be a Free Trial (it is not). Both were inferred
+from the error message. Neither was checked against the number the portal will simply show
+you. So the rest of this section is the diagnosis rather than an answer.
 
-**Why this belongs in a compliance project's notes rather than a troubleshooting FAQ.** The
-failure presents as a per-deployment capacity message, which reads like a transient
-regional shortage and invites exactly the wrong response: change the region, change the
-model, change the version, wait and retry. The actual constraint is billing posture, it is
-invariant to all four, and nothing in the error says so. An evaluation that never gets past
-this concludes the platform is at capacity when it has in fact declined the customer. That
-is a procurement fact with a lead time, and it is worth knowing before a pilot is scheduled
-around it.
+**Read the actual allocation first.** The Quota page in the Foundry portal, or the "Manage
+quota" button in the deployment dialog, shows the quota this subscription really has per model
+and deployment type. Everything below depends on what that number is, and nothing should be
+concluded before reading it.
+
+- **If it shows the documented default (80 RPM for haiku)** then the deployment is failing for
+  a reason the message misattributes, and the next thing to check is the project rather than
+  the subscription. The dialog says "cannot be deployed to your current **project**" and
+  offers "Select another project" as its first remedy. A Foundry project belongs to a region,
+  and a project left in Canada Central would refuse every Claude model, because none is offered
+  there. Confirm which region the *selected project* is in, not which region was being browsed.
+- **If it shows zero** then the documented default has not been applied to this subscription,
+  which is a quota request rather than a configuration problem. The
+  [request form](https://aka.ms/oai/stuquotarequest) is the route, and requests are "evaluated
+  individually and aren't guaranteed to be approved".
+- **Either way, do not change the region to work around it.** Quota is allocated per
+  subscription and shared across regions for Global Standard, so moving the resource cannot
+  change the number.
+
+Worth also confirming once, because both are prerequisites that fail late rather than early:
+the Azure Marketplace terms were accepted on the first Claude deployment, and the
+`Microsoft.SaaS` resource provider is registered on the subscription.
+
+**Why this is in a compliance project's notes at all.** The failure presents as a
+per-deployment capacity message. That reads like a transient regional shortage and invites
+changing the region, the model or the version, and on this platform quota is per subscription,
+so none of those can move it. Whatever the cause turns out to be here, the error points away
+from it. That is a procurement observation worth having before a pilot is scheduled around
+this platform, and it is the part of this section that has survived being wrong twice.
 
 ### 4. Collect the two values
 

@@ -510,16 +510,18 @@ say "residency".
 
 **Corrected the same day, after reading the quota table rather than inferring from the
 error.** The refusal was not about the hosting option. Both Claude versions were refused in
-`eastus2`, and Microsoft's quota table gives the reason: quota is allocated per subscription
-and shared across regions, and a **Free Trial or credits-only subscription is allotted zero
-for every Claude model, every version, every deployment type**. A pay-as-you-go subscription
-gets 80 RPM for `claude-haiku-4-5` by default, on either hosting option, and needs to ask
-nobody. So the gate is billing posture, and it is invariant to region, model and version.
+`eastus2` on a pay-as-you-go subscription, which the quota table says should have 80 RPM for
+that model on either version. The cause is **not established**; two explanations were written
+here the same day and both were wrong, each inferred from the error message rather than read
+from the portal's own quota page. `docs/hyperscaler-setup.md` carries the diagnosis and the
+open question rather than a third guess.
 
-That is the procurement fact Part B should state, and it is sharper than the one first
-written here: the platform does not decline the workload, it declines the customer, and the
-error it returns is a per-deployment capacity message that reads like a transient regional
-shortage. An evaluation that never gets past it concludes the wrong thing about why.
+What has survived being wrong twice, and is the part Part B should state: quota on this
+platform is allocated per subscription and shared across regions, so a per-deployment capacity
+message points away from its own cause. It invites changing the region, the model or the
+version, and none of those can move a subscription-level allocation. A team evaluating this
+platform will burn time on exactly those four moves before looking at the quota page, which is
+a procurement observation rather than a technical one.
 
 The hosting options remain the residency lever once the subscription is eligible: version 2
 keeps prompts and completions inside Azure, version 1 runs on Anthropic's infrastructure

@@ -28,21 +28,22 @@ major version are additive only; see docs/interface.md.
 - **Claude on Foundry is unavailable to a Free Trial subscription, and the error does not say
   so.** Deploying `claude-haiku-4-5` Global Standard in `eastus2` on 2026-09-14 was refused
   with "Insufficient quota" on **both** offered model versions. Microsoft's quota table gives
-  the reason: quota is per subscription and shared across regions, and a Free Trial or
-  credits-only subscription is allotted **zero** for every Claude model, every version, every
-  deployment type, while pay-as-you-go gets 80 RPM for haiku by default and asks nobody. So
-  the constraint is billing posture and it is invariant to region, model and version, which is
-  exactly what the error message hides: a per-deployment capacity message reads like a
-  transient regional shortage and invites changing the region, the model or the version, none
-  of which can work. Recorded in `docs/hyperscaler-setup.md` step 3a with the table.
+  the documented default for that subscription type: 80 RPM, on either version. So the
+  observation contradicts the table and **the cause is not established**. Recorded in
+  `docs/hyperscaler-setup.md` step 3a as an open question with the diagnosis, rather than an
+  answer.
 
-  **This corrects the first reading**, which was written here earlier the same day and said
-  the Azure-hosted version was quota-gated while the Anthropic-hosted one deployed freely.
-  Both halves were wrong: quota is not per region, and neither hosting option is privileged.
-  The correction is recorded rather than edited away because the wrong version was published,
-  including to the portfolio site, and because the mistake is instructive: it was inferred
-  from an error message instead of read from the vendor's own table, which is the failure mode
-  this repository keeps finding in other people's cost claims.
+  **Two wrong explanations were published here first and are corrected rather than deleted**,
+  because one of them reached the portfolio site. The first said the Azure-hosted version was
+  rationed while the Anthropic-hosted one deployed freely; the table marks both allocatable
+  with the same default. The second said the subscription must be a Free Trial, which gets
+  zero for everything; it is pay-as-you-go. Both were inferred from the error message instead
+  of read from the quota page the portal will simply show, which is the failure mode this
+  repository keeps finding in other people's cost claims, appearing here twice in one day.
+
+  What survives: quota on this platform is per subscription and shared across regions, so a
+  per-deployment capacity message points away from its own cause and invites four changes
+  (region, model, version, retry) that cannot move a subscription-level allocation.
 - **Microsoft's own wording for the distinction**, quoted in the setup document because it is
   the vendor's rather than ours: "Data might be processed globally, outside the resource's
   Azure geography, but data storage remains in the AI resource's Azure geography." Processing
