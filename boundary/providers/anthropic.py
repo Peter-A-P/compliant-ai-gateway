@@ -55,6 +55,8 @@ _TERMINAL_OUTCOMES = frozenset({"succeeded", "errored", "canceled", "expired"})
 
 class AnthropicAdapter:
     kind: ClassVar[ProviderKind] = ProviderKind.ANTHROPIC
+    # The batch takes its requests inline, so there is no file to upload first.
+    uploads_input_file: ClassVar[bool] = False
 
     # -- shared -------------------------------------------------------------------------
 

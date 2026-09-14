@@ -1,0 +1,266 @@
+# Price list, USD per million tokens. Supersedes 2026-09-12.yaml, which it copies verbatim.
+# Repricing is a new dated file, never an edit to an older one.
+#
+# Moved 2026-09-14: the price files now live in the package, at boundary/prices/, and ship
+# with the wheel. Until today this repository held 2026-09-07, 09-09 and 09-10 while project
+# 02 held its own 2026-09-12, so September's costing could not be reproduced from either
+# repository alone. There is now one copy, and the version a project pins determines the
+# rates it costs with. See docs/prices.md.
+#
+# Added 2026-09-14: the `foundry` provider, for Claude on Microsoft Foundry.
+#
+# No rate carried over from 2026-09-12 changed. The Anthropic, OpenAI, Google and Together
+# sections below are that file's numbers, moved rather than retyped.
+#
+# Rules: a model missing here is written to the ledger as uncosted; a call that used a cache
+# or batch feature with no rate here is uncosted. The library never fills a rate in.
+#
+# Model keys are identifiers. The ledger prices by the identifier the vendor RETURNS and, when
+# that one is not listed, by the identifier that was REQUESTED (OpenAI returns dated ids such
+# as gpt-5-nano-2025-08-07 for a request of gpt-5-nano; the price is the same). Both ids are
+# in the ledger row, so which one priced the call is auditable.
+#
+# NOT HERE, ON PURPOSE: `vertex`. Claude on Google Cloud is a partner-operated platform and
+# Google sets and publishes its own rates, which Anthropic's pricing page defers to rather
+# than restates. Those rates were not readable from the published page on 2026-09-14, and the
+# rule is that an unknown price writes an uncosted row and never an estimate. So a Vertex call
+# is uncosted today. The rates are copied from
+# https://cloud.google.com/vertex-ai/generative-ai/pricing (Claude models section), or from
+# the project's own billing console, on the day the Google Cloud project exists, into a file
+# dated that day. Remember the endpoint premium when you do: regional and multi-region
+# endpoints cost 10 percent more than global for Sonnet 4.5, Haiku 4.5, Opus 4.5 and later,
+# so northamerica-northeast1 is not the global rate and must be its own entry.
+#
+# Sources:
+#   Anthropic: https://platform.claude.com/docs/en/about-claude/pricing (cache read 0.1x input,
+#              5-minute cache write 1.25x input, batch 50%). The models endpoint on 2026-09-10
+#              lists claude-haiku-4-5-20251001 as the only dated id with a documented alias.
+#   OpenAI:    https://developers.openai.com/api/docs/pricing (cached input shown per model,
+#              batch 50%).
+#   Google:    https://ai.google.dev/gemini-api/docs/pricing (paid tier; context-cache read shown
+#              per model; cache storage is billed per hour, not per token, so no cache_write rate;
+#              batch 50%). gemini-2.5-flash-lite returned 404 "no longer available to new
+#              users" on 2026-09-10; kept here for any ledger row that still names it.
+#   Together:  https://www.together.ai/pricing (serverless; one price for input and output on
+#              Llama 3.3 70B) and https://docs.together.ai/docs/batch-inference read
+#              2026-09-14 for the batch rates, which are per model rather than across the
+#              board. See the note in the openweights block.
+#   Foundry:   https://platform.claude.com/docs/en/about-claude/pricing#claude-in-microsoft-foundry-pricing
+#              read 2026-09-14. Foundry rates token usage in USD at the standard per-model
+#              rates above, then converts to Claude Consumption Units at US$0.01 per CCU for
+#              the Azure Marketplace invoice. So the numbers below are the standard USD rates,
+#              and the ledger costs in USD; the Azure bill shows one CCU line item, and 100 CCU
+#              is US$1.00. The monthly invoice check divides before it compares.
+
+version: 1
+date: 2026-09-14
+currency: USD
+source: "Vendor price pages fetched 2026-09-09, 2026-09-10, 2026-09-12 and 2026-09-14; see comments for URLs and rules"
+
+per_million_tokens:
+  anthropic:
+    claude-haiku-4-5-20251001:
+      input: 1.00
+      output: 5.00
+      cache_read: 0.10
+      cache_write: 1.25
+      batch_multiplier: 0.5
+    claude-haiku-4-5:
+      input: 1.00
+      output: 5.00
+      cache_read: 0.10
+      cache_write: 1.25
+      batch_multiplier: 0.5
+    claude-sonnet-5:
+      input: 2.00
+      output: 10.00
+      cache_read: 0.20
+      cache_write: 2.50
+      batch_multiplier: 0.5
+    claude-opus-5:
+      input: 5.00
+      output: 25.00
+      cache_read: 0.50
+      cache_write: 6.25
+      batch_multiplier: 0.5
+    claude-sonnet-4-6:
+      input: 3.00
+      output: 15.00
+      cache_read: 0.30
+      cache_write: 3.75
+      batch_multiplier: 0.5
+
+  openai:
+    gpt-5-mini:
+      input: 0.25
+      output: 2.00
+      cache_read: 0.025
+      batch_multiplier: 0.5
+    gpt-5-nano:
+      input: 0.05
+      output: 0.40
+      cache_read: 0.005
+      batch_multiplier: 0.5
+    gpt-5:
+      input: 1.25
+      output: 10.00
+      cache_read: 0.125
+      batch_multiplier: 0.5
+    gpt-5.4-nano:
+      input: 0.20
+      output: 1.25
+      cache_read: 0.02
+      batch_multiplier: 0.5
+    gpt-5.4-mini:
+      input: 0.75
+      output: 4.50
+      cache_read: 0.075
+      batch_multiplier: 0.5
+    gpt-5.4:
+      input: 2.50
+      output: 15.00
+      cache_read: 0.25
+      batch_multiplier: 0.5
+    gpt-5.5:
+      input: 5.00
+      output: 30.00
+      cache_read: 0.50
+      batch_multiplier: 0.5
+    # The GPT-5.6 line, 2026-09-12. Three models rather than a size ladder, and the prices are
+    # what separate them: luna is the small one, terra the middle, sol the top. sol at 4.00/20.00
+    # is the closest thing OpenAI sells to Claude Opus 5 at 5.00/25.00, and terra at 2.00/12.00
+    # sits beside Claude Sonnet 5 at 2.00/10.00.
+    gpt-5.6-luna:
+      input: 0.20
+      output: 1.20
+      cache_read: 0.02
+      batch_multiplier: 0.5
+    gpt-5.6-terra:
+      input: 2.00
+      output: 12.00
+      cache_read: 0.20
+      batch_multiplier: 0.5
+    gpt-5.6-sol:
+      input: 4.00
+      output: 20.00
+      cache_read: 0.40
+      batch_multiplier: 0.5
+    gpt-4o-mini:
+      input: 0.15
+      output: 0.60
+      cache_read: 0.075
+      batch_multiplier: 0.5
+
+  google:
+    gemini-2.5-flash:
+      input: 0.30
+      output: 2.50
+      cache_read: 0.03
+      batch_multiplier: 0.5
+    gemini-2.5-flash-lite:
+      input: 0.10
+      output: 0.40
+      cache_read: 0.01
+      batch_multiplier: 0.5
+    gemini-3.5-flash:
+      input: 1.50
+      output: 9.00
+      cache_read: 0.15
+      batch_multiplier: 0.5
+    gemini-3.5-flash-lite:
+      input: 0.30
+      output: 2.50
+      cache_read: 0.03
+      batch_multiplier: 0.5
+    gemini-3.6-flash:
+      input: 0.75
+      output: 3.75
+      cache_read: 0.075
+      batch_multiplier: 0.5
+    gemini-3.7-flash:
+      input: 0.75
+      output: 3.75
+      cache_read: 0.075
+      batch_multiplier: 0.5
+    gemini-3.8-flash:
+      input: 0.75
+      output: 3.75
+      cache_read: 0.075
+      batch_multiplier: 0.5
+
+  openweights:
+    # `cache_read` added 2026-09-12 after the first live call, and it is the reason
+    # together-open-b wrote three uncosted rows. Together serves prompt caching and reports
+    # `cached_tokens` in its usage: gpt-oss-120b returned 66 to 68 of them per call. The
+    # gateway refuses to price a call that used a feature it has no rate for, which is the
+    # right refusal and is how this was found at all rather than at the invoice.
+    #
+    # Read from https://www.together.ai/pricing on 2026-09-12: neither of these two models
+    # shows a discounted cached rate, where others in the catalogue do, so cache reads are
+    # charged as ordinary input. Checked rather than assumed, because a wrong rate here is a
+    # wrong number in a cost table that this project publishes.
+    #
+    # Batch rates added 2026-09-14, from https://docs.together.ai/docs/batch-inference read
+    # the same day. Together's batch discount is PER MODEL and not across the board, which is
+    # the opposite of every other vendor here: only meta-llama/Llama-3.3-70B-Instruct-Turbo
+    # and openai/whisper-large-v3 run at half price on the 24-hour window, and every other
+    # serverless model runs at the standard rate. So gpt-oss-120b carries 1.0 rather than 0.5.
+    # Writing 0.5 there would have understated its invoice by half on every batched call,
+    # which is exactly the kind of plausible wrong number this project exists not to publish.
+    # (Together also offers a 4-hour window at 25 percent off. Not used: nothing here needs an
+    # answer sooner than 24 hours, so the adapter asks for the cheapest window only.)
+    meta-llama/Llama-3.3-70B-Instruct-Turbo:
+      input: 1.04
+      output: 1.04
+      cache_read: 1.04
+      batch_multiplier: 0.5
+    openai/gpt-oss-120b:
+      input: 0.15
+      output: 0.60
+      cache_read: 0.15
+      batch_multiplier: 1.0
+
+  # Claude on Microsoft Foundry, added 2026-09-14. Keys are DEPLOYMENT names, not model ids:
+  # a Foundry deployment may be called anything and the deployment name is what goes in the
+  # request and lands in the ledger. These are the default deployment names, which match the
+  # model ids. A deployment named something else needs its own entry here or its calls are
+  # uncosted.
+  #
+  # Rates are the standard per-model USD rates, because that is what Foundry meters before
+  # converting to CCUs. They are therefore identical to the `anthropic` block above, and that
+  # duplication is deliberate: the two are separate entries so that a future divergence is one
+  # file edit rather than a silent mispricing, and so the ledger can tell the platforms apart.
+  #
+  # NO batch_multiplier: the Message Batches API is not available on Foundry, so there is no
+  # batch rate to apply. An absent multiplier means a batched call would be uncosted, which is
+  # the correct answer for a feature the platform does not offer.
+  #
+  # NOT HERE: the US Data Zone Standard deployment type, which keeps inference inside the
+  # United States and carries a 1.1x multiplier on every rate. It is a separate deployment with
+  # its own name, so it gets its own entry with its own numbers when one is created.
+  foundry:
+    claude-opus-5:
+      input: 5.00
+      output: 25.00
+      cache_read: 0.50
+      cache_write: 6.25
+    claude-opus-4-8:
+      input: 5.00
+      output: 25.00
+      cache_read: 0.50
+      cache_write: 6.25
+    claude-sonnet-5:
+      input: 2.00
+      output: 10.00
+      cache_read: 0.20
+      cache_write: 2.50
+    claude-sonnet-4-6:
+      input: 3.00
+      output: 15.00
+      cache_read: 0.30
+      cache_write: 3.75
+    claude-haiku-4-5:
+      input: 1.00
+      output: 5.00
+      cache_read: 0.10
+      cache_write: 1.25

@@ -350,14 +350,40 @@ def test_a_results_url_on_another_host_is_refused_before_the_key_is_sent(gw: Gat
             gw.batch_results(handle)
 
 
-def test_a_provider_without_batch_support_is_refused_by_name(gw: Gateway) -> None:
+def test_a_kind_without_batch_support_is_refused_by_name(gw: Gateway) -> None:
+    """Foundry has no Message Batches API, so the kind is absent from BATCH_ADAPTERS."""
     with respx.mock(assert_all_called=False) as mock:
         route = mock.post(BATCHES_URL)
         with pytest.raises(ConfigError, match="no batch support"):
             gw.batch_submit(
                 [
                     ChatRequest(
-                        model="openai/gpt-5-nano", messages=[{"role": "user", "content": "x"}]
+                        model="foundry/claude-haiku-4-5",
+                        messages=[{"role": "user", "content": "x"}],
+                    )
+                ],
+                purpose="own-run",
+            )
+    assert route.call_count == 0
+    assert gw.ledger.count() == 0
+
+
+def test_a_host_that_has_not_opted_in_is_refused_by_name(gw: Gateway) -> None:
+    """The local Ollama server is `openai_compat` and has no /v1/batches.
+
+    The kind has an adapter, so the refusal has to come from the provider entry rather than
+    from the adapter table. Without this gate the batch would be POSTed at a local server
+    which would answer 404 with an HTML page, and the failure would be a parse error
+    somewhere deep instead of a clear "this host does not do batches".
+    """
+    with respx.mock(assert_all_called=False) as mock:
+        route = mock.post("http://127.0.0.1:11434/v1/batches")
+        with pytest.raises(ConfigError, match="does not serve batches"):
+            gw.batch_submit(
+                [
+                    ChatRequest(
+                        model="local/llama3.2:3b",
+                        messages=[{"role": "user", "content": "x"}],
                     )
                 ],
                 purpose="own-run",

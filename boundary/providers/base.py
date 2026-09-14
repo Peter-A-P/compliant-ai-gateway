@@ -153,7 +153,15 @@ class BatchAdapter(Protocol):
 
     The gateway sets `custom_id` to the ledger row's `call_uid`, so a result maps back to
     exactly one row, in any process, however the vendor orders the results file.
+
+    uploads_input_file: whether the requests have to be uploaded as a file before a batch
+        can be created. False for the vendors that take the requests inline (Anthropic,
+        Google); True for the OpenAI-shaped ones, where a batch names a file id and the
+        file is a separate POST. An adapter that sets it True must also satisfy
+        UploadingBatchAdapter.
     """
+
+    uploads_input_file: ClassVar[bool]
 
     def build_batch_submit(
         self,
@@ -181,3 +189,33 @@ class BatchAdapter(Protocol):
     def parse_batch_results(
         self, status: int, headers: Mapping[str, str], body: bytes
     ) -> list[BatchItemResult]: ...
+
+
+class UploadingBatchAdapter(BatchAdapter, Protocol):
+    """A batch whose requests go up as a file first, then are named by a create call.
+
+    Two round trips before the batch exists, which matters to the ledger rather than to the
+    caller: the prompts leave the process during the *upload*, so the rows are written before
+    that request and not before the create that follows it.
+
+    Neither round trip is billed. A failure in either one completes every row as a failure
+    with no cost, which is the honest record: the vendor has not accepted work it can charge
+    for until the create succeeds.
+    """
+
+    def build_batch_upload(
+        self,
+        items: Sequence[BatchItem],
+        provider: ProviderConfig,
+        api_key: str | None,
+    ) -> BuiltRequest: ...
+
+    def parse_batch_upload(
+        self, status: int, headers: Mapping[str, str], body: bytes
+    ) -> str:
+        """The uploaded file's id, which the create call names."""
+        ...
+
+    def build_batch_create(
+        self, upload_id: str, provider: ProviderConfig, api_key: str | None
+    ) -> BuiltRequest: ...

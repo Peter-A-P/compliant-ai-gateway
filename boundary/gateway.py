@@ -23,7 +23,7 @@ import time
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Self
+from typing import Any, Self, cast
 
 from opentelemetry.trace import Span
 
@@ -43,6 +43,7 @@ from boundary.config import (
 from boundary.env import find_dotenv, load_dotenv
 from boundary.errors import (
     BatchNotReady,
+    BoundaryError,
     ConfigError,
     PassthroughViolation,
     ProviderError,
@@ -51,7 +52,7 @@ from boundary.errors import (
 )
 from boundary.ledger.prices import cost_usd, estimate_usd
 from boundary.ledger.store import LedgerRow, LedgerStore, new_call_uid, utc_now
-from boundary.providers import ADAPTERS, BATCH_ADAPTERS
+from boundary.providers import ADAPTERS, BATCH_ADAPTERS, UploadingBatchAdapter
 from boundary.providers.base import (
     Adapter,
     BatchAdapter,
@@ -370,10 +371,31 @@ class Gateway:
             )
 
         self._check_caps(run_id, estimate=total_estimate)
-        built = batch_adapter.build_batch_submit(items, pc, api_key)
         span = self.telemetry.start("boundary.batch_submit")
         for row in rows:
             self.ledger.begin(row)
+
+        if batch_adapter.uploads_input_file:
+            # OpenAI-shaped hosts name a file rather than carrying the requests inline, so
+            # the prompts leave the process during this upload and not during the create
+            # that follows. The rows above are already in flight, which is what "no call
+            # escapes the ledger" means when submitting takes two round trips.
+            #
+            # Neither round trip is billed, so a failure in either completes every row as a
+            # failure with no cost. That is the honest record: nothing is chargeable until
+            # the vendor has accepted the batch.
+            uploading = cast("UploadingBatchAdapter", batch_adapter)
+            upload_built = uploading.build_batch_upload(items, pc, api_key)
+            try:
+                upload_id = self._upload_batch_input(provider, uploading, upload_built)
+            except BoundaryError as e:
+                self._fail_batch_rows(rows, getattr(e, "status", None), "batch_upload")
+                self._end_batch_span(span, "submit", provider, len(rows), None, "batch_upload")
+                raise
+            built = uploading.build_batch_create(upload_id, pc, api_key)
+        else:
+            built = batch_adapter.build_batch_submit(items, pc, api_key)
+
         result, error_type, retries, detail = self._send_retrying(built)
 
         if result is None or not (200 <= result.status < 300):
@@ -521,7 +543,42 @@ class Gateway:
                 f"provider {provider!r} (kind {pc.kind.value!r}) has no batch support in "
                 f"boundary {__version__}; send the requests one at a time with chat()"
             )
+        if not pc.serves_batches:
+            # The kind has an adapter; this host has not said it has the endpoint. Every
+            # OpenAI-compatible server answers /v1/chat/completions and most have no
+            # /v1/batches, so assuming one would turn a missing feature into an HTML 404
+            # parsed as a batch. Callers that fall back on ConfigError, which is what
+            # project 02 does, get the same clean signal as an unsupported kind.
+            raise ConfigError(
+                f"provider {provider!r} does not serve batches: its kind "
+                f"({pc.kind.value!r}) has an adapter, but the provider entry has not set "
+                f"`batches: true`. Set it if this host has a batch endpoint, and leave it "
+                f"unset for a local server that does not"
+            )
         return batch_adapter
+
+    def _upload_batch_input(
+        self,
+        provider: str,
+        adapter: UploadingBatchAdapter,
+        built: BuiltRequest,
+    ) -> str:
+        """Send the input file and return the id the create call will name."""
+        result, error_type, retries, detail = self._send_retrying(built)
+        if result is None:
+            raise ProviderError(provider, error_type or "error", detail, retries)
+        return adapter.parse_batch_upload(result.status, result.headers, result.body)
+
+    def _fail_batch_rows(
+        self, rows: Sequence[LedgerRow], status: int | None, error_type: str
+    ) -> None:
+        """Complete every row of a batch that never reached the vendor, at no cost."""
+        for row in rows:
+            row.cost_usd = None
+            row.costed = False
+            row.error_type = error_type
+            row.http_status = status
+            self.ledger.complete(row)
 
     def _fetch(self, provider: str, pc: ProviderConfig, built: BuiltRequest) -> HttpResult:
         """Send a batch control request and insist on a 2xx. These calls carry no tokens and
@@ -712,9 +769,15 @@ class Gateway:
         if pc.kind is ProviderKind.ANTHROPIC:
             headers["x-api-key"] = api_key
             headers["anthropic-version"] = pc.api_version or "2023-06-01"
+        elif pc.kind is ProviderKind.AZURE_FOUNDRY:
+            # Foundry takes an Azure-issued key under `api-key`, and still wants the
+            # Anthropic version pinned, because the body is the Messages body.
+            headers["api-key"] = api_key
+            headers["anthropic-version"] = pc.api_version or "2023-06-01"
         elif pc.kind is ProviderKind.GOOGLE:
             headers["x-goog-api-key"] = api_key
         else:
+            # Vertex included: a Google OAuth bearer token.
             headers["authorization"] = f"Bearer {api_key}"
         return headers
 

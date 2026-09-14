@@ -46,13 +46,14 @@ def _parts(content: Any) -> list[Any]:
 class GoogleAdapter:
     kind: ClassVar[ProviderKind] = ProviderKind.GOOGLE
 
-    def build_request(
-        self,
-        ref: ModelRef,
-        request: ChatRequest,
-        provider: ProviderConfig,
-        api_key: str | None,
-    ) -> BuiltRequest:
+    def generate_body(self, ref: ModelRef, request: ChatRequest) -> dict[str, Any]:
+        """The generateContent body for one request.
+
+        Shared by the single-call path and the batch path so that a request costs the same
+        bytes either way: the same prompt sent singly or inlined in a batch has the same
+        request hash in the ledger, and there is one implementation rather than two to keep
+        in step. `ref` is taken whole because a batch item carries its own ModelRef.
+        """
         contents: list[dict[str, Any]] = []
         for m in request.messages:
             role = _ROLE.get(str(m.get("role", "user")), "user")
@@ -78,15 +79,27 @@ class GoogleAdapter:
         if isinstance(extra_gen, dict):
             body["generationConfig"] = {**gen, **extra_gen}
         body.update(extra)
+        return body
+
+    def _headers(self, provider: ProviderConfig, api_key: str | None) -> dict[str, str]:
         headers: dict[str, str] = {"content-type": "application/json", **provider.headers}
         if api_key:
             headers["x-goog-api-key"] = api_key
+        return headers
+
+    def build_request(
+        self,
+        ref: ModelRef,
+        request: ChatRequest,
+        provider: ProviderConfig,
+        api_key: str | None,
+    ) -> BuiltRequest:
         version = ref.api_version or provider.api_version or DEFAULT_API_VERSION
         return BuiltRequest(
             method="POST",
             url=f"{provider.base_url.rstrip('/')}/{version}/models/{ref.model}:generateContent",
-            headers=headers,
-            body=dumps(body),
+            headers=self._headers(provider, api_key),
+            body=dumps(self.generate_body(ref, request)),
         )
 
     def parse_response(
@@ -112,9 +125,25 @@ class GoogleAdapter:
             raise ProviderError(
                 "google", status, body.decode("utf-8", "replace")[:500], headers=headers
             )
+        return self.parse_generate(raw)
+
+    def parse_generate(self, raw: dict[str, Any]) -> ParsedResponse:
+        """Read an already-decoded generateContent response.
+
+        A batch returns these inline rather than as a body of its own, so both paths read
+        text and usage through this one method.
+        """
+        if not isinstance(raw.get("candidates"), list) and "promptFeedback" in raw:
+            return ParsedResponse(
+                text=None,
+                finish_reason="blocked",
+                model_returned=raw.get("modelVersion"),
+                usage=self.parse_usage(raw),
+                raw=raw,
+            )
         text: str | None = None
         finish: str | None = None
-        candidates = raw["candidates"]
+        candidates = raw.get("candidates") or []
         if candidates and isinstance(candidates[0], dict):
             first = candidates[0]
             content = first.get("content")

@@ -32,13 +32,16 @@ from boundary.types import ChatRequest, Usage
 class OpenAICompatAdapter:
     kind: ClassVar[ProviderKind] = ProviderKind.OPENAI_COMPAT
 
-    def build_request(
-        self,
-        ref: ModelRef,
-        request: ChatRequest,
-        provider: ProviderConfig,
-        api_key: str | None,
-    ) -> BuiltRequest:
+    def chat_body(
+        self, ref: ModelRef, request: ChatRequest, provider: ProviderConfig
+    ) -> dict[str, Any]:
+        """The chat completions body for one request.
+
+        Shared by the single-call path and the batch path so that a request costs the same
+        bytes either way: the same prompt sent singly or inside a batch file has the same
+        request hash in the ledger, and there is one implementation to keep correct rather
+        than two to keep in step.
+        """
         messages: list[dict[str, Any]] = []
         if request.system is not None:
             messages.append({"role": "system", "content": request.system})
@@ -51,6 +54,15 @@ class OpenAICompatAdapter:
         if request.stop:
             body["stop"] = list(request.stop)
         body.update(request.extra)
+        return body
+
+    def build_request(
+        self,
+        ref: ModelRef,
+        request: ChatRequest,
+        provider: ProviderConfig,
+        api_key: str | None,
+    ) -> BuiltRequest:
         headers: dict[str, str] = {"content-type": "application/json", **provider.headers}
         if api_key:
             headers["authorization"] = f"Bearer {api_key}"
@@ -58,7 +70,7 @@ class OpenAICompatAdapter:
             method="POST",
             url=provider.base_url.rstrip("/") + "/chat/completions",
             headers=headers,
-            body=dumps(body),
+            body=dumps(self.chat_body(ref, request, provider)),
         )
 
     def parse_response(
@@ -74,10 +86,18 @@ class OpenAICompatAdapter:
             raise ProviderError(
                 "openai_compat", status, body.decode("utf-8", "replace")[:500], headers=headers
             )
+        return self.parse_completion(raw)
+
+    def parse_completion(self, raw: dict[str, Any]) -> ParsedResponse:
+        """Read an already-decoded chat completion object.
+
+        A batch results line carries the same object inline rather than as a body of its own,
+        so both paths read usage and text through this one method.
+        """
         text: str | None = None
         finish: str | None = None
-        choices = raw["choices"]
-        if choices and isinstance(choices[0], dict):
+        choices = raw.get("choices")
+        if isinstance(choices, list) and choices and isinstance(choices[0], dict):
             first = choices[0]
             msg = first.get("message")
             if isinstance(msg, dict):

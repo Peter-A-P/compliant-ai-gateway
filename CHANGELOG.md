@@ -3,6 +3,102 @@
 Versions follow the plan's handover table (PLAN.md section 7). Interface changes within a
 major version are additive only; see docs/interface.md.
 
+## Unreleased
+
+- **Microsoft Foundry and Google Vertex adapters** (`azure_foundry`, `gcp_vertex`), both
+  subclassing the Anthropic adapter because both platforms serve the Messages API. Only the
+  envelope differs and only the envelope is overridden, so a change to how a response or its
+  usage is read cannot drift between the direct vendor and a platform. Endpoint shapes verified
+  against the vendors' documentation on 2026-09-14. Foundry takes the Azure key in `api-key`
+  and keeps `model` in the body, where it is the deployment name; Vertex moves `model` into the
+  URL and `anthropic_version` into the body as `vertex-2023-10-16`. 19 goldens, no network.
+- **Vertex refuses a host and a region that disagree.** The URL's host and its `locations/`
+  segment both name a geography and the host is what actually routes, so a provider entry
+  pinned to `northamerica-northeast1` serving a route pinned to `global` would send data to
+  another country while the ledger row recorded the region the route asked for. That pair is
+  now a `ConfigError` naming both sides, not a request. Failing closed on residency is Part B's
+  rule; it is cheaper to build in now than to retrofit around live rows.
+- **`ProviderConfig.project`**, additive and optional: the Google Cloud project id, which Vertex
+  carries in the URL rather than in a header. Every existing configuration still loads.
+- **Neither platform has a price entry**, so a call through either writes an uncosted row. That
+  is deliberate. The rates are copied from the vendor's page on the day the account exists and
+  dated then; a rate written weeks early carries a date that lies about when it was checked.
+  Foundry bills in Claude Consumption Units at US$0.01 per CCU rated at standard USD rates, so
+  the invoice check divides the Azure line item by 100 before comparing.
+- **Batches for OpenAI, Together and Gemini**, which until now only Anthropic had. Project
+  02's own-run panel batched 9,292 of its 9,298 Anthropic calls and none of the other 18,000,
+  because there was nothing to batch them with: US$11.24 of that run went at full price where
+  a batch rate would have been about US$5.62.
+- **The OpenAI shape submits in two round trips**, uploading the requests as a JSONL file and
+  then creating a batch that names it. `BatchAdapter` gains `uploads_input_file`, and a new
+  `UploadingBatchAdapter` carries the upload methods. The ledger rows are written before the
+  *upload*, not before the create, because the upload is the request the prompts leave in.
+  Neither round trip is billed, so a failure in either completes every row as a failure at no
+  cost rather than leaving it in flight at an estimate.
+- **Gemini batches submit inline** and return their results inside the status response, so
+  there is no results file. To keep one collection path for every vendor, the batch name is
+  carried as the results URL and the operation is fetched a second time. A Gemini batch is
+  single-model by construction, because the model is in the URL, and a mixed batch is refused
+  rather than silently sent to one of them.
+- **A response is never matched to the wrong request.** Anthropic and OpenAI return the
+  `custom_id` on every result, so order cannot matter. Gemini's documented shape does not
+  promise the key comes back, so the adapter reads `metadata.key` when present and falls back
+  to position when it is not. A silently shifted mapping would put one call's usage on another
+  call's row, which is the worst thing a cost ledger can do.
+- **`batches` on a provider entry**, additive and optional. `openai_compat` defaults to OFF
+  because most compatible hosts (Ollama, vLLM) answer `/v1/chat/completions` and have no
+  `/v1/batches`; a batch aimed at the local server used to be a confusing parse failure and is
+  now a `ConfigError` naming the provider. `anthropic` and `google` default on.
+- **A vendor-supplied file id cannot become a path.** The OpenAI results request carries the
+  API key and builds its URL from an id the vendor returned, so an id that is not a plain id
+  is refused before the request is built. Anthropic's equivalent guard checks a returned URL
+  against the configured host; this is the same defence for a shape that has no URL.
+- **`chat_body`/`parse_completion` and `generate_body`/`parse_generate` extracted** from the
+  OpenAI-compatible and Google adapters, so the batch path builds byte-identical bodies to the
+  single-call path and reads usage through the same parser. Tested both ways. No behaviour
+  change to either single-call path.
+- **Together's batch discount is per model**, which no other vendor here does:
+  `meta-llama/Llama-3.3-70B-Instruct-Turbo` runs at half price and `openai/gpt-oss-120b` runs
+  at the standard rate, so the price file carries `batch_multiplier: 1.0` for the latter.
+  Writing 0.5 there would have understated its invoice by half on every batched call.
+- **Price files ship with the library**, at `boundary/prices/`, and a configuration asks for
+  them with `prices: builtin`. A directory path still works, for trying a rate before it is
+  released. Until now this repository held three dated files and project 02 held a fourth of
+  its own, so September's costing could not be reproduced from either repository alone; the
+  invoice check found it. A project now pins a version and the version determines the rates.
+  02's `2026-09-12.yaml` moved here byte for byte, so nothing it has already costed changes.
+  `docs/prices.md` has the reasoning and the steps for moving 02 across.
+- **`boundary/prices/2026-09-14.yaml`** supersedes `2026-09-12` and adds the `foundry` provider
+  at the standard per-model USD rates, which is what Foundry meters before converting to Claude
+  Consumption Units at US$0.01 each. No `batch_multiplier`, because Foundry does not offer the
+  Message Batches API and an absent multiplier correctly leaves a batched call uncosted. No
+  `vertex` block: Google publishes its own Claude rates and they were not readable from the
+  published page on 2026-09-14, so a Vertex call is uncosted until someone reads them.
+- **`docs/hyperscaler-setup.md`**, the step-by-step for creating the Foundry resource and the
+  Vertex project, and the two things that bite: a Canadian regional endpoint may not serve the
+  newest models at all, and the Vertex bearer token expires hourly with no refresh layer built
+  yet.
+- **`boundary experiment token-estimates`**, Rule C candidate 2, measured over 15,996 real calls
+  from project 03's first official drift run. Three estimators against what the vendors actually
+  returned. The finding is not that estimates are inaccurate but that they are accurate in
+  aggregate and wrong per call: chars/4 gets the month's open-weights input count right to +0.1
+  percent while getting the typical call wrong by -31.2 percent. A spend cap is checked per
+  call, so an estimator that cancels out over a month is useless for the thing the number is
+  for. Written up in `docs/rejected.md`; the costing path is unchanged.
+- **`boundary.sqlite-wal` and `-shm` are no longer committed.** `.gitignore` covered
+  `*.sqlite` and not its sidecars, so the 2026-09-12 commit carried a write-ahead log for a
+  database that is itself ignored: a checkout got a WAL with no database beside it. Untracked,
+  and the ignore rule now covers `-wal`, `-shm` and `-journal`. Found while writing the invoice
+  check, which turned on exactly this distinction.
+- **`docs/invoice-check.md`**, the first ledger-against-invoice check, run early because 03's
+  first official run moved from Sep 27 to Sep 13. 70,834 calls across three projects merged into
+  one ledger, US$61.3551 to 2026-09-14, reconciling with 03's own independent accounting to
+  within US$0.000001 over 35,728 of those calls. The four vendor console figures wait for
+  October. Two things the check found about itself are recorded there: gathering ledgers with a
+  plain `cp` drops rows still in the write-ahead log, which `ledger merge` itself handles
+  correctly and an operator tidying files beforehand does not; and September was priced from two
+  repositories, so the costing cannot be reproduced from this one alone.
+
 ## 0.2.0 (2026-09-11)
 
 - **Anthropic Message Batches.** `Gateway.batch_submit(requests, purpose=, run_id=)` returns

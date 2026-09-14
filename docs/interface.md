@@ -176,12 +176,29 @@ it.
 
 | File | Contents | Owner |
 |---|---|---|
-| `config/boundary.yaml` | `providers` (name, kind, base URL, key environment variable, pinned API version), `routes` (alias to provider, model, optional API version and region; may point at a separate `routes.yaml`), `defaults`, `retry`, `ledger` (`path`, and `env` since 0.2), `telemetry`, `cache`, and the paths to the two files below | This repository; a project may ship its own |
+| `config/boundary.yaml` | `providers` (name, kind, base URL, key environment variable, pinned API version, `project` since 0.2.1 for `gcp_vertex` only, and `batches` since 0.2.1), `routes` (alias to provider, model, optional API version and region; may point at a separate `routes.yaml`), `defaults`, `retry`, `ledger` (`path`, and `env` since 0.2), `telemetry`, `cache`, and the paths to the two files below | This repository; a project may ship its own |
 | `config/caps.yaml` | `portfolio_monthly_usd`, per-project `monthly_usd` and `per_run_usd`, a `default` | This repository |
 | `config/prices/YYYY-MM-DD.yaml` | USD per million tokens per provider and model: `input`, `output`, optional `cache_read`, `cache_write`, `batch_multiplier`; `source` names where the numbers came from. The newest date is used. A new price is a new file | This repository |
 
 Keys come only from the environment variables named in `api_key_env`. Nothing in any
 configuration file is secret.
+
+**Provider kinds.** `anthropic`, `openai_compat` and `google` since 0.1. `azure_foundry` and
+`gcp_vertex` since 0.2.1: both serve the Anthropic Messages API, so both reuse its body
+builder and every one of its parsers, and both differ only in the envelope. Foundry takes the
+Azure key in `api-key` and keeps `model` in the body, where it names the deployment. Vertex
+takes a Google OAuth bearer token, moves `model` into the URL and `anthropic_version` into the
+body, and needs `project` and a `region`. A Vertex `region` that disagrees with its `base_url`
+host is refused rather than sent, because the host is what decides the geography.
+
+**Batches.** Anthropic since 0.2; `openai_compat` and `google` since 0.2.1. A provider entry
+must also opt in with `batches: true` for `openai_compat`, because most OpenAI-compatible
+hosts serve chat completions and no batch endpoint; `anthropic` and `google` default on.
+Foundry and Vertex have no batch API at all and are refused by name before anything is sent.
+The OpenAI shape uploads its requests as a file before creating the batch, which is two round
+trips rather than one; the ledger rows are written before the upload, because that is the
+request the prompts leave in. Neither round trip is billed, so a failure in either completes
+every row as a failure at no cost rather than leaving it in flight at an estimate.
 
 ## 9. Command line
 
@@ -197,6 +214,7 @@ configuration file is secret.
 | `boundary batch status <id>` | 0.2 | Where the vendor has got to with a batch. Writes nothing; exits non-zero until it has ended, so a script can wait on it |
 | `boundary batch collect <id>` | 0.2 | Completes the ledger rows of a batch submitted earlier, possibly by another process. `--ledger` points at the ledger that submitted it |
 | `boundary experiment remote-ledger` | 0.2 | The Rule C measurement behind `docs/rejected.md` |
+| `boundary experiment token-estimates <run-dir>` | 0.2.1 | The second Rule C measurement: local token estimates against returned usage, over a drift run's raw store and ledgers. Reads only; no network |
 
 ## 10. What is deliberately not here in 0.x
 
