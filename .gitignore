@@ -22,6 +22,15 @@ build/
 # Local ledgers, caches and raw stores (merged copies are committed by their owners, never here)
 *.sqlite
 *.sqlite3
+# The write-ahead log and shared-memory files SQLite keeps beside a database. These were
+# committed by accident on 2026-09-12, because the rule above covers the database and did not
+# cover its sidecars. A committed -wal is worse than a committed database: it holds rows the
+# .sqlite does not, so a checkout carrying a stale one beside a live database can make SQLite
+# replay the wrong state, and a checkout carrying one with no database at all (which is what
+# this repository had, since *.sqlite is ignored) is simply misleading.
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite-journal
 .cache/
 rawstore/
 loadtest/results/raw/
