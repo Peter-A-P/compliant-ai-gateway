@@ -22,6 +22,17 @@ dependencies = [
   "truststore>=0.10,<1",
 ]
 
+[project.optional-dependencies]
+# Vertex, and only Vertex. A Google OAuth access token lasts about an hour, so a run longer
+# than that has to mint tokens rather than be handed one; PLAN.md section 2.2 allows this
+# single dependency, "used for the token only". Optional so that 02 and 03, which call
+# Anthropic, OpenAI, Google and an open-weights host, install none of it.
+#
+# google-auth alone, without its `requests` or `urllib3` transport extras: the token is
+# fetched through this library's own pinned httpx client so that it verifies TLS against the
+# same store every vendor call does. See boundary/credentials.py.
+vertex = ["google-auth>=2,<3"]
+
 [dependency-groups]
 dev = [
   "pytest>=9,<10",
@@ -81,6 +92,13 @@ warn_unreachable = true
 
 [[tool.mypy.overrides]]
 module = ["respx", "respx.*"]
+ignore_missing_imports = true
+
+# google-auth is an optional dependency and is deliberately not installed in the default
+# development environment, so that the import guard in boundary/credentials.py is exercised
+# rather than assumed. Its absence must not fail the type check.
+[[tool.mypy.overrides]]
+module = ["google.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

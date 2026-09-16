@@ -5,6 +5,26 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+- **Google credential minting for Vertex** (`boundary/credentials.py`), behind a new optional
+  `vertex` extra: `uv sync --extra vertex`, or `pip install 'boundary[vertex]'`. A
+  cloud-platform access token from Application Default Credentials, refreshed five minutes
+  before it expires rather than after a call fails on it. This was the last code gap in the
+  three hyperscaler adapters: a pasted token lasts about an hour, which is fine for a smoke
+  call and useless for a drift run.
+
+  A new `credentials` field on a provider entry (`env`, the default, or `google_adc`) says
+  where the credential comes from. Under `google_adc` a set `api_key_env` variable still
+  wins, so one checked-in entry serves a laptop with `gcloud auth application-default login`
+  and a CI runner with a token from an earlier step and no gcloud.
+
+  The token is fetched through this library's own pinned httpx client rather than
+  google-auth's `requests` or `urllib3` transports, so the token call and the vendor call
+  verify TLS against the same store. On a network that inspects TLS, the alternative fails
+  the mint while every vendor call succeeds, and reads like a credentials problem.
+
+  The adapter is unchanged and still pure. `VertexAdapter` receives a token string and knows
+  nothing about where it came from.
+
 - **Amazon Bedrock adapter** (`aws_bedrock`), a subclass of the Anthropic adapter with a
   different path and a residency guard. AWS serves the Anthropic Messages API at
   `POST {host}/anthropic/v1/messages` with a Bedrock API key in `x-api-key`, so there is no

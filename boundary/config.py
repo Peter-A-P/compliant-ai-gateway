@@ -32,6 +32,18 @@ class ProviderKind(StrEnum):
     GCP_VERTEX = "gcp_vertex"  # v0.2
 
 
+class CredentialSource(StrEnum):
+    """Where a provider entry's credential comes from.
+
+    `env` is every provider in this portfolio except one: a key copied into `.env` once,
+    which does not expire. `google_adc` is for Vertex, whose OAuth access tokens last about
+    an hour, so a long run has to mint them rather than be handed one.
+    """
+
+    ENV = "env"
+    GOOGLE_ADC = "google_adc"
+
+
 class Residency(StrEnum):
     """How far a request may travel from the endpoint it was sent to.
 
@@ -84,6 +96,19 @@ class ProviderConfig(_Strict):
     # equivalent signal to check it against. Part B's residency policy is built on this
     # field; until then it documents a choice rather than enforcing one.
     residency: Residency | None = None
+    # Where this entry's credential comes from. `env` reads `api_key_env` and is the default,
+    # so every provider entry written before 2026-09-15 keeps working unchanged.
+    #
+    # `google_adc` mints a cloud-platform access token from Application Default Credentials
+    # and refreshes it before it expires, which is what Vertex needs and what nothing else
+    # does. It requires the optional `google-auth` dependency: install `boundary[vertex]`.
+    #
+    # Under `google_adc`, a non-empty `api_key_env` variable still wins. That precedence is
+    # deliberate and is the difference between one configuration file and two: a laptop has
+    # `gcloud auth application-default login` and no variable, while CI has a token minted by
+    # a previous step and no gcloud, and both read this same checked-in entry. Setting the
+    # variable is how CI says "use this one"; leaving it unset is how a laptop says "mint it".
+    credentials: CredentialSource = CredentialSource.ENV
     # Whether this host serves a batch endpoint. None means "the default for this kind":
     # on for anthropic and google, where batches are part of the vendor's API, and OFF for
     # openai_compat, where they are not part of the compatibility surface. Ollama, vLLM and

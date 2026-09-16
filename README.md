@@ -87,7 +87,18 @@ OpenAI, Google, OpenAI-compatible hosts and the three hyperscaler model platform
 OpenTelemetry span and one cost-ledger row per call, computed from returned usage and a
 dated price list; spend caps enforced before the call; a pass-through mode with no
 retries, no cache and no rewriting, verified by byte-equality tests, for measurements
-that must not be confounded. Part B: an OpenAI-compatible proxy on the same library with
+that must not be confounded.
+
+**No vendor SDKs**, and one exception with a boundary around it. Every request body is built
+here and sent with a pinned `httpx` client, because an SDK release that changes a default,
+a retry or a header would change a measurement without changing this repository. The single
+exception is `google-auth`, used to mint the Google access token that Vertex needs and for
+nothing else: it is an optional dependency (`boundary[vertex]`), it lives in one module,
+and it never builds a request or parses a response. Bedrock was expected to need a second
+exception, `botocore`'s SigV4 signer, and turned out not to: AWS serves the Anthropic
+Messages API against an API key, so that adapter carries no vendor dependency at all.
+
+Part B: an OpenAI-compatible proxy on the same library with
 reversible PII redaction, residency routing by declared data class, a semantic cache with
 its false-hit rate measured, per-team budgets, a hash-chained audit log anchored daily in
 this repository, a layered load test, and a read-only dashboard of every project's calls

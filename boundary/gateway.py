@@ -32,6 +32,7 @@ from boundary.cache import ExactMatchCache
 from boundary.config import (
     BoundaryConfig,
     CapsConfig,
+    CredentialSource,
     PriceEntry,
     PriceList,
     ProviderConfig,
@@ -40,6 +41,7 @@ from boundary.config import (
     load_caps,
     load_config,
 )
+from boundary.credentials import GoogleADCToken
 from boundary.env import find_dotenv, load_dotenv
 from boundary.errors import (
     BatchNotReady,
@@ -145,6 +147,9 @@ class Gateway:
         self.env = env or os.environ.get("BOUNDARY_ENV", "").strip() or config.ledger.env
         self._sleep = sleep
         self._asleep = asleep
+        # One token source per provider entry that mints rather than reads its credential.
+        # Held for the gateway's lifetime so the token is refreshed, not re-minted per call.
+        self._token_sources: dict[str, GoogleADCToken] = {}
 
     @classmethod
     def from_config(
@@ -761,8 +766,18 @@ class Gateway:
             )
         return adapter
 
-    @staticmethod
-    def _api_key(name: str, pc: ProviderConfig) -> str | None:
+    def _api_key(self, name: str, pc: ProviderConfig) -> str | None:
+        """The credential for one provider entry, however that entry gets one.
+
+        For `credentials: google_adc` a pasted variable still wins when it is set. That is
+        how one checked-in configuration serves both a laptop, which has
+        `gcloud auth application-default login` and no variable, and CI, which has a token
+        from an earlier step and no gcloud. The precedence is documented on the field rather
+        than discovered, and the token is minted only when nothing was pasted.
+        """
+        if pc.credentials is CredentialSource.GOOGLE_ADC:
+            pasted = os.environ.get(pc.api_key_env, "").strip() if pc.api_key_env else ""
+            return pasted or self._google_token(name, pc)
         if pc.api_key_env is None:
             return None
         value = os.environ.get(pc.api_key_env, "").strip()
@@ -771,6 +786,18 @@ class Gateway:
                 f"provider {name!r} needs {pc.api_key_env} in the environment (or in .env); it is unset or empty"
             )
         return value
+
+    def _google_token(self, name: str, pc: ProviderConfig) -> str:
+        """A cloud-platform access token, minted once per provider entry and kept fresh.
+
+        The source is cached on the gateway rather than made per call, which is the whole
+        point: a run of ten thousand calls mints a handful of tokens instead of ten thousand.
+        """
+        source = self._token_sources.get(name)
+        if source is None:
+            source = GoogleADCToken(client=self.transport.sync_client)
+            self._token_sources[name] = source
+        return source.token()
 
     @staticmethod
     def _auth_headers(pc: ProviderConfig, api_key: str | None) -> dict[str, str]:

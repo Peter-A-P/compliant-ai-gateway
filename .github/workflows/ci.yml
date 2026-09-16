@@ -18,3 +18,10 @@ jobs:
       - run: uv run ruff check .
       - run: uv run mypy
       - run: uv run pytest
+      # The `vertex` extra is deliberately absent above, so the suite runs with google-auth
+      # missing and exercises the import guard that tells a user which extra to install.
+      # This step installs it and re-runs the credential tests, which is the only place the
+      # two assumptions about the real library get checked: that it accepts a duck-typed
+      # transport, and that the expiry it sets is naive.
+      - run: uv sync --frozen --extra vertex
+      - run: uv run pytest tests/test_credentials.py

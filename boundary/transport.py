@@ -59,6 +59,17 @@ class Transport:
         # byte-equality test compares this with what the adapter built.
         self.last_sent_body: bytes | None = None
 
+    @property
+    def sync_client(self) -> httpx.Client:
+        """The pinned synchronous client, for the one thing that is not a model call.
+
+        `boundary.credentials` mints Google access tokens through it, so the token request
+        and the vendor request verify TLS against the same store. Exposed rather than
+        rebuilt, because two clients with two trust configurations is precisely the bug this
+        avoids.
+        """
+        return self._sync
+
     def _build(
         self, client: httpx.Client | httpx.AsyncClient, built: BuiltRequest
     ) -> httpx.Request:

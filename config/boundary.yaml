@@ -95,11 +95,20 @@ providers:
     api_key_env: AWS_BEARER_TOKEN_BEDROCK
     api_version: "2023-06-01"
 
+  # `credentials: google_adc` mints a cloud-platform token from Application Default
+  # Credentials and refreshes it five minutes before it expires. A Google OAuth token lasts
+  # about an hour, so a pasted one is fine for a smoke call and useless for a drift run.
+  # Needs the optional dependency: install `boundary[vertex]`.
+  #
+  # GOOGLE_VERTEX_ACCESS_TOKEN still wins when it is set, which is how CI passes a token
+  # minted by an earlier step to a runner that has no gcloud. Unset it and the laptop mints
+  # its own. One checked-in entry, two environments.
   vertex:
     kind: gcp_vertex
     base_url: https://northamerica-northeast1-aiplatform.googleapis.com
     region: northamerica-northeast1
     project: REPLACE-ME
+    credentials: google_adc
     api_key_env: GOOGLE_VERTEX_ACCESS_TOKEN
 
 # Aliases. Standard mode only; pass-through refuses them.

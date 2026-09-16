@@ -415,7 +415,10 @@ boundary smoke vertex
 
 ---
 
-## Three warnings, all worth reading before you build anything
+## Three things worth reading before you build anything
+
+Two of them are warnings about what these platforms will and will not promise you. The
+third used to be a warning and is now a note about a thing that works.
 
 ### What "Canadian residency" can and cannot mean
 
@@ -575,20 +578,45 @@ row. It is not fine for a panel: 03's first drift run was 16,800 calls, which at
 allocation is 28 hours. Anything larger than a smoke test on Bedrock needs the quota increase
 requested first, and that is a lead time to put in a plan rather than discover in a run.
 
-### The Vertex token expires hourly, and nothing here refreshes it
+### The Vertex token expires hourly, and now something refreshes it
 
-`GOOGLE_VERTEX_ACCESS_TOKEN` is read from the environment like any other key. A
-`gcloud auth print-access-token` token lasts about an hour, which is fine for one smoke call
-and useless for a drift run.
+`gcloud auth print-access-token` gives you a token that lasts about an hour. That is fine for
+one smoke call and useless for a drift run, and it was the last code gap in the three
+hyperscaler adapters. **Built 2026-09-15** (`boundary/credentials.py`).
 
-The plan (section 5.1, item 8) says the token comes from `google-auth`, in an optional
-dependency group, used for the token only. **That part is not built.** The adapter takes a
-token and stays pure, which is the right shape for it, but the minting layer that would call
-`google.auth.default()` and refresh on expiry does not exist yet.
+Two ways to give Vertex a credential, and one checked-in provider entry serves both:
 
-So: one smoke call works today with a pasted token. Anything longer needs the google-auth
-credential layer written first. It is perhaps half a day, and nothing needs it before the
-smoke call proves the endpoint shape is right.
+| | What you do | What happens |
+|---|---|---|
+| **Laptop** | `gcloud auth application-default login`, and leave `GOOGLE_VERTEX_ACCESS_TOKEN` unset | A token is minted from Application Default Credentials and refreshed five minutes before it expires |
+| **CI** | Set `GOOGLE_VERTEX_ACCESS_TOKEN` to a token an earlier step minted | That token is used as-is; nothing is minted, and the runner needs no `gcloud` and no optional dependency |
+
+The precedence is "a set variable wins", documented on the `credentials` field rather than
+left to be discovered. Setting the variable is how an operator says "use this one"; leaving
+it unset is how a laptop says "mint it".
+
+Minting needs the optional dependency:
+
+```
+uv sync --extra vertex      # or: pip install 'boundary[vertex]'
+```
+
+It is optional on purpose. Projects 02 and 03 call Anthropic, OpenAI, Google and an
+open-weights host, and install none of it.
+
+**One design note worth keeping**, because it is the kind of thing that only bites on this
+laptop. `google-auth` ships transports built on `requests` and on `urllib3`, and both verify
+TLS against a bundled certificate list. This library verifies against the operating system's
+trust store instead, so that the work network's inspecting proxy is trusted the same way the
+browser trusts it. Using google-auth's own transport would mean the token call and the vendor
+call trusted different certificates: the token mint would fail on the work network while every
+vendor call succeeded, and the error would read like bad credentials rather than a trust
+problem. So the token is fetched through this library's own pinned client, which is about
+fifteen lines and removes a dependency rather than adding one.
+
+The adapter is unchanged and still pure: it receives a token string and knows nothing about
+where it came from, so it is still testable against goldens with no credentials and no
+network.
 
 ---
 
