@@ -5,6 +5,38 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+- **Amazon Bedrock adapter** (`aws_bedrock`), a subclass of the Anthropic adapter with a
+  different path and a residency guard. AWS serves the Anthropic Messages API at
+  `POST {host}/anthropic/v1/messages` with a Bedrock API key in `x-api-key`, so there is no
+  SigV4 and no botocore: PLAN.md section 2.2's SDK exception now names only `google-auth`.
+  Exercised live from `ca-central-1` on 2026-09-15, and the response and error goldens in
+  `tests/test_bedrock.py` are that call's bytes rather than documentation samples.
+
+  The guard is most of the adapter. On Bedrock the processing geography is encoded in the
+  model identifier's prefix and nowhere else, so `build_request` refuses a profile sent to
+  the single-region endpoint, a bare id sent to the endpoint that cannot serve one, a region
+  that differs from the one named in the host, and a model identifier that contradicts the
+  provider entry's declared `residency`.
+
+  Bedrock calls are **uncosted**: AWS publishes its own Claude rates and they were not
+  readable from the published page on 2026-09-15, and an unknown price never becomes an
+  estimate. Batches are not implemented; Bedrock's is `CreateModelInvocationJob` over S3, a
+  different API, and a batch aimed at a bedrock provider is refused by name.
+
+- **Ledger schema v4, additive: `residency`.** One nullable column recording how far a call
+  was allowed to travel from its `region`, copied from the provider entry's declaration.
+
+  It is configuration rather than observation because no vendor reports where a request was
+  processed: Foundry hides the hosting version, Vertex hides the processing location, and
+  Bedrock strips the routing profile out of the model identifier it echoes back. A row can
+  say what the operator chose and cannot say what the vendor did. Null and `"global"` stay
+  distinct, and no existing row is backfilled, because a value there would be a claim about
+  where data went that nobody made.
+
+- **`residency` on a provider entry** (`single-region`, `geo`, `global`), optional and
+  additive. `aws_bedrock` enforces it against the model identifier; other kinds record it
+  without checking, because their platforms offer no equivalent signal to check against.
+
 - **Microsoft Foundry and Google Vertex adapters** (`azure_foundry`, `gcp_vertex`), both
   subclassing the Anthropic adapter because both platforms serve the Messages API. Only the
   envelope differs and only the envelope is overridden, so a change to how a response or its

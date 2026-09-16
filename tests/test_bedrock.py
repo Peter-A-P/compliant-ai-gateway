@@ -21,16 +21,21 @@ from __future__ import annotations
 
 import json
 
+import httpx
 import pytest
+import respx
 
 from boundary.config import ProviderConfig, ProviderKind, Residency
 from boundary.errors import ConfigError
+from boundary.gateway import Gateway
 from boundary.providers import ADAPTERS, BATCH_ADAPTERS, BedrockAdapter
 from boundary.providers.anthropic import AnthropicAdapter
 from boundary.providers.base import BuiltRequest
 from boundary.providers.bedrock import MESSAGES_PATH, residency_of, split_host
 from boundary.routes import ModelRef
 from boundary.types import ChatRequest
+
+from .conftest import ANTHROPIC_URL, BEDROCK_URL, HAIKU, anthropic_ok
 
 RUNTIME_CA = "https://bedrock-runtime.ca-central-1.amazonaws.com"
 MANTLE_US = "https://bedrock-mantle.us-east-1.api.aws"
@@ -311,3 +316,58 @@ def test_bedrock_is_registered_and_serves_no_batches() -> None:
     assert isinstance(ADAPTERS[ProviderKind.AWS_BEDROCK], BedrockAdapter)
     assert ProviderKind.AWS_BEDROCK not in BATCH_ADAPTERS
     assert _provider().serves_batches is False
+
+
+# -- end to end: what the ledger row says about geography --------------------------------
+
+
+def test_the_ledger_row_records_the_region_and_the_declared_residency(gw: Gateway) -> None:
+    """The claim this adapter makes has to survive into the row, or it is not a claim.
+
+    Nothing on the wire says where a Bedrock request was processed: the response strips the
+    routing profile and names no region. So the ledger's evidence is what the operator
+    declared, recorded at the moment of the call, and if it were not written here the
+    argument in providers/bedrock.py would be true and unsatisfied.
+    """
+    with respx.mock(assert_all_called=True) as mock:
+        mock.post(BEDROCK_URL).mock(
+            return_value=httpx.Response(200, json=LIVE_RESPONSE),
+        )
+        gw.chat(
+            ChatRequest(
+                model=f"bedrock/{GEO_MODEL}",
+                messages=[{"role": "user", "content": "Reply with the word ok."}],
+                max_tokens=16,
+            ),
+            purpose="dev",
+            run_id="r-bedrock",
+        )
+    row = gw.ledger.rows()[0]
+    assert row["provider"] == "bedrock"
+    # Where it was SENT, which is the thing the gateway controls.
+    assert row["region"] == "ca-central-1"
+    # How far it was allowed to travel, which only the configuration knows.
+    assert row["residency"] == "geo"
+    assert row["model_requested"] == f"bedrock/{GEO_MODEL}"
+    # And the row is uncosted, because AWS's rates are not in the price files.
+    assert row["costed"] == 0
+    assert row["cost_usd"] is None
+    assert row["error_type"] is None and row["http_status"] == 200
+
+
+def test_a_provider_that_declares_no_residency_writes_null_rather_than_a_guess(
+    gw: Gateway,
+) -> None:
+    """Null and "global" are different statements and the ledger keeps them apart.
+
+    Null says the operator made no claim. "global" says the operator claimed the weakest
+    one. Filling the first in as the second would put a decision in the record that nobody
+    took, which is the same mistake as guessing a price.
+    """
+    with respx.mock(assert_all_called=True) as mock:
+        mock.post(ANTHROPIC_URL).mock(return_value=anthropic_ok(input_tokens=5, output_tokens=2))
+        gw.chat(
+            ChatRequest(model=HAIKU, messages=[{"role": "user", "content": "Q?"}], max_tokens=8),
+            purpose="dev",
+        )
+    assert gw.ledger.rows()[0]["residency"] is None

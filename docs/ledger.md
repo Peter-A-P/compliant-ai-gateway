@@ -1,4 +1,4 @@
-# The ledger, schema v3
+# The ledger, schema v4
 
 One SQLite file per environment (`ledger.path` in `boundary.yaml`, or `ledger_path` on the
 gateway), combined by `boundary ledger merge`. Writing locally rather than to one central
@@ -46,7 +46,8 @@ hand, and inventing one would let the same call merge twice.
 | `alias` | text or null | The alias the caller used, if any |
 | `model_requested` | text | Explicit `provider/model-id` after alias resolution |
 | `model_returned` | text or null | The identifier the vendor reported |
-| `region` | text or null | From the route or provider entry |
+| `region` | text or null | From the route or provider entry. Where the request was **sent**, never where it was processed |
+| `residency` | text or null | `single-region`, `geo` or `global`, as declared on the provider entry (v4). Null when none was declared, which is not the same as `global` |
 | `input_tokens` | integer | As returned. For OpenAI-compatible hosts this is `prompt_tokens` minus cached tokens |
 | `output_tokens` | integer | As returned |
 | `cache_read_tokens` | integer | As returned (Anthropic `cache_read_input_tokens`; OpenAI `cached_tokens`) |

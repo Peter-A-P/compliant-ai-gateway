@@ -1,4 +1,4 @@
--- Ledger schema v3. Columns are additive only: never renamed, never removed.
+-- Ledger schema v4. Columns are additive only: never renamed, never removed.
 -- One row per call. A row is inserted before the request leaves the process
 -- (error_type = 'in_flight', cost_usd = the pre-call estimate) and completed after,
 -- so a process killed mid-call still leaves its row.
@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS ledger (
     model_requested     TEXT    NOT NULL,
     model_returned      TEXT,
     region              TEXT,
+    residency           TEXT,
     input_tokens        INTEGER NOT NULL DEFAULT 0,
     output_tokens       INTEGER NOT NULL DEFAULT 0,
     cache_read_tokens   INTEGER NOT NULL DEFAULT 0,

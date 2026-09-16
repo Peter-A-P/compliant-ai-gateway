@@ -105,6 +105,15 @@ class _Call:
     error_detail: str = ""
 
 
+def _residency(pc: ProviderConfig) -> str | None:
+    """The residency a provider entry declares, as a ledger value.
+
+    None when the entry declares nothing, which is honestly different from "global": one
+    says the operator made no claim, the other says the operator claimed the weakest one.
+    """
+    return pc.residency.value if pc.residency is not None else None
+
+
 class Gateway:
     def __init__(
         self,
@@ -234,6 +243,7 @@ class Gateway:
             model_requested=f"{provider}/raw:{path}",
             run_id=run_id,
             region=pc.region,
+            residency=_residency(pc),
             price_list=self.prices.name,
             request_sha256=sha256_hex(built.body),
             env=self.env,
@@ -362,6 +372,7 @@ class Gateway:
                     run_id=run_id,
                     alias=ref.alias,
                     region=ref.region,
+                    residency=_residency(pc),
                     price_list=self.prices.name,
                     cost_usd=estimate if entry is not None else None,
                     request_sha256=sha256_hex(single.body),
@@ -829,6 +840,7 @@ class Gateway:
             run_id=run_id,
             alias=ref.alias,
             region=ref.region,
+            residency=_residency(ref.provider_config),
             price_list=self.prices.name,
             cost_usd=estimate if entry is not None else None,
             request_sha256=sha256_hex(built.body),

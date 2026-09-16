@@ -24,7 +24,7 @@ from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 from typing import Any
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 _SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 
 IN_FLIGHT = "in_flight"
@@ -63,7 +63,7 @@ def utc_now() -> str:
 
 @dataclass(slots=True)
 class LedgerRow:
-    """One row, schema v2. Field names are the column names."""
+    """One row, schema v4. Field names are the column names."""
 
     ts_utc: str
     boundary_version: str
@@ -75,7 +75,19 @@ class LedgerRow:
     run_id: str | None = None
     alias: str | None = None
     model_returned: str | None = None
+    # Where the request was SENT. Not where it was processed: no vendor reports that, which
+    # is the finding this column is careful not to overstate. See docs/ledger.md.
     region: str | None = None
+    # How far the request was allowed to travel from that region, as declared on the
+    # provider entry (v4). Null means the entry did not declare one, which is what every row
+    # written before 2026-09-15 means and is honestly different from "global".
+    #
+    # It is configuration rather than observation on purpose. Foundry does not report which
+    # hosting version served a deployment, Vertex does not report the processing location,
+    # and Bedrock strips the routing profile out of the model identifier it echoes back. So
+    # a row can say what the operator chose and cannot say what the vendor did, and writing
+    # the first while implying the second is the failure this project exists to prevent.
+    residency: str | None = None
     input_tokens: int = 0
     output_tokens: int = 0
     cache_read_tokens: int = 0
@@ -209,6 +221,12 @@ class LedgerStore:
                 # the ledger would be worse than a null.
             if current < 3:
                 self._add_columns(("batch_id", "TEXT"))
+            if current < 4:
+                # Left null for every existing row rather than backfilled. A row written
+                # before the column existed was written by a configuration that did not
+                # declare a residency, and inventing one would put a claim in the ledger
+                # that nobody made.
+                self._add_columns(("residency", "TEXT"))
             self._conn.execute(
                 "INSERT INTO schema_version (version, applied_utc) VALUES (?, ?)",
                 (SCHEMA_VERSION, utc_now()),

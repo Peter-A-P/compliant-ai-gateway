@@ -16,6 +16,7 @@ CONFIG_DIR = REPO / "config"
 ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
 OPENAI_URL = "https://api.openai.com/v1/chat/completions"
 OPENWEIGHTS_URL = "https://api.together.xyz/v1/chat/completions"
+BEDROCK_URL = "https://bedrock-runtime.ca-central-1.amazonaws.com/anthropic/v1/messages"
 
 HAIKU = "anthropic/claude-haiku-4-5-20251001"
 
@@ -33,6 +34,7 @@ def keys(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "test-openai-key-000000000000")
     monkeypatch.setenv("GOOGLE_API_KEY", "test-google-key-000000000000")
     monkeypatch.setenv("OPENWEIGHTS_API_KEY", "test-openweights-key-000000000000")
+    monkeypatch.setenv("AWS_BEARER_TOKEN_BEDROCK", "test-bedrock-key-000000000000")
 
 
 async def _no_sleep(_: float) -> None:

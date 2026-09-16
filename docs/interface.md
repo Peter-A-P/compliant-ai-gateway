@@ -138,11 +138,11 @@ All subclass `BoundaryError`.
 | `BatchNotReady` | Results were asked for before the vendor finished the batch. Not a failure: "not yet" is the ordinary answer | `batch_id`, `processing_status`, `counts` | 0.2 |
 | `ProviderError` | Non-2xx after retries (standard) or transport failure. In pass-through the same information is returned as a `ChatResponse` instead | `provider`, `status`, `body`, `retries`, `headers` | 0.1 |
 
-## 7. The ledger row (schema v3)
+## 7. The ledger row (schema v4)
 
 One row per call, written before the response is returned, including failures. Columns
 are additive only; never renamed or removed. Field-by-field notes in `docs/ledger.md`
-(Sep 8, v2 Sep 10).
+(Sep 8, v2 Sep 10, v4 Sep 15).
 
 ```
 id, ts_utc, boundary_version, project, purpose, run_id, mode, provider, alias,
@@ -151,12 +151,23 @@ cache_write_tokens, price_list, cost_usd, costed, cached, latency_ms, http_statu
 error_type, retries, request_sha256, response_sha256, trace_id, span_id, raw_path
 call_uid, env                                                             -- added in 0.2
 batch_id                                                                  -- added in 0.2
+residency                                                                 -- added in 0.2
 ```
 
 `call_uid` identifies the call across files and `env` says which environment made it;
 together they are what lets `ledger merge` combine one file per environment and be safe to
 run again. `batch_id` (v3) names the vendor batch a row belongs to, and is null for every
-ordinary call. A file is upgraded in place on open, one version at a time and additively. A
+ordinary call. `residency` (v4) is how far the request was allowed to travel from `region`,
+copied from the provider entry's declaration, and is null when the entry declared nothing.
+
+It is worth being exact about why `residency` is configuration rather than something parsed
+from a response, because the distinction is the whole value of the column. No vendor reports
+where a request was processed. Foundry does not say which hosting version served a
+deployment, Vertex does not say where inference ran, and Bedrock strips the routing profile
+out of the model identifier it echoes back. So the row records what the operator chose, at
+the moment of the call, and never what the vendor did. Null and `"global"` are therefore
+different statements and stay apart: null means no claim was made, `"global"` means the
+weakest claim was made deliberately. A file is upgraded in place on open, one version at a time and additively. A
 reader written against v1 still works: nothing moved, and `SELECT` by name is unaffected.
 
 One thing for a repository that pins `boundary>=0.1,<0.3`: the upgrade is one way. Once a
