@@ -28,6 +28,13 @@ name: smoke
 # It needs four repository secrets: ANTHROPIC_API_KEY, OPENAI_API_KEY, GOOGLE_API_KEY and
 # OPENWEIGHTS_API_KEY. The local provider is not smoked here; a local server is a laptop
 # thing and its call cannot leave the machine anyway.
+#
+# AWS_BEARER_TOKEN_BEDROCK is a fifth, and optional. Its step is skipped when the secret is
+# absent rather than failing, because the adapter shipped before the key did and a run that
+# went red for a missing optional credential would train people to ignore a red run. Set it
+# to a Bedrock API key and the step starts running; nothing else changes. Foundry and Vertex
+# have no step yet for a simpler reason: their provider entries still say REPLACE-ME, so
+# there is nothing for a secret to authenticate against.
 
 on:
   workflow_dispatch:
@@ -72,6 +79,7 @@ jobs:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
       OPENWEIGHTS_API_KEY: ${{ secrets.OPENWEIGHTS_API_KEY }}
+      AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
       # Labels every row this run writes, so a merged ledger says where the call was made.
       BOUNDARY_ENV: actions
     steps:
@@ -119,6 +127,29 @@ jobs:
         if: inputs.collect_batch_id == '' && inputs.single == 'true'
         continue-on-error: true
         run: uv run boundary smoke openweights --run-id smoke-actions
+      # Claude on Amazon Bedrock, ca-central-1, through the Anthropic Messages route. The
+      # model id carries the `us.` geographic inference profile, which is a residency
+      # decision and not decoration: the provider entry declares `residency: geo` and the
+      # adapter refuses the pair if they ever stop agreeing.
+      #
+      # This row will be UNCOSTED. AWS publishes its own Claude rates, they were not readable
+      # from the published page on 2026-09-15, and an unknown price writes an uncosted row
+      # rather than an estimate. The row is still worth having: it is the live evidence
+      # PLAN.md section 5.1 item 9 asks for, and the cost follows when the rates do.
+      - name: Smoke bedrock
+        if: >
+          inputs.collect_batch_id == '' && inputs.single == 'true'
+          && env.AWS_BEARER_TOKEN_BEDROCK != ''
+        continue-on-error: true
+        run: uv run boundary smoke bedrock --run-id smoke-actions
+      - name: Say why bedrock was skipped
+        if: >
+          inputs.collect_batch_id == '' && inputs.single == 'true'
+          && env.AWS_BEARER_TOKEN_BEDROCK == ''
+        run: >
+          echo "bedrock skipped: no AWS_BEARER_TOKEN_BEDROCK secret.
+          Add one to run it; see docs/hyperscaler-setup.md step 6."
+
       - name: Smoke the extra models
         if: inputs.collect_batch_id == '' && inputs.extra_models != ''
         continue-on-error: true
