@@ -14,6 +14,7 @@ from boundary.providers.base import (
     ParsedResponse,
     UploadingBatchAdapter,
 )
+from boundary.providers.bedrock import BedrockAdapter
 from boundary.providers.foundry import AzureFoundryAdapter
 from boundary.providers.google import GoogleAdapter
 from boundary.providers.google_batch import GoogleBatchAdapter
@@ -35,6 +36,7 @@ ADAPTERS: dict[ProviderKind, Adapter] = {
     ProviderKind.OPENAI_COMPAT: _OPENAI_COMPAT,
     ProviderKind.GOOGLE: _GOOGLE,
     ProviderKind.AZURE_FOUNDRY: AzureFoundryAdapter(),
+    ProviderKind.AWS_BEDROCK: BedrockAdapter(),
     ProviderKind.GCP_VERTEX: VertexAdapter(),
 }
 
@@ -48,6 +50,11 @@ ADAPTERS: dict[ProviderKind, Adapter] = {
 #
 # Foundry and Vertex are deliberately absent: the Message Batches API is on both platforms'
 # unsupported lists, so a batch aimed at either is refused by name before anything is sent.
+#
+# Bedrock is absent for a different reason. It does have batch inference, but it is
+# CreateModelInvocationJob, which reads and writes JSON Lines in S3 and needs a bucket and an
+# IAM service role. It shares no shape with the Message Batches API, so it is a separate
+# piece of work with a separate dependency rather than an override on BedrockAdapter.
 BATCH_ADAPTERS: dict[ProviderKind, BatchAdapter] = {
     ProviderKind.ANTHROPIC: _ANTHROPIC,
     ProviderKind.OPENAI_COMPAT: _OPENAI_COMPAT,
@@ -65,6 +72,7 @@ __all__ = [
     "BatchItemResult",
     "BatchProgress",
     "BatchSubmitted",
+    "BedrockAdapter",
     "BuiltRequest",
     "GoogleAdapter",
     "GoogleBatchAdapter",

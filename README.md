@@ -9,8 +9,13 @@ adoption, removed, with the latency overhead measured and published rather than 
 ([docs/interface.md](docs/interface.md)); the library table below is measured. **`v0.2.0` followed on 2026-09-11**: ledger merge
 across environments, Anthropic Message Batches collected at half price, and merging that no
 longer writes to the ledgers it reads. Every provider and the batch path were exercised
-live, and a local model server answers at price zero. Still to come are the adapters for the
-three hyperscaler model platforms. Both parts are planned in [PLAN.md](PLAN.md):
+live, and a local model server answers at price zero. **The three hyperscaler adapters are
+written and one of them has been called**: Claude on Amazon Bedrock answered from
+`ca-central-1` on 2026-09-15, and Microsoft Foundry and Google Vertex are waiting on
+credentials rather than on code. What that exercise found about data residency, and about the
+gap between a published default quota and the one a new account is actually given, is in
+[docs/hyperscaler-setup.md](docs/hyperscaler-setup.md). Both parts are planned in
+[PLAN.md](PLAN.md):
 Part A, the `boundary` library that every project in this portfolio calls models through,
 built Sep 7 to 13 2026; Part B, the full gateway with redaction, residency routing, audit
 log, cache, budgets and the portfolio-wide observability dashboard, built May 2027.

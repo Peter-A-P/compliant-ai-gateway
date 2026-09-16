@@ -29,6 +29,10 @@ SMOKE_MODELS: dict[str, str] = {
     # gemini-2.5-flash-lite is closed to new API users (404 on 2026-09-10).
     "google": "google/gemini-3.5-flash-lite",
     "openweights": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+    # The `us.` prefix is a geographic inference profile, not decoration: it decides where
+    # the request may be processed, and the provider entry declares `residency: geo` to
+    # match it. Changing this string changes the residency. See providers/bedrock.py.
+    "bedrock": "bedrock/us.anthropic.claude-haiku-4-5-20251001-v1:0",
     # A local server at price zero. Nothing leaves the machine, so this is the one smoke
     # call that can run from a network that inspects TLS. `ollama pull llama3.2:3b` first.
     "local": "local/llama3.2:3b",

@@ -766,7 +766,10 @@ class Gateway:
         headers: dict[str, str] = {"content-type": "application/json", **pc.headers}
         if api_key is None:
             return headers
-        if pc.kind is ProviderKind.ANTHROPIC:
+        if pc.kind is ProviderKind.ANTHROPIC or pc.kind is ProviderKind.AWS_BEDROCK:
+            # Bedrock's Anthropic-native route takes a Bedrock API key in the same header
+            # the direct vendor uses, and wants the same version pinned, because it is the
+            # same API. No SigV4 and no botocore; see boundary/providers/bedrock.py.
             headers["x-api-key"] = api_key
             headers["anthropic-version"] = pc.api_version or "2023-06-01"
         elif pc.kind is ProviderKind.AZURE_FOUNDRY:

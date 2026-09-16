@@ -32,6 +32,24 @@ class ProviderKind(StrEnum):
     GCP_VERTEX = "gcp_vertex"  # v0.2
 
 
+class Residency(StrEnum):
+    """How far a request may travel from the endpoint it was sent to.
+
+    This is a statement of intent, written by whoever configures a provider entry, and it
+    is checked against what the request will actually do. It is not parsed from a response:
+    no vendor reports where a request was processed, which is the finding that made this
+    field necessary (see docs/hyperscaler-setup.md).
+
+    single-region  processing stays in the endpoint's own region, guaranteed by the vendor
+    geo           processing stays inside a named geography, which may span countries
+    global        processing may go to any region the vendor operates
+    """
+
+    SINGLE_REGION = "single-region"
+    GEO = "geo"
+    GLOBAL = "global"
+
+
 # Which provider kinds serve a batch endpoint unless a provider entry says otherwise. See
 # ProviderConfig.batches for why openai_compat is not in here.
 _BATCHES_BY_DEFAULT = frozenset({ProviderKind.ANTHROPIC, ProviderKind.GOOGLE})
@@ -53,6 +71,19 @@ class ProviderConfig(_Strict):
     # gcp_vertex only: the Google Cloud project id, which Vertex carries in the URL rather
     # than in a header. Additive and optional, so every existing configuration still loads.
     project: str | None = None
+    # How far a request sent here may travel to be processed, as an explicit declaration.
+    # Optional and additive: unset means "not declared", which is what every provider entry
+    # written before 2026-09-15 means, and nothing is inferred on its behalf.
+    #
+    # aws_bedrock enforces it: the residency a Bedrock call actually gets is encoded in the
+    # model identifier's prefix and nowhere else, so a one-word edit to a model string moves
+    # the processing geography with no other diff. Declaring it here gives that edit
+    # something to disagree with. See boundary/providers/bedrock.py.
+    #
+    # Other kinds accept it and record it without checking, because their platforms offer no
+    # equivalent signal to check it against. Part B's residency policy is built on this
+    # field; until then it documents a choice rather than enforcing one.
+    residency: Residency | None = None
     # Whether this host serves a batch endpoint. None means "the default for this kind":
     # on for anthropic and google, where batches are part of the vendor's API, and OFF for
     # openai_compat, where they are not part of the compatibility surface. Ollama, vLLM and

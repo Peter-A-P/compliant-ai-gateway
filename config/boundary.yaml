@@ -41,12 +41,12 @@ providers:
     base_url: http://127.0.0.1:11434/v1
     price_zero: true
 
-  # -- hyperscaler platforms (v0.2, adapters written 2026-09-14) ---------------------------
+  # -- hyperscaler platforms (v0.2; Foundry and Vertex 2026-09-14, Bedrock 2026-09-15) -----
   #
-  # Both entries are inert until their credentials exist: nothing routes to them, and the
-  # key is only read when a call actually uses the provider. Neither has been exercised
-  # live, and neither has a price entry yet, so a call through either one writes an
-  # UNCOSTED row today. That is the designed behaviour, not an oversight: a price is
+  # All three entries are inert until their credentials exist: nothing routes to them, and
+  # the key is only read when a call actually uses the provider. None has a price entry, so
+  # a call through any of them writes an UNCOSTED row today. Bedrock has been exercised
+  # live from ca-central-1 (2026-09-15); Foundry and Vertex have not. That is the designed behaviour, not an oversight: a price is
   # copied from the vendor's page on the day the account exists and is dated then, because
   # a rate written weeks early carries a date that lies about when it was checked.
   #
@@ -70,6 +70,31 @@ providers:
   # northamerica-northeast1 is Montreal, which is the Canadian worked example Part B's
   # residency policy builds on. Regional and multi-region endpoints carry a 10 percent
   # premium over global, so the region is part of the price key and not only of the route.
+  # Claude on Amazon Bedrock, through the Anthropic Messages route. No SigV4 and no
+  # botocore: the Bedrock API key goes in `x-api-key`, the same header the direct vendor
+  # uses, so this is the Anthropic adapter with a different path.
+  #
+  # `residency` and the model identifier both have to be right, and they check each other.
+  # On Bedrock the processing geography is encoded in the model id's prefix and nowhere
+  # else: `us.` and `eu.` are geographies that may span countries, `global.` is anywhere,
+  # and a bare id is single-region but only the bedrock-mantle host accepts it. So a
+  # one-word edit to a route's model moves the data, and `residency` is the only thing in
+  # the system that would disagree with it. The adapter refuses a mismatch.
+  #
+  # ca-central-1 is the best Canadian posture available: Geo and Global are supported here,
+  # In-Region is not, and bedrock-mantle (the only guaranteed single-region route) does not
+  # exist in Canada at all. Note that AWS's "US" geography INCLUDES Canada: us. from
+  # ca-central-1 routes to ca-central-1, us-east-1, us-east-2 or us-west-2, and the response
+  # does not say which. That is "Canada or the United States, unspecified", not residency.
+  # See docs/hyperscaler-setup.md.
+  bedrock:
+    kind: aws_bedrock
+    base_url: https://bedrock-runtime.ca-central-1.amazonaws.com
+    region: ca-central-1
+    residency: geo
+    api_key_env: AWS_BEARER_TOKEN_BEDROCK
+    api_version: "2023-06-01"
+
   vertex:
     kind: gcp_vertex
     base_url: https://northamerica-northeast1-aiplatform.googleapis.com

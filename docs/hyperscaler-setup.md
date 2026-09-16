@@ -1,11 +1,15 @@
-# Setting up Microsoft Foundry and Google Vertex
+# Setting up Microsoft Foundry, Amazon Bedrock and Google Vertex
 
-The two adapters are written and tested. Neither has been called, because neither account
-exists. This is what has to be created, where, and in what order, and what to bring back into
-this repository afterwards.
+Three adapters, written and tested. **One of them has been called.** Bedrock answered a live
+request from `ca-central-1` on 2026-09-15; Foundry is blocked on a quota grant and Vertex is
+waiting on a Google Cloud project. This is what has to be created, where, and in what order,
+and what to bring back into this repository afterwards.
 
-Read the two warnings at the bottom before you start. The first one decides which Azure region
-you create the Foundry resource in, and a Canadian one will not work, so read it first.
+Read the warnings at the bottom before you start. The first one decides which region you build
+in on every platform, and on two of the three a Canadian region will not work, so read it
+first.
+
+If you only want one platform working today, it is Bedrock. It is the only one that answered.
 
 ---
 
@@ -72,9 +76,11 @@ For a first smoke call, deploy **claude-haiku-4-5**, Global Standard, either ver
 the cheapest thing to prove the path with. Whether it deploys at all depends on the
 subscription, not on any of these four choices.
 
-### 3a. If the deployment is refused for quota, check the subscription type
+### 3a. If the deployment is refused for quota, read the allocation
 
-This is the wall, and it is not where it looks like it is.
+This is the wall, and it is not where it looks like it is. The heading of this section named
+the wrong cause twice before the number was looked up; the answer is below and the record of
+getting there is kept deliberately.
 
 Deploying `claude-haiku-4-5` Global Standard in `eastus2` on 2026-09-14 was refused with
 *"Insufficient quota ... cannot be deployed to your current project"*, on **both** offered
@@ -192,6 +198,132 @@ deployment names. If it comes back uncosted, the deployment name is not one of t
 
 ---
 
+## Amazon Bedrock
+
+This is the one that works. Done on 2026-09-15, signup to answered call in about an hour, and
+every number below was read from the account rather than from a documentation table.
+
+Bedrock needs an account, a one-time Anthropic form, and a key. There is no resource to
+create, no deployment to name, and no capacity to request.
+
+### 1. Open the account
+
+[portal.aws.amazon.com/billing/signup](https://portal.aws.amazon.com/billing/signup). Email,
+card, phone verification.
+
+The free plan gives US$100 of credit immediately and up to US$100 more earned, and **the
+account closes itself six months after opening** unless you convert it to the paid plan.
+Converting costs nothing: there is no account fee, Bedrock has no standing charge, and you pay
+only for usage. So the six-month clock is a diary risk rather than a bill. Set a reminder to
+convert about a month before the date and the risk is gone.
+
+### 2. Stop using the root user
+
+Console, top right, **Security credentials**: turn on MFA for the root user, create no access
+keys for it, and make yourself an administrator identity to use instead, through
+[IAM Identity Center](https://console.aws.amazon.com/singlesignon) or a plain IAM user with
+`AdministratorAccess`. Do everything below as that identity.
+
+### 3. Set the budget before the first call
+
+[Billing, Budgets](https://console.aws.amazon.com/billing/home#/budgets), **Create budget**,
+cost budget, monthly, alerts at 50, 80 and 100 percent. PLAN.md section 5.1 item 9 makes this a
+precondition rather than a nicety, and it is the step that is annoying to do after you need it.
+
+### 4. Submit the Anthropic use-case form
+
+This is Bedrock's one gate, and unlike Foundry's it opens immediately.
+
+Model access is on by default for everything else, but **Anthropic models need a one-time
+First Time Use form per account**. [Bedrock console](https://console.aws.amazon.com/bedrock),
+switch to **Canada (Central) ca-central-1**, **Model catalog**, choose **Claude Haiku 4.5**,
+and it prompts you. It asks for company name, website, industry, intended users and use cases;
+AWS says in writing that an individual developer may give a GitHub profile or project URL
+instead of a company site. Your IAM identity needs `aws-marketplace:Subscribe`, `Unsubscribe`
+and `ViewSubscriptions`, which `AdministratorAccess` covers.
+
+> Access to the model is granted immediately after use case details are successfully
+> submitted.
+
+There is a CLI route as well, `aws bedrock put-use-case-for-model-access --form-data
+<base64 json>`, if the console form fights you.
+
+### 5. Check what you actually got, rather than what is documented
+
+Two commands, and they are the point of this section. Do not infer an allocation from an error
+message; that mistake is what the Foundry section below is an apology for.
+
+```
+aws bedrock get-foundation-model-availability \
+  --model-id anthropic.claude-haiku-4-5-20251001-v1:0 --region ca-central-1
+
+aws service-quotas list-service-quotas --service-code bedrock --region ca-central-1 \
+  --query "Quotas[?contains(QuotaName,'Haiku')].{q:QuotaName,v:Value}" --output table
+```
+
+Note that the quota names are spaced and capitalised (`... for Anthropic Claude Haiku 4.5`),
+not hyphenated like the model id. A filter written in model-id spelling silently returns `[]`,
+which reads like "no quota" and is not. That cost a round trip here.
+
+The first command should return all four fields green:
+
+```
+"agreementAvailability": { "status": "AVAILABLE" },
+"authorizationStatus": "AUTHORIZED",
+"entitlementAvailability": "AVAILABLE",
+"regionAvailability": "AVAILABLE"
+```
+
+The second returns the finding. See [what a new account is actually allocated](#what-a-new-account-is-actually-allocated) below, because the numbers are not the
+published defaults and the difference decides what you can schedule.
+
+### 6. Generate an API key
+
+[Bedrock console, API keys, long-term, create](https://console.aws.amazon.com/bedrock/home#/api-keys/long-term/create).
+Set an expiry, 90 days is plenty, and copy the value once because it is shown once.
+
+AWS labels long-term keys "for exploration only" and prefers short-term ones, which last up to
+12 hours and need a token-generator library to refresh. That is the same shape of problem
+Vertex already has, and it is deferred for the same reason: one key in `.env` proves the path,
+and the refreshing credential layer gets written when something needs to run for longer than a
+key lasts.
+
+It goes in `.env` as `AWS_BEARER_TOKEN_BEDROCK`. Not into git, not into a ledger row, and not
+pasted into CloudShell, whose home directory persists.
+
+### 7. Make the call, not from this laptop
+
+```
+boundary smoke bedrock
+```
+
+To test the endpoint by hand instead, note that Bedrock is the only one of the three platforms
+whose auth header is the same as the direct vendor's:
+
+```
+curl -sS -X POST https://bedrock-runtime.ca-central-1.amazonaws.com/anthropic/v1/messages \
+  -H "x-api-key: $AWS_BEARER_TOKEN_BEDROCK" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"us.anthropic.claude-haiku-4-5-20251001-v1:0","max_tokens":16,"messages":[{"role":"user","content":"Reply with the word ok."}]}'
+```
+
+On Windows that is a PowerShell command and PowerShell will break it three ways: `\` is not a
+line continuation (use a backtick, or one line), `$NAME` is not an environment variable (it is
+`$env:NAME`), and a value in `.env` is not in the environment at all until something loads it.
+An empty `x-api-key` header produces a confusing error rather than an auth failure.
+
+That writes one ledger row, and it will be **uncosted**, because AWS publishes its own rates
+and they are not in the price files. See [prices.md](prices.md).
+
+### 8. What goes in this repository
+
+The provider entry is already in `config/boundary.yaml`, with `residency: geo` declared against
+a `us.` model identifier. Read the comment above it before changing either, because those two
+fields check each other and that is the only check there is.
+
+---
+
 ## Google Vertex
 
 You already have a Google Cloud project with billing linked (the Gemini key's project, moved
@@ -283,7 +415,7 @@ boundary smoke vertex
 
 ---
 
-## Two warnings, both worth reading before you build anything
+## Three warnings, all worth reading before you build anything
 
 ### What "Canadian residency" can and cannot mean
 
@@ -317,7 +449,42 @@ different things and they fail differently:
 | Foundry, Claude, Hosted on Azure (v2) | **not offered** | inside Azure, but not inside Canada |
 | Foundry, Claude, Hosted on Anthropic (v1) | **not offered** | no, it runs outside Azure |
 | Foundry, other partner models | Canada Central and Canada East | no, Global Standard routes anywhere |
+| **Bedrock, Claude, geo profile (`us.`)** | **`ca-central-1`, and it works** | **no: may be served from three US regions** |
+| **Bedrock, Claude, global profile** | `ca-central-1` | no, routes to any commercial region |
+| **Bedrock, Claude, In-Region** | **not offered in Canada** | yes, but only in seven non-Canadian regions |
 | Vertex, Claude | `northamerica-northeast1` exists, older models only | no |
+
+**On Bedrock, Canada is a real region and still not a residency answer.** Verified against the
+Claude Haiku 4.5 model card and a live call on 2026-09-15. `ca-central-1` supports Geo and
+Global inference profiles and **not** In-Region. The `bedrock-mantle` endpoint, which is the
+only route to guaranteed single-region processing, serves Claude in seven regions and none of
+them is Canadian: us-east-1, us-east-2, us-west-2, eu-north-1, eu-west-1, ap-northeast-1,
+ap-southeast-4.
+
+AWS states the trade-off itself, which is worth quoting because it is the vendor's own wording
+rather than this project's reading of it:
+
+> Geo and global inference profiles can route requests outside the source Region and don't
+> provide single-Region data residency. For single-Region inference, use the `bedrock-mantle`
+> endpoint with the bare model ID.
+
+And then the sharpest thing found on any of the three platforms: **the geography AWS calls
+"US" contains Canada.** Calling `us.anthropic.claude-haiku-4-5-20251001-v1:0` from
+`ca-central-1` routes to one of `ca-central-1`, `us-east-1`, `us-east-2` or `us-west-2`. So the
+profile named after one country is a four-region pool spanning two, and a buyer who reads "US
+geo" as "United States only" has it backwards in both directions at once: it is not only the
+US, and it is not only Canada.
+
+Nothing in the response says which of the four served it. The model identifier comes back with
+the routing prefix stripped (`us.anthropic.claude-haiku-4-5-20251001-v1:0` in,
+`anthropic.claude-haiku-4-5-20251001-v1:0` out) and no region is reported at all. That is
+pinned as a test in `tests/test_bedrock.py`.
+
+So all three platforms hide the same thing in three different places: Foundry hides the hosting
+version, Vertex hides the processing location, Bedrock hides the routing profile. On each of
+them, residency is a configuration fact or it is not a fact. That is why `residency` is a
+declared field on a provider entry rather than something parsed from a response, and why the
+Bedrock adapter refuses a configuration whose model identifier and declaration disagree.
 
 Even where a Canadian deployment exists, it is commonly still served by a global deployment,
 so the tokens may be processed elsewhere. Dedicated, guaranteed in-country processing is the
@@ -366,6 +533,48 @@ For the smoke call, then: create the Foundry resource in a region that actually 
 which is the cheapest way to prove the path. Keep the Canada Central resource if you like. It
 costs nothing idle and it is the evidence.
 
+### What a new account is actually allocated
+
+Both platforms publish a default quota, and on both of them a new account gets something
+else. The shapes of the difference are not the same, and the difference between the shapes is
+the procurement finding.
+
+Measured on 2026-09-15, from the accounts rather than the documentation:
+
+| | Published default | Actually allocated | Callable on day one | Route to more |
+|---|---|---|---|---|
+| **Foundry**, `claude-haiku-4-5`, `eastus2` | 80 RPM | **0** | **No** | A form, evaluated individually, not guaranteed |
+| **Bedrock**, Claude Haiku 4.5, `ca-central-1` | 10,000 RPM | **10** | **Yes** | Standard quota increase request |
+
+Azure's is a wall and AWS's is a throttle, and a team evaluating both on a schedule will
+experience those very differently. On Bedrock you can prove an entire path in an afternoon and
+then ask for room. On Foundry you cannot make the first call at all, and the thing standing in
+the way is an approval with no published lead time.
+
+Reproduce the Bedrock half in one command:
+
+```
+aws service-quotas list-service-quotas --service-code bedrock --region ca-central-1 \
+  --query "Quotas[?contains(QuotaName,'Haiku')].{q:QuotaName,v:Value}" --output table
+```
+
+against `list-aws-default-service-quotas`, which is a different call and returns the published
+defaults. Two details in the comparison are worth more than the headline:
+
+- **Only the request rate is reduced. Token throughput is untouched.** Cross-region tokens per
+  minute is 5,000,000 on this account and 5,000,000 by default. So a new account may push five
+  million tokens a minute across ten requests, which is a fraud-and-abuse posture rather than a
+  capacity one, and it means the constraint binds hardest on exactly the workload this
+  portfolio runs: many small calls.
+- **The reduction factor is per model, not per account.** Haiku 4.5 is cut 1000x (10 against
+  10,000). Claude 3 Haiku is cut 100x (8 against 800 cross-region, 4 against 400 on-demand).
+  There is no single new-account multiplier to reason about.
+
+**What it means for scheduling.** 10 requests per minute is fine for a smoke call and a costed
+row. It is not fine for a panel: 03's first drift run was 16,800 calls, which at this
+allocation is 28 hours. Anything larger than a smoke test on Bedrock needs the quota increase
+requested first, and that is a lead time to put in a plan rather than discover in a run.
+
 ### The Vertex token expires hourly, and nothing here refreshes it
 
 `GOOGLE_VERTEX_ACCESS_TOKEN` is read from the environment like any other key. A
@@ -385,9 +594,16 @@ smoke call proves the endpoint shape is right.
 
 ## What lands in the ledger either way
 
-Both adapters record `region` on every row, so after the two smoke calls "which region was
-this request sent to" is a query against the ledger rather than a promise. That is the point of
-doing this before Part B rather than during it.
+All three adapters record `region` on every row, so "which region was this request sent to" is
+a query against the ledger rather than a promise. That is the point of doing this before Part B
+rather than during it. One of the three has actually written such a row: Bedrock, from
+`ca-central-1`, on 2026-09-15.
+
+Bedrock adds a second column's worth of meaning, because it is the platform where the
+configuration carries information the wire does not. `residency` on the provider entry says
+whether the request was allowed to leave its region, and the adapter refuses to send anything
+whose model identifier contradicts it. That is not a stronger claim than the vendors support;
+it is the same weak claim, written down where it can be audited instead of assumed.
 
 It is worth being precise about what that column is worth. It records where the request was
 **sent**, which is the thing the gateway controls and the thing a routing policy can enforce.

@@ -63,3 +63,15 @@ Anthropic's pricing page defers to rather than restates. Those rates were not re
 published page on 2026-09-14, so there are none here and a Vertex call is uncosted. They get
 copied in on the day the Google Cloud project exists, into a file dated that day, with the
 regional premium accounted for separately. See [hyperscaler-setup.md](hyperscaler-setup.md).
+
+`bedrock`, for the same reason and with two extra traps. AWS publishes its own Claude rates and
+Anthropic's pricing page defers to them; they were not readable from the published page on
+2026-09-15, so there are none here and a Bedrock call is uncosted. When they are copied in,
+from https://aws.amazon.com/bedrock/pricing/ or from the account's own Cost Explorer:
+
+- **Geo and regional endpoints cost 10 percent more than global** for Sonnet 4.5, Haiku 4.5,
+  Opus 4.5 and later. `us.anthropic.*` is not the `global.anthropic.*` rate, so the two need
+  separate entries even though they name the same model.
+- **Bedrock charges appear in Cost Explorer under the model provider, not under Bedrock**,
+  because third-party models bill through AWS Marketplace. The monthly invoice check will
+  otherwise look in the wrong place and conclude the calls were free.
