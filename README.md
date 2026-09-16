@@ -10,9 +10,12 @@ adoption, removed, with the latency overhead measured and published rather than 
 across environments, Anthropic Message Batches collected at half price, and merging that no
 longer writes to the ledgers it reads. Every provider and the batch path were exercised
 live, and a local model server answers at price zero. **The three hyperscaler adapters are
-written and one of them has been called**: Claude on Amazon Bedrock answered from
-`ca-central-1` on 2026-09-15, and Microsoft Foundry and Google Vertex are waiting on
-credentials rather than on code. What that exercise found about data residency, and about the
+written and one of them is exercised**: Claude on Amazon Bedrock answered from
+`ca-central-1`, first by hand on 2026-09-15 and then through this library from GitHub Actions
+on 2026-09-16, writing a ledger row that records the region it was sent to and the residency
+its configuration declared. That row is deliberately **uncosted**: AWS publishes its own rates,
+they were not readable from the published page, and an unknown price never becomes an estimate.
+Microsoft Foundry and Google Vertex are waiting on credentials rather than on code. What that exercise found about data residency, and about the
 gap between a published default quota and the one a new account is actually given, is in
 [docs/hyperscaler-setup.md](docs/hyperscaler-setup.md). Both parts are planned in
 [PLAN.md](PLAN.md):
