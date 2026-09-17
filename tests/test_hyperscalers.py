@@ -279,3 +279,28 @@ def test_neither_platform_offers_batches() -> None:
     """
     assert ProviderKind.AZURE_FOUNDRY not in BATCH_ADAPTERS
     assert ProviderKind.GCP_VERTEX not in BATCH_ADAPTERS
+
+
+@pytest.mark.parametrize(
+    "model",
+    [
+        "claude-haiku-4-5@20251001",
+        "claude-sonnet-4-5@20250929",
+        "claude-opus-4-5@20251101",
+        "claude-3-5-haiku@20241022",
+    ],
+)
+def test_vertex_does_not_percent_encode_the_at_in_a_dated_model_id(model: str) -> None:
+    """Every dated Vertex model id carries an `@`, and it must reach the URL unencoded.
+
+    `@` is a legal path character under RFC 3986 and Google's documented URL shows it
+    literally. Encoding it produced `.../models/claude-haiku-4-5%4020251001:rawPredict`,
+    which is not the URL the vendor documents. Caught 2026-09-16 while writing the setup
+    guide: it would have presented as a model-not-found on the first live call, which is a
+    day of looking in the wrong place.
+    """
+    provider = _vertex_provider(base_url="https://aiplatform.googleapis.com", region="global")
+    ref = ModelRef(provider="vertex", model=model, provider_config=provider, region="global")
+    built = VertexAdapter().build_request(ref, _request(), provider, "ya29.token")
+    assert f"/models/{model}:rawPredict" in built.url
+    assert "%40" not in built.url

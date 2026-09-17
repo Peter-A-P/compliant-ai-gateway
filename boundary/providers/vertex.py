@@ -73,6 +73,14 @@ VERTEX_ANTHROPIC_VERSION = "vertex-2023-10-16"
 
 RAW_PREDICT = "rawPredict"
 
+# Characters left alone when the model id goes into the path. `@` is the one that matters:
+# every dated Vertex model id carries one (claude-haiku-4-5@20251001), it is a legal path
+# character under RFC 3986, and Google's own documented URL shows it unencoded. Percent
+# encoding it produced .../models/claude-haiku-4-5%4020251001:rawPredict, which is not the
+# URL the vendor documents and is not a request this library should be inventing. Caught
+# 2026-09-16 while writing the setup guide, before the first live call rather than after it.
+MODEL_SAFE = "@"
+
 
 def endpoint_host(region: str) -> str:
     """The host for a region, which differs by endpoint type.
@@ -140,7 +148,7 @@ class VertexAdapter(AnthropicAdapter):
         url = (
             f"{base}/v1/projects/{quote(project, safe='')}"
             f"/locations/{quote(region, safe='')}"
-            f"/publishers/anthropic/models/{quote(ref.model, safe='')}:{RAW_PREDICT}"
+            f"/publishers/anthropic/models/{quote(ref.model, safe=MODEL_SAFE)}:{RAW_PREDICT}"
         )
         headers: dict[str, str] = {"content-type": "application/json", **provider.headers}
         if api_key:
