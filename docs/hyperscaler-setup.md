@@ -575,17 +575,56 @@ Both platforms publish a default quota, and on both of them a new account gets s
 else. The shapes of the difference are not the same, and the difference between the shapes is
 the procurement finding.
 
-Measured on 2026-09-15, from the accounts rather than the documentation:
+Measured 2026-09-15 and 2026-09-16, from the accounts rather than from documentation:
 
 | | Published default | Actually allocated | Callable on day one | Route to more |
 |---|---|---|---|---|
 | **Foundry**, `claude-haiku-4-5`, `eastus2` | 80 RPM | **0** | **No** | A form, evaluated individually, not guaranteed |
 | **Bedrock**, Claude Haiku 4.5, `ca-central-1` | 10,000 RPM | **10** | **Yes** | Standard quota increase request |
+| **Vertex**, `claude-haiku-4-5`, `global` | not published per model | **0 usable** | **No** | Quota increase request |
 
-Azure's is a wall and AWS's is a throttle, and a team evaluating both on a schedule will
-experience those very differently. On Bedrock you can prove an entire path in an afternoon and
-then ask for room. On Foundry you cannot make the first call at all, and the thing standing in
-the way is an approval with no published lead time.
+**All three.** Three vendors, three brand new accounts, three refusals or near-refusals of
+Claude, and on none of them does the published figure describe what a new customer receives.
+That is not a coincidence about this portfolio's luck. It is what partner-operated frontier
+models look like to a new buyer, and it is invisible from the outside because every vendor's
+documentation describes the steady state.
+
+The shapes differ, and the difference is what a buyer actually needs to know:
+
+- **Foundry is a wall.** Zero for every Claude model in every region that offers them, and the
+  only way through is a form with no published lead time and no guarantee.
+- **Bedrock is a throttle.** Ten requests a minute against a published ten thousand, which is
+  enough to prove a path in an afternoon and not enough to run a panel. You can start.
+- **Vertex is a wall that looks like a throttle.** The first request ever made on the account
+  returned 429 `Quota exceeded for global_online_prediction_requests_per_base_model`. Not
+  rate limiting, because there was no rate: one request, from a project whose total lifetime
+  Claude usage was zero.
+
+Vertex's is the most misleading of the three. A 429 is the status code for "slow down", every
+sensible client retries it, and this library did: four attempts, three retries, all refused.
+A team seeing that in a load test would tune concurrency, add backoff, and conclude their
+client was too aggressive, when the allocation is zero and no amount of slowing down reaches
+it. Azure at least says "Insufficient quota" in words.
+
+**What this costs a project that does not know.** Between them these three platforms cost this
+one about two days, spread across three wrong diagnoses on Azure, a spelling mistake in a quota
+filter on AWS, and a 429 on Google that means something other than what 429 means everywhere
+else. None of that time was spent on anything a reader of the vendors' documentation could have
+anticipated. A procurement note for any of these platforms should carry one line: **budget for
+a quota grant with an unknown lead time before the first call, on all three.**
+
+Reproduce the Vertex half by making one call, which is the point: there is no quota page to
+read first, and the first request is the diagnostic.
+
+```
+gcloud alpha services quota list \
+  --service=aiplatform.googleapis.com --consumer=projects/YOUR-PROJECT-ID \
+  --filter="global_online_prediction_requests_per_base_model"
+```
+
+The increase request is at
+[Quotas and system limits](https://cloud.google.com/vertex-ai/docs/generative-ai/quotas-genai),
+which is the URL the 429 body itself names.
 
 Reproduce the Bedrock half in one command:
 

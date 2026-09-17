@@ -254,3 +254,18 @@ async def test_async_path_writes_the_same_row(gw: Gateway) -> None:
         resp = await gw.achat(_req(), purpose="dev", run_id="async")
     row = gw.ledger.rows()[0]
     assert resp.ok and row["run_id"] == "async" and row["error_type"] is None
+
+
+def test_a_provider_error_message_reports_the_retries_the_gateway_assigned() -> None:
+    """The message is built when it is read, not when the error is constructed.
+
+    An adapter's parse_error cannot know how many attempts were made, so it constructs the
+    error with zero and the gateway assigns the real count afterwards. Freezing the text in
+    __init__ meant a call that was retried three times reported "after 0 retries", which
+    reads as evidence that the retry policy never ran.
+    """
+    err = ProviderError("vertex", 429, "error: Quota exceeded", headers={})
+    assert "after 0 retries" in str(err)
+    err.retries = 3
+    assert "after 3 retries" in str(err)
+    assert err.retries == 3

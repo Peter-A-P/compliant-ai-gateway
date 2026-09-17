@@ -117,5 +117,23 @@ class ProviderError(BoundaryError):
         self.body = body
         self.retries = retries
         self.headers: Mapping[str, str] = dict(headers or {})
-        short = body if len(body) <= 500 else body[:500] + "..."
-        super().__init__(f"{provider} returned {status} after {retries} retries: {short}")
+        super().__init__(self._message())
+
+    def _message(self) -> str:
+        short = self.body if len(self.body) <= 500 else self.body[:500] + "..."
+        return f"{self.provider} returned {self.status} after {self.retries} retries: {short}"
+
+    def __str__(self) -> str:
+        """Built from the current fields rather than frozen at construction.
+
+        An adapter's `parse_error` does not know how many attempts were made, so it builds
+        this error with the default of zero and the gateway, which does know, assigns
+        `retries` afterwards. Formatting the message in `__init__` meant that assignment
+        never reached the text: a Vertex 429 on 2026-09-16 was retried three times, the
+        ledger recorded `retries = 3`, and the message said "after 0 retries".
+
+        That is worse than cosmetic. The message is what a person reads first when a call
+        fails, and reading "0 retries" is evidence that the retry policy did not run. It
+        sent this project looking at the retry loop, which was working correctly.
+        """
+        return self._message()

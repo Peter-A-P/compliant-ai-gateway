@@ -5,6 +5,13 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+- **`ProviderError`'s message now follows its retry count.** An adapter's `parse_error` cannot
+  know how many attempts were made, so it builds the error with zero and the gateway assigns
+  the real count afterwards. The message was formatted in `__init__`, so that assignment never
+  reached the text: a Vertex 429 retried three times reported "after 0 retries" while the
+  ledger correctly recorded `retries = 3`. The message is what a person reads first when a call
+  fails, and that one read as evidence the retry policy had not run.
+
 - **Google credential minting for Vertex** (`boundary/credentials.py`), behind a new optional
   `vertex` extra: `uv sync --extra vertex`, or `pip install 'boundary[vertex]'`. A
   cloud-platform access token from Application Default Credentials, refreshed five minutes
