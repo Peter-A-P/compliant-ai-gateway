@@ -20,7 +20,7 @@ import json
 
 import pytest
 
-from boundary.config import ProviderConfig, ProviderKind
+from boundary.config import ProviderConfig, ProviderKind, Residency
 from boundary.errors import ConfigError
 from boundary.providers import ADAPTERS, BATCH_ADAPTERS, AzureFoundryAdapter, VertexAdapter
 from boundary.providers.vertex import VERTEX_ANTHROPIC_VERSION, endpoint_host
@@ -304,3 +304,78 @@ def test_vertex_does_not_percent_encode_the_at_in_a_dated_model_id(model: str) -
     built = VertexAdapter().build_request(ref, _request(), provider, "ya29.token")
     assert f"/models/{model}:rawPredict" in built.url
     assert "%40" not in built.url
+
+
+# -- Foundry's OpenAI-compatible route, which is the Canadian one -------------------------
+
+
+def _foundry_canada_provider(**kw: object) -> ProviderConfig:
+    defaults: dict[str, object] = {
+        "kind": ProviderKind.OPENAI_COMPAT,
+        "base_url": "https://example-resource.services.ai.azure.com/openai/v1",
+        "api_key_env": "AZURE_FOUNDRY_CANADA_API_KEY",
+        "region": "canadacentral",
+        "residency": Residency.GLOBAL,
+        "batches": False,
+    }
+    defaults.update(kw)
+    return ProviderConfig(**defaults)
+
+
+def test_foundry_openai_route_matches_the_documented_shape() -> None:
+    """A GPT deployment on Foundry needs no adapter of its own.
+
+    Verified against Microsoft's endpoint documentation, read 2026-09-17: the base URL is
+    `https://{resource}.services.ai.azure.com/openai/v1/`, the deployment name goes in the
+    `model` field, the key goes in `Authorization` as a bearer token, and the `/openai/v1/`
+    route uses implicit versioning so there is no `api-version` query parameter. That is
+    what the OpenAI-compatible adapter already builds, which is why this entry is
+    configuration rather than code.
+    """
+    provider = _foundry_canada_provider()
+    ref = ModelRef(
+        provider="foundry-canada",
+        model="gpt-4o-mini",
+        provider_config=provider,
+        region="canadacentral",
+    )
+    built = ADAPTERS[ProviderKind.OPENAI_COMPAT].build_request(
+        ref, _request("gpt-4o-mini"), provider, "azure-key-123"
+    )
+
+    assert built.method == "POST"
+    assert built.url == (
+        "https://example-resource.services.ai.azure.com/openai/v1/chat/completions"
+    )
+    assert built.headers["authorization"] == "Bearer azure-key-123"
+    # The api-version query parameter is an Azure OpenAI convention the v1 route dropped.
+    assert "api-version" not in built.url
+    # The deployment name travels as `model`.
+    assert json.loads(built.body)["model"] == "gpt-4o-mini"
+
+
+def test_the_canadian_entry_says_deployed_in_canada_and_processed_anywhere() -> None:
+    """The pair of fields is the finding, so it is asserted rather than left to a comment.
+
+    `region` is where the request is sent. `residency` is how far it may travel. Canada
+    Central on Global Standard means deployed in Canada and processed globally, and a
+    compliance product that recorded only the first would be letting a reader infer the
+    second. That slide is the failure this repository exists to prevent.
+    """
+    provider = _foundry_canada_provider()
+    assert provider.region == "canadacentral"
+    # Not `single-region`, which is the claim a reader would otherwise infer from the region
+    # alone, and which no Azure Global Standard deployment can support.
+    assert provider.residency is Residency.GLOBAL
+
+
+def test_the_canadian_entry_is_not_the_claude_foundry_adapter() -> None:
+    """Two Foundry entries, two shapes, and mixing them fails at the vendor.
+
+    `azure_foundry` speaks the Anthropic Messages API and is for Claude deployments, which
+    this subscription has zero quota for. `openai_compat` speaks chat completions and is for
+    everything else, which has normal quota. The kinds are what keep them apart.
+    """
+    assert _foundry_canada_provider().kind is ProviderKind.OPENAI_COMPAT
+    assert _foundry_provider().kind is ProviderKind.AZURE_FOUNDRY
+    assert not _foundry_canada_provider().serves_batches

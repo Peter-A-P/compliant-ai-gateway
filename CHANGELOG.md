@@ -5,6 +5,21 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+- **A Canada Central provider entry** (`foundry-canada`), which is the only genuinely Canadian
+  deployment available anywhere in this configuration. It needed no code: Foundry's
+  OpenAI-compatible route is `https://{resource}.services.ai.azure.com/openai/v1/`, takes
+  `Authorization: Bearer`, carries the deployment name in `model`, and uses implicit versioning
+  so there is no `api-version` parameter, which is exactly what the `openai_compat` adapter
+  already builds.
+
+  It exists because of a finding rather than a plan. Foundry allocates zero quota for every
+  Anthropic model and normal quota for everything else, so the Canadian resource that cannot
+  serve Claude serves a GPT deployment perfectly well.
+
+  The row it writes says `region: canadacentral` and `residency: global`: deployed in Canada,
+  processed anywhere, and it says both. That pair is the worked example the residency argument
+  needed, and it is the ceiling rather than a workaround.
+
 - **`ProviderError`'s message now follows its retry count.** An adapter's `parse_error` cannot
   know how many attempts were made, so it builds the error with zero and the gateway assigns
   the real count afterwards. The message was formatted in `__init__`, so that assignment never

@@ -77,6 +77,36 @@ providers:
   #
   # The model id is `claude-haiku-4-5@20251001`. The `@` goes into the URL unencoded: it is
   # a legal path character and Google's own example shows it literally.
+  # A model deployed in CANADA CENTRAL, on Azure Foundry, through its OpenAI-compatible
+  # route. This is the only genuinely Canadian deployment available anywhere in this
+  # configuration, and it exists because of a finding rather than a plan: Foundry allocates
+  # zero quota for every Anthropic model, and normal quota for everything else. So the
+  # Canadian resource that cannot serve Claude can serve this.
+  #
+  # `kind: openai_compat`, not `azure_foundry`. The azure_foundry adapter speaks the
+  # Anthropic Messages API, which is the wrong shape for a GPT deployment. Foundry's
+  # /openai/v1/ route is OpenAI-shaped, takes `Authorization: Bearer`, and uses implicit
+  # versioning so there is NO api-version query parameter. That is exactly what the
+  # openai_compat adapter already sends, so this entry needed no code at all.
+  #
+  # `model` is the DEPLOYMENT name, which Azure defaults to the model name. Change it here
+  # if the deployment was named something else; the ledger records what was requested.
+  #
+  # Read `region` and `residency` together, because the pair is the whole point. The request
+  # is sent to Canada. Global Standard may process it anywhere. Deployed in Canada, processed
+  # globally, and the row says both rather than letting a reader slide from the first to the
+  # second. That is the distinction this project exists to keep visible.
+  #
+  # No price entry, so calls are UNCOSTED until Azure's rates are read from a real invoice.
+  foundry-canada:
+    kind: openai_compat
+    base_url: https://REPLACE-ME.services.ai.azure.com/openai/v1
+    api_key_env: AZURE_FOUNDRY_CANADA_API_KEY
+    region: canadacentral
+    residency: global
+    # Foundry's v1 route is not OpenAI's /v1/batches surface. Say so rather than assume.
+    batches: false
+
   # Claude on Amazon Bedrock, through the Anthropic Messages route. No SigV4 and no
   # botocore: the Bedrock API key goes in `x-api-key`, the same header the direct vendor
   # uses, so this is the Anthropic adapter with a different path.

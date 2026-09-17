@@ -198,6 +198,73 @@ deployment names. If it comes back uncosted, the deployment name is not one of t
 
 ---
 
+## Canada Central, on Foundry, with a model that is not Claude
+
+This is the only genuinely Canadian deployment available anywhere in this configuration, and
+it exists because of a finding rather than a plan.
+
+Foundry allocates **zero** quota for every Anthropic model, in every region that offers them,
+and **normal** quota for everything else: 159 non-Claude AIServices quotas in `eastus2` were
+non-zero on 2026-09-15, `gpt-35-turbo` among them at 200. So the Canada Central resource that
+cannot serve Claude can serve a GPT model perfectly well, and Canada Central is a region
+Foundry does offer for those.
+
+That turns the residency finding from a negative into something demonstrable. Every other
+route in this repository ends in "no Canadian option". This one ends in a Canadian deployment,
+a ledger row that says so, and the same row saying the processing is global anyway.
+
+### It needed no code
+
+Foundry's OpenAI-compatible route is `https://{resource}.services.ai.azure.com/openai/v1/`. It
+takes `Authorization: Bearer {key}`, it carries the deployment name in the `model` field, and
+the `/openai/v1/` path uses implicit versioning so there is **no `api-version` query
+parameter** ([Endpoints for Microsoft Foundry
+Models](https://learn.microsoft.com/en-us/azure/foundry/foundry-models/concepts/endpoints),
+read 2026-09-17).
+
+That is exactly what the `openai_compat` adapter already builds, so this is a provider entry
+and nothing else. Note what it is **not**: the `azure_foundry` adapter speaks the Anthropic
+Messages API and is for Claude deployments, which this subscription has no quota for. Two
+Foundry entries, two shapes, and the `kind` is what keeps them apart.
+
+### Steps
+
+1. In your **Canada Central** Foundry resource, deploy a cheap model: `gpt-4o-mini` is the one
+   the smoke default expects. Azure names a deployment after the model unless you tell it
+   otherwise; if you rename it, change `model` in the provider entry to match, because the
+   ledger records what was requested.
+2. Copy the resource name and one key from the resource's **Keys and Endpoint** page.
+3. Put the resource name into `base_url` in `config/boundary.yaml`, replacing `REPLACE-ME`.
+4. Put the key in `.env` as `AZURE_FOUNDRY_CANADA_API_KEY`, and as a repository secret of the
+   same name if you want the Actions run.
+5. `boundary smoke foundry-canada`, not from this laptop.
+
+### What the row will say, and why both halves matter
+
+```
+provider         region          residency   costed
+foundry-canada   canadacentral   global      0
+```
+
+**`region: canadacentral`** is where the request was sent. That is a real Canadian deployment
+and it is the thing a routing policy can enforce.
+
+**`residency: global`** is how far it may travel to be processed. Global Standard routes
+anywhere, which Microsoft states plainly in its own deployment dialog: *"Data might be
+processed globally, outside the resource's Azure geography, but data storage remains in the AI
+resource's Azure geography."*
+
+So the row says **deployed in Canada, processed anywhere**, and it says both. A compliance
+product that recorded only the region would be letting a reader slide from the first claim to
+the second, which is the exact failure this repository exists to prevent. This entry is the
+worked example: the strongest honest Canadian claim available on any of the three platforms,
+written down with its limit attached.
+
+The row is **uncosted**, because Azure's rates for this deployment are not in the price files
+and an unknown price never becomes an estimate.
+
+---
+
 ## Amazon Bedrock
 
 This is the one that works. Done on 2026-09-15, signup to answered call in about an hour, and
@@ -468,6 +535,7 @@ different things and they fail differently:
 | Foundry, Claude, Hosted on Azure (v2) | **not offered** | inside Azure, but not inside Canada |
 | Foundry, Claude, Hosted on Anthropic (v1) | **not offered** | no, it runs outside Azure |
 | Foundry, other partner models | Canada Central and Canada East | no, Global Standard routes anywhere |
+| **Foundry, a GPT deployment** | **Canada Central, and it works** | no, Global Standard routes anywhere |
 | **Bedrock, Claude, geo profile (`us.`)** | **`ca-central-1`, and it works** | **no: may be served from three US regions** |
 | **Bedrock, Claude, global profile** | `ca-central-1` | no, routes to any commercial region |
 | **Bedrock, Claude, In-Region** | **not offered in Canada** | yes, but only in seven non-Canadian regions |
@@ -545,7 +613,12 @@ processing inside Azure and sending it to Anthropic only becomes available once 
 subscription is pay-as-you-go, at which point both are.
 
 So the claim this gateway can support is, at most, **"deployed in Canada"**, and for some
-platform and model pairs not even that. It is never **"processed only in Canada"**. Those are
+platform and model pairs not even that. It is never **"processed only in Canada"**.
+
+One route does reach the first of those, and only one: a non-Anthropic model deployed in Canada
+Central on Foundry. See the Canada Central section above. It is worth having precisely because
+it marks the ceiling. A Canadian buyer can have a Canadian deployment of a model that is not
+Claude, processed globally. Everything beyond that line is unavailable at any price today. Those are
 different claims and a compliance product that let a reader slide from the first to the second
 would be doing the thing this project exists to stop.
 

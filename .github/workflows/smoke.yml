@@ -81,6 +81,7 @@ jobs:
       OPENWEIGHTS_API_KEY: ${{ secrets.OPENWEIGHTS_API_KEY }}
       AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
       GOOGLE_VERTEX_ACCESS_TOKEN: ${{ secrets.GOOGLE_VERTEX_ACCESS_TOKEN }}
+      AZURE_FOUNDRY_CANADA_API_KEY: ${{ secrets.AZURE_FOUNDRY_CANADA_API_KEY }}
       # Labels every row this run writes, so a merged ledger says where the call was made.
       BOUNDARY_ENV: actions
     steps:
@@ -172,6 +173,23 @@ jobs:
         run: >
           echo "vertex skipped: no GOOGLE_VERTEX_ACCESS_TOKEN secret, or it expired.
           Mint one in Cloud Shell; see docs/hyperscaler-setup.md step 5."
+
+      # A model deployed in Canada Central, through Foundry's OpenAI-compatible route. The
+      # only genuinely Canadian deployment in this configuration, and the row it writes says
+      # region canadacentral and residency global: sent to Canada, processed anywhere.
+      - name: Smoke foundry-canada
+        if: >
+          inputs.collect_batch_id == '' && inputs.single == 'true'
+          && env.AZURE_FOUNDRY_CANADA_API_KEY != ''
+        continue-on-error: true
+        run: uv run boundary smoke foundry-canada --run-id smoke-actions
+      - name: Say why foundry-canada was skipped
+        if: >
+          inputs.collect_batch_id == '' && inputs.single == 'true'
+          && env.AZURE_FOUNDRY_CANADA_API_KEY == ''
+        run: >
+          echo "foundry-canada skipped: no AZURE_FOUNDRY_CANADA_API_KEY secret.
+          See docs/hyperscaler-setup.md, the Canada Central section."
 
       - name: Smoke the extra models
         if: inputs.collect_batch_id == '' && inputs.extra_models != ''
