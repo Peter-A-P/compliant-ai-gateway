@@ -330,6 +330,12 @@ You already have a Google Cloud project with billing linked (the Gemini key's pr
 off the free tier on 2026-09-10) and a US$15 a month budget with alerts. Vertex needs the API
 enabled, the partner model enabled, a role, and a token.
 
+**Run the commands in [Cloud Shell](https://shell.cloud.google.com)**, not on this laptop.
+It is a browser terminal with `gcloud` installed and already authenticated as you, the same
+shape of thing as AWS CloudShell, reachable from the `>_` icon in the top right of any Google
+Cloud console page. Nothing to install, and it runs inside Google, so it is also the answer to
+the work network's TLS inspection.
+
 ### 1. Note the project id
 
 Not the project *name* and not the number. The id, which is what goes in the URL.
@@ -373,24 +379,34 @@ GOOGLE_VERTEX_ACCESS_TOKEN=ya29....
 
 ### 6. Fill in the provider entry
 
-In `config/boundary.yaml`:
+Already filled in, and worth knowing why it says what it says:
 
 ```yaml
   vertex:
     kind: gcp_vertex
-    base_url: https://northamerica-northeast1-aiplatform.googleapis.com
-    region: northamerica-northeast1
-    project: YOUR-PROJECT-ID
-```
-
-The host and the region must name the same place. The adapter refuses the request if they do
-not, rather than sending data to the wrong geography. To use the global endpoint instead, both
-lines change together:
-
-```yaml
     base_url: https://aiplatform.googleapis.com
     region: global
+    project: gen-lang-client-0915051085
 ```
+
+**`global`, because Canada is not on offer.** See the region finding below. The four
+alternatives each cost 10 percent more and none of them is Canadian, so there is no residency
+here worth paying a premium to preserve.
+
+The host and the region must name the same place, and the adapter refuses the request if they
+do not rather than sending data to the wrong geography. So both lines change together. For the
+US multi-region, which is the one residency lever on offer:
+
+```yaml
+    base_url: https://aiplatform.us.rep.googleapis.com
+    region: us
+```
+
+**The model id carries an `@`**: `claude-haiku-4-5@20251001`, which the Model Garden page calls
+the Version name. It goes into the URL unencoded, because `@` is a legal path character and
+Google's own example shows it literally. This library percent-encoded it until 2026-09-16, which
+would have come back as a model-not-found on the first call and sent you looking at the model
+name, the Model Garden enablement and the region, none of which would have been wrong.
 
 ### 7. Write the price file before the call, or accept an uncosted row
 
@@ -455,7 +471,7 @@ different things and they fail differently:
 | **Bedrock, Claude, geo profile (`us.`)** | **`ca-central-1`, and it works** | **no: may be served from three US regions** |
 | **Bedrock, Claude, global profile** | `ca-central-1` | no, routes to any commercial region |
 | **Bedrock, Claude, In-Region** | **not offered in Canada** | yes, but only in seven non-Canadian regions |
-| Vertex, Claude | `northamerica-northeast1` exists, older models only | no |
+| **Vertex, Claude** | **not offered** | no, and there is no Canadian multi-region either |
 
 **On Bedrock, Canada is a real region and still not a residency answer.** Verified against the
 Claude Haiku 4.5 model card and a live call on 2026-09-15. `ca-central-1` supports Geo and
@@ -482,6 +498,23 @@ Nothing in the response says which of the four served it. The model identifier c
 the routing prefix stripped (`us.anthropic.claude-haiku-4-5-20251001-v1:0` in,
 `anthropic.claude-haiku-4-5-20251001-v1:0` out) and no region is reported at all. That is
 pinned as a test in `tests/test_bedrock.py`.
+
+**And Vertex has no Canadian region either.** Checked 2026-09-16 in Model Garden, on the
+`claude-haiku-4-5` pricing panel, which is the vendor's own location list rather than a
+documentation table. The complete set of locations offered:
+
+```
+asia-east1 · europe-west1 · global · us · us-east5
+```
+
+Five, and none Canadian. No `northamerica-northeast1`, no `northamerica-northeast2`, and the
+multi-region identifiers are `us` and `eu` only, so there is no Canadian multi-region to ask
+for. An earlier version of this document said Montreal existed for older models; the console
+says otherwise for the model anyone would actually deploy, and the console wins.
+
+The four non-global options each carry a documented 10 percent premium. So the only residency
+lever Vertex sells a Canadian buyer is **United States** residency, at a 10 percent premium,
+which is a real product aimed at the wrong country.
 
 So all three platforms hide the same thing in three different places: Foundry hides the hosting
 version, Vertex hides the processing location, Bedrock hides the routing profile. On each of

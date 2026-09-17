@@ -33,6 +33,10 @@ SMOKE_MODELS: dict[str, str] = {
     # the request may be processed, and the provider entry declares `residency: geo` to
     # match it. Changing this string changes the residency. See providers/bedrock.py.
     "bedrock": "bedrock/us.anthropic.claude-haiku-4-5-20251001-v1:0",
+    # The `@` is the Model Garden "Version name" and belongs in the URL unencoded. The
+    # undated `claude-haiku-4-5` also resolves; the dated form is used here because it says
+    # which weights answered, and the ledger records what was requested.
+    "vertex": "vertex/claude-haiku-4-5@20251001",
     # A local server at price zero. Nothing leaves the machine, so this is the one smoke
     # call that can run from a network that inspects TLS. `ollama pull llama3.2:3b` first.
     "local": "local/llama3.2:3b",

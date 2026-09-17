@@ -67,9 +67,16 @@ providers:
   # which Vertex carries in the URL. `region` is a residency decision and the host must
   # agree with it: the adapter refuses a base_url whose region differs from the route's,
   # rather than quietly sending data to the other geography.
-  # northamerica-northeast1 is Montreal, which is the Canadian worked example Part B's
-  # residency policy builds on. Regional and multi-region endpoints carry a 10 percent
-  # premium over global, so the region is part of the price key and not only of the route.
+  #
+  # `global`, because Canada is not on offer. The Model Garden location list for
+  # claude-haiku-4-5 on 2026-09-16 is exactly: asia-east1, europe-west1, global, us,
+  # us-east5. There is no northamerica-northeast1 and no Canadian multi-region, so there is
+  # no Canadian residency here to pay a premium to preserve. The four non-global options
+  # each carry a documented 10 percent premium; `us` buys United States residency, which is
+  # a real lever aimed at the wrong country for this portfolio.
+  #
+  # The model id is `claude-haiku-4-5@20251001`. The `@` goes into the URL unencoded: it is
+  # a legal path character and Google's own example shows it literally.
   # Claude on Amazon Bedrock, through the Anthropic Messages route. No SigV4 and no
   # botocore: the Bedrock API key goes in `x-api-key`, the same header the direct vendor
   # uses, so this is the Anthropic adapter with a different path.
@@ -105,9 +112,12 @@ providers:
   # its own. One checked-in entry, two environments.
   vertex:
     kind: gcp_vertex
-    base_url: https://northamerica-northeast1-aiplatform.googleapis.com
-    region: northamerica-northeast1
-    project: REPLACE-ME
+    base_url: https://aiplatform.googleapis.com
+    region: global
+    project: gen-lang-client-0915051085
+    # Declared, and not enforced here: Vertex offers no signal to check it against, unlike
+    # Bedrock where the model id encodes it. `global` is what the endpoint actually is.
+    residency: global
     credentials: google_adc
     api_key_env: GOOGLE_VERTEX_ACCESS_TOKEN
 

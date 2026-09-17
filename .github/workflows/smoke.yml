@@ -80,6 +80,7 @@ jobs:
       GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
       OPENWEIGHTS_API_KEY: ${{ secrets.OPENWEIGHTS_API_KEY }}
       AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
+      GOOGLE_VERTEX_ACCESS_TOKEN: ${{ secrets.GOOGLE_VERTEX_ACCESS_TOKEN }}
       # Labels every row this run writes, so a merged ledger says where the call was made.
       BOUNDARY_ENV: actions
     steps:
@@ -149,6 +150,28 @@ jobs:
         run: >
           echo "bedrock skipped: no AWS_BEARER_TOKEN_BEDROCK secret.
           Add one to run it; see docs/hyperscaler-setup.md step 6."
+
+      # Claude on Vertex, global endpoint. GOOGLE_VERTEX_ACCESS_TOKEN is a token minted in
+      # Cloud Shell with `gcloud auth print-access-token`, and it lasts about an hour, so it
+      # is a smoke-call credential rather than a standing one: mint it, paste it, run this
+      # within the hour. The provider entry prefers a set variable over minting precisely so
+      # a runner with no gcloud can work this way.
+      #
+      # This row will be UNCOSTED. Google publishes its own Claude rates and they were not
+      # readable from the published page on 2026-09-16.
+      - name: Smoke vertex
+        if: >
+          inputs.collect_batch_id == '' && inputs.single == 'true'
+          && env.GOOGLE_VERTEX_ACCESS_TOKEN != ''
+        continue-on-error: true
+        run: uv run boundary smoke vertex --run-id smoke-actions
+      - name: Say why vertex was skipped
+        if: >
+          inputs.collect_batch_id == '' && inputs.single == 'true'
+          && env.GOOGLE_VERTEX_ACCESS_TOKEN == ''
+        run: >
+          echo "vertex skipped: no GOOGLE_VERTEX_ACCESS_TOKEN secret, or it expired.
+          Mint one in Cloud Shell; see docs/hyperscaler-setup.md step 5."
 
       - name: Smoke the extra models
         if: inputs.collect_batch_id == '' && inputs.extra_models != ''

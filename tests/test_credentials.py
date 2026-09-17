@@ -271,10 +271,21 @@ def test_the_missing_dependency_names_the_extra_to_install() -> None:
 
 # -- through the gateway -----------------------------------------------------------------
 
-VERTEX_URL = (
-    "https://northamerica-northeast1-aiplatform.googleapis.com/v1/projects/REPLACE-ME"
-    "/locations/northamerica-northeast1/publishers/anthropic/models/claude-opus-5:rawPredict"
-)
+
+def _vertex_url(gw: Gateway, model: str = "claude-opus-5") -> str:
+    """The rawPredict URL for the checked-in vertex entry.
+
+    Derived rather than pasted. These tests are about where the token comes from and where it
+    ends up, not about the URL, and a hardcoded one turns a deliberate configuration change
+    (the region moving to global when Model Garden turned out to offer no Canadian location)
+    into three unrelated failures.
+    """
+    pc = gw.config.providers["vertex"]
+    return (
+        f"{pc.base_url}/v1/projects/{pc.project}/locations/{pc.region}"
+        f"/publishers/anthropic/models/{model}:rawPredict"
+    )
+
 
 VERTEX_OK = {
     "id": "msg_01Vertex",
@@ -309,7 +320,7 @@ def test_a_pasted_token_wins_and_nothing_is_minted(
     """
     monkeypatch.setenv("GOOGLE_VERTEX_ACCESS_TOKEN", "ya29.pasted-by-ci")
     with respx.mock(assert_all_called=True) as mock:
-        route = mock.post(VERTEX_URL).mock(return_value=httpx.Response(200, json=VERTEX_OK))
+        route = mock.post(_vertex_url(gw)).mock(return_value=httpx.Response(200, json=VERTEX_OK))
         _vertex_call(gw)
     assert route.calls[0].request.headers["authorization"] == "Bearer ya29.pasted-by-ci"
     assert gw._token_sources == {}, "nothing was minted"
@@ -327,7 +338,7 @@ def test_an_unset_variable_mints_a_token_and_sends_it(
         lambda **kw: GoogleADCToken(loader=_loader(creds), now=lambda: clock[0], **kw),
     )
     with respx.mock(assert_all_called=True) as mock:
-        route = mock.post(VERTEX_URL).mock(return_value=httpx.Response(200, json=VERTEX_OK))
+        route = mock.post(_vertex_url(gw)).mock(return_value=httpx.Response(200, json=VERTEX_OK))
         _vertex_call(gw)
     assert route.calls[0].request.headers["authorization"] == "Bearer ya29.token-1"
     assert creds.refreshes == 1
@@ -339,7 +350,7 @@ def test_the_minted_token_is_not_written_to_the_ledger_or_the_raw_store(
     """A token is a credential wherever it came from, and minting it does not change that."""
     monkeypatch.setenv("GOOGLE_VERTEX_ACCESS_TOKEN", "ya29.should-never-appear")
     with respx.mock(assert_all_called=True) as mock:
-        mock.post(VERTEX_URL).mock(return_value=httpx.Response(200, json=VERTEX_OK))
+        mock.post(_vertex_url(gw)).mock(return_value=httpx.Response(200, json=VERTEX_OK))
         _vertex_call(gw)
     rows = gw.ledger.rows()
     assert "ya29.should-never-appear" not in str(dict(rows[0]))
