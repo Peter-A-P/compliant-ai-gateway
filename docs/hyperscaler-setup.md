@@ -581,7 +581,7 @@ Measured 2026-09-15 and 2026-09-16, from the accounts rather than from documenta
 |---|---|---|---|---|
 | **Foundry**, `claude-haiku-4-5`, `eastus2` | 80 RPM | **0** | **No** | A form, evaluated individually, not guaranteed |
 | **Bedrock**, Claude Haiku 4.5, `ca-central-1` | 10,000 RPM | **10** | **Yes** | Standard quota increase request |
-| **Vertex**, `claude-haiku-4-5`, `global` | not published per model | **0 usable** | **No** | Quota increase request |
+| **Vertex**, `claude-haiku-4-5`, `global` | not published per model | **no limit set at all** | **No** | Unclear: the bucket has no value to raise |
 
 **All three.** Three vendors, three brand new accounts, three refusals or near-refusals of
 Claude, and on none of them does the published figure describe what a new customer receives.
@@ -613,14 +613,56 @@ else. None of that time was spent on anything a reader of the vendors' documenta
 anticipated. A procurement note for any of these platforms should carry one line: **budget for
 a quota grant with an unknown lead time before the first call, on all three.**
 
-Reproduce the Vertex half by making one call, which is the point: there is no quota page to
-read first, and the first request is the diagnostic.
+Reproduce the Vertex half in one command:
 
 ```
 gcloud alpha services quota list \
   --service=aiplatform.googleapis.com --consumer=projects/YOUR-PROJECT-ID \
   --filter="global_online_prediction_requests_per_base_model"
 ```
+
+What that returned here on 2026-09-16, abridged to the shape rather than the length:
+
+```yaml
+quotaBuckets:
+- {}
+- dimensions: {base_model: anthropic-claude-haiku-4-5}      # no limit fields at all
+- dimensions: {base_model: anthropic-claude-opus-4-6}        # no limit fields at all
+  ...                                                       # 17 anthropic-* buckets, same
+- defaultLimit: '600'
+  dimensions: {base_model: google-ai-content-detection}
+  effectiveLimit: '600'
+- defaultLimit: '600'
+  dimensions: {base_model: google-vertex-image-ai-detection}
+  effectiveLimit: '600'
+```
+
+Read the two halves against each other, because the contrast is the whole finding.
+
+**Every one of the seventeen `anthropic-claude-*` buckets carries no `defaultLimit` and no
+`effectiveLimit`.** Not zero. Absent. The fields are simply not there. **The two Google-model
+buckets in the same metric, the same project and the same API call each carry
+`defaultLimit: 600` and `effectiveLimit: 600`.**
+
+So this is not a project that has been throttled, nor a new account cooling off. Quota in this
+metric works normally and has real numbers in it; the partner models are the only rows without
+any. And an unset bucket is not the same state as a zero bucket: Azure's API said
+`limit: 0.0` for Claude, explicitly provisioned at nothing, where Google's says nothing at all.
+
+**What is observed and what is inferred**, kept apart deliberately, because the Foundry section
+above is what happens when they are not. Observed: seventeen partner buckets with no limit
+fields, two first-party buckets at 600, and a 429 on the first request the project ever made.
+Inferred, and not confirmed: that a bucket with no `effectiveLimit` is not a quota you can
+raise but a quota you do not yet have, which would make the self-service "Edit Quotas" flow
+inapplicable and the real route a support or sales request. **The way to settle it is to open
+the console row and see whether it offers an edit at all.** That check has not been done here.
+
+**The pattern across two vendors is worth more than either finding alone.** On Azure, 19 Claude
+quotas at zero while 159 other AIServices quotas in the same region were non-zero, `gpt-35-turbo`
+among them at 200. On Google, 17 Anthropic buckets with no limit while the Google-model buckets
+in the same metric sit at 600. Two hyperscalers, the same shape: the platform's own catalogue is
+provisioned for a new customer and the partner's frontier models are not. Neither vendor's
+documentation mentions it, and both describe defaults that a new account does not receive.
 
 The increase request is at
 [Quotas and system limits](https://cloud.google.com/vertex-ai/docs/generative-ai/quotas-genai),
