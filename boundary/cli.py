@@ -37,9 +37,10 @@ SMOKE_MODELS: dict[str, str] = {
     # undated `claude-haiku-4-5` also resolves; the dated form is used here because it says
     # which weights answered, and the ledger records what was requested.
     "vertex": "vertex/claude-haiku-4-5@20251001",
-    # The deployment name in the Canada Central Foundry resource. Azure defaults a
-    # deployment's name to the model's, so this is the usual one; `--model` overrides it.
-    "foundry-canada": "foundry-canada/gpt-4o-mini",
+    # The deployment name in the Canada Central Foundry resource. gpt-4o-mini turned out not
+    # to be offered in canadacentral (only canadaeast), which is another region-availability
+    # finding; gpt-5.6-luna is, and is cheaper, so it is what is deployed there.
+    "foundry-canada": "foundry-canada/gpt-5.6-luna",
     # A local server at price zero. Nothing leaves the machine, so this is the one smoke
     # call that can run from a network that inspects TLS. `ollama pull llama3.2:3b` first.
     "local": "local/llama3.2:3b",

@@ -89,8 +89,15 @@ providers:
   # versioning so there is NO api-version query parameter. That is exactly what the
   # openai_compat adapter already sends, so this entry needed no code at all.
   #
-  # `model` is the DEPLOYMENT name, which Azure defaults to the model name. Change it here
-  # if the deployment was named something else; the ledger records what was requested.
+  # `model` is the DEPLOYMENT name, which Azure defaults to the model name. The ledger
+  # records what was requested, so renaming this entry or the deployment changes the data.
+  #
+  # base_url is the RESOURCE's inference endpoint, not the project endpoint. The Foundry
+  # portal shows a "Project endpoint" that looks like
+  # https://poc-foundry-cc.services.ai.azure.com/api/projects/poc-proj-default-cc, and that
+  # is a different API: it is for the Foundry projects and agents SDK, not for inference.
+  # The OpenAI-compatible inference route hangs off the resource host with /openai/v1, and
+  # Microsoft accepts both the .services.ai.azure.com and .openai.azure.com spellings of it.
   #
   # Read `region` and `residency` together, because the pair is the whole point. The request
   # is sent to Canada. Global Standard may process it anywhere. Deployed in Canada, processed
@@ -100,10 +107,14 @@ providers:
   # No price entry, so calls are UNCOSTED until Azure's rates are read from a real invoice.
   foundry-canada:
     kind: openai_compat
-    base_url: https://REPLACE-ME.services.ai.azure.com/openai/v1
+    base_url: https://poc-foundry-cc.services.ai.azure.com/openai/v1
     api_key_env: AZURE_FOUNDRY_CANADA_API_KEY
     region: canadacentral
     residency: global
+    # gpt-5.6-luna is a 5.x model, and OpenAI's 5.x family takes max_completion_tokens where
+    # everything else takes max_tokens. Sending the wrong one is a 400 that names the
+    # parameter, so this is cheap to correct if it turns out to be the other way round.
+    max_tokens_field: max_completion_tokens
     # Foundry's v1 route is not OpenAI's /v1/batches surface. Say so rather than assume.
     batches: false
 
