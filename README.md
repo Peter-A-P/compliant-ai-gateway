@@ -19,14 +19,14 @@ Microsoft Foundry and Google Vertex are waiting on credentials rather than on co
 gap between a published default quota and the one a new account is actually given, is in
 [docs/hyperscaler-setup.md](docs/hyperscaler-setup.md). Both parts are planned in
 [PLAN.md](PLAN.md):
-Part A, the `boundary` library that every project in this portfolio calls models through,
-built Sep 7 to 13 2026; Part B, the full gateway with redaction, residency routing, audit
-log, cache, budgets and the portfolio-wide observability dashboard, built May 2027.
+Part A, the `boundary` library that every project in this portfolio calls models through;
+Part B, the full gateway with redaction, residency routing, audit log, cache, budgets and
+the portfolio-wide observability dashboard.
 
 ## Result
 
 Part A's table is measured against an in-process mock; the live-call column fills from October.
-Part B fills the second table in May 2027.
+Part B fills the second table.
 
 **Library (Part A)**
 
@@ -109,7 +109,7 @@ and costs.
 
 ## Part of a portfolio
 
-One of fifteen projects built over twelve months. This one is the plumbing the others share:
+One of fifteen projects. This one is the plumbing the others share:
 every model call in the portfolio goes through it, the release-gate project measures the
 quality cost of its redaction, and the access-to-information redaction project builds on
 its redaction engine.
