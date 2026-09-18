@@ -5,7 +5,30 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
-Nothing yet.
+- **The Vertex quota inference was wrong, and the correction is in
+  `docs/hyperscaler-setup.md` beside it.** This document said a Claude bucket with no
+  `effectiveLimit` was probably not a quota you can raise but a quota you do not have, making
+  self-service inapplicable and a sales request the real route. The Cloud Quotas API says the
+  project **is** eligible to ask, on the exact quota that returned the 429. The route is the
+  ordinary console increase. The wrong version is kept in place because the correction needs
+  something to correct.
+
+  **Two of the check's own fields were worthless, which is recorded rather than quietly
+  dropped**: `isFixedLimit` is absent from all 367 quotaInfos, and `isEligible` is true on all
+  367 including quotas this project has never called, so it describes the project rather than
+  any bucket. It refutes "you may not ask" and does not establish "asking will work".
+
+  **What replaces it is narrower and better.** The evidence is in `details`, which has three
+  states: empty for every current Claude model, `-1` for Google's internal Anthropic test
+  models, and real numbers elsewhere. Anthropic web search has 1200 and the superseded Claude
+  3 Haiku has 15,000 tokens a minute in five regions. So the account is not unprovisioned for
+  Anthropic; the empty set is exactly the models a customer would want.
+
+- **An expired Google access token does not say it has expired.** Three Google APIs gave three
+  accounts of one stale token: Vertex said the credentials were invalid, Service Usage and
+  Cloud Quotas both said `ACCESS_TOKEN_TYPE_UNSUPPORTED`, and only `oauth2/tokeninfo` said
+  `invalid_token`. The middle one names the wrong thing and sends a reader off to build a
+  service account. This is the one-line argument for `boundary/credentials.py`.
 
 ## 0.2.1 (2026-09-18)
 

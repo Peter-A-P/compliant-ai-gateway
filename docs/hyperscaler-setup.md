@@ -660,7 +660,7 @@ Measured 2026-09-15 and 2026-09-16, from the accounts rather than from documenta
 |---|---|---|---|---|
 | **Foundry**, `claude-haiku-4-5`, `eastus2` | 80 RPM | **0** | **No** | A form, evaluated individually, not guaranteed |
 | **Bedrock**, Claude Haiku 4.5, `ca-central-1` | 10,000 RPM | **10** | **Yes** | Standard quota increase request |
-| **Vertex**, `claude-haiku-4-5`, `global` | not published per model | **no limit set at all** | **No** | Unclear: the bucket has no value to raise |
+| **Vertex**, `claude-haiku-4-5`, `global` | not published per model | **no limit set at all** | **No** | Ordinary self-service quota increase; the project is eligible (checked 2026-09-18) |
 
 **All three.** Three vendors, three brand new accounts, three refusals or near-refusals of
 Claude, and on none of them does the published figure describe what a new customer receives.
@@ -731,9 +731,11 @@ any. And an unset bucket is not the same state as a zero bucket: Azure's API sai
 **What is observed and what is inferred**, kept apart deliberately, because the Foundry section
 above is what happens when they are not. Observed: seventeen partner buckets with no limit
 fields, two first-party buckets at 600, and a 429 on the first request the project ever made.
-Inferred, and not confirmed: that a bucket with no `effectiveLimit` is not a quota you can
+Inferred, and **since refuted**: that a bucket with no `effectiveLimit` is not a quota you can
 raise but a quota you do not yet have, which would make the self-service "Edit Quotas" flow
-inapplicable and the real route a support or sales request.
+inapplicable and the real route a support or sales request. The Cloud Quotas API says the
+project is eligible to ask. The inference is left standing here, wrong, because the section
+below is the correction and a correction needs something to correct.
 
 ### Settling it, and the better question than the console button
 
@@ -780,8 +782,54 @@ be read to suit the existing paragraph:
 - `isFixedLimit: false` with `isEligible: true` **refutes it outright.** The quota can be raised
   from the console like any other, and the paragraph above is wrong and gets rewritten.
 
-**Not yet run**, because it needs a live credential and the one in `.env` has expired. It is the
-cheapest open item in the project.
+### Run 2026-09-18, and the inference was wrong
+
+**The answer is the third one. The inference above is refuted and is kept here only so the
+correction has something to correct.** The exact quota that returned the 429,
+`GlobalOnlinePredictionRequestsPerMinutePerProjectPerBaseModel`
+(`aiplatform.googleapis.com/global_online_prediction_requests_per_base_model`), reports
+`quotaIncreaseEligibility: {isEligible: true}` with no `ineligibilityReason`. This project is
+allowed to ask. There was no sales gate, and writing that there was one was a guess dressed
+as a conclusion.
+
+**Two of the check's own fields turned out to be worthless, and that is part of the result.**
+Recorded because a method that half worked is more useful to the next person than a verdict
+with the method hidden:
+
+- **`isFixedLimit` is absent from all 367 quotaInfos**, not `false`. The field I expected to
+  settle the question carries no information in this response at all, so the first of the
+  three readings above could never have fired.
+- **`isEligible` is `true` on all 367 quotas**, including AutoML ones this project has never
+  called. A field with the same value everywhere is not discriminating between quotas, so the
+  honest reading is that it describes the **project** (it has a valid billing account and may
+  file increase requests) and not any particular bucket. It refutes "you are not allowed to
+  ask". It does not establish "asking will work".
+
+**What replaces it is sharper.** The evidence was never in the eligibility field; it was in
+`details`, which has three states rather than the two that Service Usage showed:
+
+| `details` | Meaning | Which Anthropic entries |
+|---|---|---|
+| `{}` | no value at all | `anthropic-claude-haiku-4-5`, `anthropic-claude-opus-4-1`, `anthropic-claude-fable`, and every other current Claude |
+| `{"value": "-1"}` | unlimited | `anthropic-ge-e2e-test`, `anthropic-ge-e2e-test-2`, `anthropic-ge-3region-e2e-test`, `anthropic-count-tokens` |
+| a real number | provisioned | `publisher: anthropic` web search at **1200**; `anthropic-claude-3-haiku` at **15,000** tokens a minute in five regions |
+
+So **it is not that this account is unprovisioned for Anthropic.** Anthropic's web search has
+1200. The superseded Claude 3 Haiku has 15,000 tokens a minute. Google's own internal Anthropic
+end-to-end test models are unlimited. The empty set is specifically **the current models, the
+ones a customer would actually want**, and that is a much narrower and more interesting claim
+than "partner models are not provisioned".
+
+It also changes what a buyer should do about it. The route is the ordinary self-service quota
+increase, not a sales conversation:
+[Vertex AI quotas in the console](https://console.cloud.google.com/iam-admin/quotas?service=aiplatform.googleapis.com),
+filtered to the metric the 429 named.
+
+**Still unverified from this API:** whether a Canadian region appears for any Anthropic model
+in any of the 367 quotas. `anthropic-claude-haiku-4-5` was seen under `europe-west1` and
+`us-east5` and nowhere else in the rows read so far, which agrees with the Model Garden panel,
+but the sweep across all 367 has not been run. Until it is, the no-Canadian-region finding
+rests on the console panel alone, which is where it already rested.
 
 ### An expired Google token does not say it has expired
 
