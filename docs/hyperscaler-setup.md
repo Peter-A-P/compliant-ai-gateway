@@ -733,8 +733,81 @@ above is what happens when they are not. Observed: seventeen partner buckets wit
 fields, two first-party buckets at 600, and a 429 on the first request the project ever made.
 Inferred, and not confirmed: that a bucket with no `effectiveLimit` is not a quota you can
 raise but a quota you do not yet have, which would make the self-service "Edit Quotas" flow
-inapplicable and the real route a support or sales request. **The way to settle it is to open
-the console row and see whether it offers an edit at all.** That check has not been done here.
+inapplicable and the real route a support or sales request.
+
+### Settling it, and the better question than the console button
+
+The obvious check is to open the console row and see whether it offers an **Edit**. A button is
+weak evidence: a greyed-out control and an absent one look the same in a screenshot, and neither
+says why.
+
+The **Cloud Quotas API** answers it outright, on two fields that exist for exactly this:
+
+| Field | What it settles |
+|---|---|
+| `isFixedLimit` | Whether the value can be adjusted at all, by anyone |
+| `quotaIncreaseEligibility` | `{isEligible, ineligibilityReason}`: whether **this project** may ask, and when it may not, the reason as an enum rather than as prose |
+
+Run it in [Cloud Shell](https://shell.cloud.google.com), which is authenticated as you and sits
+inside Google, so it is also the answer to a network that inspects TLS:
+
+```bash
+PROJECT=gen-lang-client-0915051085
+gcloud services enable cloudquotas.googleapis.com --project="$PROJECT"   # once; read-only after
+
+curl -s -H "Authorization: Bearer $(gcloud auth print-access-token)"   "https://cloudquotas.googleapis.com/v1/projects/$PROJECT/locations/global/services/aiplatform.googleapis.com/quotaInfos?pageSize=500" | python3 -c '
+import json,sys
+for q in json.load(sys.stdin).get("quotaInfos", []):
+    if "base_model" not in json.dumps(q.get("dimensions", [])): continue
+    e = q.get("quotaIncreaseEligibility", {})
+    print(q.get("quotaId"), "| metric:", q.get("metric"))
+    print("   isFixedLimit:", q.get("isFixedLimit"), "| eligible:", e.get("isEligible"),
+          "| reason:", e.get("ineligibilityReason"))
+    for d in q.get("dimensionsInfos", []):
+        if "anthropic" in json.dumps(d.get("dimensions", {})):
+            print("   ", d.get("dimensions"), d.get("details"))
+'
+```
+
+**How to read the three possible answers**, decided before running it so that the result cannot
+be read to suit the existing paragraph:
+
+- `isFixedLimit: true` confirms the inference. The value is not adjustable by anyone, the
+  self-service flow does not apply, and the route is a sales or support request.
+- `isFixedLimit: false` with `isEligible: false` **refutes the sharp version of the inference**
+  and replaces it with something better: the quota is adjustable in principle and this project
+  is not allowed to ask, and `ineligibilityReason` says why in one word.
+- `isFixedLimit: false` with `isEligible: true` **refutes it outright.** The quota can be raised
+  from the console like any other, and the paragraph above is wrong and gets rewritten.
+
+**Not yet run**, because it needs a live credential and the one in `.env` has expired. It is the
+cheapest open item in the project.
+
+### An expired Google token does not say it has expired
+
+Worth its own note, because it cost twenty minutes here and it will cost somebody else more.
+
+The access token that Vertex had been called with was hours past its one-hour life. Three Google
+APIs were asked with it, and they gave three different accounts of the same fact:
+
+| API | What it said |
+|---|---|
+| Vertex `rawPredict` | `401 ... Expected OAuth 2 access token, login cookie or other valid authentication credential` |
+| Service Usage | `401 UNAUTHENTICATED`, reason **`ACCESS_TOKEN_TYPE_UNSUPPORTED`** |
+| Cloud Quotas | `401 UNAUTHENTICATED`, reason **`ACCESS_TOKEN_TYPE_UNSUPPORTED`** |
+| `oauth2/tokeninfo` | `400 invalid_token` |
+
+Only the last one is the truth. **`ACCESS_TOKEN_TYPE_UNSUPPORTED` names the wrong thing**: it
+reads as "this kind of credential is not accepted here", which sends a reader off to create a
+service account or to hunt for a scope, when the credential was simply stale. The one-line check
+that cuts through it is `curl "https://oauth2.googleapis.com/tokeninfo?access_token=$TOKEN"`,
+which answers `invalid_token` or hands back the scopes and the seconds remaining.
+
+This is the second time in this project that a vendor's error named a cause that was not the
+cause: Azure's "Insufficient quota" for a subscription that was ineligible rather than short,
+and now Google's "token type" for a token that was merely old. It is also the argument for
+`boundary/credentials.py` in one line: a pasted token is a smoke-call credential, and the
+library mints and refreshes its own precisely so that nothing downstream has to diagnose this.
 
 **The pattern across two vendors is worth more than either finding alone.** On Azure, 19 Claude
 quotas at zero while 159 other AIServices quotas in the same region were non-zero, `gpt-35-turbo`
