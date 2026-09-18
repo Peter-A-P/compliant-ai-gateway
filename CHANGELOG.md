@@ -18,11 +18,20 @@ major version are additive only; see docs/interface.md.
   367 including quotas this project has never called, so it describes the project rather than
   any bucket. It refutes "you may not ask" and does not establish "asking will work".
 
-  **What replaces it is narrower and better.** The evidence is in `details`, which has three
-  states: empty for every current Claude model, `-1` for Google's internal Anthropic test
-  models, and real numbers elsewhere. Anthropic web search has 1200 and the superseded Claude
-  3 Haiku has 15,000 tokens a minute in five regions. So the account is not unprovisioned for
-  Anthropic; the empty set is exactly the models a customer would want.
+  **What replaces it is narrower and better.** The quota that returned the 429 holds nineteen
+  rows: seventeen Anthropic models with no value at all, and two Google models at 600. One
+  quota, one API call, the whole finding on one screen, from the governance API rather than
+  the reporting one. Elsewhere on the same account Anthropic quotas do carry values: web
+  search at 1200, the superseded Claude 3 Haiku at 15,000 tokens a minute in five regions,
+  Google's internal Anthropic test models unlimited. So the account is not unprovisioned for
+  Anthropic. What has nothing is every current Claude model and only those.
+
+- **No Canadian region on Vertex, now confirmed from a second source.** The finding rested on
+  one reading of one Model Garden panel. A sweep of all 367 quotas returns **zero** rows for
+  any Anthropic model in any `northamerica-*` region: not a low limit, no row at all.
+  `claude-haiku-4-5` has regional rows in `europe-west1` and `us-east5` only. The two sources
+  disagree about `asia-east1`, which is recorded rather than smoothed over, because tidying a
+  disagreement away makes the agreement worth less.
 
 - **An expired Google access token does not say it has expired.** Three Google APIs gave three
   accounts of one stale token: Vertex said the credentials were invalid, Service Usage and

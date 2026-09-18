@@ -544,7 +544,7 @@ different things and they fail differently:
 | **Bedrock, Claude, geo profile (`us.`)** | **`ca-central-1`, and it works** | **no: may be served from three US regions** |
 | **Bedrock, Claude, global profile** | `ca-central-1` | no, routes to any commercial region |
 | **Bedrock, Claude, In-Region** | **not offered in Canada** | yes, but only in seven non-Canadian regions |
-| **Vertex, Claude** | **not offered** | no, and there is no Canadian multi-region either |
+| **Vertex, Claude** | **not offered, confirmed twice** | no. Zero quota rows for any Anthropic model in any `northamerica-*` region, across all 367 quotas, and no Canadian multi-region |
 
 **On Bedrock, Canada is a real region and still not a residency answer.** Verified against the
 Claude Haiku 4.5 model card and a live call on 2026-09-15. `ca-central-1` supports Geo and
@@ -805,31 +805,69 @@ with the method hidden:
   file increase requests) and not any particular bucket. It refutes "you are not allowed to
   ask". It does not establish "asking will work".
 
-**What replaces it is sharper.** The evidence was never in the eligibility field; it was in
-`details`, which has three states rather than the two that Service Usage showed:
+**What replaces it is sharper.** The evidence was never in the eligibility field; it is in
+`details`. Here is the quota that returned the 429, complete, every row of it:
 
-| `details` | Meaning | Which Anthropic entries |
-|---|---|---|
-| `{}` | no value at all | `anthropic-claude-haiku-4-5`, `anthropic-claude-opus-4-1`, `anthropic-claude-fable`, and every other current Claude |
-| `{"value": "-1"}` | unlimited | `anthropic-ge-e2e-test`, `anthropic-ge-e2e-test-2`, `anthropic-ge-3region-e2e-test`, `anthropic-count-tokens` |
-| a real number | provisioned | `publisher: anthropic` web search at **1200**; `anthropic-claude-3-haiku` at **15,000** tokens a minute in five regions |
+```
+GlobalOnlinePredictionRequestsPerMinutePerProjectPerBaseModel
+  anthropic-claude-fable          {}     anthropic-claude-opus-4         {}
+  anthropic-claude-haiku-4-5      {}     anthropic-claude-opus           {}
+  anthropic-claude-haiku          {}     anthropic-claude-sonnet-4-5     {}
+  anthropic-claude-opus-4-1       {}     anthropic-claude-sonnet-4-6     {}
+  anthropic-claude-opus-4-5       {}     anthropic-claude-sonnet-4       {}
+  anthropic-claude-opus-4-6       {}     anthropic-claude-sonnet         {}
+  anthropic-claude-opus-4-7       {}     anthropic-count-tokens          {}
+  claude-3-5-sonnet-v2            {}     claude-3-7-sonnet               {}
+  (default, no dimension)         {}
+  google-ai-content-detection            {"value": "600"}
+  google-vertex-image-ai-detection       {"value": "600"}
+```
 
-So **it is not that this account is unprovisioned for Anthropic.** Anthropic's web search has
-1200. The superseded Claude 3 Haiku has 15,000 tokens a minute. Google's own internal Anthropic
-end-to-end test models are unlimited. The empty set is specifically **the current models, the
-ones a customer would actually want**, and that is a much narrower and more interesting claim
-than "partner models are not provisioned".
+**Seventeen Anthropic rows with no value, two Google rows at 600, in one quota, on one API
+call.** That is the whole finding in one screen, and it is the governance API saying it rather
+than the reporting one.
+
+Elsewhere on the same account, Anthropic quotas do carry values, which is what makes the empty
+set specific rather than general:
+
+| `details` | Where |
+|---|---|
+| `{"value": "1200"}` | `publisher: anthropic` web search, in the global, `us`, `eu` and ten regional quotas |
+| `{"value": "15000"}` | `anthropic-claude-3-haiku` tokens a minute, in five regions |
+| `{"value": "-1"}`, unlimited | `anthropic-ge-e2e-test`, `-2`, `-3region-e2e-test`: Google's own internal Anthropic end-to-end test models, in the `us` and `eu` multi-region quotas |
+
+So **this account is not unprovisioned for Anthropic.** Anthropic web search has 1200. The
+superseded Claude 3 Haiku has 15,000 tokens a minute. Google's internal Anthropic test models
+are unlimited. What has nothing is **every current Claude model, and only those** - which is a
+much narrower and more interesting claim than "partner models are not provisioned", and a
+harder one to explain away.
 
 It also changes what a buyer should do about it. The route is the ordinary self-service quota
 increase, not a sales conversation:
 [Vertex AI quotas in the console](https://console.cloud.google.com/iam-admin/quotas?service=aiplatform.googleapis.com),
 filtered to the metric the 429 named.
 
-**Still unverified from this API:** whether a Canadian region appears for any Anthropic model
-in any of the 367 quotas. `anthropic-claude-haiku-4-5` was seen under `europe-west1` and
-`us-east5` and nowhere else in the rows read so far, which agrees with the Model Garden panel,
-but the sweep across all 367 has not been run. Until it is, the no-Canadian-region finding
-rests on the console panel alone, which is where it already rested.
+### No Canadian region, confirmed from a second source
+
+The no-Canadian-region finding rested on one reading of one console panel. It now rests on the
+quota API as well, which is a much better place for it:
+
+```
+any Anthropic model in any northamerica-* region, across all 367 quotas:   NONE
+every region anthropic-claude-haiku-4-5 appears in:   europe-west1, us-east5
+                                                      (plus the region-less multi-region quotas)
+```
+
+**Zero rows.** Not a low limit, not an empty limit: no row at all, for any Anthropic model, in
+any Canadian region, anywhere in Vertex's quota surface for this project. Two independent
+sources, the Model Garden panel and the quota API, and they agree.
+
+**They do not agree on everything, and the disagreement is recorded rather than smoothed
+over.** Model Garden listed `asia-east1 - europe-west1 - global - us - us-east5` for this
+model. The quota API shows regional rows only for `europe-west1` and `us-east5`. So one of the
+two is wrong about `asia-east1`, and this document does not know which. It does not matter for
+the Canadian question, where both say the same thing, and pretending the two lists matched
+exactly would be the kind of tidying that makes a finding worth less than it is.
 
 ### An expired Google token does not say it has expired
 
