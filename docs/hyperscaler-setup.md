@@ -239,7 +239,12 @@ Foundry entries, two shapes, and the `kind` is what keeps them apart.
    same name if you want the Actions run.
 5. `boundary smoke foundry-canada`, not from this laptop.
 
-### What the row will say, and why both halves matter
+### What the row says, and why both halves matter
+
+**Done 2026-09-17.** Smoke #5, from GitHub Actions, resource `poc-foundry-cc`, deployment
+`gpt-5.6-luna`: status 200, 13 input tokens and 4 output, 1,335 ms, row 7 of the run's ledger.
+The vendor returned the dated id `gpt-5.6-luna-2026-07-09`. The whole exercise from finding to
+live row took one afternoon and needed no adapter.
 
 ```
 provider         region          residency   costed
@@ -615,8 +620,9 @@ subscription is pay-as-you-go, at which point both are.
 So the claim this gateway can support is, at most, **"deployed in Canada"**, and for some
 platform and model pairs not even that. It is never **"processed only in Canada"**.
 
-One route does reach the first of those, and only one: a non-Anthropic model deployed in Canada
-Central on Foundry. See the Canada Central section above. It is worth having precisely because
+One route does reach the first of those, and only one, and it has been exercised: a
+non-Anthropic model deployed in Canada Central on Foundry answered on 2026-09-17. See the
+Canada Central section above. It is worth having precisely because
 it marks the ceiling. A Canadian buyer can have a Canadian deployment of a model that is not
 Claude, processed globally. Everything beyond that line is unavailable at any price today. Those are
 different claims and a compliance product that let a reader slide from the first to the second
