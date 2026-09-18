@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS ledger (
     cache_read_tokens   INTEGER NOT NULL DEFAULT 0,
     cache_write_tokens  INTEGER NOT NULL DEFAULT 0,
     price_list          TEXT,
+    price_sha256        TEXT,
     cost_usd            REAL,
     costed              INTEGER NOT NULL DEFAULT 0,
     cached              INTEGER NOT NULL DEFAULT 0,

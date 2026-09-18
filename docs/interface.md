@@ -14,7 +14,7 @@ Column "since" is the version each item first appeared in. Everything added afte
 freeze is listed here with its version: 0.2 (released 2026-09-11) adds the `env` argument
 and configuration key, ledger schema v2's two columns and v3's one, Anthropic Message
 Batches with their command-line collection, `boundary ledger merge` and
-`boundary experiment`. Nothing that 0.1.0 offered has changed shape.
+`boundary experiment`. Nothing that 0.1.0 offered has changed shape. 0.2.1 (released 2026-09-18) adds the three hyperscaler adapters, the `credentials` and `residency` provider fields, ledger schema v4's `residency` column and `boundary ledger residency`. 0.2.2 adds schema v5's `price_sha256` column and the matching field on `ChatResponse`.
 
 ## 1. Importing
 
@@ -88,6 +88,7 @@ errors in pass-through mode (where an error is a result).
 | `retries` | `int` | 0.1 | Retries made; always 0 in pass-through |
 | `cached` | `bool` | 0.1 | Development cache answered; never in pass-through |
 | `price_list` | `str \| None` | 0.1 | Date of the price file used, for example `"2026-09-07"` |
+| `price_sha256` | `str \| None` | 0.2.2 | Fingerprint of the rates that file held, hashed from the parsed values. A date is not unique across repositories; this is, so a caller can record what it was charged at without trusting that two files sharing a date shared their contents |
 | `trace_id` | `str \| None` | 0.1 | OpenTelemetry trace id, hex, or None when telemetry is off |
 | `ok` | property `bool` | 0.1 | 2xx status |
 
@@ -138,7 +139,7 @@ All subclass `BoundaryError`.
 | `BatchNotReady` | Results were asked for before the vendor finished the batch. Not a failure: "not yet" is the ordinary answer | `batch_id`, `processing_status`, `counts` | 0.2 |
 | `ProviderError` | Non-2xx after retries (standard) or transport failure. In pass-through the same information is returned as a `ChatResponse` instead | `provider`, `status`, `body`, `retries`, `headers` | 0.1 |
 
-## 7. The ledger row (schema v4)
+## 7. The ledger row (schema v5)
 
 One row per call, written before the response is returned, including failures. Columns
 are additive only; never renamed or removed. Field-by-field notes in `docs/ledger.md`
@@ -152,6 +153,7 @@ error_type, retries, request_sha256, response_sha256, trace_id, span_id, raw_pat
 call_uid, env                                                             -- added in 0.2
 batch_id                                                                  -- added in 0.2
 residency                                                                 -- added in 0.2
+price_sha256                                                              -- added in 0.2.2
 ```
 
 `call_uid` identifies the call across files and `env` says which environment made it;
@@ -238,7 +240,7 @@ section 2.8. Tool-use fields pass through inside `messages` and `extra` untouche
 Answered in the draft and accepted at the freeze on 2026-09-08.
 
 1. `ChatResponse` has five fields beyond the plan's list (`provider`, `model_requested`,
-   `mode`, `retries`, `cached`, `price_list`, `trace_id`). All are also ledger columns;
+   `mode`, `retries`, `cached`, `price_list`, `price_sha256`, `trace_id`). All are also ledger columns;
    returning them saves a caller a ledger lookup.
 2. `max_tokens` is required in pass-through mode rather than defaulted. Defaulting it would
    be a rewrite the drift record could not see.

@@ -8,6 +8,8 @@ directory, so a configuration can be checked in and used from any working direct
 from __future__ import annotations
 
 import datetime as dt
+import hashlib
+import json
 import re
 from enum import StrEnum
 from pathlib import Path
@@ -260,6 +262,33 @@ class PriceList(_Strict):
     def name(self) -> str:
         """The version string written into every ledger row costed with this list."""
         return self.date.isoformat()
+
+    @property
+    def rates_sha256(self) -> str:
+        """A fingerprint of the rates themselves, written into every row costed with them.
+
+        `name` is a date, and a date is not unique across repositories. On 2026-09-18 this
+        library and project 02 both held a `2026-09-12.yaml`, byte-different and semantically
+        identical, while every ledger row from both said only `price_list: 2026-09-12`. The
+        rates agreed, and nothing in the ledger could have shown it if they had not.
+
+        So this hashes the **parsed** rates rather than the file: same rates, same fingerprint,
+        whatever the comments or the key order or the line endings say. Two rows that cite the
+        same date and disagree here were costed differently, and that is now visible in the
+        ledger instead of being a thing somebody has to go and check by hand in two checkouts.
+
+        Deliberately not the file's bytes. A comment is not a rate, and a reformatting that
+        changed every row's fingerprint would make the column noise rather than evidence.
+        """
+        canonical = {
+            provider: {
+                model: entry.model_dump(mode="json", exclude_none=False)
+                for model, entry in sorted(models.items())
+            }
+            for provider, models in sorted(self.per_million_tokens.items())
+        }
+        payload = json.dumps(canonical, sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(payload.encode()).hexdigest()
 
     def lookup(self, provider: str, model: str) -> PriceEntry | None:
         return self.per_million_tokens.get(provider, {}).get(model)

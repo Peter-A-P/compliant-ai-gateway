@@ -71,7 +71,7 @@ def _write(store: LedgerStore, env: str, n: int, *, complete: bool = True) -> li
 def test_a_new_file_is_current_with_a_unique_index_on_call_uid(tmp_path: Path) -> None:
     store = _store(tmp_path, "fresh")
     try:
-        assert store.schema_version == SCHEMA_VERSION == 4
+        assert store.schema_version == SCHEMA_VERSION == 5
         row = _row("laptop")
         store.begin(row)
         assert store.rows()[0]["call_uid"] == row.call_uid
@@ -212,6 +212,10 @@ def test_a_v1_file_is_upgraded_in_place_and_keeps_its_rows(tmp_path: Path) -> No
         # Nor a residency (v4). The row was written by a configuration that declared none,
         # and a value here would be a claim about where the data went that nobody made.
         assert rows[0]["residency"] is None
+        # Nor a rate fingerprint (v5). The row names a price list by date, and which file
+        # with that date it meant is exactly what cannot be recovered afterwards. Computing
+        # one now from whatever this checkout happens to hold would be a fabricated match.
+        assert rows[0]["price_sha256"] is None
         uid = rows[0]["call_uid"]
     finally:
         store.close()

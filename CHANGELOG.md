@@ -5,6 +5,39 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.2.2 (2026-09-18)
+
+- **Ledger schema v5, additive: `price_sha256`.** A row now records the **rates** it was
+  costed against, not only the date of the list it read them from. A sha256 of the parsed
+  rates, canonically ordered, so two files holding the same rates fingerprint the same
+  whatever their comments, key order or line endings say, and two files holding different
+  rates never do. Also on `ChatResponse`, beside `price_list`.
+
+  **It exists because of a real near-miss rather than a hypothetical one.** September's ledger
+  was costed from two repositories. On 2026-09-18 this library and project 02 both held a
+  `2026-09-12.yaml`: **byte-different**, 6,766 against 7,607, and after parsing **identical**,
+  the 841 bytes being comments. Every row from both projects said only
+  `price_list: 2026-09-12`. The rates agreed, and nothing in either ledger could have shown it
+  if they had not. A date is not unique across repositories. A fingerprint is.
+
+  The fingerprint is of the parsed rates and not the file's bytes on purpose: a comment is not
+  a rate, and a column that moved when somebody reformatted a file would be noise rather than
+  evidence. `source` and `date` are excluded for the same reason, and `date` is already in
+  `price_list`, so the two columns answer different questions: which list was in force, and
+  what was in it.
+
+- **The near-miss is held open as a test**, `tests/test_price_identity.py`. It loads 02's
+  copies from the sibling checkout and asserts the fingerprints match, skipping rather than
+  failing when 02 is not checked out beside this repository. A second test asserts the two
+  files really are still byte-different, so that if somebody makes them identical the parsed
+  comparison gets retired deliberately instead of passing for a reason nobody intended.
+
+- **The open price-file decision is answered** in `docs/invoice-check.md`, and it had already
+  answered itself: price files ship inside the package at `boundary/prices/`, this
+  repository's configuration says `prices: builtin`, and all five dated lists are there, so
+  September's costing is reproducible from this checkout alone. What remains is one line in
+  02, which still reads its own copies.
+
 - **The Vertex quota inference was wrong, and the correction is in
   `docs/hyperscaler-setup.md` beside it.** This document said a Claude bucket with no
   `effectiveLimit` was probably not a quota you can raise but a quota you do not have, making

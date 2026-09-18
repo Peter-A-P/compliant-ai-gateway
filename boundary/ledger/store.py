@@ -24,7 +24,7 @@ from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 from typing import Any
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 _SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 
 IN_FLIGHT = "in_flight"
@@ -63,7 +63,7 @@ def utc_now() -> str:
 
 @dataclass(slots=True)
 class LedgerRow:
-    """One row, schema v4. Field names are the column names."""
+    """One row, schema v5. Field names are the column names."""
 
     ts_utc: str
     boundary_version: str
@@ -93,6 +93,14 @@ class LedgerRow:
     cache_read_tokens: int = 0
     cache_write_tokens: int = 0
     price_list: str | None = None
+    # A fingerprint of the rates this row was costed with (v5), not of the file holding them.
+    # `price_list` is a date, and a date is not unique across repositories: on 2026-09-18 this
+    # library and project 02 both held a `2026-09-12.yaml`, byte-different and, as it turned
+    # out, semantically identical. Nothing in a row could have shown it either way. This can.
+    # Set on every row that had a price list in force, costed or not, exactly as `price_list`
+    # is: the pair records which rates were CONSULTED, and `costed` says whether they had an
+    # entry for the model. Null only on a row written before the column existed.
+    price_sha256: str | None = None
     cost_usd: float | None = None
     costed: bool = False
     cached: bool = False
@@ -227,6 +235,11 @@ class LedgerStore:
                 # declare a residency, and inventing one would put a claim in the ledger
                 # that nobody made.
                 self._add_columns(("residency", "TEXT"))
+            if current < 5:
+                # Null for every existing row rather than backfilled. The rates a past row
+                # used are not recoverable from the row: the file it named may have been
+                # one of several with that date, which is the whole reason for the column.
+                self._add_columns(("price_sha256", "TEXT"))
             self._conn.execute(
                 "INSERT INTO schema_version (version, applied_utc) VALUES (?, ?)",
                 (SCHEMA_VERSION, utc_now()),

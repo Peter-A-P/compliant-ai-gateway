@@ -52,7 +52,8 @@ hand, and inventing one would let the same call merge twice.
 | `output_tokens` | integer | As returned |
 | `cache_read_tokens` | integer | As returned (Anthropic `cache_read_input_tokens`; OpenAI `cached_tokens`) |
 | `cache_write_tokens` | integer | As returned (Anthropic `cache_creation_input_tokens`) |
-| `price_list` | text or null | Date of the price file the row was costed with |
+| `price_list` | text or null | Date of the price list that was in force when the row was written. Set whether or not the model was in it; `costed` says whether it was |
+| `price_sha256` | text or null | Fingerprint of the **rates** that list held (v5), hashed from the parsed values rather than the file, so comments and key order do not move it. A date is not unique across repositories and a fingerprint is; see [invoice-check.md](invoice-check.md). Null only on rows written before the column existed |
 | `cost_usd` | real or null | Actual cost from usage and the price entry. Null when uncosted. The estimate while in flight |
 | `costed` | 0 or 1 | 1 when `cost_usd` is an actual cost. An unknown price is 0, never a guess |
 | `cached` | 0 or 1 | 1 when the development cache answered (standard mode only) |

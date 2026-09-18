@@ -141,6 +141,9 @@ class ChatResponse:
     retries: how many retries were made (always 0 in pass-through mode).
     cached: True when the development cache answered (never in pass-through mode).
     price_list: the price list version the row was costed with, or None.
+    price_sha256: a fingerprint of the rates themselves, or None. A date is not unique
+        across repositories; this is, so a caller can record what it was charged at
+        without having to trust that two files sharing a date shared their contents.
     trace_id: the OpenTelemetry trace id in hex, or None when telemetry is off.
     """
 
@@ -161,6 +164,7 @@ class ChatResponse:
     retries: int = 0
     cached: bool = False
     price_list: str | None = None
+    price_sha256: str | None = None
     trace_id: str | None = None
 
     @property

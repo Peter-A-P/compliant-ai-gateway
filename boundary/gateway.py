@@ -250,6 +250,7 @@ class Gateway:
             region=pc.region,
             residency=_residency(pc),
             price_list=self.prices.name,
+            price_sha256=self.prices.rates_sha256,
             request_sha256=sha256_hex(built.body),
             env=self.env,
         )
@@ -379,6 +380,7 @@ class Gateway:
                     region=ref.region,
                     residency=_residency(pc),
                     price_list=self.prices.name,
+                    price_sha256=self.prices.rates_sha256,
                     cost_usd=estimate if entry is not None else None,
                     request_sha256=sha256_hex(single.body),
                     call_uid=custom_id,
@@ -689,6 +691,7 @@ class Gateway:
             retries=0,
             cached=False,
             price_list=self.prices.name if cost is not None else None,
+            price_sha256=self.prices.rates_sha256 if cost is not None else None,
             trace_id=row.trace_id,
         )
 
@@ -869,6 +872,7 @@ class Gateway:
             region=ref.region,
             residency=_residency(ref.provider_config),
             price_list=self.prices.name,
+            price_sha256=self.prices.rates_sha256,
             cost_usd=estimate if entry is not None else None,
             request_sha256=sha256_hex(built.body),
             env=self.env,
@@ -1072,6 +1076,7 @@ class Gateway:
             retries=retries,
             cached=cached,
             price_list=self.prices.name if cost is not None else None,
+            price_sha256=self.prices.rates_sha256 if cost is not None else None,
             trace_id=call.row.trace_id,
         )
 

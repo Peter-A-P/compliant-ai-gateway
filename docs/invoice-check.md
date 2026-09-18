@@ -136,14 +136,56 @@ costed rows. This matters for October, when several environments will have ledge
 it would present as a vendor overcharge rather than as a tooling mistake. So the method above
 says to pass source paths to `merge` and let it do the copying.
 
-**September was priced from two repositories.** The rows cite price lists `2026-09-09`,
-`2026-09-10` and `2026-09-12`. This repository holds `2026-09-07`, `2026-09-09` and
-`2026-09-10`; the `2026-09-12` list lives in 02, at `mselect/config/prices/`. So September's
-costing cannot be reproduced from this repository alone. That is a gap in the reproducibility
-claim rather than in the arithmetic, and it needs a decision before October: either price
-files live here and other projects read them, or this document records which repository
-priced which rows. Nothing is wrong with the numbers; what is wrong is that checking them
-needs two checkouts and the ledger does not say so.
+**September was priced from two repositories, and that is now settled.** The rows cite price
+lists `2026-09-09`, `2026-09-10` and `2026-09-12`, and when this was written the `2026-09-12`
+list lived only in 02, at `mselect/config/prices/`. The open question was whether price files
+should live here and be read by other projects, or whether this document should record which
+repository priced which rows.
+
+**The first, and it had already happened without this page noticing.** Price files ship inside
+the package at `boundary/prices/`, this repository's configuration says `prices: builtin`, and
+all five dated lists including `2026-09-12` are there. September's costing is reproducible from
+this checkout alone.
+
+**Checked rather than assumed, on 2026-09-18, and the result is worth the detail:**
+
+| File | This library | Project 02 | Bytes | Rates |
+|---|---|---|---|---|
+| `2026-09-10.yaml` | `boundary/prices/` | `mselect/config/prices/` | **identical** | identical |
+| `2026-09-12.yaml` | `boundary/prices/` | `mselect/config/prices/` | **differ**, 6,766 against 7,607 | **identical** |
+
+The `2026-09-12` pair differs by 841 bytes, all of it comments. Four providers, the same four
+models, the same rates, the same `source` line. So the numbers in this document are right, and
+they were right by diligence rather than by construction: **every ledger row from both projects
+said only `price_list: 2026-09-12`, and nothing in either ledger could have shown a disagreement
+if there had been one.**
+
+### What was built so it cannot happen quietly
+
+**A ledger row now records the rates it used, not only the date it read them from**
+(schema v5, `price_sha256`). It is a sha256 of the *parsed* rates, canonically ordered, so two
+files with the same rates fingerprint the same however their comments, key order or line
+endings differ, and two files with different rates never do. A date is not unique across
+repositories. A fingerprint is.
+
+That turns "we checked and they agreed" into something a stranger can check from the rows
+alone, which is the standard the rest of this document is held to.
+
+**And the near-miss is held open as a test.** `tests/test_price_identity.py` loads 02's copies
+from the sibling checkout and asserts the fingerprints match, skipping when 02 is not beside
+this repository. A second test asserts the two files really are still byte-different, so that
+if somebody makes them identical the parsed comparison is retired deliberately rather than
+left passing for a reason nobody intended.
+
+### The one thing still open, and it is in 02 rather than here
+
+02's configuration says `prices: prices`, so it reads its own copies rather than the library's.
+The copies agree today and the test above will say so, but the durable fix is one line in 02:
+`prices: builtin`. That is a change to another repository and is not made from here.
+
+Until it is made, the honest statement is the one this section now supports: the two sets of
+rates were compared, they matched, and every row written from 2026-09-18 onward carries the
+fingerprint that makes the comparison unnecessary.
 
 ### A column that reads empty, and why
 
