@@ -15,9 +15,23 @@ written and one of them is exercised**: Claude on Amazon Bedrock answered from
 on 2026-09-16, writing a ledger row that records the region it was sent to and the residency
 its configuration declared. That row is deliberately **uncosted**: AWS publishes its own rates,
 they were not readable from the published page, and an unknown price never becomes an estimate.
-Microsoft Foundry and Google Vertex are waiting on credentials rather than on code. What that exercise found about data residency, and about the
-gap between a published default quota and the one a new account is actually given, is in
-[docs/hyperscaler-setup.md](docs/hyperscaler-setup.md). Both parts are planned in
+
+**Microsoft Foundry and Google Vertex have credentials and are refused by quota, not by
+code.** Foundry allocates zero requests a minute for every Anthropic model in every region
+that offers them, while 159 non-Anthropic quotas in the same region are normal. Vertex
+returned 429 on the first request the account ever made, against a bucket that carries no
+limit at all rather than a limit of zero, while the Google-model buckets beside it sit at
+600. Two vendors, the same shape: the platform's own catalogue is provisioned for a new
+customer and the partner's frontier models are not, and neither vendor's documentation
+mentions it. What that cost to find out, and the three different ways these platforms avoid
+saying where a request is processed, is in
+[docs/hyperscaler-setup.md](docs/hyperscaler-setup.md).
+
+**One Canadian deployment does answer, and it needed no adapter code**: a `gpt-5.6-luna`
+deployment in `canadacentral`, reached through Foundry's OpenAI-compatible route, status 200
+on 2026-09-17. Its ledger row reads `region = canadacentral` and `residency = global`:
+deployed in Canada, processed anywhere, and it says both. That is the strongest honest
+Canadian claim available on any of the three platforms today. Both parts are planned in
 [PLAN.md](PLAN.md):
 Part A, the `boundary` library that every project in this portfolio calls models through;
 Part B, the full gateway with redaction, residency routing, audit log, cache, budgets and
@@ -58,6 +72,46 @@ the no-guessed-prices rule doing its job, and the document bounds what they hide
 |---|---|---|---|---|---|
 | _not yet_ | | | | | |
 
+## Where the data went
+
+Part B routes by residency. Part A already records it and can be asked about it, which is the
+half that turned out to be worth having early. Every ledger row carries the region a request
+was **sent** to and the residency its provider entry **declared**, and `boundary ledger
+residency` reads them back. From smoke run #6, 2026-09-18, copied out of the run's own log:
+
+```
+reach          provider         region             calls  cached  err      in     out
+undeclared     anthropic        -                      1       0    0      14       4
+undeclared     google           -                      1       0    0       8       1
+undeclared     openai           -                      1       0    0      13      10
+undeclared     openweights      -                      1       0    0      42       2
+global         foundry-canada   canadacentral          1       0    0      13       4
+global         vertex           global                 1       0    1       0       0
+geo            bedrock          ca-central-1           1       0    0      14       4
+```
+
+**Four of the seven declared nothing**, because Anthropic, OpenAI, Google and Together
+publish nothing per-request to declare. **The three that could declare one all declared `geo`
+or `global`.** Nothing in a live run reached `single-region`, and the only route in the
+checked-in configuration that can is the local model server, where the request never reaches
+a network. That is the state of the market, not a gap in the configuration, and a test fails
+on the day it changes.
+
+`--require single-region|geo|global` turns the report into a gate and exits 2 when any group
+went wider, so a run can fail its own CI for sending data further than it said it would.
+Three rules, all failing closed: an **undeclared** row fails every limit including `--require
+global`, because null is no claim rather than the weakest claim; a residency class a **later
+version** added fails every limit, because an old reader cannot tell whether it is narrower or
+wider; and a group of **pure cache hits** is never a violation, because nothing left the
+machine.
+
+**What a clean report does not prove.** Residency here is configuration, not observation. No
+vendor reports where a request was actually processed, so a pass means every call went to an
+endpoint whose declared limit was within the one required, and it means nothing about the
+vendor's conduct. The command prints that sentence itself, because the moment somebody is
+most likely to over-read a clean report is while they are looking at one. The detail is in
+[docs/ledger.md](docs/ledger.md).
+
 ## What this does not do
 
 - It does not classify data. The caller declares a data class on every request, and the
@@ -65,6 +119,10 @@ the no-guessed-prices rule doing its job, and the document bounds what they hide
   be making a compliance decision nobody reviewed.
 - It does not run in more than one region. Residency here means controlling where requests
   are allowed to go, not where the proxy runs.
+- **It cannot verify residency, and no tool can.** It records what the operator declared and
+  checks the request against that declaration. Not one of the eight providers reports where
+  a request was actually processed. A product that presented a declaration as a measurement
+  would be selling the assurance this one refuses to fake.
 - It does not redact images or audio. Text only; non-text content is refused for anything
   but the public class.
 - Redaction is not perfect, and the results table says by how much, per entity type.

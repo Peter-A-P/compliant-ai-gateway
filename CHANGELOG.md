@@ -5,6 +5,19 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+Nothing yet.
+
+## 0.2.1 (2026-09-18)
+
+The hyperscaler release, and it is as much a set of findings as a set of adapters. Tagged
+after smoke run #6 from GitHub Actions exercised every provider on this exact code: seven
+calls, five costed, two uncosted because the vendor publishes its own rates. Two of the three
+hyperscaler platforms answered; the third is refused by quota rather than by code, and that
+refusal is documented rather than hidden.
+
+Both prior tags waited on live calls before the version left `.dev0`. This one did the same:
+the calls ran first, on `f0abfbe`, and the tag followed.
+
 - **`boundary ledger residency`**, which reads the v4 column back. Schema v4 has been
   recording a residency on every row since 2026-09-15 and nothing could ask the question the
   column exists to answer: `ledger report` groups by project, model and month, which is a
@@ -358,7 +371,9 @@ major version are additive only; see docs/interface.md.
 
 Still deferred past the 0.2.0 tag, to 0.2.1 and 0.2.2: the Foundry, Vertex and Bedrock
 adapters, which need their accounts and billing alerts first and which nothing is waiting
-on. OTLP export arrives with Part B.
+on. OTLP export arrives with Part B. (All three adapters in fact landed in 0.2.1 together,
+written ahead of their accounts; what did not land is a costed row for two of them, and the
+reason is a quota wall rather than a schedule.)
 
 Before the 0.2.0 tag: one live batch and one live local call, both recorded in the ledger.
 Version stays at `0.2.0.dev0` until then, as `v0.1.0` did until its smoke calls ran.
