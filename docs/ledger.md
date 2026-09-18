@@ -71,13 +71,31 @@ hand, and inventing one would let the same call merge twice.
 by project, model and month. It is the compliance question rather than the spend one, and it
 is the only reader of the v4 column.
 
+Smoke run #6 from GitHub Actions, 2026-09-18, copied from the run's own log rather than
+written by hand:
+
 ```
-reach          provider         region              calls  cached  err      in     out  models
-undeclared     anthropic        -                       4       1    0     220      80  anthropic/claude-haiku-4-5-20251001
-global         foundry-canada   canadacentral           1       0    0      13       4  foundry-canada/gpt-5.6-luna
-geo            bedrock          ca-central-1            1       0    0      14       4  bedrock/us.anthropic.claude-haiku-4-5-...
-single-region  local            localhost               3       0    0      34       6  local/llama3.2:3b
+reach          provider         region             calls  cached  err      in     out  models
+undeclared     anthropic        -                      1       0    0      14       4  anthropic/claude-haiku-4-5-20251001
+undeclared     google           -                      1       0    0       8       1  google/gemini-3.5-flash-lite
+undeclared     openai           -                      1       0    0      13      10  openai/gpt-5-nano
+undeclared     openweights      -                      1       0    0      42       2  openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo
+global         foundry-canada   canadacentral          1       0    0      13       4  foundry-canada/gpt-5.6-luna
+global         vertex           global                 1       0    1       0       0  vertex/claude-haiku-4-5@20251001
+geo            bedrock          ca-central-1           1       0    0      14       4  bedrock/us.anthropic.claude-haiku-4-5-20251001-v1:0
 ```
+
+Seven calls, and the shape of the answer is the finding. **Four of the seven declared no
+residency at all**, because Anthropic, OpenAI, Google and Together publish nothing
+per-request to declare. **The three that could declare one all declared `geo` or `global`.**
+Nothing in a live run reached `single-region`, and the only route in the configuration that
+can is the local server, which is not in this run because nothing in Actions calls it.
+
+The `err 1` on the Vertex row is a 401 from an expired pasted token, and the row is there
+anyway: the request left the runner and reached `global`, so it belongs in the residency
+answer whatever came back. That is deliberate. A residency report that counted only
+successful calls would under-report exactly the requests somebody would most want to know
+about.
 
 **Widest reach first**, so the rows that matter are at the top rather than in alphabetical
 order in the middle. The ordering is `single-region < geo < global < anything else`, where
