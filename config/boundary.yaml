@@ -36,10 +36,23 @@ providers:
     # gpt-oss-120b runs at the standard rate, which is what the price file says.
     batches: true
   # Local server for 02 at price zero. No key.
+  #
+  # The only entry in this file that can honestly claim `single-region`, and it can because
+  # the request never reaches a network. Every hosted provider above declares nothing, which
+  # `boundary ledger residency` prints as `undeclared` rather than folding into `global`:
+  # Anthropic, OpenAI, Google and Together publish no per-request residency to declare, and
+  # inventing one here would be the exact failure this column exists to prevent. The three
+  # hyperscaler entries below can declare one, and all three declare `geo` or `global`.
+  #
+  # So a run that has to pass `--require single-region` has one route available today, and
+  # it is the one where nothing leaves the machine. That is the honest state of the market
+  # rather than a gap in this configuration.
   local:
     kind: openai_compat
     base_url: http://127.0.0.1:11434/v1
     price_zero: true
+    region: localhost
+    residency: single-region
 
   # -- hyperscaler platforms (v0.2; Foundry and Vertex 2026-09-14, Bedrock 2026-09-15) -----
   #

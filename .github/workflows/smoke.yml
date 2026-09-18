@@ -217,6 +217,15 @@ jobs:
         if: always()
         run: uv run boundary ledger report --ledger boundary.sqlite
 
+      # The same rows read as a compliance question rather than a spend one. No --require
+      # here on purpose: most providers in this configuration declare no residency at all,
+      # so any limit would fail the run and say nothing that the table does not already say.
+      # A caller with a residency obligation adds --require to its own run, which is the
+      # point of the flag. See docs/ledger.md.
+      - name: Where the data went
+        if: always()
+        run: uv run boundary ledger residency --ledger boundary.sqlite
+
       - name: Keep the ledger as an artefact
         if: always()
         uses: actions/upload-artifact@v4

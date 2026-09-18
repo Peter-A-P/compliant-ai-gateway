@@ -1,5 +1,5 @@
 """Command line: boundary smoke <provider> | routes show | prices check |
-ledger report | ledger merge | batch status | batch collect | bench |
+ledger report | ledger residency | ledger merge | batch status | batch collect | bench |
 experiment remote-ledger.
 
 Every command takes --config (default: config/boundary.yaml next to the current directory
@@ -15,9 +15,16 @@ from collections import defaultdict
 from pathlib import Path
 
 from boundary import __version__
-from boundary.config import latest_price_list, load_config, load_price_list, price_files
+from boundary.config import (
+    Residency,
+    latest_price_list,
+    load_config,
+    load_price_list,
+    price_files,
+)
 from boundary.errors import BatchNotReady, BoundaryError
 from boundary.gateway import Gateway
+from boundary.ledger import residency as residency_report
 from boundary.ledger.store import LedgerStore
 from boundary.types import ChatRequest, Mode
 
@@ -235,13 +242,20 @@ def cmd_prices_check(args: argparse.Namespace) -> int:
     return 1 if (stale or missing) else 0
 
 
-def cmd_ledger_report(args: argparse.Namespace) -> int:
+def _open_ledger(args: argparse.Namespace) -> LedgerStore | None:
+    """The ledger a read-only command should read, or None after saying why not."""
     cfg = load_config(args.config)
     path = Path(args.ledger) if args.ledger else cfg.ledger.path
     if not path.is_file():
         print(f"no ledger at {path}", file=sys.stderr)
+        return None
+    return LedgerStore(path)
+
+
+def cmd_ledger_report(args: argparse.Namespace) -> int:
+    store = _open_ledger(args)
+    if store is None:
         return 1
-    store = LedgerStore(path)
     try:
         rows = store.rows()
         month = args.month
@@ -289,6 +303,78 @@ def cmd_ledger_report(args: argparse.Namespace) -> int:
     finally:
         store.close()
     return 0
+
+
+def cmd_ledger_residency(args: argparse.Namespace) -> int:
+    """Where the data went, and whether it stayed inside a declared limit.
+
+    `ledger report` answers the spend question. This answers the compliance one, off the same
+    rows. `--require` turns it from a report into a gate: a run can fail its own CI for
+    sending data further than it said it would, which is the only version of this feature
+    worth having.
+    """
+    store = _open_ledger(args)
+    if store is None:
+        return 1
+    try:
+        groups = residency_report.summarise(
+            store.rows(), month=args.month, project=args.project_filter
+        )
+    finally:
+        store.close()
+
+    if not groups:
+        print("no rows match")
+        return 0
+
+    print(
+        f"{'reach':<14} {'provider':<16} {'region':<20} {'calls':>6} {'cached':>7} {'err':>4} "
+        f"{'in':>9} {'out':>8}  models"
+    )
+    for g in groups:
+        print(
+            f"{g.residency:<14} {g.provider:<16} {g.region:<20} {g.calls:>6} {g.cached:>7} "
+            f"{g.errors:>4} {g.input_tokens:>9} {g.output_tokens:>8}  {', '.join(g.models)}"
+        )
+
+    # Said in the output and not only in the docs, because the person who can misread a clean
+    # report is the one running the command.
+    print()
+    print(
+        "residency is what the provider entry declared, not what the vendor reported:\n"
+        "no vendor reports where a request was processed. region is where it was sent."
+    )
+
+    undeclared = [g for g in groups if g.residency == residency_report.UNDECLARED]
+    if undeclared and args.require is None:
+        calls = sum(g.calls for g in undeclared)
+        print(
+            f"note: {calls} call(s) across {len(undeclared)} provider/region pair(s) declared "
+            "no residency at all."
+        )
+
+    if args.require is None:
+        return 0
+
+    limit = Residency(args.require)
+    bad = residency_report.violations(groups, limit)
+    if not bad:
+        print(f"ok: every call was within {limit.value}")
+        return 0
+    print(file=sys.stderr)
+    print(f"FAIL: {len(bad)} group(s) not within {limit.value}", file=sys.stderr)
+    for g in bad:
+        why = (
+            "no residency declared"
+            if g.residency == residency_report.UNDECLARED
+            else (
+                f"{g.residency!r} is not a residency this version knows"
+                if not residency_report.is_known(g.residency)
+                else f"{g.residency} is wider than {limit.value}"
+            )
+        )
+        print(f"  {g.provider}/{g.region}: {g.sent} call(s) sent, {why}", file=sys.stderr)
+    return 2
 
 
 def cmd_ledger_merge(args: argparse.Namespace) -> int:
@@ -447,6 +533,21 @@ def main(argv: list[str] | None = None) -> int:
     report.add_argument("--month", help="YYYY-MM filter")
     report.add_argument("--ledger", help="path to a ledger file (default from config)")
     report.set_defaults(func=cmd_ledger_report)
+    resid = ledger.add_parser("residency", help="calls per provider, region and declared residency")
+    resid.add_argument("--month", help="YYYY-MM filter")
+    resid.add_argument("--ledger", help="path to a ledger file (default from config)")
+    resid.add_argument(
+        "--project",
+        dest="project_filter",
+        help="only rows from this ledger project (the top-level --project is the writer's "
+        "label and does not filter)",
+    )
+    resid.add_argument(
+        "--require",
+        choices=[r.value for r in Residency],
+        help="exit 2 if any call went wider than this. Undeclared rows fail every limit",
+    )
+    resid.set_defaults(func=cmd_ledger_residency)
     merge = ledger.add_parser(
         "merge", help="copy rows from other environments' ledgers into one file"
     )

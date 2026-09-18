@@ -220,6 +220,7 @@ every row as a failure at no cost rather than leaving it in flight at an estimat
 | `boundary routes show` | 0.1 | What every alias points at, and the provider entries |
 | `boundary prices check` | 0.1 | Validates every price file, warns when the newest is not this month, lists routes with no price |
 | `boundary ledger report` | 0.1 | Calls, tokens and cost by month, environment, project and model |
+| `boundary ledger residency` | 0.2.1 | Calls, tokens and models by provider, region and declared residency, widest reach first. `--require single-region|geo|global` exits 2 when any call went wider, and an undeclared row fails every limit |
 | `boundary bench` | 0.1 | The README's measured row, against an in-process mock |
 | `boundary ledger merge --into <dest> <sources...>` | 0.2 | Combines per-environment ledgers. Idempotent; `--dry-run` reports without writing |
 | `boundary batch status <id>` | 0.2 | Where the vendor has got to with a batch. Writes nothing; exits non-zero until it has ended, so a script can wait on it |

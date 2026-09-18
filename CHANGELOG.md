@@ -5,6 +5,35 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+- **`boundary ledger residency`**, which reads the v4 column back. Schema v4 has been
+  recording a residency on every row since 2026-09-15 and nothing could ask the question the
+  column exists to answer: `ledger report` groups by project, model and month, which is a
+  spend question. This groups by provider, region and residency, widest reach first.
+
+  `--require single-region|geo|global` turns the report into a gate and exits 2 when any
+  group went wider than the limit. Three rules, all fail-closed:
+
+  - An **undeclared** row fails every limit, including `--require global`. Null is not
+    `global`. `global` is the weakest claim somebody made; null is no claim at all.
+  - A residency class **this version does not recognise** fails every limit too, because an
+    old reader cannot know whether a new class is narrower or wider than `global`. It still
+    prints the value as stored.
+  - A group of **pure cache hits** is never a violation, because nothing left the machine.
+    The calls are still counted, so the totals agree with `ledger report`.
+
+  The command prints what a clean report does not prove: residency is configuration, not
+  observation, and no vendor reports where a request was actually processed. That belongs in
+  the output and not only in the docs, because the moment somebody is most likely to
+  over-read a clean report is while they are looking at one.
+
+- **`local` now declares `region: localhost` and `residency: single-region`**, which the new
+  command surfaced on its first run: it was the only provider entry that could honestly claim
+  single-region and the only one not saying so. Every hosted entry declares `geo`, `global`,
+  or nothing at all, so a run that has to pass `--require single-region` has exactly one route
+  available today, and it is the one where nothing reaches a network. That is the state of the
+  market rather than a gap in the configuration, and there is a test that fails on the day it
+  changes.
+
 - **A Canada Central provider entry** (`foundry-canada`), which is the only genuinely Canadian
   deployment available anywhere in this configuration. It needed no code: Foundry's
   OpenAI-compatible route is `https://{resource}.services.ai.azure.com/openai/v1/`, takes

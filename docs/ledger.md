@@ -65,6 +65,55 @@ hand, and inventing one would let the same call merge twice.
 | `trace_id`, `span_id` | text or null | OpenTelemetry ids, hex; null when telemetry is off |
 | `raw_path` | text or null | Pass-through only: the JSONL file holding the raw record |
 
+## Residency queries
+
+`boundary ledger residency` groups the same rows by provider, region and residency instead of
+by project, model and month. It is the compliance question rather than the spend one, and it
+is the only reader of the v4 column.
+
+```
+reach          provider         region              calls  cached  err      in     out  models
+undeclared     anthropic        -                       4       1    0     220      80  anthropic/claude-haiku-4-5-20251001
+global         foundry-canada   canadacentral           1       0    0      13       4  foundry-canada/gpt-5.6-luna
+geo            bedrock          ca-central-1            1       0    0      14       4  bedrock/us.anthropic.claude-haiku-4-5-...
+single-region  local            localhost               3       0    0      34       6  local/llama3.2:3b
+```
+
+**Widest reach first**, so the rows that matter are at the top rather than in alphabetical
+order in the middle. The ordering is `single-region < geo < global < anything else`, where
+"anything else" is both the undeclared row and a residency class added by a later version
+than the one reading the file.
+
+**`--require geo` turns the report into a gate** and exits 2 when any group went wider. That
+is the part worth having: a drift run can fail its own CI for sending data further than it
+said it would, instead of producing a table nobody reads.
+
+Three rules, all in the same direction:
+
+- **An undeclared row fails every limit, including `--require global`.** Null is not `global`.
+  `global` is the weakest claim somebody made; null is no claim at all, and there is nothing
+  to check. Folding one into the other would invent a claim on the operator's behalf, which
+  is the failure this column exists to prevent.
+- **A residency class this version does not recognise fails every limit too.** An old reader
+  cannot know whether a new class is narrower or wider than `global`, so it refuses to let it
+  satisfy anything. It still prints the value as stored rather than hiding it.
+- **A group of pure cache hits is never a violation.** Nothing left the machine, so nothing
+  travelled. The calls are still counted, because a residency report whose totals disagree
+  with `ledger report` invites the reader to wonder which one is lying.
+
+**What a clean report does not prove.** `residency` is configuration, not observation: no
+vendor reports where a request was actually processed, and
+[hyperscaler-setup.md](hyperscaler-setup.md) has the three separate ways they each avoid
+saying. So a pass means every call went to an endpoint whose declared limit was within the
+one required. It means nothing at all about the vendor's conduct. The command prints that
+sentence itself, because the moment somebody is most likely to over-read a clean report is
+when they are looking at one.
+
+**Today, one route in the checked-in configuration can claim `single-region`, and it is the
+local server**, where the request never reaches a network. Every hosted entry declares `geo`,
+`global`, or nothing. That is the state of the market rather than a gap in the configuration,
+and `tests/test_residency.py` asserts it so that the day it changes is a failing test.
+
 ## Spend queries
 
 `spend_usd(project, year_month, run_id)` sums `cost_usd` where it is not null, so in-flight
