@@ -71,7 +71,7 @@ def _write(store: LedgerStore, env: str, n: int, *, complete: bool = True) -> li
 def test_a_new_file_is_current_with_a_unique_index_on_call_uid(tmp_path: Path) -> None:
     store = _store(tmp_path, "fresh")
     try:
-        assert store.schema_version == SCHEMA_VERSION == 5
+        assert store.schema_version == SCHEMA_VERSION == 6
         row = _row("laptop")
         store.begin(row)
         assert store.rows()[0]["call_uid"] == row.call_uid
@@ -216,6 +216,8 @@ def test_a_v1_file_is_upgraded_in_place_and_keeps_its_rows(tmp_path: Path) -> No
         # with that date it meant is exactly what cannot be recovered afterwards. Computing
         # one now from whatever this checkout happens to hold would be a fabricated match.
         assert rows[0]["price_sha256"] is None
+        # Nor a time to first token (v6). The call was not streamed; nothing arrived first.
+        assert rows[0]["ttft_ms"] is None
         uid = rows[0]["call_uid"]
     finally:
         store.close()

@@ -16,7 +16,10 @@ from pathlib import Path
 
 from boundary import __version__
 from boundary.config import (
+    BoundaryConfig,
+    PriceList,
     Residency,
+    check_price_lists,
     latest_price_list,
     load_config,
     load_price_list,
@@ -76,25 +79,26 @@ def cmd_smoke(args: argparse.Namespace) -> int:
         return 2
     if args.batch:
         return _smoke_batch(args, model)
+    request = ChatRequest(
+        model=model,
+        messages=[{"role": "user", "content": "Reply with the single word OK."}],
+        # No temperature: reasoning models accept only their default, and a smoke
+        # call is about the plumbing, not the sampling.
+        max_tokens=64,
+        extra=SMOKE_EXTRA.get(args.provider, {}),
+    )
     with Gateway.from_config(args.config, project=args.project) as gw:
-        resp = gw.chat(
-            ChatRequest(
-                model=model,
-                messages=[{"role": "user", "content": "Reply with the single word OK."}],
-                # No temperature: reasoning models accept only their default, and a smoke
-                # call is about the plumbing, not the sampling.
-                max_tokens=64,
-                extra=SMOKE_EXTRA.get(args.provider, {}),
-            ),
-            purpose="smoke",
-            run_id=args.run_id,
-            mode=Mode.STANDARD,
-        )
+        if args.stream:
+            resp = gw.chat_stream(request, purpose="smoke-stream", run_id=args.run_id)
+        else:
+            resp = gw.chat(request, purpose="smoke", run_id=args.run_id, mode=Mode.STANDARD)
     cost = f"US${resp.cost_usd:.6f}" if resp.cost_usd is not None else "uncosted"
+    ttft = f", first token {resp.ttft_ms:.0f} ms" if resp.ttft_ms is not None else ""
     print(
         f"{resp.provider}: status {resp.status}, model {resp.model_returned}, "
         f"text {resp.text!r}, tokens {resp.usage.input_tokens}/{resp.usage.output_tokens}, "
-        f"{cost}, {resp.latency_ms:.0f} ms, retries {resp.retries}, ledger row {resp.ledger_id}"
+        f"{cost}, {resp.latency_ms:.0f} ms{ttft}, retries {resp.retries}, "
+        f"ledger row {resp.ledger_id}"
     )
     return 0 if resp.ok else 1
 
@@ -204,6 +208,36 @@ def cmd_routes_show(args: argparse.Namespace) -> int:
     return 0
 
 
+def _print_rates(pl: PriceList) -> None:
+    for provider, models in sorted(pl.per_million_tokens.items()):
+        for model, e in sorted(models.items()):
+            cache = (
+                f", cache read {e.cache_read} write {e.cache_write}"
+                if e.cache_read is not None or e.cache_write is not None
+                else ""
+            )
+            batch = f", batch x{e.batch_multiplier}" if e.batch_multiplier is not None else ""
+            print(f"  {provider}/{model}: in {e.input} out {e.output}{cache}{batch}")
+
+
+def _self_hosted_check(cfg: BoundaryConfig) -> PriceList | None:
+    """Validate and print the self-hosted overlay when the configuration names one."""
+    if cfg.self_hosted_prices is None:
+        return None
+    files = price_files(cfg.self_hosted_prices)
+    if not files:
+        print(f"no self-hosted price files in {cfg.self_hosted_prices}", file=sys.stderr)
+        return None
+    for f in files:
+        load_price_list(f)
+    overlay = latest_price_list(cfg.self_hosted_prices)
+    print(
+        f"self-hosted price list: {overlay.name} ({len(files)} file(s)); source: {overlay.source}"
+    )
+    _print_rates(overlay)
+    return overlay
+
+
 def cmd_prices_check(args: argparse.Namespace) -> int:
     cfg = load_config(args.config)
     files = price_files(cfg.prices)
@@ -219,19 +253,23 @@ def cmd_prices_check(args: argparse.Namespace) -> int:
             f"warning: the latest price file is from {latest.date:%B %Y}; repricing is a new dated file",
             file=sys.stderr,
         )
-    for provider, models in sorted(latest.per_million_tokens.items()):
-        for model, e in sorted(models.items()):
-            cache = (
-                f", cache read {e.cache_read} write {e.cache_write}"
-                if e.cache_read is not None or e.cache_write is not None
-                else ""
-            )
-            batch = f", batch x{e.batch_multiplier}" if e.batch_multiplier is not None else ""
-            print(f"  {provider}/{model}: in {e.input} out {e.output}{cache}{batch}")
+    _print_rates(latest)
+    overlay = _self_hosted_check(cfg)
+    # The same refusals the gateway applies at construction, so a misplaced rate is found
+    # here, by the command whose job is to look, and not by the first call of a run.
+    check_price_lists(cfg, latest, overlay)
+
+    def priced(provider: str, model: str) -> bool:
+        pc = cfg.providers[provider]
+        if pc.price_zero:
+            return True
+        source = overlay if pc.self_hosted else latest
+        return source is not None and source.lookup(provider, model) is not None
+
     missing = [
         f"{alias} -> {r.provider}/{r.model}"
         for alias, r in cfg.routes.items()
-        if not cfg.providers[r.provider].price_zero and latest.lookup(r.provider, r.model) is None
+        if not priced(r.provider, r.model)
     ]
     if missing:
         print("routes without a price (calls will be uncosted):", file=sys.stderr)
@@ -494,6 +532,11 @@ def main(argv: list[str] | None = None) -> int:
         "--batch",
         action="store_true",
         help="submit two requests as a vendor batch and collect them, instead of one call",
+    )
+    smoke.add_argument(
+        "--stream",
+        action="store_true",
+        help="stream the call and report time to first token (openai_compat hosts only)",
     )
     smoke.add_argument(
         "--wait",

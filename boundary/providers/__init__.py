@@ -12,6 +12,8 @@ from boundary.providers.base import (
     BatchSubmitted,
     BuiltRequest,
     ParsedResponse,
+    StreamingAdapter,
+    StreamParser,
     UploadingBatchAdapter,
 )
 from boundary.providers.bedrock import BedrockAdapter
@@ -61,9 +63,19 @@ BATCH_ADAPTERS: dict[ProviderKind, BatchAdapter] = {
     ProviderKind.GOOGLE: _GOOGLE,
 }
 
+# Only the kinds whose streaming path is implemented (0.3). `openai_compat` is here because
+# project 06 measures time to first token against self-hosted vLLM and llama.cpp servers,
+# both of which speak this shape. The other kinds raise NotImplementedError by name when a
+# stream is asked of them, rather than failing somewhere deeper; each arrives when a project
+# needs it, with a mock upstream test of its own event shape.
+STREAM_ADAPTERS: dict[ProviderKind, StreamingAdapter] = {
+    ProviderKind.OPENAI_COMPAT: _OPENAI_COMPAT,
+}
+
 __all__ = [
     "ADAPTERS",
     "BATCH_ADAPTERS",
+    "STREAM_ADAPTERS",
     "Adapter",
     "AnthropicAdapter",
     "AzureFoundryAdapter",
@@ -79,6 +91,8 @@ __all__ = [
     "OpenAICompatAdapter",
     "OpenAICompatBatchAdapter",
     "ParsedResponse",
+    "StreamParser",
+    "StreamingAdapter",
     "UploadingBatchAdapter",
     "VertexAdapter",
 ]

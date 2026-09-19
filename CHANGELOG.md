@@ -5,6 +5,89 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.3.0 (2026-09-19)
+
+Three additions project 06 (fraction-of-the-bill, package `smallprint`) asked for on
+2026-09-19, all additive. Tagged after one live streamed call against the laptop's Ollama
+server on this exact code: `boundary smoke local --stream`, status 200, `llama3.2:3b`, 32
+input and 2 output tokens at price zero, ledger row 8, **5,484 ms to the first token and
+5,557 ms to the last byte**. The gap between the two is the finding the column exists to
+show: this model was cold, and nearly all of the wall time was spent before anything
+appeared. A non-streamed call would have reported one number and hidden that.
+
+- **Streaming for `openai_compat` hosts: `chat_stream` and `achat_stream`.** Sends
+  `stream: true` with `stream_options: {include_usage: true}`, reads the server-sent events as
+  they arrive and returns a whole `ChatResponse`: the full text, the usage from the final
+  event, and a new optional field **`ttft_ms`**, the wall time from sending the request to the
+  first content delta. `latency_ms` runs to the last byte. One ledger row per call, not per
+  event. Project 06 measures time to first token against self-hosted vLLM and llama.cpp servers
+  in its load tests, and needs the number to land in the same ledger row as the cost.
+
+  Standard mode only. Pass-through is refused with `PassthroughViolation` before the model is
+  resolved: pass-through's guarantee is one request body compared byte for byte with one
+  response body, and a stream is many events read as they come. The development cache is
+  never consulted, because a cached answer has no first token to time. Every other provider
+  kind raises `NotImplementedError` naming the kind; each arrives when a project needs it,
+  with a mock upstream test of its own event shape.
+
+  **What counts as the first token** is spelled out rather than left to the reader: the first
+  event whose delta carries non-empty `content`. OpenAI's leading role-only event is not a
+  token. A `reasoning_content` delta is not one either, so a reasoning model that thinks for
+  ten seconds has a ten-second time to first token, which is what a person waiting for it
+  waited. The usage is read from whichever event carries it: a final event with empty
+  `choices` on OpenAI and vLLM, the last content event on llama.cpp. Both shapes are goldens.
+
+  **A stream that carried no usage object is written uncosted**, even for a priced model.
+  Zero tokens at a real rate is US$0.00, and that is not what the call cost; it is what the
+  library could not see. This is the never-guess-a-price rule applied to a host that ignores
+  `stream_options`, and `strict_cost` raises on it as it does for an unknown model.
+
+  **A stream that fails after it began is not retried.** The host has produced tokens it may
+  bill for and the library cannot count them, so a second attempt would put two hosts' worth
+  of work on one row. The row records the transport error and no cost. A retryable status, or
+  a failure before any byte arrived, retries exactly as `chat` does.
+
+  Tested against a mock SSE upstream with a known 150 ms delay placed **after** the role-only
+  event and before the first content event, so the test fails if the wrong event stops the
+  clock. Sixty-four concurrent async streams each write their own timed row and finish in
+  about one delay rather than sixty-four, which is the test that the ledger lock and the
+  parser do not serialise them.
+
+- **Ledger schema v6, additive: `ttft_ms`.** One nullable column, null for every call that was
+  not streamed and for a streamed call that ended with no content. Nothing is backfilled. Also
+  on the span as `boundary.ttft_ms`, which is a duration and cannot carry a prompt.
+
+- **Connection pool limits made explicit**: 128 connections, 64 kept alive, on both clients.
+  06 holds at least 64 streams open against one host, and a client whose pool was the
+  bottleneck would report a time to first token that was the pool's and not the server's.
+  httpx's default of 100 was already enough; a test now asserts the number rather than
+  inheriting it.
+
+- **Measured rates for self-hosted hosts.** A provider entry may be flagged `self_hosted: true`
+  and the configuration may name `self_hosted_prices: <dir>`, a directory of dated files in
+  the price-file format that the project running the host supplies. 06 derives a rate from a
+  dated GPU-hour price and a measured throughput, as USD per million output tokens with input
+  at 0, re-measured per model, quantisation and GPU, with `source` naming the measurement run.
+
+  Two refusals, both at gateway construction, keep "one copy of every vendor price" true with
+  the overlay beside it: the overlay may not price a provider that is not flagged, and the
+  packaged vendor list may not price one that is. `self_hosted` and `price_zero` together are
+  refused too: free and measured are different claims. A row costed from the overlay cites
+  the overlay in `price_list` and `price_sha256`, so a self-hosted cost in a merged ledger is
+  audited back to its measurement and never mistaken for a vendor rate. The caps' pre-call
+  estimate uses the overlay as well. `boundary prices check` validates and prints it.
+
+- **`boundary smoke <provider> --stream`**, which is what the live call above ran.
+
+- **A spend cap for project 06** in `config/caps.yaml`: US$100 a month, US$30 a run, the
+  amounts 06 proposed, to be confirmed by Peter before its first vendor call. The portfolio
+  line moves from 350 to 400 because it has to hold every named project's month at once and a
+  test says so; the vendor console caps are unchanged.
+
+- **PLAN.md section 2.8 amended in the same commit**: streaming was out of scope for version 0
+  because nothing needed it before May 2027. Something does now, and it arrived for the one
+  provider kind the thing that needs it speaks.
+
 ## 0.2.2 (2026-09-18)
 
 - **Ledger schema v5, additive: `price_sha256`.** A row now records the **rates** it was

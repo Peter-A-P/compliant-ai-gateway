@@ -56,6 +56,60 @@ For project 02, whose `mselect/config/prices/` is the copy this consolidated:
 Nothing 02 has already costed changes: `2026-09-12.yaml` moved here byte for byte, so a row
 citing that price list resolves to the same numbers it always did.
 
+## Measured rates for self-hosted hosts (0.3)
+
+A host this portfolio runs itself, a vLLM or llama.cpp server on a rented GPU, has no
+vendor and no price page. Project 06 derives a rate for one instead: a dated GPU-hour price
+divided by a measured throughput at a stated utilisation, expressed in this schema as USD
+per million **output** tokens with input at 0, and re-measured for every model,
+quantisation format and GPU. That is a finding of 06's, not a list of anyone's, so it does
+not ship in this package. It lives beside 06's configuration:
+
+```yaml
+# boundary.yaml
+providers:
+  vllm-l4:
+    kind: openai_compat
+    base_url: http://10.0.0.7:8000/v1
+    self_hosted: true          # rates come from the overlay below and nowhere else
+prices: builtin                # the vendor lists, one copy, unchanged
+self_hosted_prices: self-hosted-prices   # a directory of dated files, relative to this file
+```
+
+```yaml
+# self-hosted-prices/2026-10-03.yaml, the same format as a vendor price file
+version: 1
+date: 2026-10-03
+currency: USD
+source: "06 load test 2026-10-03, L4 spot $0.39/h checked 2026-10-03, 412 output tok/s at c=32, utilisation 0.5"
+per_million_tokens:
+  vllm-l4:
+    # 0.39 / (412 tok/s x 3600 s x 0.5) x 1e6
+    Qwen2.5-7B-Instruct-AWQ:
+      input: 0.0
+      output: 0.5259
+```
+
+Three rules keep "one copy of every vendor price" true with the overlay beside it, and the
+gateway refuses at construction, not on the first call, when one is broken:
+
+- **The overlay prices self-hosted providers only.** A provider in it that is not flagged
+  `self_hosted: true`, or that the configuration does not know, is a `ConfigError`. A vendor
+  rate in a project's own directory is exactly the drift `prices: builtin` exists to prevent.
+- **The vendor list may not price a self-hosted provider.** A measured rate in the package
+  would be a second copy of a number that changes whenever the GPU does.
+- **`self_hosted` and `price_zero` are incompatible.** Free and measured are different
+  claims, and an entry cannot make both.
+
+A row costed from the overlay cites the overlay: `price_list` is the overlay file's date and
+`price_sha256` its fingerprint, so a self-hosted cost in a merged ledger is audited back to
+the measurement run named in that file's `source`, and never mistaken for a vendor rate. A
+self-hosted model the overlay does not name is written uncosted, at no neighbour's rate and
+not at zero; a self-hosted provider with no overlay configured is uncosted with no list
+cited. The pre-call estimate the caps refuse on uses the overlay too, so with input at 0 it
+is `max_tokens` at the measured output rate. `boundary prices check` validates and prints
+the overlay when the configuration names one, and applies the same refusals.
+
 ## What is deliberately absent
 
 `vertex`. Claude on Google Cloud is partner-operated and Google publishes its own rates, which

@@ -118,8 +118,8 @@ def test_every_shipped_price_file_fingerprints_and_they_all_differ() -> None:
     assert len(seen) >= 4
 
 
-def test_schema_v5_ships_the_column() -> None:
-    assert SCHEMA_VERSION == 5
+def test_schema_v5_or_later_ships_the_column() -> None:
+    assert SCHEMA_VERSION >= 5
 
 
 # -- the case this was built for -------------------------------------------------------------

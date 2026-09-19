@@ -31,7 +31,12 @@ saying where a request is processed, is in
 deployment in `canadacentral`, reached through Foundry's OpenAI-compatible route, status 200
 on 2026-09-17. Its ledger row reads `region = canadacentral` and `residency = global`:
 deployed in Canada, processed anywhere, and it says both. That is the strongest honest
-Canadian claim available on any of the three platforms today. Both parts are planned in
+Canadian claim available on any of the three platforms today. **`v0.3.0` on 2026-09-19** adds
+streaming for OpenAI-compatible hosts with time to first token in the ledger row, and
+measured price overlays for self-hosted GPU servers, both at project 06's request for its
+load tests. The first live streamed call, to a cold local model, waited 5,484 ms for its
+first token out of 5,557 ms in all, which is the kind of number the column exists to show.
+Both parts are planned in
 [PLAN.md](PLAN.md):
 Part A, the `boundary` library that every project in this portfolio calls models through;
 Part B, the full gateway with redaction, residency routing, audit log, cache, budgets and

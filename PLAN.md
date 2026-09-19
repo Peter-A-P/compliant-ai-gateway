@@ -123,7 +123,12 @@ owns (03 commits its own), and only because the drift record needs them.
 - A server or proxy of any kind (Part B).
 - Redaction, policy routing, semantic cache, audit chain, quotas by team (Part B).
 - Streaming responses. Nothing in the portfolio needs streaming before May; the proxy
-  adds it in Part B and the library gets it then.
+  adds it in Part B and the library gets it then. **Amended 2026-09-19 (0.3.0):** project
+  06 needs time to first token against self-hosted vLLM and llama.cpp servers for its load
+  tests, and the number has to land in the same ledger row as the cost. So `chat_stream`
+  and `achat_stream` exist for `openai_compat` only, standard mode only, one row per call,
+  with `ttft_ms` as ledger schema v6. Every other kind still raises by name; the proxy's
+  streaming in Part B builds on this rather than replacing it.
 - Typed tool calls. Tool-use fields pass through untouched inside the request body; typed
   support arrives in `v1.x` when 10, 13 and 14 need it (July 2027 onward).
 - Embeddings endpoints. 05 runs embeddings locally; if a project needs a hosted embedding
@@ -339,7 +344,10 @@ AWS account it does not use.
 
 
 **Still not in 0.2:** streaming, typed tool calls, embeddings, any server, OTLP export,
-content inspection (section 2.8). Nothing between now and May 2027 needs them.
+content inspection (section 2.8). Nothing between now and May 2027 needs them. **One of
+them turned out to be needed after all**: 0.3.0 (2026-09-19) adds streaming for
+`openai_compat` at project 06's request, together with measured price overlays for the
+self-hosted hosts 06 runs; section 2.8 records the amendment.
 
 **Between 0.2 and Part B (November 2026 to April 2027).** Nothing is built here. Three
 things accumulate or are decided elsewhere and matter in May: the shared VPS (needed by
@@ -380,6 +388,7 @@ from October the ledger-against-invoice difference is recorded there too (sectio
 | `boundary` v0.1.0 | Sep 13 2026 | `Gateway`, `ChatRequest`, `ChatResponse`, `Mode`, errors; ledger schema v1; four adapters |
 | v0.2.0 | Early October 2026 (split proposed 2026-09-11; was one October tag) | `ledger merge` and `report`, ledger schema v2 (`call_uid`, `env`), `Gateway(env=)`, Anthropic batches with schema v3 (`batch_id`), local price-zero host exercised. Tagged as soon as batches land so 02 can pin `>=0.2` without waiting for the AWS account |
 | v0.2.1, v0.2.2 | Mid to late October 2026 | Foundry and Vertex adapters (0.2.1); Bedrock (0.2.2), written 2026-09-15 rather than in October because the account opened early. One optional dependency group, for google-auth; Bedrock needs none, so 03's install gains nothing from it |
+| v0.3.0 | 2026-09-19 | Streaming for `openai_compat` (`chat_stream`, `achat_stream`, `ttft_ms`, ledger schema v6), measured price overlays for self-hosted hosts (`self_hosted`, `self_hosted_prices`), a cap for 06. Requested by 06 for its load tests against vLLM and llama.cpp; 06 pins this tag |
 | v1.0.0 | May 23 2027 | Everything in Part B; `boundary.redact` for 07; the proxy for 13 and 14 |
 
 03 pins `boundary>=0.1,<0.3` for Part A and moves to `>=1.0` when its Part B is built

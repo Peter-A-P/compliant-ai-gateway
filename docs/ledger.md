@@ -1,4 +1,4 @@
-# The ledger, schema v4
+# The ledger, schema v6
 
 One SQLite file per environment (`ledger.path` in `boundary.yaml`, or `ledger_path` on the
 gateway), combined by `boundary ledger merge`. Writing locally rather than to one central
@@ -24,6 +24,10 @@ the ledger would be worse than a null.
 **v3 (0.2)** adds `batch_id` and nothing else. A batch is submitted in one process and
 collected in another, often hours later, so the rows written at submit have to be findable
 again by something the vendor also knows.
+
+**v4 (0.2.1)** adds `residency`, **v5 (0.2.2)** adds `price_sha256`, and **v6 (0.3)** adds
+`ttft_ms`, each one nullable column and nothing else. No existing row is backfilled by any
+of them: a value invented after the fact would be a claim the call never made.
 
 The upgrade runs one step at a time, so what a step does depends on where the file started
 rather than where it ended. That matters for the uid backfill: uids are invented only for a
@@ -52,12 +56,13 @@ hand, and inventing one would let the same call merge twice.
 | `output_tokens` | integer | As returned |
 | `cache_read_tokens` | integer | As returned (Anthropic `cache_read_input_tokens`; OpenAI `cached_tokens`) |
 | `cache_write_tokens` | integer | As returned (Anthropic `cache_creation_input_tokens`) |
-| `price_list` | text or null | Date of the price list that was in force when the row was written. Set whether or not the model was in it; `costed` says whether it was |
+| `price_list` | text or null | Date of the price list that was in force when the row was written. Set whether or not the model was in it; `costed` says whether it was. For a provider flagged `self_hosted` (0.3) this is the date of the **measured overlay** the project supplied, not the vendor list, and it is null when no overlay was configured |
 | `price_sha256` | text or null | Fingerprint of the **rates** that list held (v5), hashed from the parsed values rather than the file, so comments and key order do not move it. A date is not unique across repositories and a fingerprint is; see [invoice-check.md](invoice-check.md). Null only on rows written before the column existed |
 | `cost_usd` | real or null | Actual cost from usage and the price entry. Null when uncosted. The estimate while in flight |
 | `costed` | 0 or 1 | 1 when `cost_usd` is an actual cost. An unknown price is 0, never a guess |
 | `cached` | 0 or 1 | 1 when the development cache answered (standard mode only) |
-| `latency_ms` | real or null | Upstream wall time for the final attempt |
+| `latency_ms` | real or null | Upstream wall time for the final attempt. On a streamed call, to the last byte |
+| `ttft_ms` | real or null | Streamed calls only (v6): wall time from sending the request to the first content delta arriving. Null for every call that was not streamed, and for a streamed call that ended with no content |
 | `http_status` | integer or null | Status of the final attempt; null when no response arrived |
 | `error_type` | text or null | `in_flight`, `http_<status>`, `MalformedResponse`, or the transport exception class name (`ReadTimeout`, `ConnectError`); null on success |
 | `retries` | integer | Retries made; always 0 in pass-through |
@@ -187,6 +192,31 @@ Rows are matched on `call_uid`, never on `id`:
 - A batched call is costed at the price entry's `batch_multiplier`, from the usage the
   vendor returns per request. An entry with no batch rate leaves the row uncosted rather
   than costing it at the full rate, which is the same rule as for cache rates.
+
+## Streamed calls
+
+`chat_stream` and `achat_stream` (0.3) write one row per call, not one per event, and the
+row is the same shape as any other with two differences:
+
+- `ttft_ms` is set: the wall time from the request leaving to the first event whose delta
+  carried non-empty content. A leading role-only event is not a token and does not stop the
+  clock; neither does a `reasoning_content` delta, because the number is meant to be what a
+  person waiting for visible text would have waited. `latency_ms` runs to the last byte.
+- `response_sha256` hashes the event bytes as received, every one of them, because there is
+  no single body to hash.
+
+The usage is read from whichever event carried it, which is a final event with empty
+`choices` on OpenAI and vLLM and the last content event on llama.cpp. **A stream that
+carried no usage object is written uncosted**, even for a priced model, and even for a
+`price_zero` host. Zero tokens at any rate is US$0.00, and that is not what the call cost;
+it is what the library could not see. `strict_cost` raises `UnknownPrice` on such a row,
+as it does for an unknown model.
+
+A stream that fails after it has begun is not retried. The host has produced tokens it may
+bill for and the library cannot count them, so a second attempt would put two hosts' worth
+of work on one row. The row records the transport error class and no cost, and the caller
+asks again on a new row. A retryable status, or a transport failure before any byte of the
+body arrived, is retried exactly as `chat` retries it.
 
 ## Batches
 

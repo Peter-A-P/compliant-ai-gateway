@@ -1,4 +1,4 @@
--- Ledger schema v4. Columns are additive only: never renamed, never removed.
+-- Ledger schema v6. Columns are additive only: never renamed, never removed.
 -- One row per call. A row is inserted before the request leaves the process
 -- (error_type = 'in_flight', cost_usd = the pre-call estimate) and completed after,
 -- so a process killed mid-call still leaves its row.
@@ -16,6 +16,13 @@
 --             hours later, so the rows written at submit have to be findable again by
 --             something the vendor also knows. The per-request custom_id sent to the
 --             vendor is the row's call_uid, so a result maps back to exactly one row.
+-- v4 (0.2.1) adds `residency`, v5 (0.2.2) adds `price_sha256`; both are documented on the
+-- LedgerRow fields in store.py.
+-- v6 (0.3, September 2026) adds one column for streamed calls:
+--   ttft_ms   wall time from sending the request to the first content delta arriving,
+--             null for every call that was not streamed. `latency_ms` on a streamed call
+--             runs to the last byte, so the two together say how long the caller waited
+--             before anything appeared and how long the whole answer took.
 --
 -- A file is migrated in place on open, one step at a time and additively: v1 gains
 -- call_uid and env with call_uid backfilled deterministically from the row's own
@@ -57,7 +64,8 @@ CREATE TABLE IF NOT EXISTS ledger (
     trace_id            TEXT,
     span_id             TEXT,
     raw_path            TEXT,
-    batch_id            TEXT
+    batch_id            TEXT,
+    ttft_ms             REAL
 );
 
 -- Indexes over columns that every schema version has. The indexes over call_uid and

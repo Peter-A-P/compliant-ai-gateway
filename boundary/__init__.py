@@ -4,7 +4,7 @@ Public interface (frozen 2026-09-08, see docs/interface.md):
     Gateway, ChatRequest, ChatResponse, Usage, Mode, RawResponse, and the errors below.
 """
 
-__version__ = "0.2.2"
+__version__ = "0.3.0"
 
 from boundary.errors import (
     BatchNotReady,

@@ -96,6 +96,64 @@ class Adapter(Protocol):
     ) -> ProviderError: ...
 
 
+# -- streaming (0.3) ------------------------------------------------------------------------
+
+
+class StreamParser(Protocol):
+    """Reads the data payloads of one streamed response, one event at a time.
+
+    Stateful by necessity, and made fresh for every attempt by `StreamingAdapter.stream_parser`,
+    so a retried stream cannot inherit half of the previous one's text.
+
+    feed: read one event's data payload. Returns True when the event carried a content
+        delta, which is what the gateway stamps as time to first token. The sentinel a host
+        sends to close the stream is the parser's to recognise and ignore.
+    usage_seen: whether any event carried a usage object. A host that ignores the request
+        for usage streams text and no counts, and a row costed from no counts would be a
+        cost of zero wearing a real number's clothes, so the gateway writes such a row
+        uncosted. This is how it knows.
+    result: the response assembled from every event fed so far, in the same shape a
+        non-streamed call would have parsed. Raises ProviderError when nothing usable
+        arrived, so an empty 2xx stream is a malformed response rather than a success.
+    """
+
+    usage_seen: bool
+
+    def feed(self, data: str) -> bool: ...
+
+    def result(self) -> ParsedResponse: ...
+
+
+class StreamingAdapter(Protocol):
+    """An adapter kind that can stream a chat completion. No I/O, like Adapter.
+
+    build_stream_request: the exact bytes of the streaming request. The body asks the
+        host for a stream and for usage in the final event, on top of whatever the
+        non-streaming body would have carried; nothing in the caller's request is dropped.
+    stream_parser: a fresh StreamParser for one attempt.
+    """
+
+    kind: ClassVar[ProviderKind]
+
+    def build_stream_request(
+        self,
+        ref: ModelRef,
+        request: ChatRequest,
+        provider: ProviderConfig,
+        api_key: str | None,
+    ) -> BuiltRequest: ...
+
+    def stream_parser(self) -> StreamParser: ...
+
+    def parse_error(
+        self,
+        provider_name: str,
+        status: int,
+        headers: Mapping[str, str],
+        body: bytes,
+    ) -> ProviderError: ...
+
+
 # -- batches ------------------------------------------------------------------------------
 
 

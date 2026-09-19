@@ -145,6 +145,9 @@ class ChatResponse:
         across repositories; this is, so a caller can record what it was charged at
         without having to trust that two files sharing a date shared their contents.
     trace_id: the OpenTelemetry trace id in hex, or None when telemetry is off.
+    ttft_ms: streamed calls only (0.3): wall time from sending the request to the first
+        content delta arriving, or None when the call was not streamed or no content
+        arrived. `latency_ms` on a streamed call runs to the last byte.
     """
 
     text: str | None
@@ -166,6 +169,7 @@ class ChatResponse:
     price_list: str | None = None
     price_sha256: str | None = None
     trace_id: str | None = None
+    ttft_ms: float | None = None
 
     @property
     def ok(self) -> bool:

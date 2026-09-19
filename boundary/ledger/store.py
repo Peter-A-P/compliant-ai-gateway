@@ -24,7 +24,7 @@ from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 from typing import Any
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 _SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 
 IN_FLIGHT = "in_flight"
@@ -63,7 +63,7 @@ def utc_now() -> str:
 
 @dataclass(slots=True)
 class LedgerRow:
-    """One row, schema v5. Field names are the column names."""
+    """One row, schema v6. Field names are the column names."""
 
     ts_utc: str
     boundary_version: str
@@ -120,6 +120,10 @@ class LedgerRow:
     # Set only on a row that belongs to a vendor batch, and only once the vendor has
     # accepted the batch and named it (v3). Null for every ordinary call.
     batch_id: str | None = None
+    # Streamed calls only (v6): wall time to the first content delta, in milliseconds. Null
+    # for every call that was not streamed, and for a streamed call that produced no content
+    # before it ended. `latency_ms` runs to the last byte either way.
+    ttft_ms: float | None = None
     id: int | None = field(default=None)
 
     def as_columns(self) -> dict[str, Any]:
@@ -240,6 +244,9 @@ class LedgerStore:
                 # used are not recoverable from the row: the file it named may have been
                 # one of several with that date, which is the whole reason for the column.
                 self._add_columns(("price_sha256", "TEXT"))
+            if current < 6:
+                # Null for every existing row: none of them was streamed.
+                self._add_columns(("ttft_ms", "REAL"))
             self._conn.execute(
                 "INSERT INTO schema_version (version, applied_utc) VALUES (?, ?)",
                 (SCHEMA_VERSION, utc_now()),

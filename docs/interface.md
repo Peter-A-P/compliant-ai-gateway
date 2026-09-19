@@ -14,7 +14,7 @@ Column "since" is the version each item first appeared in. Everything added afte
 freeze is listed here with its version: 0.2 (released 2026-09-11) adds the `env` argument
 and configuration key, ledger schema v2's two columns and v3's one, Anthropic Message
 Batches with their command-line collection, `boundary ledger merge` and
-`boundary experiment`. Nothing that 0.1.0 offered has changed shape. 0.2.1 (released 2026-09-18) adds the three hyperscaler adapters, the `credentials` and `residency` provider fields, ledger schema v4's `residency` column and `boundary ledger residency`. 0.2.2 adds schema v5's `price_sha256` column and the matching field on `ChatResponse`.
+`boundary experiment`. Nothing that 0.1.0 offered has changed shape. 0.2.1 (released 2026-09-18) adds the three hyperscaler adapters, the `credentials` and `residency` provider fields, ledger schema v4's `residency` column and `boundary ledger residency`. 0.2.2 adds schema v5's `price_sha256` column and the matching field on `ChatResponse`. 0.3.0 (released 2026-09-19) adds streaming for `openai_compat` hosts (`chat_stream`, `achat_stream`, `ttft_ms` on `ChatResponse`, ledger schema v6's `ttft_ms` column), measured price overlays for self-hosted hosts (`self_hosted` on a provider entry, `self_hosted_prices` in the configuration) and `boundary smoke --stream`. All additive; nothing that 0.2.2 offered has changed shape.
 
 ## 1. Importing
 
@@ -38,6 +38,8 @@ from boundary import (
 | Construct from a file | `Gateway.from_config(path, *, project, ledger_path=None, raw_store=None, strict_cost=False, env=None)` | 0.1, `env` 0.2 | `project` is the ledger's project column and the key into `caps.yaml`. `ledger_path` overrides the config's ledger path (the Actions runner passes a path inside the checkout). `raw_store` is a directory the caller owns; required for any pass-through call. `strict_cost=True` raises `UnknownPrice` instead of writing an uncosted row. `env` labels the rows this gateway writes, so a merged ledger says where a call was made; it defaults to `BOUNDARY_ENV`, then `ledger.env` in the configuration |
 | Synchronous call | `gw.chat(request, *, purpose, run_id=None, mode=Mode.STANDARD) -> ChatResponse` | 0.1 | `purpose` is a short free-text label for the ledger ("drift-run", "grader-dev"). `run_id` groups rows and is what the per-run cap is measured against |
 | Asynchronous call | `await gw.achat(request, *, purpose, run_id=None, mode=Mode.STANDARD) -> ChatResponse` | 0.1 | Same adapter code path as `chat`; concurrency is the caller's business |
+| Streamed call | `gw.chat_stream(request, *, purpose, run_id=None, mode=Mode.STANDARD) -> ChatResponse` | 0.3 | Sends `stream: true` with `stream_options: {include_usage: true}`, reads the events as they arrive and returns the whole answer: full text, the usage from the final event, and `ttft_ms`. One ledger row per call. **Standard mode only**: `Mode.PASSTHROUGH` is refused with `PassthroughViolation` before anything is built, and the development cache is never consulted. `openai_compat` only; every other kind raises `NotImplementedError` naming the kind. A stream that fails after it began is not retried, because the host may bill for tokens the library cannot count |
+| Streamed call, async | `await gw.achat_stream(request, *, purpose, run_id=None, mode=Mode.STANDARD) -> ChatResponse` | 0.3 | The async twin. The transport's connection pool admits at least 64 streams at once against one host, and a test holds 64 open |
 | Escape hatch | `gw.raw(provider, method, path, json, *, purpose, run_id=None, mode=Mode.STANDARD) -> RawResponse` | 0.1 | For a vendor feature the library does not model. Traced and ledgered; costed when the body carries usage in a shape the adapter knows, otherwise written uncosted |
 | Resolve without calling | `gw.resolve(model, mode=Mode.STANDARD) -> ModelRef` | 0.1 | What an alias points at right now. Lets a runner print the identifiers it is about to use |
 | Close | `gw.close()`, and `with Gateway.from_config(...) as gw:` | 0.1 | Flushes the ledger and telemetry, closes the HTTP client |
@@ -90,6 +92,7 @@ errors in pass-through mode (where an error is a result).
 | `price_list` | `str \| None` | 0.1 | Date of the price file used, for example `"2026-09-07"` |
 | `price_sha256` | `str \| None` | 0.2.2 | Fingerprint of the rates that file held, hashed from the parsed values. A date is not unique across repositories; this is, so a caller can record what it was charged at without trusting that two files sharing a date shared their contents |
 | `trace_id` | `str \| None` | 0.1 | OpenTelemetry trace id, hex, or None when telemetry is off |
+| `ttft_ms` | `float \| None` | 0.3 | Streamed calls only: wall time from sending the request to the first content delta arriving. None when the call was not streamed, or when no content arrived. `latency_ms` on a streamed call runs to the last byte. On a streamed call `raw` is the completion assembled from the events in the non-streaming shape, marked `assembled_from_stream_events`, and `response_sha256` on the row hashes the event bytes as received |
 | `ok` | property `bool` | 0.1 | 2xx status |
 
 ## 4a. `BatchHandle`
@@ -135,11 +138,11 @@ All subclass `BoundaryError`.
 | `UnknownAlias` | An alias is not in the routes file | `alias`, `known` | 0.1 |
 | `UnknownPrice` | Strict costing asked for and the returned model has no price | `provider`, `model`, `price_list` | 0.1 |
 | `SpendCapExceeded` | The pre-call estimate would pass a cap. **No request was made** | `scope`, `cap_usd`, `spent_usd`, `estimate_usd` | 0.1 |
-| `PassthroughViolation` | Alias, cache, or missing `max_tokens` in pass-through mode; pass-through without a raw store | message | 0.1 |
+| `PassthroughViolation` | Alias, cache, or missing `max_tokens` in pass-through mode; pass-through without a raw store; a streamed call asked for in pass-through mode (0.3) | message | 0.1 |
 | `BatchNotReady` | Results were asked for before the vendor finished the batch. Not a failure: "not yet" is the ordinary answer | `batch_id`, `processing_status`, `counts` | 0.2 |
 | `ProviderError` | Non-2xx after retries (standard) or transport failure. In pass-through the same information is returned as a `ChatResponse` instead | `provider`, `status`, `body`, `retries`, `headers` | 0.1 |
 
-## 7. The ledger row (schema v5)
+## 7. The ledger row (schema v6)
 
 One row per call, written before the response is returned, including failures. Columns
 are additive only; never renamed or removed. Field-by-field notes in `docs/ledger.md`
@@ -154,6 +157,7 @@ call_uid, env                                                             -- add
 batch_id                                                                  -- added in 0.2
 residency                                                                 -- added in 0.2
 price_sha256                                                              -- added in 0.2.2
+ttft_ms                                                                   -- added in 0.3.0
 ```
 
 `call_uid` identifies the call across files and `env` says which environment made it;
@@ -161,6 +165,8 @@ together they are what lets `ledger merge` combine one file per environment and 
 run again. `batch_id` (v3) names the vendor batch a row belongs to, and is null for every
 ordinary call. `residency` (v4) is how far the request was allowed to travel from `region`,
 copied from the provider entry's declaration, and is null when the entry declared nothing.
+`ttft_ms` (v6) is the time to first content delta on a streamed call and null on every
+other row; `latency_ms` on a streamed row runs to the last byte.
 
 It is worth being exact about why `residency` is configuration rather than something parsed
 from a response, because the distinction is the whole value of the column. No vendor reports
@@ -191,6 +197,7 @@ it.
 |---|---|---|
 | `config/boundary.yaml` | `providers` (name, kind, base URL, key environment variable, pinned API version, `project` since 0.2.1 for `gcp_vertex` only, and `batches` since 0.2.1), `routes` (alias to provider, model, optional API version and region; may point at a separate `routes.yaml`), `defaults`, `retry`, `ledger` (`path`, and `env` since 0.2), `telemetry`, `cache`, and the paths to the two files below | This repository; a project may ship its own |
 | `config/caps.yaml` | `portfolio_monthly_usd`, per-project `monthly_usd` and `per_run_usd`, a `default` | This repository |
+| `<self_hosted_prices>/YYYY-MM-DD.yaml` | Since 0.3, optional. The same format as a price file, for providers flagged `self_hosted: true` only: rates a project **measured** for a host it runs itself, from a dated GPU-hour price and a measured throughput. `source` names the measurement run. Refused for any provider not so flagged, and the packaged vendor lists refuse to carry a flagged provider, so vendor prices keep one copy. A row costed from it cites it in `price_list` and `price_sha256`. See `docs/prices.md` | The project that measured them |
 | `config/prices/YYYY-MM-DD.yaml` | USD per million tokens per provider and model: `input`, `output`, optional `cache_read`, `cache_write`, `batch_multiplier`; `source` names where the numbers came from. The newest date is used. A new price is a new file | This repository |
 
 Keys come only from the environment variables named in `api_key_env`. Nothing in any
@@ -219,6 +226,7 @@ every row as a failure at no cost rather than leaving it in flight at an estimat
 |---|---|---|
 | `boundary smoke <provider>` | 0.1 | One short standard-mode call, costed, with the ledger row id. `local` defaults to `llama3.2:3b` on a local server at price zero |
 | `boundary smoke <provider> --batch` | 0.2 | Two short requests as a real vendor batch, submitted and collected. `--wait` and `--poll` set how long it will sit there |
+| `boundary smoke <provider> --stream` | 0.3 | The same short call, streamed, printing time to first token beside the total. `openai_compat` hosts only |
 | `boundary routes show` | 0.1 | What every alias points at, and the provider entries |
 | `boundary prices check` | 0.1 | Validates every price file, warns when the newest is not this month, lists routes with no price |
 | `boundary ledger report` | 0.1 | Calls, tokens and cost by month, environment, project and model |
@@ -232,8 +240,11 @@ every row as a failure at no cost rather than leaving it in flight at an estimat
 
 ## 10. What is deliberately not here in 0.x
 
-Streaming, typed tool calls, embeddings, any server, any content inspection. See PLAN.md
-section 2.8. Tool-use fields pass through inside `messages` and `extra` untouched.
+Streaming for any kind but `openai_compat`, typed tool calls, embeddings, any server, any
+content inspection. See PLAN.md section 2.8, which 0.3 amends: streaming was out of scope
+until project 06 needed time to first token against self-hosted hosts, and it arrived for
+the one kind those hosts speak. Tool-use fields pass through inside `messages` and `extra`
+untouched.
 
 ## 11. Choices the plan left open
 

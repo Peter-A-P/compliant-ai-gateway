@@ -119,7 +119,26 @@ class ProviderConfig(_Strict):
     # override either default.
     batches: bool | None = None
     price_zero: bool = False
+    # A host this portfolio runs itself (0.3): a vLLM or llama.cpp server on a rented GPU.
+    # Its rates do not come from a vendor's price page, because there is no vendor; they come
+    # from a measurement the project running the host made, a dated GPU-hour rate divided by
+    # a measured throughput, and they are re-measured for every model, quantisation and GPU.
+    # Those rates live in the directory `self_hosted_prices` names, in the same dated file
+    # format as the vendor lists, and a rate for a provider flagged here is read from there
+    # and only from there. The vendor lists refuse to carry a self-hosted provider, and the
+    # overlay refuses to carry a vendor, so there is still one copy of every vendor price.
+    # Incompatible with `price_zero`: free and measured are different claims.
+    self_hosted: bool = False
     headers: dict[str, str] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _self_hosted_is_not_free(self) -> ProviderConfig:
+        if self.self_hosted and self.price_zero:
+            raise ValueError(
+                "a provider entry cannot be both `self_hosted` and `price_zero`: one says the "
+                "rate was measured, the other says there is none"
+            )
+        return self
 
     @property
     def serves_batches(self) -> bool:
@@ -191,6 +210,12 @@ class BoundaryConfig(_Strict):
     routes: dict[str, Route]
     prices: Path
     caps: Path
+    # Optional (0.3): a directory of dated price files for providers flagged `self_hosted`,
+    # supplied by the project that measured them and kept beside its configuration rather
+    # than in this package, because a measured rate is that project's finding and not a
+    # vendor's list. Accepted only for self-hosted providers; a vendor named in it is refused
+    # at gateway construction, so `prices` stays the one copy of every vendor rate.
+    self_hosted_prices: Path | None = None
     defaults: Defaults = Field(default_factory=Defaults)
     retry: RetryPolicy = Field(default_factory=RetryPolicy)
     ledger: LedgerConfig = Field(default_factory=LedgerConfig)
@@ -348,6 +373,11 @@ def load_config(path: str | Path) -> BoundaryConfig:
     return cfg.model_copy(
         update={
             "prices": _resolve_prices(base, cfg.prices),
+            "self_hosted_prices": (
+                _resolve(base, cfg.self_hosted_prices)
+                if cfg.self_hosted_prices is not None
+                else None
+            ),
             "caps": _resolve(base, cfg.caps),
             "ledger": cfg.ledger.model_copy(update={"path": _resolve(base, cfg.ledger.path)}),
             "cache": cfg.cache.model_copy(update={"path": _resolve(base, cfg.cache.path)}),
@@ -392,3 +422,47 @@ def latest_price_list(directory: str | Path) -> PriceList:
     if not files:
         raise ConfigError(f"no YYYY-MM-DD.yaml price files in {directory}")
     return load_price_list(files[-1])
+
+
+def check_price_lists(
+    config: BoundaryConfig, vendor: PriceList, self_hosted: PriceList | None
+) -> None:
+    """Refuse a price list that carries a provider it has no business pricing (0.3).
+
+    Two rules, one in each direction, and together they keep "one copy of every vendor
+    price" true after the overlay exists:
+
+    - The vendor list may not price a provider flagged `self_hosted`. A self-hosted rate is a
+      measurement made by the project running the host, and it changes when the GPU or the
+      quantisation does; a copy in the package would be the second copy that this library
+      consolidated the vendor files to get rid of.
+    - The overlay may not price a provider that is not flagged `self_hosted`, or that the
+      configuration does not know. A vendor rate in a project's own directory is exactly the
+      drift `prices: builtin` exists to prevent, and a rate for an unknown provider is a typo
+      waiting to cost nothing.
+
+    Checked at gateway construction rather than per call, so a misconfiguration fails before
+    the first request and not on the first row.
+    """
+    flagged = {name for name, pc in config.providers.items() if pc.self_hosted}
+    in_vendor = sorted(flagged & set(vendor.per_million_tokens))
+    if in_vendor:
+        raise ConfigError(
+            f"price list {vendor.name} carries rates for self-hosted provider(s) "
+            f"{', '.join(in_vendor)}; a self-hosted rate is a measurement and belongs in "
+            "the directory `self_hosted_prices` names, not in the vendor list"
+        )
+    if self_hosted is None:
+        return
+    for provider in sorted(self_hosted.per_million_tokens):
+        if provider not in config.providers:
+            raise ConfigError(
+                f"self-hosted price list {self_hosted.name} names provider {provider!r}, "
+                f"which is not in the configuration; known: {', '.join(sorted(config.providers))}"
+            )
+        if provider not in flagged:
+            raise ConfigError(
+                f"self-hosted price list {self_hosted.name} carries rates for {provider!r}, "
+                "which is not flagged `self_hosted: true`. Vendor rates have one copy, in the "
+                "package; a project may not overlay them"
+            )

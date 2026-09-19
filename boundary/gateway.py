@@ -37,6 +37,7 @@ from boundary.config import (
     PriceList,
     ProviderConfig,
     ProviderKind,
+    check_price_lists,
     latest_price_list,
     load_caps,
     load_config,
@@ -54,7 +55,12 @@ from boundary.errors import (
 )
 from boundary.ledger.prices import cost_usd, estimate_usd
 from boundary.ledger.store import LedgerRow, LedgerStore, new_call_uid, utc_now
-from boundary.providers import ADAPTERS, BATCH_ADAPTERS, UploadingBatchAdapter
+from boundary.providers import (
+    ADAPTERS,
+    BATCH_ADAPTERS,
+    STREAM_ADAPTERS,
+    UploadingBatchAdapter,
+)
 from boundary.providers.base import (
     Adapter,
     BatchAdapter,
@@ -63,7 +69,10 @@ from boundary.providers.base import (
     BatchProgress,
     BuiltRequest,
     ParsedResponse,
+    StreamingAdapter,
+    StreamParser,
 )
+from boundary.providers.sse import SSEDecoder
 from boundary.rawstore import RawStore, sha256_hex
 from boundary.routes import ModelRef, resolve, split_explicit
 from boundary.telemetry import Telemetry
@@ -103,8 +112,30 @@ class _Call:
     row: LedgerRow
     price_entry: PriceEntry | None
     span: Span
+    # The price list in force for this call's provider: the vendor list, or the self-hosted
+    # overlay for a provider flagged `self_hosted`, or None when such a provider has no
+    # overlay configured. The row and the response cite this one, so a self-hosted cost is
+    # audited back to the measurement that produced it and not to the vendor list.
+    prices: PriceList | None = None
     cached: HttpResult | None = None
     error_detail: str = ""
+    # Streaming (0.3). A streamed call parses events as they arrive rather than a body after
+    # it has, so the parser rides on the call, as does the moment its first token came.
+    streamed: bool = False
+    stream_parser: StreamParser | None = None
+    ttft_ms: float | None = None
+    # Whether the stream carried a usage object at all. False means the host ignored the
+    # request for usage, and the row is written uncosted rather than costed from zero
+    # tokens, which would be a cost of zero wearing a real number's clothes.
+    usage_seen: bool = True
+
+
+@dataclass(slots=True)
+class _StreamState:
+    """What one streaming attempt has seen so far."""
+
+    received: int = 0
+    ttft_ms: float | None = None
 
 
 def _residency(pc: ProviderConfig) -> str | None:
@@ -128,6 +159,7 @@ class Gateway:
         transport: Transport | None = None,
         caps: CapsConfig | None = None,
         prices: PriceList | None = None,
+        self_hosted_prices: PriceList | None = None,
         env: str | None = None,
         sleep: Callable[[float], None] = time.sleep,
         asleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
@@ -137,6 +169,13 @@ class Gateway:
         self.strict_cost = strict_cost
         self.caps = caps or load_caps(config.caps)
         self.prices = prices or latest_price_list(config.prices)
+        # Measured rates for self-hosted providers (0.3), from the directory the configuration
+        # names. Loaded and checked here so a vendor rate hiding in a project's overlay, or a
+        # self-hosted rate hiding in the vendor list, is refused before the first call.
+        self.self_hosted_prices: PriceList | None = self_hosted_prices
+        if self.self_hosted_prices is None and config.self_hosted_prices is not None:
+            self.self_hosted_prices = latest_price_list(config.self_hosted_prices)
+        check_price_lists(config, self.prices, self.self_hosted_prices)
         self.ledger = LedgerStore(ledger_path or config.ledger.path)
         self.raw_store = RawStore(raw_store) if raw_store is not None else None
         self.cache = ExactMatchCache(config.cache.path) if config.cache.enabled else None
@@ -212,6 +251,44 @@ class Gateway:
         result, error_type, retries = await self._send_async(call)
         return self._finish(call, result, error_type, retries, cached=False)
 
+    def chat_stream(
+        self,
+        request: ChatRequest,
+        *,
+        purpose: str,
+        run_id: str | None = None,
+        mode: Mode = Mode.STANDARD,
+    ) -> ChatResponse:
+        """One call, streamed, returned whole: the full text, the usage from the final event,
+        and `ttft_ms`, the wall time from sending the request to the first content delta.
+
+        For measuring time to first token, which a non-streamed call cannot see. Standard
+        mode only: pass-through is refused with `PassthroughViolation` before anything is
+        built, because a stream is read event by event and the byte-equality argument that
+        pass-through rests on is about one body compared with one body. The development
+        cache is never consulted either, because a cached answer has no first token.
+
+        One ledger row per call, not per event. `latency_ms` runs to the last byte.
+        `openai_compat` only in 0.3; other kinds raise `NotImplementedError` by name.
+        """
+        call = self._prepare(request, purpose=purpose, run_id=run_id, mode=mode, stream=True)
+        result, error_type, retries = self._stream_sync(call)
+        return self._finish(call, result, error_type, retries, cached=False)
+
+    async def achat_stream(
+        self,
+        request: ChatRequest,
+        *,
+        purpose: str,
+        run_id: str | None = None,
+        mode: Mode = Mode.STANDARD,
+    ) -> ChatResponse:
+        """The async twin of `chat_stream`. Sixty-four of these may be in flight at once
+        against one host; the transport's pool is sized for it (boundary/transport.py)."""
+        call = self._prepare(request, purpose=purpose, run_id=run_id, mode=mode, stream=True)
+        result, error_type, retries = await self._stream_async(call)
+        return self._finish(call, result, error_type, retries, cached=False)
+
     def raw(
         self,
         provider: str,
@@ -228,6 +305,7 @@ class Gateway:
         price exists for the model it names."""
         pc = self._provider(provider)
         adapter = self._adapter(pc)
+        prices = self._prices_for(pc)
         if mode is Mode.PASSTHROUGH and self.raw_store is None:
             raise PassthroughViolation("pass-through mode needs a raw store the caller owns")
         from boundary.providers._json import dumps
@@ -249,8 +327,8 @@ class Gateway:
             run_id=run_id,
             region=pc.region,
             residency=_residency(pc),
-            price_list=self.prices.name,
-            price_sha256=self.prices.rates_sha256,
+            price_list=prices.name if prices is not None else None,
+            price_sha256=prices.rates_sha256 if prices is not None else None,
             request_sha256=sha256_hex(built.body),
             env=self.env,
         )
@@ -270,6 +348,7 @@ class Gateway:
             row=row,
             price_entry=None,
             span=span,
+            prices=prices,
         )
         result, error_type, retries = self._send_sync(call)
         usage = Usage()
@@ -340,6 +419,7 @@ class Gateway:
         batch_adapter = self._batch_adapter(provider, pc)
         adapter = self._adapter(pc)
         api_key = self._api_key(provider, pc)
+        prices = self._prices_for(pc)
 
         items: list[BatchItem] = []
         rows: list[LedgerRow] = []
@@ -379,8 +459,8 @@ class Gateway:
                     alias=ref.alias,
                     region=ref.region,
                     residency=_residency(pc),
-                    price_list=self.prices.name,
-                    price_sha256=self.prices.rates_sha256,
+                    price_list=prices.name if prices is not None else None,
+                    price_sha256=prices.rates_sha256 if prices is not None else None,
                     cost_usd=estimate if entry is not None else None,
                     request_sha256=sha256_hex(single.body),
                     call_uid=custom_id,
@@ -551,7 +631,7 @@ class Gateway:
         # Raised only after every row has been completed: strict costing is a report about
         # the price list, and it must not leave half a batch in flight.
         if unpriced is not None and self.strict_cost:
-            raise UnknownPrice(unpriced[0], unpriced[1], self.prices.name)
+            raise UnknownPrice(unpriced[0], unpriced[1], self._price_list_name(pc))
         return responses
 
     def _batch_adapter(self, provider: str, pc: ProviderConfig) -> BatchAdapter:
@@ -648,6 +728,7 @@ class Gateway:
                     else None
                 )
             cost = cost_usd(usage, entry, batch=True) if entry is not None else None
+        prices = self._prices_for(pc)
 
         row.model_returned = parsed.model_returned if parsed is not None else None
         row.input_tokens = usage.input_tokens
@@ -690,8 +771,8 @@ class Gateway:
             mode=Mode.STANDARD,
             retries=0,
             cached=False,
-            price_list=self.prices.name if cost is not None else None,
-            price_sha256=self.prices.rates_sha256 if cost is not None else None,
+            price_list=prices.name if cost is not None and prices is not None else None,
+            price_sha256=(prices.rates_sha256 if cost is not None and prices is not None else None),
             trace_id=row.trace_id,
         )
 
@@ -825,14 +906,59 @@ class Gateway:
             headers["authorization"] = f"Bearer {api_key}"
         return headers
 
+    def _prices_for(self, pc: ProviderConfig) -> PriceList | None:
+        """The price list in force for one provider entry.
+
+        The vendor list for every vendor. For a provider flagged `self_hosted`, the overlay
+        the configuration names, and None when it names none, so that the entry's calls are
+        written uncosted with no price list cited rather than costed from a vendor list that
+        was refused from carrying them.
+        """
+        if pc.self_hosted:
+            return self.self_hosted_prices
+        return self.prices
+
+    def _price_list_name(self, pc: ProviderConfig) -> str:
+        prices = self._prices_for(pc)
+        return prices.name if prices is not None else "none"
+
     def _price_for(self, pc: ProviderConfig, provider: str, model: str) -> PriceEntry | None:
         if pc.price_zero:
             return ZERO_PRICE
-        return self.prices.lookup(provider, model)
+        prices = self._prices_for(pc)
+        return prices.lookup(provider, model) if prices is not None else None
+
+    @staticmethod
+    def _stream_adapter(pc: ProviderConfig) -> StreamingAdapter:
+        adapter = STREAM_ADAPTERS.get(pc.kind)
+        if adapter is None:
+            raise NotImplementedError(
+                f"streaming is not implemented for provider kind {pc.kind.value!r} in "
+                f"boundary {__version__}; only "
+                f"{', '.join(sorted(k.value for k in STREAM_ADAPTERS))} streams. "
+                "Use chat() for this provider"
+            )
+        return adapter
 
     def _prepare(
-        self, request: ChatRequest, *, purpose: str, run_id: str | None, mode: Mode
+        self,
+        request: ChatRequest,
+        *,
+        purpose: str,
+        run_id: str | None,
+        mode: Mode,
+        stream: bool = False,
     ) -> _Call:
+        if stream and mode is Mode.PASSTHROUGH:
+            # Refused before the model is resolved, so a pass-through caller that reaches for
+            # a stream learns it here and not from a row. Pass-through's guarantee is one body
+            # compared byte for byte with one body; a stream is many events read as they come,
+            # and the measurement it exists for (time to first token) is not a drift record.
+            raise PassthroughViolation(
+                "streaming is standard mode only: pass-through compares one request body with "
+                "one response body byte for byte, and a stream is neither. Use chat() in "
+                "pass-through mode, or chat_stream() in standard mode"
+            )
         ref = resolve(request.model, self.config, mode)
         pc = ref.provider_config
         if mode is Mode.PASSTHROUGH:
@@ -852,8 +978,13 @@ class Gateway:
                 else dataclasses.replace(request, max_tokens=self.config.defaults.max_tokens)
             )
         adapter = self._adapter(pc)
-        built = adapter.build_request(ref, effective, pc, self._api_key(ref.provider, pc))
+        api_key = self._api_key(ref.provider, pc)
+        if stream:
+            built = self._stream_adapter(pc).build_stream_request(ref, effective, pc, api_key)
+        else:
+            built = adapter.build_request(ref, effective, pc, api_key)
 
+        prices = self._prices_for(pc)
         entry = self._price_for(pc, ref.provider, ref.model)
         max_tokens = effective.max_tokens or 0
         estimate = estimate_usd(len(built.body), max_tokens, entry) if entry is not None else 0.0
@@ -871,19 +1002,20 @@ class Gateway:
             alias=ref.alias,
             region=ref.region,
             residency=_residency(ref.provider_config),
-            price_list=self.prices.name,
-            price_sha256=self.prices.rates_sha256,
+            price_list=prices.name if prices is not None else None,
+            price_sha256=prices.rates_sha256 if prices is not None else None,
             cost_usd=estimate if entry is not None else None,
             request_sha256=sha256_hex(built.body),
             env=self.env,
         )
-        span = self.telemetry.start("boundary.chat")
+        span = self.telemetry.start("boundary.chat_stream" if stream else "boundary.chat")
         ids = Telemetry.ids(span)
         row.trace_id, row.span_id = ids.trace_id, ids.span_id
         self.ledger.begin(row)
 
         cached: HttpResult | None = None
-        if mode is Mode.STANDARD and self.cache is not None:
+        # A stream never reads the cache: a cached answer has no first token to time.
+        if mode is Mode.STANDARD and self.cache is not None and not stream:
             cached = self.cache.get(built)
         return _Call(
             request=effective,
@@ -894,7 +1026,9 @@ class Gateway:
             row=row,
             price_entry=entry,
             span=span,
+            prices=prices,
             cached=cached,
+            streamed=stream,
         )
 
     def _check_caps(self, run_id: str | None, *, estimate: float) -> None:
@@ -990,6 +1124,113 @@ class Gateway:
                 await self._asleep(self._backoff(attempt, result.headers if result else None))
         return result, error_type, attempts - 1
 
+    def _stream_attempt(self, call: _Call) -> tuple[StreamParser, SSEDecoder, _StreamState]:
+        """Fresh state for one attempt. A retried stream must not inherit half of the
+        previous one's text or its first-token time."""
+        parser = self._stream_adapter(call.ref.provider_config).stream_parser()
+        return parser, SSEDecoder(), _StreamState()
+
+    @staticmethod
+    def _feed(
+        parser: StreamParser, decoder: SSEDecoder, state: _StreamState, chunk: bytes, ms: float
+    ) -> None:
+        state.received += len(chunk)
+        for data in decoder.feed(chunk):
+            if parser.feed(data) and state.ttft_ms is None:
+                state.ttft_ms = ms
+
+    def _stream_settle(
+        self,
+        call: _Call,
+        parser: StreamParser,
+        decoder: SSEDecoder,
+        state: _StreamState,
+        result: HttpResult | None,
+        error_type: str | None,
+        retries: int,
+    ) -> tuple[HttpResult | None, str | None, int]:
+        """Close out the attempt that will be the call's answer."""
+        if result is not None and 200 <= result.status < 300:
+            for data in decoder.finish():
+                # An event the host closed with the connection rather than a blank line.
+                # Its bytes arrived with the last chunk, so that is when its token did.
+                if parser.feed(data) and state.ttft_ms is None:
+                    state.ttft_ms = result.elapsed_ms
+        call.stream_parser = parser
+        call.ttft_ms = state.ttft_ms
+        call.usage_seen = parser.usage_seen
+        return result, error_type, retries
+
+    def _stream_sync(self, call: _Call) -> tuple[HttpResult | None, str | None, int]:
+        """The standard-mode retry loop for a streamed call.
+
+        Retried on the same statuses as chat() and on a transport failure that happened
+        before any byte of the body arrived. NOT retried once the stream has begun: the host
+        has produced tokens it may bill for and the library cannot count them, so a second
+        attempt would put two hosts' worth of work on one row. The row records the transport
+        error and no cost, and a caller that wants the answer asks again on a new row.
+        """
+        attempts = self.config.retry.max_attempts
+        for attempt in range(1, attempts + 1):
+            parser, decoder, state = self._stream_attempt(call)
+
+            def on_chunk(
+                chunk: bytes,
+                ms: float,
+                parser: StreamParser = parser,
+                decoder: SSEDecoder = decoder,
+                state: _StreamState = state,
+            ) -> None:
+                self._feed(parser, decoder, state, chunk, ms)
+
+            result: HttpResult | None
+            error_type: str | None
+            try:
+                result, error_type = self.transport.stream(call.built, on_chunk), None
+            except TRANSPORT_ERRORS as e:
+                result, error_type = None, type(e).__name__
+                call.error_detail = str(e)
+                if state.received:
+                    return self._stream_settle(
+                        call, parser, decoder, state, None, error_type, attempt - 1
+                    )
+            if result is not None and result.status not in RETRY_STATUSES:
+                return self._stream_settle(call, parser, decoder, state, result, None, attempt - 1)
+            if attempt < attempts:
+                self._sleep(self._backoff(attempt, result.headers if result else None))
+        return self._stream_settle(call, parser, decoder, state, result, error_type, attempts - 1)
+
+    async def _stream_async(self, call: _Call) -> tuple[HttpResult | None, str | None, int]:
+        attempts = self.config.retry.max_attempts
+        for attempt in range(1, attempts + 1):
+            parser, decoder, state = self._stream_attempt(call)
+
+            async def on_chunk(
+                chunk: bytes,
+                ms: float,
+                parser: StreamParser = parser,
+                decoder: SSEDecoder = decoder,
+                state: _StreamState = state,
+            ) -> None:
+                self._feed(parser, decoder, state, chunk, ms)
+
+            result: HttpResult | None
+            error_type: str | None
+            try:
+                result, error_type = await self.transport.astream(call.built, on_chunk), None
+            except TRANSPORT_ERRORS as e:
+                result, error_type = None, type(e).__name__
+                call.error_detail = str(e)
+                if state.received:
+                    return self._stream_settle(
+                        call, parser, decoder, state, None, error_type, attempt - 1
+                    )
+            if result is not None and result.status not in RETRY_STATUSES:
+                return self._stream_settle(call, parser, decoder, state, result, None, attempt - 1)
+            if attempt < attempts:
+                await self._asleep(self._backoff(attempt, result.headers if result else None))
+        return self._stream_settle(call, parser, decoder, state, result, error_type, attempts - 1)
+
     def _finish(
         self,
         call: _Call,
@@ -1007,7 +1248,10 @@ class Gateway:
             )
         elif 200 <= result.status < 300:
             try:
-                parsed = call.adapter.parse_response(result.status, result.headers, result.body)
+                if call.stream_parser is not None:
+                    parsed = call.stream_parser.result()
+                else:
+                    parsed = call.adapter.parse_response(result.status, result.headers, result.body)
             except ProviderError as e:
                 failure = e
                 error_type = MALFORMED
@@ -1034,6 +1278,10 @@ class Gateway:
             if entry is None:
                 entry = self._price_for(call.ref.provider_config, call.ref.provider, call.ref.model)
             cost = cost_usd(usage, entry) if entry is not None else None
+            if call.streamed and not call.usage_seen:
+                # The host streamed text and no counts. Zero tokens at a real rate is US$0.00,
+                # and that is not what the call cost; it is what the library could not see.
+                cost = None
 
         if cached and call.mode is Mode.STANDARD:
             # A cache hit made no upstream call; it costs nothing this time.
@@ -1043,6 +1291,7 @@ class Gateway:
             and self.cache is not None
             and call.mode is Mode.STANDARD
             and result is not None
+            and not call.streamed
         ):
             self.cache.put(call.built, result)
 
@@ -1052,7 +1301,9 @@ class Gateway:
 
         if parsed is not None and cost is None and self.strict_cost:
             raise UnknownPrice(
-                call.ref.provider, parsed.model_returned or call.ref.model, self.prices.name
+                call.ref.provider,
+                parsed.model_returned or call.ref.model,
+                self._price_list_name(call.ref.provider_config),
             )
         if failure is not None and call.mode is Mode.STANDARD:
             raise failure
@@ -1075,9 +1326,12 @@ class Gateway:
             mode=call.mode,
             retries=retries,
             cached=cached,
-            price_list=self.prices.name if cost is not None else None,
-            price_sha256=self.prices.rates_sha256 if cost is not None else None,
+            price_list=(call.prices.name if cost is not None and call.prices is not None else None),
+            price_sha256=(
+                call.prices.rates_sha256 if cost is not None and call.prices is not None else None
+            ),
             trace_id=call.row.trace_id,
+            ttft_ms=call.ttft_ms,
         )
 
     def _record(
@@ -1115,6 +1369,7 @@ class Gateway:
         row.costed = cost is not None
         row.cached = cached
         row.latency_ms = result.elapsed_ms if result is not None else None
+        row.ttft_ms = call.ttft_ms
         row.http_status = result.status if result is not None else None
         row.error_type = error_type
         row.retries = retries
@@ -1148,6 +1403,7 @@ class Gateway:
                 "boundary.cached": row.cached,
                 "boundary.retries": row.retries,
                 "boundary.latency_ms": row.latency_ms,
+                "boundary.ttft_ms": row.ttft_ms,
                 "boundary.ledger_id": row.id,
                 "boundary.version": row.boundary_version,
             },

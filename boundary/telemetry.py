@@ -53,6 +53,8 @@ ALLOWED_ATTRIBUTES: frozenset[str] = frozenset(
         # already ledger columns, and neither can carry a prompt.
         "boundary.batch_id",
         "boundary.batch_requests",
+        # Streaming (0.3). A duration in milliseconds; it cannot carry a prompt.
+        "boundary.ttft_ms",
     }
 )
 
