@@ -56,7 +56,11 @@ re-measurement on 0.5.1 puts overall detection recall at **96.3% (95.7 to 96.9)*
 90.0%, with health numbers and organisations at 100% and 96.2%. The table, both runs and
 their caveats are in [docs/redact.md](docs/redact.md): recall only, on a synthetic corpus,
 so every row is an upper bound. This repository's own precision and recall harness does not
-exist yet, and nothing here claims a precision.
+exist yet, and nothing here claims a precision. **`v0.5.2` the next day** is the other half
+of that caveat made concrete: probing the redaction pass with names the corpus does not
+contain, accented, `Mac` and `Mc` surnames, a postcode written with a space, found four more
+values leaving in clear with no refusal, none of which the measured 96.3% could have seen.
+A number is evidence about the inputs somebody thought to measure.
 Both parts are planned in
 [PLAN.md](PLAN.md):
 Part A, the `boundary` library that every project in this portfolio calls models through;

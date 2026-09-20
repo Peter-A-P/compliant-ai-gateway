@@ -5,6 +5,53 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.5.2 (2026-09-20)
+
+Four more leaks in the second pass, found by probing it with the names project 07's corpus
+does not contain rather than by a report. Each released a real value in clear with no
+refusal, and none of them could have shown up in the 96.3% recorded yesterday, because that
+corpus is synthetic and its names are ASCII. The pass whose entire job is to catch what the
+detector missed was the thing that was wrong, which is the second time that has been true
+in two days.
+
+- **A word is now a run of letters in any script, judged afterwards, instead of the pattern
+  `[A-Z][a-z]+`.** That pattern cannot see a letter outside ASCII, so `Emile Berube` was
+  masked and `Émile Bérubé` was not, and `GAGNÉ` was not. In a province with French, Innu
+  and Mi'kmaq names that is not an edge case. It also splits a word at an internal capital,
+  so `MacDonald` became `Mac` plus `Donald`, each then discarded for being glued to a
+  letter: the commonest surname shape in Newfoundland was invisible. `MacDonald`,
+  `McCarthy`, `LeBlanc`, `DeSouza`, `O'Brien`, `Jean-Pierre`, `Côté` and `Петров` are all
+  masked now, and `OK`, `NL` and lowercase words still are not.
+
+- **`O'Brien` was masked as `O'` plus a placeholder**, releasing the first letter of a
+  surname under something that reads as a redaction. It is one word now.
+
+- **A value written in pieces is judged whole.** `A1B 2C3` was half masked and half
+  released, because `2C3` is identifier-shaped on its own and `A1B` is not. Pieces joined by
+  single spaces or dots are one candidate, so a postcode, a health number and a dotted phone
+  number each go or stay together. A piece carrying no digit ends a run and a piece the
+  vocabulary allows breaks it, so `12 of 40`, `pages 3, 4 and 5` and `Q1 2024` stay
+  readable. This replaces the narrower grouped-digits rule added in 0.5.1.
+
+- **An acronym inside a code is no longer masked twice.** `HCS` in `HCS-2024-0881` is
+  name-shaped, and masking it as well as the code it sits inside produced two placeholders
+  over one value, which rehydrated to that value twice. Names are taken last and never from
+  inside an identifier already claimed.
+
+- **A stated limit instead of a silent one**: the pass judges a word by its capital, so a
+  script without case (Chinese, Arabic, Inuktitut syllabics) carries nothing it can read.
+  Masking every word in those scripts would be fail-closed and would also make a Labrador
+  document unreadable, so the pass leaves them, docs/redact.md says so, and a test asserts
+  both halves. Cased scripts beyond ASCII need no detector.
+
+- **The property test now generates accented and internal-capital names**, and CI gained a
+  job that installs the `redact` extra with a pinned spaCy model wheel and runs the redact
+  tests, so the two live assertions about Presidio's behaviour run somewhere other than one
+  laptop. That job asserts the imports are present before it runs, because a failed install
+  would otherwise skip those tests and report green.
+
+## 0.5.1 documentation follow-up
+
 Documentation and one test; no behaviour change.
 
 - **07's re-measurement of 0.5.1 recorded in docs/redact.md**, beside the 0.5.0 numbers

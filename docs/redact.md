@@ -139,16 +139,43 @@ name is in the document, which rehydrates exactly and is the fail-closed directi
 **3. Detector recall is not 100 percent, and a boundary built on detections inherits every
 miss.** After the first two fixes, seven names still left 07's boundary because Presidio
 had not found them. So the policy has a second pass, independent of every detector, that
-masks anything **name-shaped** (a run of capitalised words, or an all-capitals word of
-three letters or more) or **identifier-shaped** (a token with five or more digits, letters
-mixed with two or more digits, or a run of digit groups separated by spaces, hyphens or
-dots carrying eight or more digits) unless it is on a vocabulary of terms that carry
-decision-relevant meaning and identify nobody. The grouped-digits shape is the 0.5.1 fix
-for the live leak 07 found: `123 456 789 012` matched neither the twelve-contiguous-digit
-recogniser nor a token-by-token second pass, and 57 of 210 pages left `outbound()` with a
-health number in them and no refusal. The second pass is the part that is supposed to make
-recall irrelevant, so it was fixed first and the recogniser second. The pass is always on. A policy without it
-is not a privacy boundary, and this module does not offer one.
+masks anything name-shaped or identifier-shaped unless it is on a vocabulary of terms that
+carry decision-relevant meaning and identify nobody. The pass is always on. A policy
+without it is not a privacy boundary, and this module does not offer one.
+
+**Name-shaped** is a word of two or more letters that begins with a capital, or three or
+more if it is all capitals. A word is a run of letters in any script, joined by hyphens or
+apostrophes, and adjacent name-shaped words separated by spaces are one run. So
+`MacDonald`, `McCarthy`, `LeBlanc`, `O'Brien`, `Jean-Pierre`, `Côté`, `Émile`, `GAGNÉ` and
+`Петров` are all covered, and `OK`, `NL` and any lowercase word are not.
+
+**Identifier-shaped** is a token with five or more digits, or letters mixed with two or
+more digits. Pieces joined by single spaces or dots are judged as one value: `A1B 2C3`,
+`123 456 789 012`, `709.555.0199`. An all-digit run needs eight digits before it is masked,
+so a short list of small numbers stays readable; a run carrying letters is judged by shape
+alone, because a postcode is only six characters. A piece carrying no digit ends a run, and
+a piece the vocabulary allows breaks it, so `12 of 40` and `Q1 2024` stay readable.
+
+Both shapes are stricter than they were, and every widening came from a leak somebody
+found rather than from a guess:
+
+| Written as | Before | Since |
+|---|---|---|
+| `123 456 789 012` | released, no refusal | masked (0.5.1, reported by 07) |
+| `MacDonald`, `McCarthy`, `LeBlanc` | released, no refusal | masked (0.5.2, found by probing) |
+| `Côté`, `Émile`, `GAGNÉ` | released, no refusal | masked (0.5.2, found by probing) |
+| `O'Brien` | `O'` released, `Brien` masked | masked whole (0.5.2) |
+| `A1B 2C3` | `A1B` released, `2C3` masked | masked whole (0.5.2) |
+| `HCS-2024-0881` | masked twice, rehydrated twice | masked once (0.5.2) |
+
+The three in the middle are the ones worth dwelling on. The pass used to look for
+`[A-Z][a-z]+`, which cannot see a letter outside ASCII and splits a word at an internal
+capital. In a province with French, Innu and Mi'kmaq names, and where `Mac` and `Mc`
+surnames are ordinary, the layer whose entire job is to catch what the detector missed was
+blind to a large share of the names it exists for. Nothing reported it: 07's corpus is
+synthetic and ASCII, so its 96.3% could not have seen it either. It was found by probing
+this file with the names the corpus does not contain, which is the argument for doing that
+to a privacy boundary rather than trusting a number.
 
 The default vocabulary (`DECISION_VOCABULARY`) is function words, calendar words, the words
 of the access-to-information workflow and legislation, and the jurisdiction's own names. A
@@ -159,8 +186,7 @@ will report the two passes separately so a reader can see what detection alone w
 leaked.
 
 **What this makes readable and what it does not.** A bare year, a percentage, a small count,
-an ordinal and a short list of numbers all stay. Anything with five or more digits in one
-token, or eight or more across grouped digits, goes. So a **full date goes**: `2024-03-15`
+an ordinal and a short list of numbers all stay. So a **full date goes**: `2024-03-15`
 and `1998-03-14` are `<ID_LIKE_1>`, and so is a fiscal-year range written `2024-25`. That is
 the same rule catching the same shape, and it is deliberate rather than a gap, because a
 twelve-digit health number written with separators is indistinguishable from a date until
@@ -171,6 +197,16 @@ does for the exclusion that depends on a date of death. A place name the vocabul
 carry is masked whether or not it identifies anyone. All of this is the fail-closed
 direction: the cost of an over-mask is a placeholder the model has to reason around, and the
 cost of an under-mask is a leak.
+
+**Where the second pass cannot help, stated rather than discovered.** It judges a word by
+its capital, so a script without case carries no signal it can read: Chinese, Japanese,
+Korean, Arabic, Hebrew and Inuktitut syllabics are left alone. Masking every word in those
+scripts would be the fail-closed move and would also make a Labrador document unreadable,
+so the pass does neither and says so here instead. A caller whose records contain those
+scripts brings a detector for them, and the policy substitutes what it is given exactly as
+it does for any other span. Cased scripts beyond ASCII, which is most of them, need no
+detector. There is a test asserting each half of this, so the limit is known rather than
+assumed.
 
 ### The guard
 
@@ -257,6 +293,14 @@ Three things 07 reported alongside the numbers, none of which changed the code:
   `staff 12345` and `claimant 90210`, because the identifier's digit lookahead cannot reach
   past the space that the missing word boundary would otherwise have allowed. There is now a
   golden for it, on 07's suggestion, so the property is asserted rather than lucky.
+
+**What the 96.3% could not see.** The corpus is synthetic and its names are ASCII, so no
+row in the table exercises an accented name, an internal-capital surname or a postcode
+judged in pieces, and every one of those was releasing values in clear when the table was
+produced. They were found the next day by probing the second pass with the names the
+corpus does not contain, and fixed in 0.5.2. A measured number is evidence about the inputs
+that were measured; it is not a statement about the inputs nobody thought of, and the
+distance between those two is where this class of bug lives.
 
 **One bug in 07's corpus that this engine found**, worth recording because it is what running
 two implementations against each other is for: 07's personas carried Social Insurance Numbers

@@ -25,3 +25,30 @@ jobs:
       # transport, and that the expiry it sets is naive.
       - run: uv sync --frozen --extra vertex
       - run: uv run pytest tests/test_credentials.py
+
+  # The `redact` extra and its spaCy model are deliberately absent from the job above, so
+  # the suite there runs with Presidio missing and exercises the import guard. They are
+  # heavy (spaCy plus a 400 MB model), so they get a job of their own rather than slowing
+  # every run, and that job is the only place the two live assertions are checked: that
+  # Presidio still returns the defects the adapter works around, and that the engine this
+  # library builds actually declares ORGANIZATION. Both are assertions about somebody
+  # else's library, so they have to run against it rather than against a fake.
+  redact:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+      - run: uv sync --frozen --extra redact
+      # The model wheel by URL and by exact version, rather than `spacy download`, so the
+      # job installs the same weights every run: a model that changed under us would change
+      # what the live tests assert without anything in this repository moving.
+      - run: >
+          uv pip install
+          https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl
+      # Fail here rather than in the tests. `test_redact.py` skips its live cases when
+      # Presidio or the model is missing, so an install that quietly failed would leave this
+      # job green while checking nothing, which is worse than a red one.
+      - run: uv run python -c "import presidio_analyzer, en_core_web_lg"
+      - run: uv run pytest tests/test_redact.py -v

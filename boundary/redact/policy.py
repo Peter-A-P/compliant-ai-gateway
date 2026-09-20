@@ -55,23 +55,39 @@ _HONORIFICS = frozenset(
     {"mr", "mrs", "ms", "mx", "miss", "dr", "prof", "hon", "sir", "madam", "rev", "sgt", "cst"}
 )
 
-# A capitalised word, possibly hyphenated or with an apostrophe (Jean-Pierre, O'Brien), or
-# an all-capitals word of three letters or more (WALLACE, PENASHUE, but not "OK").
 # The right single quotation mark, built from its code point because the formatter would
 # otherwise write the character itself into this file, and this repository keeps to plain
 # punctuation.
 _RSQUO = chr(0x2019)
-_CAP_TOKEN = re.compile(
-    "[A-Z][a-z]+(?:[-'" + _RSQUO + "][A-Z][a-z]+)*|[A-Z]{3,}(?:[-'" + _RSQUO + "][A-Z]{2,})*"
-)
+# One word: a run of letters in any script, joined by hyphens or apostrophes. `[^\W\d_]` is
+# "a word character that is neither a digit nor an underscore", which on a str pattern means
+# any Unicode letter.
+#
+# This is deliberately not a pattern for capitalised words. Writing the shape as
+# `[A-Z][a-z]+` looks right and leaks in two directions, both found by probing this file on
+# 2026-09-19 and both fixed here. It cannot see a letter outside ASCII, so `Emile Berube`
+# was masked and the same name spelled properly was not, which in a province with French,
+# Innu and Mi'kmaq names is not an edge case. And it splits a word at an internal capital,
+# so `MacDonald` became `Mac` + `Donald`, each glued to a letter and therefore each
+# discarded: the commonest surname shape in Newfoundland was invisible to the pass whose
+# whole job is to catch what the detector missed. The word is matched first and judged
+# afterwards, in `_is_name_shaped`, where the judgement can be stated in one place.
+_WORD = re.compile(r"[^\W\d_]+(?:[-'" + _RSQUO + r"][^\W\d_]+)*")
 # Something an identifier is made of: letters, digits, slashes, hyphens, no spaces.
 _ID_TOKEN = re.compile(r"[A-Za-z0-9][A-Za-z0-9/-]*")
-# A number written in groups: "123 456 789 012", "046 454 286", "709.555.0199". One
-# separator between groups, so a list of small numbers ("pages 3, 4 and 5") is not one.
-_DIGIT_GROUPS = re.compile(r"(?<![A-Za-z0-9/-])\d+(?:[ .-]\d+)+(?![A-Za-z0-9/-])")
-# How many digits a grouped run needs before it is masked. Eight leaves a pair of years
-# ("2024 2025") masked and everything shorter readable; a health number is twelve, a SIN
-# nine, a phone ten.
+# One piece of a code: letters, digits, slashes and hyphens, carrying at least one digit.
+_CODE_TOKEN = r"[A-Za-z0-9/-]*\d[A-Za-z0-9/-]*"
+# Several of them joined by single spaces or dots, so that a value written in pieces is one
+# candidate and not several: "123 456 789 012", "A1B 2C3", "709.555.0199". A piece without a
+# digit ends the run, which is what keeps "12 of 40" and "pages 3, 4 and 5" readable.
+_CODE_RUN = re.compile(
+    r"(?<![A-Za-z0-9/-])" + _CODE_TOKEN + r"(?:[ .]" + _CODE_TOKEN + r")*(?![A-Za-z0-9/-])"
+)
+_RUN_SPLIT = re.compile(r"[ .]")
+# How many digits an all-digit run needs before it is masked. Eight masks a health number,
+# a SIN and a phone number written in pieces, and leaves a short list of small numbers
+# readable. A run carrying letters as well is judged by shape instead, because "A1B 2C3" is
+# only six characters and is somebody's postcode.
 _GROUPED_DIGITS = 8
 # Two tokens are one run when only spaces or tabs separate them. A line break ends a run,
 # for the same reason the analyzer cuts spans at one.
@@ -80,6 +96,21 @@ _RUN_GAP = re.compile(r"[ \t]+")
 
 def _norm(value: str) -> str:
     return " ".join(value.split()).casefold()
+
+
+def _is_name_shaped(token: str) -> bool:
+    """Whether a word could be part of somebody's name, judged on case alone.
+
+    Two or more letters, starting with a capital. An internal capital is fine and is the
+    point: `MacDonald`, `McCarthy`, `LeBlanc`, `O'Brien` and `Jean-Pierre` are all one word.
+    Accented and non-Latin letters count, because `isupper` knows about them and a character
+    class written in ASCII does not. An all-capitals word needs three letters, so `OK` and
+    `NL` stay readable while `GAGNE` and `PENASHUE` do not.
+    """
+    letters = [c for c in token if c.isalpha()]
+    if len(letters) < 2 or not letters[0].isupper():
+        return False
+    return not (len(letters) < 3 and all(c.isupper() for c in letters))
 
 
 def _is_identifier_shaped(token: str) -> bool:
@@ -312,50 +343,89 @@ class Policy:
         regions.append((cursor, len(text)))
 
         for lo, hi in regions:
-            # Grouped digits first: "123 456 789 012" is one number written the way a form
-            # writes it, and 0.5.0's token-by-token shape let it through (07's live leak).
-            grouped: list[tuple[int, int]] = []
-            for m in _DIGIT_GROUPS.finditer(text, lo, hi):
-                tok = m.group(0)
-                if sum(ch.isdigit() for ch in tok) < _GROUPED_DIGITS:
-                    continue
-                s, e = m.start(), m.end()
-                if self._allowed(tok, s, e, excused):
-                    continue
-                grouped.append((s, e))
-                found.append((s, e, EntityType.ID_LIKE))
-            # Then identifier-shaped tokens, outside anything already taken. A name-shaped
-            # token never contains a digit, so the two kinds cannot overlap.
+            # Codes written in pieces first: a value split across single spaces or dots is
+            # one candidate, because judging the pieces separately masks some of them and
+            # leaves the rest, which is a leak wearing a redaction.
+            claimed: list[tuple[int, int]] = self._code_runs(text, lo, hi, excused)
+            found.extend((s, e, EntityType.ID_LIKE) for s, e in claimed)
+            # Then identifier-shaped tokens, outside anything already taken.
             for m in _ID_TOKEN.finditer(text, lo, hi):
                 tok = m.group(0).rstrip("-/")
                 if not _is_identifier_shaped(tok):
                     continue
                 s, e = m.start(), m.start() + len(tok)
-                if any(gs <= s and e <= ge for gs, ge in grouped):
+                if any(cs <= s and e <= ce for cs, ce in claimed):
                     continue
                 if self._allowed(tok, s, e, excused):
                     continue
+                claimed.append((s, e))
                 found.append((s, e, EntityType.ID_LIKE))
-            found.extend(self._name_runs(text, lo, hi, excused))
+            # Names last, and never inside an identifier already claimed. The letters inside
+            # a code are a word like any other: `HCS` in `HCS-2024-0881` is name-shaped, and
+            # masking it as well as the code it sits in produced two placeholders over one
+            # value, which rehydrated to the value twice.
+            found.extend(self._name_runs(text, lo, hi, excused, claimed))
         found.sort()
         return found
 
-    def _name_runs(
+    def _code_runs(
         self, text: str, lo: int, hi: int, excused: Sequence[tuple[int, int]]
+    ) -> list[tuple[int, int]]:
+        """Code-shaped pieces joined by single spaces or dots, taken as one candidate.
+
+        A postcode written `A1B 2C3` is the case that forced this: judged piece by piece,
+        `2C3` is identifier-shaped and `A1B` is not, so half of it was masked and half was
+        released, which reads as a redaction and is not one. A piece carrying no digit ends
+        the run, and a piece the vocabulary allows breaks it, the same way a vocabulary word
+        breaks a name run: `Q1 2024` stays readable because `q1` is a word this corpus uses.
+
+        Single pieces are left to the per-token pass, which already judges them.
+        """
+        runs: list[tuple[int, int]] = []
+        for m in _CODE_RUN.finditer(text, lo, hi):
+            run = m.group(0).rstrip("-/.")
+            pieces = _RUN_SPLIT.split(run)
+            if len(pieces) < 2:
+                continue
+            if any(piece.casefold() in self._allow for piece in pieces):
+                continue
+            if not _is_identifier_shaped(run):
+                continue
+            # An all-digit run needs enough digits to be somebody's number rather than a
+            # list of small ones; a run carrying letters is judged by shape alone.
+            all_digits = not any(ch.isalpha() for ch in run)
+            if all_digits and sum(ch.isdigit() for ch in run) < _GROUPED_DIGITS:
+                continue
+            s, e = m.start(), m.start() + len(run)
+            if self._allowed(run, s, e, excused):
+                continue
+            runs.append((s, e))
+        return runs
+
+    def _name_runs(
+        self,
+        text: str,
+        lo: int,
+        hi: int,
+        excused: Sequence[tuple[int, int]],
+        claimed: Sequence[tuple[int, int]] = (),
     ) -> list[tuple[int, int, EntityType]]:
-        """Name-shaped runs inside text[lo:hi]: adjacent capitalised tokens separated by
-        spaces only, with vocabulary tokens breaking a run rather than joining it."""
+        """Name-shaped runs inside text[lo:hi]: adjacent name-shaped words separated by
+        spaces only, with vocabulary words breaking a run rather than joining it."""
         runs: list[tuple[int, int, EntityType]] = []
         run: list[tuple[int, int]] = []
         last_end = -1
-        for m in _CAP_TOKEN.finditer(text, lo, hi):
+        for m in _WORD.finditer(text, lo, hi):
             s, e = m.start(), m.end()
             tok = m.group(0)
-            # A capitalised word glued to letters on either side is part of a bigger token
-            # (an email's local part, a code) and not a name.
-            glued = (s > 0 and text[s - 1].isalnum()) or (e < len(text) and text[e].isalnum())
+            # A word touching a digit is part of a code, not a name, and a word inside an
+            # identifier this pass has already taken is already covered.
+            glued = (s > 0 and text[s - 1].isdigit()) or (e < len(text) and text[e].isdigit())
+            inside = any(cs <= s and e <= ce for cs, ce in claimed)
             contiguous = last_end >= 0 and _RUN_GAP.fullmatch(text[last_end:s]) is not None
-            allowed = glued or self._allowed(tok, s, e, excused)
+            allowed = (
+                glued or inside or not _is_name_shaped(tok) or self._allowed(tok, s, e, excused)
+            )
             if (allowed or not contiguous) and run:
                 runs.append((run[0][0], run[-1][1], EntityType.NAME_LIKE))
                 run = []

@@ -368,6 +368,105 @@ def test_finding_3_the_second_pass_masks_what_no_detector_found() -> None:
     assert policy.rehydrate(out).startswith("Marie Chaulk met Wallace Penashue in Gander")
 
 
+# -- the second pass: what a word is ---------------------------------------------------------
+
+
+# Every one of these left 0.5.1 in clear, with no refusal, because the second pass looked
+# for `[A-Z][a-z]+`: it cannot see a letter outside ASCII, and it splits a word at an
+# internal capital and then discards both halves for being glued to a letter. Found by
+# probing rather than by a report, and the names are the ordinary ones here.
+@pytest.mark.parametrize(
+    "name",
+    [
+        "MacDonald",
+        "McCarthy",
+        "LeBlanc",
+        "DeSouza",
+        "O'Brien",
+        "Jean-Pierre",
+        "Côté",
+        "Bérubé",
+        "Émile",
+        "GAGNÉ",
+        "PENASHUE",
+        "Seán",
+    ],
+)
+def test_a_name_no_detector_found_is_masked_whatever_its_letters(name: str) -> None:
+    policy = Policy([])
+    text = f"spoke to {name} about it"
+    out = policy.outbound(text)
+    assert name not in out
+    assert out == "spoke to <NAME_LIKE_1> about it"
+    assert policy.rehydrate(out) == text
+    # And the guard sees it in text it is asked to vouch for, rather than passing it.
+    assert [leak.text for leak in Policy([]).check(text)] == [name]
+
+
+@pytest.mark.parametrize("word", ["OK", "NL", "I", "A", "the", "department"])
+def test_short_or_lowercase_words_stay_readable(word: str) -> None:
+    text = f"it was {word} in the end"
+    assert Policy([]).outbound(text) == text
+
+
+def test_a_caseless_script_is_not_name_shaped_and_the_limit_is_known() -> None:
+    """A stated limitation rather than an accident. The second pass judges a word by its
+    capital, so a script without case (Chinese, Inuktitut syllabics) carries no signal it
+    can read. Masking every such word would make a Labrador document unreadable, so the
+    pass leaves them and a caller working with those documents brings a detector. Cyrillic
+    and Greek have case and are covered, which is the half of this the ASCII pattern lost.
+    """
+    policy = Policy([])
+    assert policy.outbound("中村 wrote") == "中村 wrote"
+    # With a detector, the same name is substituted like any other.
+    spans = [_span("中村")]
+    assert Policy(spans).outbound("中村 wrote") == "<PERSON_1> wrote"
+    # Cased scripts beyond ASCII need no detector.
+    assert policy.outbound("Петров called") == "<NAME_LIKE_1> called"
+
+
+def test_a_value_written_in_pieces_is_masked_whole_or_not_at_all() -> None:
+    """A postcode judged piece by piece masked `2C3` and released `A1B`: half a redaction
+    reads as a whole one. Pieces joined by single spaces or dots are one candidate."""
+    policy = Policy([])
+    for text, expected in [
+        ("postal A1B 2C3", "postal <ID_LIKE_1>"),
+        ("MCP 123 456 789 012", "MCP <ID_LIKE_2>"),
+        ("phone 709.555.0199", "phone <ID_LIKE_3>"),
+    ]:
+        out = policy.outbound(text)
+        assert out == expected
+        assert policy.rehydrate(out) == text
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "pages 3, 4 and 5; 12 of 40",
+        "in 2024 and 2025",
+        # A piece the vocabulary allows breaks the run, the way a vocabulary word breaks a
+        # name run, so a fiscal quarter stays readable.
+        "Q1 2024 figures",
+        "apt 4B",
+        "section 31(1)(a)",
+        "3rd request",
+        "10 20 30",
+    ],
+)
+def test_numbers_that_carry_no_identity_stay_readable(text: str) -> None:
+    assert Policy([]).outbound(text) == text
+
+
+def test_an_acronym_inside_an_identifier_is_not_masked_twice() -> None:
+    """`HCS` in `HCS-2024-0881` is name-shaped, and masking it as well as the code it sits
+    in put two placeholders over one value, which rehydrated to the value twice."""
+    policy = Policy([])
+    text = "ref HCS-2024-0881 here"
+    out = policy.outbound(text)
+    assert out == "ref <ID_LIKE_1> here"
+    assert policy.rehydrate(out) == text
+
+
 def test_the_vocabulary_breaks_a_run_and_a_placeholder_is_never_remasked() -> None:
     policy = Policy([_span("Marie Chaulk")])
     out = policy.outbound("Marie Chaulk Department Gander")
@@ -429,9 +528,30 @@ def test_rehydration_is_tolerant_of_the_ways_models_mutate_placeholders() -> Non
     assert policy.unresolved(text) == ["<PERSON_7>"]
 
 
-_FIRST = ["Marie", "Wallace", "Aaron", "Jean-Pierre", "Siobhan", "Kwame"]
-_LAST = ["Chaulk", "Penashue", "O'Brien", "Rideout", "Tobin", "Nkemelu"]
-_PLACES = ["Gander", "Corner Brook", "Happy Valley-Goose Bay", "Wabush"]
+_FIRST = ["Marie", "Wallace", "Aaron", "Jean-Pierre", "Siobhan", "Kwame", "Émile"]
+_LAST = [
+    "Chaulk",
+    "Penashue",
+    "O'Brien",
+    "Rideout",
+    "Tobin",
+    "Nkemelu",
+    # The shapes the ASCII capitalised-word pattern could not see. They are in the generator
+    # rather than only in a case of their own so that every property run exercises them.
+    "MacDonald",
+    "McCarthy",
+    "LeBlanc",
+    "Côté",
+    "Bérubé",
+]
+_PLACES = [
+    "Gander",
+    "Corner Brook",
+    "Happy Valley-Goose Bay",
+    "Wabush",
+    "Sheshatshiu",
+    "Saint-Pierre",
+]
 _PROSE = "the applicant asked the department to review the record and the decision was".split()  # noqa: SIM905
 
 
