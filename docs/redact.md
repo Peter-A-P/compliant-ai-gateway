@@ -158,11 +158,19 @@ reference). Everything else that looks like a name or a number goes, and the res
 will report the two passes separately so a reader can see what detection alone would have
 leaked.
 
-**What this makes readable and what it does not.** A masked date such as `2024-03-15` is
-`<ID_LIKE_1>` unless an allow pattern excuses it. A year, a percentage, a small count and an
-ordinal stay. A place name the vocabulary does not carry is masked whether or not it
-identifies anyone, which is the fail-closed direction: the cost of an over-mask is a
-placeholder the model has to reason around, and the cost of an under-mask is a leak.
+**What this makes readable and what it does not.** A bare year, a percentage, a small count,
+an ordinal and a short list of numbers all stay. Anything with five or more digits in one
+token, or eight or more across grouped digits, goes. So a **full date goes**: `2024-03-15`
+and `1998-03-14` are `<ID_LIKE_1>`, and so is a fiscal-year range written `2024-25`. That is
+the same rule catching the same shape, and it is deliberate rather than a gap, because a
+twelve-digit health number written with separators is indistinguishable from a date until
+something knows which it is looking at. Where a date has to stay readable, an
+`allow_patterns` entry for `\d{4}-\d{2}-\d{2}` excuses it; where a decision turns on a date,
+make that decision on the raw text before the request is built, which is what project 07
+does for the exclusion that depends on a date of death. A place name the vocabulary does not
+carry is masked whether or not it identifies anyone. All of this is the fail-closed
+direction: the cost of an over-mask is a placeholder the model has to reason around, and the
+cost of an under-mask is a leak.
 
 ### The guard
 
@@ -186,42 +194,75 @@ This repository has no evaluation harness for redaction yet; that is Part B's ta
 precision and recall per entity type on public corpora and a Canadian identifier set, and
 the rehydration mutation rate. Nothing here claims a precision.
 
-**Project 07 measured 0.5.0's detection recall on 2026-09-19**, against its persona corpus:
-5,355 values over 210 synthetic pages with labels known by construction, reproducible in
-07's repository with `sever eval-detector --documents 210`. Recall only; precision is not
-claimed, because the labels cover inserted values and not the prose around them. A
-synthetic corpus means well-formed values, so every row is an upper bound. Intervals are
-95%. The right-hand column is 07's own detector on the same pages.
+**Project 07 measured this engine's detection recall on 2026-09-19**, first against 0.5.0
+and then again against 0.5.1, using its persona corpus: 5,355 values over 210 synthetic
+pages with labels known by construction, reproducible in 07's repository with
+`sever eval-detector --documents 210`. Recall only; precision is not claimed, because the
+labels cover inserted values and not the prose around them. A synthetic corpus means
+well-formed values, so every row is an upper bound. Intervals are 95%.
 
-| Entity type | Values | `boundary.redact` 0.5.0 | 07's detector |
+| Entity type | Values | 0.5.0 | 0.5.1 |
 |---|---|---|---|
-| person | 2380 | 93.1% (91.7 to 94.4) | 87.2% (85.5 to 88.7) |
-| location | 105 | 57.1% (47.6 to 66.7) | 38.1% (28.6 to 47.6) |
-| email | 420 | 100% | 100% |
-| phone | 560 | 100% | 100% |
-| postal_code | 70 | 100% | 100% |
-| date_of_birth | 70 | 100% | 100% |
-| employee_id | 70 | 100% | 100% |
-| address | 280 | 99.3% (98.2 to 100) | 100% |
-| file_number | 210 | 83.3% (78.1 to 88.1) | 100% |
-| organisation | 210 | 19.5% (13.2 to 25.9) | 86.7% (82.1 to 90.7) |
-| health_number | 105 | 20.0% (10.3 to 30.8) | 100% |
-| date | 35 | 0% (not an entity type here) | 100% |
-| all | 5355 | 90.0% (89.1 to 90.9) | 92.6% (91.8 to 93.3) |
+| person | 2380 | 93.1% (91.7 to 94.4) | 96.5% (95.4 to 97.4) |
+| location | 105 | 57.1% (47.6 to 66.7) | 63.8% (54.3 to 72.4) |
+| email | 420 | 100% | not re-reported |
+| phone | 560 | 100% | not re-reported |
+| postal_code | 70 | 100% | not re-reported |
+| date_of_birth | 70 | 100% | not re-reported |
+| employee_id | 70 | 100% | not re-reported |
+| address | 280 | 99.3% (98.2 to 100) | 100% (100 to 100) |
+| file_number | 210 | 83.3% (78.1 to 88.1) | 83.8% (78.6 to 88.6) |
+| organisation | 210 | 19.5% (13.2 to 25.9) | 96.2% (93.5 to 98.6) |
+| health_number | 105 | 20.0% (10.3 to 30.8) | 100% (100 to 100) |
+| date | 35 | 0% | 0%, no such entity type |
+| all | 5355 | 90.0% (89.1 to 90.9) | 96.3% (95.7 to 96.9) |
 
-What the table said, and what was done about it in 0.5.1:
+07 re-reported the rows that moved and the total; the rows marked so were measured but not
+restated, and they were at 100% before. **Overall recall went from 90.0% to 96.3%**, and 07
+confirmed each fix directly as well as statistically: every written form of a health number
+types correctly, `Policy([]).outbound(...)` masks one with no detection at all, departments
+come back as organisations with "Newfoundland" under location, and the house number stays
+inside the address. 07 has dropped the score it had raised to 0.9 to work around the overlap
+rule; containment does the work, and its address recogniser is back at an honest 0.75.
 
-- **health_number at 20.0% was a live leak**, not a detection gap: the space-separated form
-  passed `outbound()` unredacted with no refusal on 57 of 210 pages. Fixed in both the
-  recogniser and the second pass, above. Not re-measured here; 07 re-runs its evaluation
-  against 0.5.1.
-- **organisation at 19.5%** was the engine never being asked for organisations. Fixed.
-- **file_number at 83.3%** is the pattern requiring a label word, so a bare `HCS-2024-0881`
-  in a heading is not typed as a file number. Unchanged on purpose: the second pass masks
-  it as `ID_LIKE`, so it does not leave, and typing an unlabelled code is a guess.
-- **date at 0%** is by design, and 07 notes what it costs: a date of death is invisible to
-  detection, which is 07's evidence for the twenty-year exclusion. That finding belongs in
-  07's results.
+**Against 07's own detector.** On the same pages 07's detector reached 92.6% (91.8 to 93.3)
+per entity with spaCy's `en_core_web_sm`, which is the model behind the 0.5.0 comparison
+that used to sit in this table: person 87.2%, location 38.1%, organisation 86.7%,
+health_number 100%, file_number 100%, date 100%. 07 has since moved it to `en_core_web_lg`
+and it reaches **97.4% overall**, so the honest current comparison is 96.3% here against
+97.4% there, both on the large model. Most of what the old gap measured was the model, which
+is why the column is named for it. The remaining gap is 07's street-address and job-title
+recognisers plus the `DATE` type this vocabulary excludes by design.
+
+Three things 07 reported alongside the numbers, none of which changed the code:
+
+- **Found is not the same as fully covered.** Organisations are now found at 96.2% but only
+  40.0% of them are covered end to end, because spaCy splits a name like "Newfoundland and
+  Labrador Health Services" into a location and an organisation. Recall alone cannot see
+  that, which is why 07's evaluation has a coverage column: a partially covered value is a
+  leak wearing a redaction. It is not a leak **here**, because the pieces are each
+  substituted and anything left between them is name-shaped and taken by the second pass,
+  so nothing of the name goes out in clear. It does mean one name arrives as two
+  placeholders of different types. A gazetteer of Newfoundland and Labrador organisation
+  and place names is the fix, and it is still Part B's (B2.3).
+- **The grouped-digits rule masks a full ISO date**, so "died on 1998-03-14" becomes
+  `<ID_LIKE_1>`, the same way a fiscal-year range like `2024-25` does. 07 checked it against
+  its own workflow and reported it benign: its scrub does the same, a bare year survives in
+  both, and the exclusion that turns on a date of death is decided by a local rule on raw
+  text before any model call, so no evidence is lost. An `allow_patterns` entry excuses it
+  where a date has to stay readable.
+- **The label-word patterns do not match inside a longer word.** 07 probed them after fixing
+  a bug of its own where a case-number recogniser matched "ref" inside "referred" and
+  captured "erred". These return nothing for `referred 2024`, `referenced 4471`,
+  `staff 12345` and `claimant 90210`, because the identifier's digit lookahead cannot reach
+  past the space that the missing word boundary would otherwise have allowed. There is now a
+  golden for it, on 07's suggestion, so the property is asserted rather than lucky.
+
+**One bug in 07's corpus that this engine found**, worth recording because it is what running
+two implementations against each other is for: 07's personas carried Social Insurance Numbers
+that fail the Luhn checksum, so `boundary:sin` correctly refused them and nine personas in ten
+had never exercised the SIN path at all. They are Luhn-valid now, checked against the
+published specimen 046 454 286.
 - Where a model does the work (person, location, and type accuracy at 97.5% against 89.3%),
   this engine was ahead; on the Canadian and domain identifiers it was behind, which is
   the direction the built-in recognisers exist to close.

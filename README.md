@@ -52,8 +52,11 @@ same day, 5,355 labelled values over 210 synthetic pages, and found a live leak:
 space-separated health number left unredacted on 57 of 210 pages with no refusal. 0.5.1
 fixes that in both the recogniser and the second pass, along with organisations never
 being requested from Presidio and containment losing to score in overlap resolution. The
-table and its caveats are in [docs/redact.md](docs/redact.md); this repository's own
-precision and recall harness does not exist yet, and nothing here claims a precision.
+re-measurement on 0.5.1 puts overall detection recall at **96.3% (95.7 to 96.9)**, up from
+90.0%, with health numbers and organisations at 100% and 96.2%. The table, both runs and
+their caveats are in [docs/redact.md](docs/redact.md): recall only, on a synthetic corpus,
+so every row is an upper bound. This repository's own precision and recall harness does not
+exist yet, and nothing here claims a precision.
 Both parts are planned in
 [PLAN.md](PLAN.md):
 Part A, the `boundary` library that every project in this portfolio calls models through;

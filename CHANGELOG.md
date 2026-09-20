@@ -5,6 +5,27 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+Documentation and one test; no behaviour change.
+
+- **07's re-measurement of 0.5.1 recorded in docs/redact.md**, beside the 0.5.0 numbers
+  rather than over them. Overall detection recall 90.0% to 96.3%; health_number 20.0% to
+  100%, organisation 19.5% to 96.2%, person 93.1% to 96.5% (the engine change helped person
+  as well, which neither of us predicted). 07 confirmed each of the three fixes directly and
+  has dropped the 0.9 score it had raised to work around the overlap rule.
+- **The comparison column is now named for the model it used**, because that is most of what
+  it measured: 07's detector was on spaCy's small model at 92.6% and is now on the large one
+  at 97.4%, against 96.3% here. The honest current gap is 07's street-address and job-title
+  recognisers plus the `DATE` type this vocabulary excludes by design.
+- **Two limitations written down** rather than changed: organisations are found but only
+  40.0% covered end to end, because spaCy splits a long name into a location and an
+  organisation (nothing leaves in clear, since the pieces are each substituted and the
+  remainder is name-shaped, but one name arrives as two placeholders; the gazetteer is still
+  Part B's), and the grouped-digits rule masks a full ISO date as well as a fiscal-year
+  range, which 07 checked against its own workflow and reported benign.
+- **A golden asserting that a label word inside a longer word is not a label**, on 07's
+  suggestion after it fixed exactly that bug in its own recogniser: `referred 2024`,
+  `referenced 4471`, `staff 12345` and `claimant 90210` all return nothing.
+
 ## 0.5.1 (2026-09-19)
 
 Project 07 ran 0.5.0 against its persona corpus the same day, 5,355 labelled values over 210

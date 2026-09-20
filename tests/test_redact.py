@@ -103,6 +103,13 @@ def test_a_span_checks_its_own_consistency() -> None:
         ),
         (FILE_NUMBER, "file number: the record", []),
         (EMPLOYEE_ID, "Employee ID: E-44821; payroll no 00912", ["E-44821", "00912"]),
+        # A label word inside a longer word is not a label. Project 07 hit this in its own
+        # recogniser, where "ref" matched inside "referred" and captured "erred", and probed
+        # these for the same bug on 2026-09-19. They are clean because the identifier's digit
+        # lookahead cannot reach past the space, but that is worth asserting rather than
+        # relying on.
+        (FILE_NUMBER, "referred 2024, referenced 4471, the claimant 90210", []),
+        (EMPLOYEE_ID, "staff 12345 and personnel 4471", []),
     ],
 )
 def test_recogniser_goldens(recogniser: RegexRecogniser, text: str, expected: list[str]) -> None:
