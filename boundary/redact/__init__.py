@@ -17,7 +17,14 @@ from boundary.redact.analyzer import Analyzer, cut_at_line_break, resolve_overla
 from boundary.redact.names import is_name_shaped, name_parts
 from boundary.redact.policy import PLACEHOLDER, Leak, Policy, RedactionRefused
 from boundary.redact.recognisers import DEFAULT_RECOGNISERS, RegexRecogniser
-from boundary.redact.sweep import SWEEP_ID, sweep
+from boundary.redact.sweep import (
+    RETYPED,
+    SWEEP_ID,
+    original_recogniser,
+    retyped,
+    sweep,
+    swept,
+)
 from boundary.redact.types import EntityType, Recogniser, Span
 from boundary.redact.vocabulary import DECISION_VOCABULARY
 
@@ -25,6 +32,7 @@ __all__ = [
     "DECISION_VOCABULARY",
     "DEFAULT_RECOGNISERS",
     "PLACEHOLDER",
+    "RETYPED",
     "SWEEP_ID",
     "Analyzer",
     "EntityType",
@@ -37,6 +45,9 @@ __all__ = [
     "cut_at_line_break",
     "is_name_shaped",
     "name_parts",
+    "original_recogniser",
     "resolve_overlaps",
+    "retyped",
     "sweep",
+    "swept",
 ]

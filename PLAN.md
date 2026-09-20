@@ -504,7 +504,7 @@ The numbers a stranger can check:
 | Latency overhead p50, p95, p99 in milliseconds at 50, 200 and 500 requests per second, per feature layer (routing and ledger; plus audit; plus redaction; plus cache), 5 runs each, 95% CIs across runs, on a stated VPS size | Engineering, not assembly; the number an interviewer will probe |
 | Redaction precision and recall per entity type on public PII corpora, and on a hand-built Canadian identifier set, with 95% CIs | Redaction accuracy measured, not asserted, including the failure modes |
 | Rehydration fidelity: share of placeholders in model responses restored correctly, and the rate at which models mutate placeholders | Reversibility actually works, and where it does not |
-| Quality cost of redaction: paired non-inferiority test through the 03 gate on 03's gold set, redacted against unredacted prompts, delta and interval | Redaction does not silently make answers worse, or it does and by how much |
+| Quality effect of redaction: paired two-sided test through the 03 gate on 03's gold set, redacted against unredacted prompts, delta and interval in both directions (amended 2026-09-21; see B2.8) | Whether redaction makes answers worse, better, or neither, and by how much |
 | Residency policy violations under an adversarial suite of N requests (must be zero), plus refusals correctly raised | Policy is enforced, not documented |
 | Semantic cache on replayed portfolio traffic: hit rate, dollars saved, and false-hit rate on 200 hand-labelled hits | Savings with the risk next to them |
 | Injection screen: detection rate and false-positive rate on public sets and 03's suite | Screening measured against its cost in blocked legitimate requests |
@@ -693,6 +693,15 @@ with the false-hit rate from hand-labelling 200 hits printed next to it. A cache
 returns a confident answer to a different question is worse than no cache, and the
 number says how often that happens.
 
+**Added 2026-09-21: report the hit rate for redacted and raw payloads separately.** Project
+07 counted the distinct requests behind its ablation and found 171 for the placeholder arm
+against 240 for the raw arm over the same spans. Placeholder payloads repeat across
+documents once the names are gone; raw payloads are unique precisely because the names are.
+If that holds at portfolio scale, redaction raises the cache hit rate, which is an argument
+for the boundary with nothing to do with privacy and one this cache is the right place to
+check. The two rates go in the table side by side; a single blended number would hide the
+effect, and the effect is the interesting part.
+
 ### B2.6 Injection screening is advisory by default
 
 A classifier over user-supplied and retrieved content flags likely prompt injection.
@@ -709,9 +718,19 @@ says which limit and when it resets.
 ### B2.8 Measured by 03
 
 The gate from project 03 answers the question a buyer will ask: does redaction hurt the
-answers? Redacted and unredacted prompts over 03's gold set, three models, paired
-non-inferiority with the gate's default delta. It is the same harness every other project
-uses, which is the point.
+answers? Redacted and unredacted prompts over 03's gold set, three models, paired, over the
+same harness every other project uses, which is the point.
+
+**Amended 2026-09-21: two-sided, not non-inferiority.** This section said paired
+non-inferiority with the gate's default delta, which is a test shaped to bound a cost and
+cannot report a benefit. Project 07 ran the ablation on its own task and the premise
+inverted: typed placeholders leaked 30.1% (21.7 to 39.0) against 60.2% (53.7 to 66.7) for
+raw text, because a plausible name makes the model willing to place the person and the
+confidence is misplaced. Twenty documents on a 7B local model, so the direction and rough
+size rather than the figure. A one-sided test would have recorded that result as "no worse
+than", which is true and useless. The delta and its interval are reported in both
+directions, and the write-up states which was expected, since a hypothesis that inverted is
+worth more than one that held. See docs/redact.md.
 
 ### B2.9 Out of scope in Part B, on purpose
 
@@ -794,7 +813,7 @@ streaming produces the same ledger row as non-streaming.
 | Stage | Built | Done when |
 |---|---|---|
 | 1 | Proxy with streaming and team keys; policy engine; audit chain, store and daily anchor; central ledger ingest; first load test on the core layer | A real OpenAI client works by changing the base URL; `audit verify` passes; overhead budget published in the README |
-| 2 | Redaction: recognisers, vault, rehydration; redaction eval on corpora and the Canadian set; quality A/B through the 03 gate; semantic cache with replay and hand labelling; injection screen | Precision and recall table; rehydration fidelity; non-inferiority result; hit rate with false-hit rate |
+| 2 | Redaction: recognisers, vault, rehydration; redaction eval on corpora and the Canadian set; quality A/B through the 03 gate; semantic cache with replay and hand labelling; injection screen | Precision and recall table; rehydration fidelity; two-sided quality delta; hit rate with false-hit rate, reported for redacted and raw payloads separately |
 | 3 | Dashboard; deployment at gateway.peterparker.ca; full layered load test; tamper test; Rule C write-up; README | Live URL; every results table filled with intervals; `v1.0.0` tagged |
 | 4 | Slack | |
 
@@ -863,7 +882,7 @@ the ledger and the spans as its production signal.
 - [ ] Data classification header enforced, absent means `personal`; residency violations zero on the adversarial suite, with correct refusals
 - [ ] Reversible redaction round-trips under property tests; rehydration fidelity and mutation rate reported
 - [ ] Redaction precision and recall per entity type on public corpora and the Canadian set, with CIs
-- [ ] Quality cost of redaction measured through the 03 gate, with interval
+- [ ] Quality effect of redaction measured through the 03 gate, two-sided, with interval
 - [ ] Semantic cache hit rate, dollars saved and false-hit rate on replayed traffic
 - [ ] Injection screen detection and false-positive rates reported (unless dropped, and then said so)
 - [ ] Audit log chain verification tool included; daily anchors in the public repository; tamper test detects every injected corruption

@@ -5,6 +5,36 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.5.8 (2026-09-21)
+
+Two things from project 07, one of which changes the plan.
+
+- **`swept(spans)`, `retyped(spans)` and `original_recogniser(span)`**: the sweep's two
+  buckets, countable. 07 split its leaks three ways with the same distinction and got 16
+  never found, 23 found and mislabelled, zero from the decision rules, which means the
+  figure it had been publishing as 50 decision errors was never about decisions. A consumer
+  that prints `len(retyped(spans))` beside its recall is reporting the half of detection
+  that recall is blind to. Neither project has anything else that catches a wrong label
+  without a person going looking for one.
+
+- **PLAN.md B2.8 is a two-sided test now, not a paired non-inferiority one**, amended in
+  this commit with the reason, per the rule in CLAUDE.md. The plan assumed redaction costs
+  quality and set out to bound the cost. 07 ran the ablation and the premise inverted:
+  typed placeholders leaked 30.1% (21.7 to 39.0) against 60.2% (53.7 to 66.7) for raw text,
+  because a plausible name makes the model willing to place the person and the confidence
+  is misplaced. Escalation fell 30.5% to 14.1% with the name present, and the two arms
+  agree on only 55.7% of spans. Twenty documents on a 7B model running on 07's own machine,
+  behind a guard that refuses to build the raw arm unless the provider is price-zero,
+  single-region and on loopback, so the direction and rough size rather than the figure. A
+  one-sided test would have recorded that as "no worse than", which is true and useless.
+
+- **B2.5 will report the cache hit rate for redacted and raw payloads separately.** 07
+  counted 171 distinct requests for the placeholder arm against 240 for the raw arm over
+  the same spans: placeholder payloads repeat across documents once the names are gone, raw
+  payloads are unique precisely because the names are. If it holds at portfolio scale,
+  redaction raises the hit rate, which is an argument for the boundary with nothing to do
+  with privacy. A blended number would hide it.
+
 ## 0.5.7 (2026-09-21)
 
 Project 07 built the sweep on its own detector, hit a leak this library's version would

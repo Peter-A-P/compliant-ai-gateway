@@ -192,6 +192,51 @@ which is what `boundary.redact` publishes spans for.
 even with a Mary Hearn in the document, and re-typing the building would be a worse error
 than the one this corrects.
 
+`swept(spans)` and `retyped(spans)` return the two buckets, and `original_recogniser(span)`
+gives back the detector that fired whatever the sweep did to the span afterwards. A
+consumer that prints `len(retyped(spans))` beside its recall is reporting the half of
+detection recall is blind to. 07 split its own leaks three ways with this on 2026-09-21:
+**16 never found, 23 found and mislabelled, zero from the decision rules.** The figure it
+had been publishing as 50 decision errors was never about decisions at all. Neither project
+had that split before the sweep made the second bucket countable, and neither has anything
+else that catches a wrong label without a person going looking for one.
+
+### What taking the names away does to the answer
+
+Part B plans to measure the quality cost of redaction through the 03 gate, and the plan
+until now assumed there was a cost to bound. Project 07 measured it on 2026-09-21 and the
+premise inverted. Same spans, same model, twice, 20 documents, intervals printed:
+
+| Arm | Leak rate | Over-redaction | Escalation |
+|---|---|---|---|
+| typed placeholders | 30.1% (21.7 to 39.0) | 19.0% | 30.5% |
+| raw text | 60.2% (53.7 to 66.7) | 7.4% | 14.1% |
+
+Taking the names away **halves** the leak rate, and the escalation column carries the
+mechanism: shown a plausible name the model becomes willing to place the person,
+escalation falling 30.5% to 14.1%, and it is then wrong about which side of the line they
+are on more often than not. The arms agree on 55.7% of spans, so the name is doing a great
+deal of work in the model's reasoning and the work is harmful. Deprived of it the model has
+only the structure, which is the evidence that actually decides the question, and it says
+so when the structure does not settle it.
+
+Both arms run on a 7B model on 07's own machine, so the absolute figures are not a
+pipeline's and not this library's: a guard refuses to construct the raw arm unless the
+provider is price-zero, declares single-region residency and answers on loopback, all three
+required, because the raw arm sends names and "the personas are invented" does not rescue
+a pipeline whose claim is that it cannot send one. The pairing supports direction and rough
+size. It is also the only part of either project's model layer a stranger can reproduce
+with no key, no account and no spend.
+
+Two consequences here. The plan's B2.8 is now a two-sided comparison rather than a
+non-inferiority test (PLAN.md, amended 2026-09-21): a test shaped to bound a cost cannot
+report a benefit, and on the evidence so far the benefit is the likelier finding. And 07
+counted the requests: the placeholder arm needed 171 distinct ones where the raw arm needed
+240 for the same spans, because placeholder payloads repeat across documents once the names
+are gone and raw payloads are unique precisely because the names are. **A redacted corpus is
+more cacheable than an unredacted one**, which is an argument for the boundary with nothing
+to do with privacy, and a prediction Part B's semantic cache can check.
+
 **The limit 07 wrote into its plan rather than glossing**, and it applies here identically:
 the sweep needs the person found somewhere. A record that never names someone in a position
 a detector can read gains nothing. That residual is what a gazetteer would cover, and this

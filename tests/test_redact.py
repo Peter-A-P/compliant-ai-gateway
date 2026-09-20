@@ -42,7 +42,7 @@ from boundary.redact.recognisers import (
     SIN,
     luhn_ok,
 )
-from boundary.redact.sweep import SWEEP_ID
+from boundary.redact.sweep import SWEEP_ID, original_recogniser, retyped, swept
 
 
 def _span(
@@ -817,3 +817,21 @@ def test_a_retyped_span_does_not_mint_a_second_placeholder() -> None:
     policy = Policy(sweep(pages, known))
     assert policy.redact(pages[1]) == "The file names <PERSON_1.2>."
     assert policy.rehydrate(policy.redact(pages[1])) == pages[1]
+
+
+def test_the_sweep_reports_its_two_buckets_separately() -> None:
+    # 07's leak decomposition: never found, against found and called something impersonal.
+    # Recall sees only the first, and the second was the larger of the two on its corpus.
+    pages = ["Bernadette Tuglavina applied.", "The file names Tuglavina. Bernadette agreed."]
+    known = [
+        _person(1, "Bernadette Tuglavina", 0),
+        Span(2, 15, 24, "Tuglavina", EntityType.LOCATION, 0.8, "presidio:SpacyRecognizer"),
+    ]
+    found = sweep(pages, known)
+    assert [s.text for s in swept(found)] == ["Bernadette"]
+    assert [s.text for s in retyped(found)] == ["Tuglavina"]
+    assert original_recogniser(retyped(found)[0]) == "presidio:SpacyRecognizer"
+    # Nothing else fired on an added span, so the sweep is the honest answer for it.
+    assert original_recogniser(swept(found)[0]) == SWEEP_ID
+    # Every span is in exactly one bucket or neither, never both.
+    assert not set(swept(found)) & set(retyped(found))

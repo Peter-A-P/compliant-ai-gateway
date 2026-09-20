@@ -190,4 +190,27 @@ def _runs(text: str, pattern: re.Pattern[str]) -> list[tuple[int, int]]:
     return runs
 
 
-__all__ = ["RETYPED", "SWEEP_ID", "sweep"]
+def swept(spans: Iterable[Span]) -> list[Span]:
+    """The spans the sweep added: occurrences no recogniser found at all."""
+    return [s for s in spans if s.recogniser == SWEEP_ID]
+
+
+def retyped(spans: Iterable[Span]) -> list[Span]:
+    """The spans the sweep re-typed: found, and called something impersonal.
+
+    This is the bucket a recall number cannot give you. 07 split its leaks three ways on
+    2026-09-21 and the split is the argument for keeping this countable: 16 never found,
+    23 found and mislabelled, and zero from the decision rules. The figure it had been
+    publishing as 50 decision errors was never about decisions. A consumer that reports
+    `len(retyped(spans))` next to its recall is reporting the half of detection that recall
+    is blind to, which neither project had until the sweep made it visible.
+    """
+    return [s for s in spans if s.recogniser.startswith(SWEEP_ID + ":")]
+
+
+def original_recogniser(span: Span) -> str:
+    """Which recogniser actually fired, whatever the sweep did to the span afterwards."""
+    return span.recogniser.removeprefix(SWEEP_ID + ":")
+
+
+__all__ = ["RETYPED", "SWEEP_ID", "original_recogniser", "retyped", "sweep", "swept"]

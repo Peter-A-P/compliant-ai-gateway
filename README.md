@@ -104,7 +104,7 @@ the no-guessed-prices rule doing its job, and the document bounds what they hide
 |---|---|---|
 | _not yet_ | | |
 
-| Redaction precision / recall by entity (95% CI) | Rehydration fidelity | Quality cost of redaction (non-inferiority delta) | Residency violations | Cache hit rate / false-hit rate / saved | Audit tamper detection |
+| Redaction precision / recall by entity (95% CI) | Rehydration fidelity | Quality effect of redaction (two-sided delta) | Residency violations | Cache hit rate / false-hit rate / saved, redacted and raw | Audit tamper detection |
 |---|---|---|---|---|---|
 | _not yet_ | | | | | |
 
