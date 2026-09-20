@@ -5,6 +5,46 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.5.5 (2026-09-20)
+
+Project 07 reported two things about 0.5.4 and a number. One was a real gap, one was a
+false alarm here that was a real bug there, and the number is the most interesting of the
+three.
+
+- **`Policy(spans, vault=...)`**, so a policy rebuilt between redacting and rehydrating
+  resolves what the first one found. A policy holds two kinds of value and only one is
+  derivable: the ones from `spans` are derived, so a rebuild over the same spans mints the
+  same placeholders and the guard added in 0.5.3 still fires; the ones the **second pass**
+  finds are discovered while redacting and cannot be recovered from anything, so a rebuilt
+  policy used to leave them in the text with only `unresolved` saying so. A restored entry
+  keeps its placeholder, the counters move past every index restored so a new value cannot
+  be handed one that already means something else, and an entry is stored under the one
+  spelling `rehydrate` reads however it was written. This is also the library half of Part
+  B's Redis vault. 07's report said a rebuilt policy does not refuse; it does, for the
+  derived placeholders, and the docs now say which half is which.
+
+- **The substring false positive 07 hit is not available here**, checked rather than
+  assumed: the surname "Le Drew" made 07's own guard refuse any text containing "withdrew".
+  Both patterns here are bounded by a non-alphanumeric on each side, for whole values and
+  for the parts of a name alike, so "withdrew", "andrews" and "sundrew" are untouched while
+  "Drew" and "Drew's" go. There is a test for it now.
+
+- **07's second corpus recorded in docs/redact.md.** A second name pool, otherwise
+  identical, drops person recall from 96.5% to **94.2%** and overall from 96.3% to
+  **95.4%** on 0.5.4. The drop is small, real, and says the second pass was not the whole
+  story: the first-pass detector loses ground on apostrophes, `Mac` prefixes and accents
+  too, which no fix to the fallback recovers. A recall figure is about a name pool as much
+  as an engine, so the pool now sits beside the number.
+
+- **Also recorded: 0.5.4 measures identically to 0.5.1 on the original corpus, to the
+  decimal, on every entity type.** Four releases of leak fixes moved nothing there, which
+  is what a corpus with no accent, no apostrophe and no `Mac` in it should show. 07 found
+  the same three blind spots in its own second pass, which is the case for running two
+  implementations against each other rather than one against a number.
+
+- The caseless-script limitation is narrowed in the docs: 07 confirms the Labrador
+  Inuttitut in its records is Latin script, so the pass reads it like any other name.
+
 ## 0.5.4 (2026-09-20)
 
 Two things probing the command line turned up, both about reading the ledger rather than

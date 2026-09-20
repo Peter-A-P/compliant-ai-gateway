@@ -200,13 +200,18 @@ cost of an under-mask is a leak.
 
 **Where the second pass cannot help, stated rather than discovered.** It judges a word by
 its capital, so a script without case carries no signal it can read: Chinese, Japanese,
-Korean, Arabic, Hebrew and Inuktitut syllabics are left alone. Masking every word in those
-scripts would be the fail-closed move and would also make a Labrador document unreadable,
+Korean, Arabic and Hebrew are left alone, as are Inuktitut syllabics. Masking every word in
+those scripts would be the fail-closed move and would also make such a document unreadable,
 so the pass does neither and says so here instead. A caller whose records contain those
 scripts brings a detector for them, and the policy substitutes what it is given exactly as
 it does for any other span. Cased scripts beyond ASCII, which is most of them, need no
 detector. There is a test asserting each half of this, so the limit is known rather than
 assumed.
+
+This mattered less than it first looked for the case that prompted it. Project 07 checked
+on 2026-09-20: the Labrador Inuttitut in its records is written in Latin script, so the
+pass reads it like any other name. The gap that was actually losing values there was
+narrower and more ordinary, and it is the one 0.5.2 fixed.
 
 ### The guard
 
@@ -317,6 +322,18 @@ Three things 07 reported alongside the numbers, none of which changed the code:
   past the space that the missing word boundary would otherwise have allowed. There is now a
   golden for it, on 07's suggestion, so the property is asserted rather than lucky.
 
+**A second name pool, and the first number anybody has on these shapes.** Project 07 built
+a second corpus profile on 2026-09-20, `sever eval-names`, identical to the first except
+for the pool the names are drawn from, and measured 0.5.4 against both. On the new pool
+person recall is **94.2%** against 96.5%, and overall **95.4%** against 96.3%. The drop is
+small and it is real, and it says the second pass was not the whole story: the first-pass
+detector loses ground on these shapes too, which no fix to the fallback can recover.
+
+Two things follow. A recall figure is about a name pool as much as about an engine, so the
+pool belongs beside the number. And the apostrophes, the `Mac` and `Mc` prefixes and the
+accents that 0.5.2 was about are still costing something after the fix, in the part of the
+pipeline that does the finding rather than the part that catches misses.
+
 **What the 96.3% could not see.** The corpus is synthetic and its names are ASCII, so no
 row in the table exercises an accented name, an internal-capital surname or a postcode
 judged in pieces, and every one of those was releasing values in clear when the table was
@@ -324,6 +341,14 @@ produced. They were found the next day by probing the second pass with the names
 corpus does not contain, and fixed in 0.5.2. A measured number is evidence about the inputs
 that were measured; it is not a statement about the inputs nobody thought of, and the
 distance between those two is where this class of bug lives.
+
+That cuts both ways, and 07 reported the other half on 2026-09-20: **0.5.4 measures
+identically to 0.5.1 on the original corpus, to the decimal, on every entity type.** Four
+releases of leak fixes moved nothing there, which is exactly what a corpus with no accent,
+no apostrophe and no `Mac` in it should show. 07 also found the same three blind spots in
+its own detector-independent pass, the component its published argument rests on, which is
+the case for running two implementations against each other rather than one against a
+number.
 
 **One bug in 07's corpus that this engine found**, worth recording because it is what running
 two implementations against each other is for: 07's personas carried Social Insurance Numbers
@@ -344,3 +369,26 @@ In memory, per policy, never written anywhere by the library. Part B moves it to
 under a per-team key with a short TTL for the proxy, where a request and its answer are in
 different processes; the library object does not need that, and a project that does can
 serialise `policy.vault` itself, deliberately, into a place it controls.
+
+**A policy holds two kinds of value and only one of them is derivable.** The values that
+come from `spans` are derived, so rebuilding a policy over the same spans mints the same
+placeholders: `<PERSON_1>` is the same person in both, and the guard against
+placeholder-shaped source text still fires. The values the **second pass** finds are
+discovered while redacting, not derived from anything, so a policy rebuilt between
+redacting and rehydrating has never heard of them. It leaves them in the text, and
+`unresolved` is the only thing that says so.
+
+Pass the earlier vault to close that:
+
+```python
+first = Policy(spans)
+body = first.outbound(prompt)
+# ... another process, another day ...
+later = Policy(spans, vault=stored_vault)
+answer = later.rehydrate(model_output)     # resolves the second pass's values too
+```
+
+A restored entry keeps its placeholder, the counters move past every index restored so a
+new value cannot be handed a placeholder that already means something else, and an entry is
+stored under the one spelling `rehydrate` reads however the caller wrote it. A key that
+names no entity type this version knows is refused rather than restored quietly.

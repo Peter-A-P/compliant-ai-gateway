@@ -496,6 +496,57 @@ def test_placeholder_shaped_text_in_a_document_never_becomes_somebody_s_name() -
     assert policy.minted_placeholders_in("nothing here") == []
 
 
+def test_a_name_is_matched_as_a_whole_word_and_never_inside_another() -> None:
+    """Project 07 hit this in its own guard on 2026-09-20: the surname "Le Drew" made it
+    refuse any text containing "withdrew". Both patterns here are bounded by non-alphanumeric
+    on each side, for the whole value and for the parts of a name alike, so the same false
+    positive is not available. Asserted rather than assumed, since 07 asked."""
+    policy = Policy([_span("Le Drew")])
+    for text in ["the applicant withdrew the request", "andrews filed it", "sundrew"]:
+        assert policy.outbound(text) == text
+        assert policy.check(text) == []
+    # The name itself, and its parts, still go.
+    assert policy.outbound("Le Drew withdrew it") == "<PERSON_1> withdrew it"
+    assert policy.outbound("Drew signed") == "<PERSON_1.2> signed"
+    assert policy.outbound("Drew's file") == "<PERSON_1.2>'s file"
+
+
+def test_a_rebuilt_policy_resolves_what_the_first_one_found_when_given_its_vault() -> None:
+    """The values from spans are derived, so a policy rebuilt over the same spans mints the
+    same placeholders and the guard still fires. The values the second pass finds are
+    discovered while redacting, so a rebuilt policy has never heard of them: without the
+    vault it leaves them in the text and only `unresolved` says so."""
+    spans = [_span("Marie Chaulk")]
+    first = Policy(spans)
+    out = first.outbound("Marie Chaulk met Wallace Penashue in Gander; Marie again")
+    assert out == "<PERSON_1> met <NAME_LIKE_1> in <NAME_LIKE_2>; <PERSON_1.1> again"
+
+    bare = Policy(spans)
+    assert bare.unresolved(out) == ["<NAME_LIKE_1>", "<NAME_LIKE_2>"]
+    assert "Wallace Penashue" not in bare.rehydrate(out), "a second-pass value is not derivable"
+    # The guard does carry across instances for the placeholders the spans derive.
+    with pytest.raises(RedactionRefused):
+        bare.outbound(out)
+
+    restored = Policy(spans, vault=first.vault)
+    assert restored.rehydrate(out) == first.rehydrate(out)
+    assert restored.unresolved(out) == []
+
+
+def test_a_restored_vault_keeps_its_placeholders_and_new_values_get_fresh_ones() -> None:
+    first = Policy([_span("Marie Chaulk")])
+    second = Policy([_span("Marie Chaulk"), _span("Aaron Rideout", start=20)], vault=first.vault)
+    assert second.vault["<PERSON_1>"] == "Marie Chaulk"
+    assert second.vault["<PERSON_2>"] == "Aaron Rideout", "the counter moved past what it restored"
+    assert second.vault["<PERSON_1.2>"] == "Chaulk", "a restored name part keeps its placeholder"
+    # Written any way round, a vault entry is stored under the one spelling rehydrate reads.
+    loose = Policy([], vault={"PERSON_1": "Marie Chaulk", "<person_2>": "Aaron Rideout"})
+    assert dict(loose.vault) == {"<PERSON_1>": "Marie Chaulk", "<PERSON_2>": "Aaron Rideout"}
+    assert loose.rehydrate("<PERSON_1> and <PERSON_2>") == "Marie Chaulk and Aaron Rideout"
+    with pytest.raises(ValueError, match="no entity type"):
+        Policy([], vault={"<NOPE_1>": "x"})
+
+
 def test_outbound_is_for_source_text_and_says_so_when_handed_its_own_output() -> None:
     policy = Policy([_span("Marie Chaulk")])
     out = policy.outbound("Marie Chaulk called")

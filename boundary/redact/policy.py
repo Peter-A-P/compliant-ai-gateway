@@ -166,6 +166,14 @@ class Policy:
     allow_patterns: regular expressions whose whole match the second pass leaves alone, for
         shapes rather than words: an ISO date, a dollar amount, a section reference.
     vocabulary: the base vocabulary; the default is `DECISION_VOCABULARY`.
+    vault: a vault from an earlier policy, to carry its placeholders into this one.
+
+        A policy learns two kinds of value. The ones from `spans` it derives, so rebuilding
+        it over the same spans mints the same placeholders; the ones the second pass finds
+        it discovers only while redacting, so a policy rebuilt between redacting and
+        rehydrating has never heard of them. It then leaves them in the text, and only
+        `unresolved` says so. Pass the earlier policy's `vault` here and the round trip
+        holds across processes, which is also what the Redis vault in Part B is for.
     """
 
     def __init__(
@@ -175,6 +183,7 @@ class Policy:
         allow: Collection[str] = (),
         allow_patterns: Sequence[str | re.Pattern[str]] = (),
         vocabulary: Collection[str] = DECISION_VOCABULARY,
+        vault: Mapping[str, str] | None = None,
     ) -> None:
         self._allow: frozenset[str] = frozenset(
             {w.casefold() for w in vocabulary} | {w.casefold() for w in allow}
@@ -205,11 +214,42 @@ class Policy:
         # capitalised in prose, and an ordinary word that shares its spelling is not.
         self._parts: dict[str, str] = {}
         self._counters: dict[EntityType, int] = defaultdict(int)
+        # Restored first, so that building from the spans reuses these placeholders rather
+        # than minting a second one for the same value.
+        if vault is not None:
+            self._restore(vault)
         self._build(list(spans))
         self._pattern = self._compile()
         self._parts_pattern = self._compile_parts()
 
     # -- building --------------------------------------------------------------------------
+
+    def _restore(self, vault: Mapping[str, str]) -> None:
+        """Take on an earlier policy's placeholders, so this one resolves what that one
+        minted. The counters move past every index restored, so a value this policy meets
+        for the first time cannot be given a placeholder that already means something else.
+        """
+        for placeholder, value in vault.items():
+            m = PLACEHOLDER.fullmatch(placeholder)
+            if m is None:
+                raise ValueError(f"{placeholder!r} is not a placeholder this library writes")
+            name = (m.group(1) or m.group(3)).upper()
+            if name not in _ENTITY_NAMES:
+                raise ValueError(f"{placeholder!r} names no entity type this version knows")
+            number = m.group(2) or m.group(4)
+            # Stored under the canonical spelling whatever the caller wrote, because that is
+            # the only form `rehydrate` looks up. A vault that came back from somewhere else
+            # having lost its brackets would otherwise restore without complaint and then
+            # resolve nothing.
+            canonical = f"<{name}_{number}>"
+            self._vault[canonical] = value
+            if "." in number:
+                # A part of a name, matched exactly rather than normalised.
+                self._parts[value] = placeholder
+            else:
+                self._table[_norm(value)] = placeholder
+            entity = EntityType(name)
+            self._counters[entity] = max(self._counters[entity], int(number.split(".")[0]))
 
     def _mint(self, entity_type: EntityType, value: str) -> str:
         key = _norm(value)
@@ -265,7 +305,8 @@ class Policy:
         owners: dict[str, list[tuple[str, str]]] = defaultdict(list)
         for placeholder, name in persons:
             for part in self._name_parts(name):
-                if _norm(part) not in self._table:
+                # A part a restored vault already carries keeps the placeholder it had.
+                if _norm(part) not in self._table and part not in self._parts:
                     owners[_norm(part)].append((placeholder, part))
         for key, claims in owners.items():
             if key in self._table:
