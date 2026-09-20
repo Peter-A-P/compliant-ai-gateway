@@ -52,10 +52,12 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from boundary.config import Residency
+from boundary.ledger import data_class as data_class_filter
 
 # Null in the column. A label rather than None so that it prints, sorts and compares like
-# every other value everywhere downstream.
-UNDECLARED = "undeclared"
+# every other value everywhere downstream. The same word the data-class filter uses for a
+# null class, so the two compliance reports say "nobody said" the same way.
+UNDECLARED = data_class_filter.UNDECLARED
 
 # Lower is narrower. Only the classes this version knows about are in here; see reach().
 _REACH: Mapping[str, int] = {
@@ -154,18 +156,23 @@ def summarise(
     *,
     month: str | None = None,
     project: str | None = None,
+    data_class: str | None = None,
 ) -> list[ResidencyGroup]:
     """Group ledger rows by provider, region and residency.
 
     Widest reach first, so the rows a compliance reader cares about are at the top instead of
     in alphabetical order somewhere in the middle. `month` is a `YYYY-MM` prefix match on
-    `ts_utc`, the same filter `ledger report` uses.
+    `ts_utc`, the same filter `ledger report` uses. `data_class` (0.4) keeps only the rows
+    whose caller declared that class, or `undeclared` for the rows that declared none, which
+    is how "which calls carried personal data, and where did they go" is one command.
     """
     acc: dict[tuple[str, str, str], _Acc] = defaultdict(_Acc)
     for r in rows:
         if month and not str(r["ts_utc"]).startswith(month):
             continue
         if project and str(r["project"]) != project:
+            continue
+        if not data_class_filter.matches(r, data_class):
             continue
         key = (str(r["provider"]), str(r["region"] or "-"), label(_opt_str(r.get("residency"))))
         a = acc[key]

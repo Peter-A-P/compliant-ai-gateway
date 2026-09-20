@@ -28,6 +28,47 @@ class Mode(StrEnum):
     PASSTHROUGH = "passthrough"
 
 
+class DataClass(StrEnum):
+    """What kind of data a request carries, declared by the caller. PLAN.md section B2.2.
+
+    The vocabulary is the one Part B's policy will enforce, so that a row written today can
+    be read by that policy later without translation. In 0.4 the class is recorded and
+    reported and nothing more: no route is refused, no layer is required, and the library
+    still never inspects content to guess one. Absent means no claim was made, which the
+    ledger keeps apart from every declared class, as it does for residency.
+
+    PUBLIC: no confidentiality; may go anywhere.
+    INTERNAL: not for publication, but identifies nobody.
+    PERSONAL: identifies or could identify a person.
+    SENSITIVE: personal data whose disclosure would cause serious harm (health, financial,
+        legal), and anything under a legislative access restriction.
+    """
+
+    PUBLIC = "public"
+    INTERNAL = "internal"
+    PERSONAL = "personal"
+    SENSITIVE = "sensitive"
+
+
+def data_class_value(value: DataClass | str | None) -> str | None:
+    """The ledger value for a caller's declaration, or a ValueError naming the vocabulary.
+
+    Refused before anything else happens to the call: an unknown class in the column would
+    be a row a later reader cannot place, and the residency report already shows what
+    that costs. `None` is not refused; it is the honest absence of a claim.
+    """
+    if value is None:
+        return None
+    try:
+        return DataClass(value).value
+    except ValueError:
+        known = ", ".join(c.value for c in DataClass)
+        raise ValueError(
+            f"data_class {value!r} is not one of {known}; the vocabulary is closed so that "
+            "a ledger row can be read by the policy that will enforce it (PLAN.md B2.2)"
+        ) from None
+
+
 _EMPTY: Mapping[str, Any] = MappingProxyType({})
 
 
@@ -148,6 +189,11 @@ class ChatResponse:
     ttft_ms: streamed calls only (0.3): wall time from sending the request to the first
         content delta arriving, or None when the call was not streamed or no content
         arrived. `latency_ms` on a streamed call runs to the last byte.
+    data_class: the class the caller declared on this call (0.4), as written to the row,
+        or None when none was declared.
+    call_uid: the row's `call_uid` (0.4). `ledger_id` is local to one file and is
+        reassigned by `ledger merge`; this is the identifier that survives it, so a
+        caller keeping its own records (which document, which page) joins on this one.
     """
 
     text: str | None
@@ -170,6 +216,8 @@ class ChatResponse:
     price_sha256: str | None = None
     trace_id: str | None = None
     ttft_ms: float | None = None
+    data_class: str | None = None
+    call_uid: str | None = None
 
     @property
     def ok(self) -> bool:

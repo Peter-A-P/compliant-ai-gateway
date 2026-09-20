@@ -1,4 +1,4 @@
-# The ledger, schema v6
+# The ledger, schema v7
 
 One SQLite file per environment (`ledger.path` in `boundary.yaml`, or `ledger_path` on the
 gateway), combined by `boundary ledger merge`. Writing locally rather than to one central
@@ -25,9 +25,10 @@ the ledger would be worse than a null.
 collected in another, often hours later, so the rows written at submit have to be findable
 again by something the vendor also knows.
 
-**v4 (0.2.1)** adds `residency`, **v5 (0.2.2)** adds `price_sha256`, and **v6 (0.3)** adds
-`ttft_ms`, each one nullable column and nothing else. No existing row is backfilled by any
-of them: a value invented after the fact would be a claim the call never made.
+**v4 (0.2.1)** adds `residency`, **v5 (0.2.2)** adds `price_sha256`, **v6 (0.3)** adds
+`ttft_ms`, and **v7 (0.4)** adds `data_class`, each one nullable column and nothing else. No
+existing row is backfilled by any of them: a value invented after the fact would be a claim
+the call never made.
 
 The upgrade runs one step at a time, so what a step does depends on where the file started
 rather than where it ended. That matters for the uid backfill: uids are invented only for a
@@ -52,6 +53,7 @@ hand, and inventing one would let the same call merge twice.
 | `model_returned` | text or null | The identifier the vendor reported |
 | `region` | text or null | From the route or provider entry. Where the request was **sent**, never where it was processed |
 | `residency` | text or null | `single-region`, `geo` or `global`, as declared on the provider entry (v4). Null when none was declared, which is not the same as `global` |
+| `data_class` | text or null | `public`, `internal`, `personal` or `sensitive`, as the **caller** declared on the call (v7). Null when it declared none, which is not the same as `public`. A declaration and never an inference: the library does not read content to guess one. Validated before the row is written, so the column never holds a word outside the vocabulary |
 | `input_tokens` | integer | As returned. For OpenAI-compatible hosts this is `prompt_tokens` minus cached tokens |
 | `output_tokens` | integer | As returned |
 | `cache_read_tokens` | integer | As returned (Anthropic `cache_read_input_tokens`; OpenAI `cached_tokens`) |
@@ -137,6 +139,36 @@ when they are looking at one.
 local server**, where the request never reaches a network. Every hosted entry declares `geo`,
 `global`, or nothing. That is the state of the market rather than a gap in the configuration,
 and `tests/test_residency.py` asserts it so that the day it changes is a failing test.
+
+## Data class queries
+
+`data_class` (v7) is the other half of the compliance question. `residency` says how far a
+request was allowed to travel; `data_class` says what the caller put in it. Neither alone is
+the audit answer, and both commands read the column:
+
+```
+boundary ledger report                              # a `class` column in every row
+boundary ledger report --data-class personal        # only the calls that declared personal
+boundary ledger residency --data-class personal     # ...and where they went
+boundary ledger residency --data-class undeclared   # the calls that declared nothing
+```
+
+Three rules, the same direction as the residency ones:
+
+- **`undeclared` is its own answer**, filtered for by name. A row with a null class is not
+  `public`; it is a row whose caller said nothing, and the list of those is what a reviewer
+  wants before Part B's policy starts refusing them.
+- **A misspelt filter exits 2** rather than matching nothing. An empty report reads as "no
+  personal data left the boundary", which is the one wrong answer this column must never
+  give.
+- **The report groups by class without being asked.** The ordinary `ledger report` carries a
+  `class` column in its key, so the month's table already says which calls carried personal
+  data and which made no claim, without anybody having to think to ask.
+
+**What a clean report does not prove.** The class is what the caller declared, not what the
+request contained. A caller that sends personal data under `public` has lied to the ledger,
+and nothing here can tell. Part B's redaction layer is what changes the payload; this column
+is what lets the policy be checked against calls made before the layer existed.
 
 ## Spend queries
 

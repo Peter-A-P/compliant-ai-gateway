@@ -1,6 +1,6 @@
 [project]
 name = "boundary"
-version = "0.3.0"
+version = "0.5.1"
 description = "One library every model call in the portfolio goes through: raw-HTTP adapters, routing by configuration, a cost ledger row and a telemetry span per call, spend caps, and an inviolable pass-through mode."
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
@@ -32,6 +32,12 @@ dependencies = [
 # fetched through this library's own pinned httpx client so that it verifies TLS against the
 # same store every vendor call does. See boundary/credentials.py.
 vertex = ["google-auth>=2,<3"]
+# Presidio, for the entity types a regular expression cannot find: people, places,
+# organisations. Optional because it pulls in spaCy and needs a model downloaded separately
+# (docs/redact.md), and because everything else in boundary.redact, the built-in
+# recognisers, the analyzer's guarantees and the whole policy, works without it. Below 3
+# because 2.x is the line whose analyzer result shape the adapter reads.
+redact = ["presidio-analyzer>=2,<3"]
 
 [dependency-groups]
 dev = [
@@ -99,6 +105,12 @@ ignore_missing_imports = true
 # rather than assumed. Its absence must not fail the type check.
 [[tool.mypy.overrides]]
 module = ["google.*"]
+ignore_missing_imports = true
+
+# Same reason: the `redact` extra is optional, and the adapter in boundary/redact/presidio.py
+# is typed against its own protocol rather than against Presidio's classes.
+[[tool.mypy.overrides]]
+module = ["presidio_analyzer", "presidio_analyzer.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

@@ -1,10 +1,11 @@
 """boundary: the one library every model call in the portfolio goes through.
 
 Public interface (frozen 2026-09-08, see docs/interface.md):
-    Gateway, ChatRequest, ChatResponse, Usage, Mode, RawResponse, and the errors below.
+    Gateway, ChatRequest, ChatResponse, Usage, Mode, DataClass (0.4), RawResponse, and the
+    errors below.
 """
 
-__version__ = "0.3.0"
+__version__ = "0.5.1"
 
 from boundary.errors import (
     BatchNotReady,
@@ -18,7 +19,7 @@ from boundary.errors import (
 )
 from boundary.gateway import Gateway, RawResponse
 from boundary.providers.base import BatchItemResult, BatchProgress
-from boundary.types import BatchHandle, ChatRequest, ChatResponse, Mode, Usage
+from boundary.types import BatchHandle, ChatRequest, ChatResponse, DataClass, Mode, Usage
 
 __all__ = [
     "BatchHandle",
@@ -29,6 +30,7 @@ __all__ = [
     "ChatRequest",
     "ChatResponse",
     "ConfigError",
+    "DataClass",
     "Gateway",
     "Mode",
     "PassthroughViolation",

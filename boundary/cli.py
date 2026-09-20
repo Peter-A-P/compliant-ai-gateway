@@ -27,6 +27,7 @@ from boundary.config import (
 )
 from boundary.errors import BatchNotReady, BoundaryError
 from boundary.gateway import Gateway
+from boundary.ledger import data_class as data_class_filter
 from boundary.ledger import residency as residency_report
 from boundary.ledger.store import LedgerStore
 from boundary.types import ChatRequest, Mode
@@ -290,16 +291,33 @@ def _open_ledger(args: argparse.Namespace) -> LedgerStore | None:
     return LedgerStore(path)
 
 
+def _data_class_arg(args: argparse.Namespace) -> str | None:
+    """The validated `--data-class` filter, or None. A misspelt class is refused rather than
+    matched against nothing, because an empty report reads as "no such calls"."""
+    wanted = getattr(args, "data_class", None)
+    return data_class_filter.check_filter(wanted) if wanted else None
+
+
 def cmd_ledger_report(args: argparse.Namespace) -> int:
     store = _open_ledger(args)
     if store is None:
         return 1
     try:
+        wanted = _data_class_arg(args)
+    except ValueError as bad_filter:
+        store.close()
+        print(f"error: {bad_filter}", file=sys.stderr)
+        return 2
+    try:
         rows = store.rows()
         month = args.month
         if month:
             rows = [r for r in rows if str(r["ts_utc"]).startswith(month)]
-        by: dict[tuple[str, str, str, str], dict[str, float]] = defaultdict(
+        rows = [r for r in rows if data_class_filter.matches(r, wanted)]
+        # The declared class is part of the key rather than a filter only, so that the
+        # ordinary report already says which calls carried personal data and which made no
+        # claim at all, without anybody having to think to ask.
+        by: dict[tuple[str, str, str, str, str], dict[str, float]] = defaultdict(
             lambda: {"calls": 0, "errors": 0, "uncosted": 0, "cost": 0.0, "in": 0, "out": 0}
         )
         for r in rows:
@@ -307,6 +325,7 @@ def cmd_ledger_report(args: argparse.Namespace) -> int:
                 str(r["ts_utc"])[:7],
                 str(r["env"] or "-"),
                 str(r["project"]),
+                data_class_filter.label(r.get("data_class")),
                 str(r["model_requested"]),
             )
             b = by[key]
@@ -320,18 +339,20 @@ def cmd_ledger_report(args: argparse.Namespace) -> int:
             if r["cost_usd"] is not None and r["costed"]:
                 b["cost"] += float(r["cost_usd"])
         print(
-            f"{'month':<8} {'env':<8} {'project':<24} {'model':<44} {'calls':>6} {'err':>4} {'unc':>4} {'in':>9} {'out':>8} {'USD':>10}"
+            f"{'month':<8} {'env':<8} {'project':<24} {'class':<10} {'model':<44} {'calls':>6} {'err':>4} {'unc':>4} {'in':>9} {'out':>8} {'USD':>10}"
         )
         total = 0.0
-        for (m, e, p, model), b in sorted(by.items()):
+        for (m, e, p, dc, model), b in sorted(by.items()):
             total += b["cost"]
             print(
-                f"{m:<8} {e:<8} {p:<24} {model:<44} {int(b['calls']):>6} {int(b['errors']):>4} "
+                f"{m:<8} {e:<8} {p:<24} {dc:<10} {model:<44} {int(b['calls']):>6} {int(b['errors']):>4} "
                 f"{int(b['uncosted']):>4} {int(b['in']):>9} {int(b['out']):>8} {b['cost']:>10.4f}"
             )
         print(
-            f"{'total':<8} {'':<8} {'':<24} {'':<44} {len(rows):>6} {'':>4} {store.uncosted_count():>4} {'':>9} {'':>8} {total:>10.4f}"
+            f"{'total':<8} {'':<8} {'':<24} {'':<10} {'':<44} {len(rows):>6} {'':>4} {store.uncosted_count():>4} {'':>9} {'':>8} {total:>10.4f}"
         )
+        if wanted is not None:
+            print(f"filtered to data class {wanted}: {len(rows)} row(s)")
         in_flight = sum(1 for r in rows if r["error_type"] == "in_flight")
         if in_flight:
             print(
@@ -355,12 +376,18 @@ def cmd_ledger_residency(args: argparse.Namespace) -> int:
     if store is None:
         return 1
     try:
+        wanted = _data_class_arg(args)
         groups = residency_report.summarise(
-            store.rows(), month=args.month, project=args.project_filter
+            store.rows(), month=args.month, project=args.project_filter, data_class=wanted
         )
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
     finally:
         store.close()
 
+    if wanted is not None:
+        print(f"calls whose caller declared data class {wanted}:")
     if not groups:
         print("no rows match")
         return 0
@@ -575,10 +602,22 @@ def main(argv: list[str] | None = None) -> int:
     report = ledger.add_parser("report", help="calls, tokens and cost per project, model and month")
     report.add_argument("--month", help="YYYY-MM filter")
     report.add_argument("--ledger", help="path to a ledger file (default from config)")
+    report.add_argument(
+        "--data-class",
+        dest="data_class",
+        help="only rows whose caller declared this class (public, internal, personal, "
+        "sensitive), or 'undeclared' for the rows that declared none",
+    )
     report.set_defaults(func=cmd_ledger_report)
     resid = ledger.add_parser("residency", help="calls per provider, region and declared residency")
     resid.add_argument("--month", help="YYYY-MM filter")
     resid.add_argument("--ledger", help="path to a ledger file (default from config)")
+    resid.add_argument(
+        "--data-class",
+        dest="data_class",
+        help="only rows whose caller declared this class, or 'undeclared': which calls "
+        "carried personal data, and where did they go",
+    )
     resid.add_argument(
         "--project",
         dest="project_filter",

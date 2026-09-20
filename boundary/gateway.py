@@ -77,7 +77,15 @@ from boundary.rawstore import RawStore, sha256_hex
 from boundary.routes import ModelRef, resolve, split_explicit
 from boundary.telemetry import Telemetry
 from boundary.transport import TRANSPORT_ERRORS, HttpResult, Transport
-from boundary.types import BatchHandle, ChatRequest, ChatResponse, Mode, Usage
+from boundary.types import (
+    BatchHandle,
+    ChatRequest,
+    ChatResponse,
+    DataClass,
+    Mode,
+    Usage,
+    data_class_value,
+)
 
 RETRY_STATUSES = frozenset({408, 409, 425, 429, 500, 502, 503, 504})
 ZERO_PRICE = PriceEntry(
@@ -230,8 +238,14 @@ class Gateway:
         purpose: str,
         run_id: str | None = None,
         mode: Mode = Mode.STANDARD,
+        data_class: DataClass | str | None = None,
     ) -> ChatResponse:
-        call = self._prepare(request, purpose=purpose, run_id=run_id, mode=mode)
+        """One call. `data_class` (0.4) is what kind of data the request carries, from the
+        closed vocabulary in `DataClass`; it is written to the row and the span and enforced
+        by nothing yet. None means no claim, and an unknown word is refused before the row."""
+        call = self._prepare(
+            request, purpose=purpose, run_id=run_id, mode=mode, data_class=data_class
+        )
         if call.cached is not None:
             return self._finish(call, call.cached, None, 0, cached=True)
         result, error_type, retries = self._send_sync(call)
@@ -244,8 +258,11 @@ class Gateway:
         purpose: str,
         run_id: str | None = None,
         mode: Mode = Mode.STANDARD,
+        data_class: DataClass | str | None = None,
     ) -> ChatResponse:
-        call = self._prepare(request, purpose=purpose, run_id=run_id, mode=mode)
+        call = self._prepare(
+            request, purpose=purpose, run_id=run_id, mode=mode, data_class=data_class
+        )
         if call.cached is not None:
             return self._finish(call, call.cached, None, 0, cached=True)
         result, error_type, retries = await self._send_async(call)
@@ -258,6 +275,7 @@ class Gateway:
         purpose: str,
         run_id: str | None = None,
         mode: Mode = Mode.STANDARD,
+        data_class: DataClass | str | None = None,
     ) -> ChatResponse:
         """One call, streamed, returned whole: the full text, the usage from the final event,
         and `ttft_ms`, the wall time from sending the request to the first content delta.
@@ -271,7 +289,14 @@ class Gateway:
         One ledger row per call, not per event. `latency_ms` runs to the last byte.
         `openai_compat` only in 0.3; other kinds raise `NotImplementedError` by name.
         """
-        call = self._prepare(request, purpose=purpose, run_id=run_id, mode=mode, stream=True)
+        call = self._prepare(
+            request,
+            purpose=purpose,
+            run_id=run_id,
+            mode=mode,
+            stream=True,
+            data_class=data_class,
+        )
         result, error_type, retries = self._stream_sync(call)
         return self._finish(call, result, error_type, retries, cached=False)
 
@@ -282,10 +307,18 @@ class Gateway:
         purpose: str,
         run_id: str | None = None,
         mode: Mode = Mode.STANDARD,
+        data_class: DataClass | str | None = None,
     ) -> ChatResponse:
         """The async twin of `chat_stream`. Sixty-four of these may be in flight at once
         against one host; the transport's pool is sized for it (boundary/transport.py)."""
-        call = self._prepare(request, purpose=purpose, run_id=run_id, mode=mode, stream=True)
+        call = self._prepare(
+            request,
+            purpose=purpose,
+            run_id=run_id,
+            mode=mode,
+            stream=True,
+            data_class=data_class,
+        )
         result, error_type, retries = await self._stream_async(call)
         return self._finish(call, result, error_type, retries, cached=False)
 
@@ -299,10 +332,12 @@ class Gateway:
         purpose: str,
         run_id: str | None = None,
         mode: Mode = Mode.STANDARD,
+        data_class: DataClass | str | None = None,
     ) -> RawResponse:
         """Escape hatch for a vendor feature the library does not model. Traced and
         ledgered; costed only when the response carries usage the adapter recognises and a
         price exists for the model it names."""
+        declared = data_class_value(data_class)
         pc = self._provider(provider)
         adapter = self._adapter(pc)
         prices = self._prices_for(pc)
@@ -331,6 +366,7 @@ class Gateway:
             price_sha256=prices.rates_sha256 if prices is not None else None,
             request_sha256=sha256_hex(built.body),
             env=self.env,
+            data_class=declared,
         )
         self._check_caps(run_id, estimate=0.0)
         span = self.telemetry.start("boundary.raw")
@@ -390,6 +426,7 @@ class Gateway:
         *,
         purpose: str,
         run_id: str | None = None,
+        data_class: DataClass | str | None = None,
     ) -> BatchHandle:
         """Submit many requests as one vendor batch, billed at the batch rate.
 
@@ -405,7 +442,10 @@ class Gateway:
 
         The caps are checked once, for the whole batch: a vendor bills for every request the
         moment it accepts the batch, so there is no such thing as being refused half way in.
+        One `data_class` covers the batch and is written to every row: the requests travel
+        together, so they carry the class of the most sensitive one.
         """
+        declared = data_class_value(data_class)
         if len(requests) == 0:
             raise ValueError("a batch needs at least one request")
         refs = [resolve(r.model, self.config, Mode.STANDARD) for r in requests]
@@ -465,6 +505,7 @@ class Gateway:
                     request_sha256=sha256_hex(single.body),
                     call_uid=custom_id,
                     env=self.env,
+                    data_class=declared,
                 )
             )
 
@@ -774,6 +815,8 @@ class Gateway:
             price_list=prices.name if cost is not None and prices is not None else None,
             price_sha256=(prices.rates_sha256 if cost is not None and prices is not None else None),
             trace_id=row.trace_id,
+            data_class=row.data_class,
+            call_uid=row.call_uid,
         )
 
     def _end_batch_span(
@@ -808,6 +851,7 @@ class Gateway:
                     "boundary.cost_usd": row.cost_usd,
                     "boundary.costed": row.costed,
                     "boundary.ledger_id": row.id,
+                    "boundary.data_class": row.data_class,
                 }
             )
         Telemetry.set_attributes(span, attributes)
@@ -948,7 +992,11 @@ class Gateway:
         run_id: str | None,
         mode: Mode,
         stream: bool = False,
+        data_class: DataClass | str | None = None,
     ) -> _Call:
+        # Validated first, before the model is resolved and long before a row exists: an
+        # unknown class is a caller's mistake, and the place to learn of it is the call site.
+        declared = data_class_value(data_class)
         if stream and mode is Mode.PASSTHROUGH:
             # Refused before the model is resolved, so a pass-through caller that reaches for
             # a stream learns it here and not from a row. Pass-through's guarantee is one body
@@ -1007,6 +1055,7 @@ class Gateway:
             cost_usd=estimate if entry is not None else None,
             request_sha256=sha256_hex(built.body),
             env=self.env,
+            data_class=declared,
         )
         span = self.telemetry.start("boundary.chat_stream" if stream else "boundary.chat")
         ids = Telemetry.ids(span)
@@ -1332,6 +1381,8 @@ class Gateway:
             ),
             trace_id=call.row.trace_id,
             ttft_ms=call.ttft_ms,
+            data_class=call.row.data_class,
+            call_uid=call.row.call_uid,
         )
 
     def _record(
@@ -1404,6 +1455,7 @@ class Gateway:
                 "boundary.retries": row.retries,
                 "boundary.latency_ms": row.latency_ms,
                 "boundary.ttft_ms": row.ttft_ms,
+                "boundary.data_class": row.data_class,
                 "boundary.ledger_id": row.id,
                 "boundary.version": row.boundary_version,
             },

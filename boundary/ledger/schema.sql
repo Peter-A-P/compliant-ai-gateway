@@ -1,4 +1,4 @@
--- Ledger schema v6. Columns are additive only: never renamed, never removed.
+-- Ledger schema v7. Columns are additive only: never renamed, never removed.
 -- One row per call. A row is inserted before the request leaves the process
 -- (error_type = 'in_flight', cost_usd = the pre-call estimate) and completed after,
 -- so a process killed mid-call still leaves its row.
@@ -23,6 +23,12 @@
 --             null for every call that was not streamed. `latency_ms` on a streamed call
 --             runs to the last byte, so the two together say how long the caller waited
 --             before anything appeared and how long the whole answer took.
+-- v7 (0.4, September 2026) adds one column for the caller's data classification:
+--   data_class  one of public, internal, personal, sensitive (PLAN.md B2.2), as the
+--               caller declared it on the call, or null when nothing was declared. It
+--               is a declaration and never an inference from content. Part B's policy
+--               will act on it; in 0.4 it is recorded and reported, which is what lets
+--               an audit ask "which calls carried personal data, and where did they go".
 --
 -- A file is migrated in place on open, one step at a time and additively: v1 gains
 -- call_uid and env with call_uid backfilled deterministically from the row's own
@@ -65,7 +71,8 @@ CREATE TABLE IF NOT EXISTS ledger (
     span_id             TEXT,
     raw_path            TEXT,
     batch_id            TEXT,
-    ttft_ms             REAL
+    ttft_ms             REAL,
+    data_class          TEXT
 );
 
 -- Indexes over columns that every schema version has. The indexes over call_uid and

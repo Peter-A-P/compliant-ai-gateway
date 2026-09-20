@@ -35,9 +35,11 @@
 
 version: 1
 # 400, from 350 on 2026-09-19, because the portfolio line has to hold every named project's
-# month at once (a test asserts it) and 06's line below took the named total to 380. Peter to
-# confirm with the 06 amounts. The vendor console caps above are unchanged by this.
-portfolio_monthly_usd: 400
+# month at once (a test asserts it) and 06's line below took the named total to 380.
+# 450, from 400 later the same day, for the same reason: 07's line below takes the named
+# total to 430. Both raises confirmed by Peter 2026-09-19 with the 06 and 07 amounts. The
+# vendor console caps above are unchanged by this.
+portfolio_monthly_usd: 450
 
 projects:
   # 03 drift runs: about US$9 per full run; two dry runs plus the Sep 27 official run.
@@ -61,11 +63,22 @@ projects:
   # Anthropic batch for the distillation set, with headroom for a rerun. The load tests go to
   # self-hosted hosts costed from 06's own measured rates (docs/prices.md, self-hosted
   # overlay), so they draw on this line only at those rates. Amounts proposed by 06 and
-  # entered 2026-09-19; PETER TO CONFIRM before 06's first vendor call. Raise them here,
-  # deliberately, in a commit if they bind; never bypass a cap in code.
+  # entered 2026-09-19; confirmed by Peter 2026-09-19. Raise them here, deliberately, in a
+  # commit if they bind; never bypass a cap in code.
   fraction-of-the-bill:
     monthly_usd: 100
     per_run_usd: 30
+  # 07 access-to-information redaction. A full run is about 3,000 model decisions on the
+  # residual the rules could not decide, at roughly 1,500 input tokens (page context cached
+  # per page) and 80 output. On Haiku 4.5 that is about US$5.70 a run, which is above the
+  # per-run default of 4, so without this entry the first real run would be refused partway
+  # through. The project's plan budgets six full runs across configurations and thresholds
+  # plus a mid-tier ablation on a 50-page subset: US$34, which is CA$45 of a CA$55 line.
+  # Amounts proposed by 07 and entered 2026-09-19; confirmed by Peter 2026-09-19. Raise them
+  # here, deliberately, in a commit if they bind; never bypass a cap in code.
+  access-to-information-redaction:
+    monthly_usd: 50
+    per_run_usd: 12
 
 default:
   monthly_usd: 10

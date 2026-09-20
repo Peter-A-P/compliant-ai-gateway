@@ -55,6 +55,9 @@ ALLOWED_ATTRIBUTES: frozenset[str] = frozenset(
         "boundary.batch_requests",
         # Streaming (0.3). A duration in milliseconds; it cannot carry a prompt.
         "boundary.ttft_ms",
+        # Data class (0.4). One of four words from a closed vocabulary, validated before the
+        # call; it says what kind of data the request carried and cannot carry any of it.
+        "boundary.data_class",
     }
 )
 

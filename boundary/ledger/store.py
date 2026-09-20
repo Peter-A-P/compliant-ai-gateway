@@ -24,7 +24,7 @@ from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 from typing import Any
 
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
 _SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 
 IN_FLIGHT = "in_flight"
@@ -63,7 +63,7 @@ def utc_now() -> str:
 
 @dataclass(slots=True)
 class LedgerRow:
-    """One row, schema v6. Field names are the column names."""
+    """One row, schema v7. Field names are the column names."""
 
     ts_utc: str
     boundary_version: str
@@ -124,6 +124,13 @@ class LedgerRow:
     # for every call that was not streamed, and for a streamed call that produced no content
     # before it ended. `latency_ms` runs to the last byte either way.
     ttft_ms: float | None = None
+    # What kind of data the caller said the request carried (v7): one of the four words in
+    # `boundary.types.DataClass`, validated before the row is written. Null means the caller
+    # declared nothing, which is kept apart from every declared class for the same reason
+    # `residency` keeps null apart from `global`: no claim is not the weakest claim. The
+    # library never fills this in from the content; a gateway that guessed a classification
+    # would be making a compliance decision nobody reviewed.
+    data_class: str | None = None
     id: int | None = field(default=None)
 
     def as_columns(self) -> dict[str, Any]:
@@ -247,6 +254,11 @@ class LedgerStore:
             if current < 6:
                 # Null for every existing row: none of them was streamed.
                 self._add_columns(("ttft_ms", "REAL"))
+            if current < 7:
+                # Null for every existing row. Nobody declared a class on a call made before
+                # there was a way to, and a value here would be a claim the caller never
+                # made about data the library never looked at.
+                self._add_columns(("data_class", "TEXT"))
             self._conn.execute(
                 "INSERT INTO schema_version (version, applied_utc) VALUES (?, ?)",
                 (SCHEMA_VERSION, utc_now()),

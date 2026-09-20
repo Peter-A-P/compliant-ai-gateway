@@ -36,6 +36,24 @@ streaming for OpenAI-compatible hosts with time to first token in the ledger row
 measured price overlays for self-hosted GPU servers, both at project 06's request for its
 load tests. The first live streamed call, to a cold local model, waited 5,484 ms for its
 first token out of 5,557 ms in all, which is the kind of number the column exists to show.
+**`v0.4.0`, the same day**, adds a `data_class` a caller declares on every call, from the
+plan's closed vocabulary, written to the ledger row and the span and readable back with
+`boundary ledger residency --data-class personal`: which calls carried personal data, and
+where did they go. Requested by project 07, which had been smuggling the class into a label.
+Nothing enforces it yet; that is Part B, and the column is what lets Part B's policy be
+checked against calls made before it existed. **`v0.5.0`, also the same day**, pulls
+`boundary.redact` forward from Part B because project 07 is building on it now: detection
+with per-page offsets and the recogniser named on every span, and a personal-class policy
+that is built over the whole document, substitutes the parts of a detected name, masks
+anything name- or identifier-shaped that no detector claimed, and refuses to send rather
+than warn. The three rules come from 07's corpus-wide test, which found 74 real values
+leaving a policy built the obvious way. Project 07 measured 0.5.0's detection recall the
+same day, 5,355 labelled values over 210 synthetic pages, and found a live leak: a
+space-separated health number left unredacted on 57 of 210 pages with no refusal. 0.5.1
+fixes that in both the recogniser and the second pass, along with organisations never
+being requested from Presidio and containment losing to score in overlap resolution. The
+table and its caveats are in [docs/redact.md](docs/redact.md); this repository's own
+precision and recall harness does not exist yet, and nothing here claims a precision.
 Both parts are planned in
 [PLAN.md](PLAN.md):
 Part A, the `boundary` library that every project in this portfolio calls models through;

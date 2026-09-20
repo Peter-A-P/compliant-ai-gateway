@@ -71,7 +71,7 @@ def _write(store: LedgerStore, env: str, n: int, *, complete: bool = True) -> li
 def test_a_new_file_is_current_with_a_unique_index_on_call_uid(tmp_path: Path) -> None:
     store = _store(tmp_path, "fresh")
     try:
-        assert store.schema_version == SCHEMA_VERSION == 6
+        assert store.schema_version == SCHEMA_VERSION == 7
         row = _row("laptop")
         store.begin(row)
         assert store.rows()[0]["call_uid"] == row.call_uid
@@ -218,6 +218,9 @@ def test_a_v1_file_is_upgraded_in_place_and_keeps_its_rows(tmp_path: Path) -> No
         assert rows[0]["price_sha256"] is None
         # Nor a time to first token (v6). The call was not streamed; nothing arrived first.
         assert rows[0]["ttft_ms"] is None
+        # Nor a data class (v7). Nobody declared one on a call made before there was a way
+        # to, and a value here would be a claim about data the library never looked at.
+        assert rows[0]["data_class"] is None
         uid = rows[0]["call_uid"]
     finally:
         store.close()

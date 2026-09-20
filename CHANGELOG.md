@@ -5,6 +5,133 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.5.1 (2026-09-19)
+
+Project 07 ran 0.5.0 against its persona corpus the same day, 5,355 labelled values over 210
+pages, and reported three findings with one-line reproductions. One was a live leak. All
+three are fixed here, and 07's recall table is recorded in docs/redact.md as the first
+measurement of this engine, with its caveats.
+
+- **A space-separated Medical Care Plan number left the boundary unredacted, with no
+  refusal.** `123456789012` was caught by the recogniser and `123-456-789-012` by the second
+  pass, but `123 456 789 012`, which is how the number is written on a form, was caught by
+  neither: the recogniser wanted twelve contiguous digits and the second pass's identifier
+  shape did not span spaces. On 07's corpus 57 of 210 pages came back from `outbound()` with
+  a real health number in them, recall 20.0% (10.3 to 30.8). Two fixes, because the second
+  pass is the part that is supposed to make recall irrelevant: `boundary:nl-mcp` now takes
+  the four groups of three with a space or hyphen between them, and the second pass masks
+  any run of digit groups separated by spaces, hyphens or dots that carries eight or more
+  digits, as `ID_LIKE`. A SIN that fails the checksum and is written with spaces is caught
+  the same way.
+
+- **Organisations were never requested from Presidio.** A bare `AnalyzerEngine()` does not
+  declare `ORGANIZATION`, so asking for it returned nothing: recall 19.5% (13.2 to 25.9)
+  against 86.7% for 07's own detector, and the model was not the cause. The default engine
+  is now built through `NlpEngineProvider` with an explicit model and an explicit label
+  mapping (`ORG` to `ORGANIZATION`, `GPE`, `LOC` and `FAC` to `LOCATION`), which is what
+  07 found gave the most correct output: "Newfoundland" as a location and the real
+  departments as organisations. The configuration is `DEFAULT_NLP_CONFIGURATION` and a
+  caller can pass its own.
+
+- **A span that strictly contains another now wins regardless of score.** Presidio's
+  `LOCATION` "Bannerman Street" at 0.85 beat 07's `ADDRESS` "14 Bannerman Street" at 0.75,
+  so the box went over the street and the house number was released: a partially covered
+  value is a leak wearing a redaction. Containment is the fail-closed case and is resolved
+  first; score, then length, then priority still decide partial overlaps.
+
+- **`EntityType.ADDRESS`**, which 07's address recogniser needed and the closed vocabulary
+  did not have.
+
+- Two things 07 reported and this release does not change, on purpose: an unlabelled file
+  number such as `HCS-2024-0881` in a heading is not typed as `FILE_NUMBER` (it is still
+  masked by the second pass as `ID_LIKE`, so it does not leave), and dates are not an
+  entity type (a date of death is invisible to detection, which is 07's evidence for the
+  twenty-year exclusion and belongs in 07's results rather than in a recogniser here).
+
+## 0.5.0 (2026-09-19)
+
+`boundary.redact`, pulled forward from Part B on Peter's decision the same day 0.4.0 was
+cut: project 07 is the first consumer, and the plan's dates are no longer the schedule.
+Built to 07's specification in PLAN.md section B2.3, which came from a corpus-wide test
+rather than from the plan. Documented in docs/redact.md.
+
+- **Detection.** `Analyzer.analyze(pages)` returns `Span`s with a page number and half-open
+  offsets into that page, the exact text, an entity type from a closed vocabulary, a score
+  and the id of the recogniser that fired. Two guarantees whatever produced a span: none
+  crosses a line break (Presidio's `Wallace Penashue\nDate` defect), and none overlap. Eight
+  built-in regular-expression recognisers with goldens: email with any number of domain
+  labels (Presidio's `gov.nl.ca` defect), Canadian postal code, SIN with the Luhn checksum,
+  the NL Medical Care Plan number, North American phone, labelled date of birth, labelled
+  file and case numbers, labelled employee identifiers. Presidio for people, places and
+  organisations behind the same protocol, as an optional `redact` extra, naming the Presidio
+  recogniser on every span. Run live on 2026-09-19 it reproduced both of 07's defects.
+
+- **The personal-class policy.** `Policy(spans)` mints stable typed placeholders for every
+  entity in the document; `outbound(text)` substitutes and refuses with `RedactionRefused`
+  unless its own output is clean; `rehydrate(text)` puts the values back, tolerant of case,
+  spacing and dropped brackets. The three findings from 07's test each have a test that
+  fails without the fix: the policy is document-wide, not built from the spans being sent;
+  a detected full name licenses its parts (`<PERSON_1.1>`); and a second pass, always on,
+  masks anything name-shaped or identifier-shaped that no detector claimed unless it is on
+  a vocabulary of decision-relevant terms, because a boundary built on detections inherits
+  every miss. A sixty-seed round-trip property test holds redact-then-rehydrate to the
+  identity over documents with detected names, undetected names and places, and identifiers.
+
+- **Nothing here logs, prints or raises a personal value.** The refusal's message carries
+  counts; the details sit on an attribute.
+
+- **Not measured yet, and said so**: precision and recall per entity type with intervals,
+  and the rehydration mutation rate, are Part B's table. Nothing in this release claims a
+  recall.
+
+- The gateway does not apply the policy inside a call in 0.5. A project builds the request
+  with `policy.outbound`, sends it with `data_class="personal"`, and rehydrates the answer.
+
+## 0.4.0 (2026-09-19)
+
+Project 07 (access-to-information redaction) asked for four things on 2026-09-19, smallest
+first. The first two are here, both additive, and the version is bumped because the frozen
+interface gained a keyword and the ledger gained a column. The third, `boundary.redact`,
+stays in Part B (May 2027): 07 does not need it to proceed, and 07's brief is now written
+into PLAN.md section B2.3 so that Part B is built to it. The fourth was a question, answered
+in docs/interface.md section 11, item 6.
+
+- **A cap for 07.** `access-to-information-redaction` in `config/caps.yaml`, at the amounts
+  07 proposed. Without an entry the project fell to the default, whose per-run cap is below
+  the cost of one full corpus run, so the first real run would have been refused partway
+  through. The portfolio line rises to hold it, as the test requires. Peter to confirm
+  before 07's first vendor call.
+
+- **`data_class` on every call method: `chat`, `achat`, `chat_stream`, `achat_stream`,
+  `raw`, `batch_submit`.** What kind of data the request carries, declared by the caller
+  from the closed vocabulary `DataClass`: `public`, `internal`, `personal`, `sensitive`,
+  which is PLAN.md B2.2's, so a row written now reads under the Part B policy without
+  translation. Written to the row and the span; enforced by nothing yet. A word outside the
+  vocabulary raises `ValueError` before the model is resolved and no row is written. None
+  writes null, which the reports keep apart from every declared class as `undeclared`: no
+  claim is not the weakest claim, the same rule `residency` follows. 07 had been smuggling
+  the class into `purpose` as a string convention; a convention cannot be queried, aggregated
+  or, later, enforced.
+
+- **Ledger schema v7, additive: `data_class`.** One nullable column, never backfilled. Also
+  on the span as `boundary.data_class`, four words from a closed vocabulary that cannot carry
+  content.
+
+- **`data_class` and `call_uid` on `ChatResponse`.** The uid is the answer to 07's question
+  about attaching document and page identifiers to a call: keep them in the caller's own
+  records and join on `call_uid`, which survives `ledger merge` where `ledger_id` does not.
+
+- **`--data-class` on `boundary ledger report` and `boundary ledger residency`**, and a
+  `class` column in the report's key. `ledger residency --data-class personal` is the audit
+  question in one command: which calls carried personal data, and where did they go.
+  `--data-class undeclared` lists the calls that made no claim. A misspelt class exits 2
+  rather than printing an empty table that reads as "nothing personal left".
+
+- **No free-form metadata mapping on a call**, and none planned. Every value that reaches a
+  row or a span has to be one the library can show cannot carry content; a caller-filled
+  mapping is a channel it cannot check. A fact worth recording gets a typed column, which is
+  what this release did.
+
 ## 0.3.0 (2026-09-19)
 
 Three additions project 06 (fraction-of-the-bill, package `smallprint`) asked for on

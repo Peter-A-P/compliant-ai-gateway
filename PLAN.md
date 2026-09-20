@@ -1,6 +1,6 @@
 # Plan: Compliant AI Gateway
 
-**Written:** 2026-09-06. **Status (2026-09-11):** Part A released as `v0.1.0` on 2026-09-10, three days ahead of the Sep 13 target, after one live call per provider. Version 0.2 is in progress on `main` (section 5.1). Part B is unchanged, May 2027.
+**Written:** 2026-09-06. **Status (2026-09-11):** Part A released as `v0.1.0` on 2026-09-10, three days ahead of the Sep 13 target, after one live call per provider. Version 0.2 is in progress on `main` (section 5.1). Part B is unchanged, May 2027. **Status (2026-09-19):** `v0.4.0` and `v0.5.0` on `main` (section 7). **The dates in this plan are no longer the schedule.** Peter's decision, 2026-09-19: every timeline is being pushed aggressively, and Part B's pieces are pulled forward as the projects that need them arrive rather than waiting for May 2027. The first is `boundary.redact`, built the same day to project 07's brief (B2.3) and shipped as 0.5.0. The design sections still hold; the dates in them are history, not commitments.
 
 Two parts, one repository, one Python package called `boundary`:
 
@@ -122,6 +122,13 @@ owns (03 commits its own), and only because the drift record needs them.
 
 - A server or proxy of any kind (Part B).
 - Redaction, policy routing, semantic cache, audit chain, quotas by team (Part B).
+  **Amended 2026-09-19 (0.4.0):** the data class a caller declares (B2.2) arrives early as
+  a field, `data_class` on every call method with the four-word vocabulary enforced, a
+  ledger column and `--data-class` on both ledger commands, because project 07's whole
+  thesis is a frontier model used on access-to-information records without personal data
+  leaving the boundary, and it had no way to say so except a string convention inside
+  `purpose`. The **policy** stays in Part B: nothing is refused or required by the class in
+  0.x. The column is what lets that policy be checked against calls made before it existed.
 - Streaming responses. Nothing in the portfolio needs streaming before May; the proxy
   adds it in Part B and the library gets it then. **Amended 2026-09-19 (0.3.0):** project
   06 needs time to first token against self-hosted vLLM and llama.cpp servers for its load
@@ -389,6 +396,9 @@ from October the ledger-against-invoice difference is recorded there too (sectio
 | v0.2.0 | Early October 2026 (split proposed 2026-09-11; was one October tag) | `ledger merge` and `report`, ledger schema v2 (`call_uid`, `env`), `Gateway(env=)`, Anthropic batches with schema v3 (`batch_id`), local price-zero host exercised. Tagged as soon as batches land so 02 can pin `>=0.2` without waiting for the AWS account |
 | v0.2.1, v0.2.2 | Mid to late October 2026 | Foundry and Vertex adapters (0.2.1); Bedrock (0.2.2), written 2026-09-15 rather than in October because the account opened early. One optional dependency group, for google-auth; Bedrock needs none, so 03's install gains nothing from it |
 | v0.3.0 | 2026-09-19 | Streaming for `openai_compat` (`chat_stream`, `achat_stream`, `ttft_ms`, ledger schema v6), measured price overlays for self-hosted hosts (`self_hosted`, `self_hosted_prices`), a cap for 06. Requested by 06 for its load tests against vLLM and llama.cpp; 06 pins this tag |
+| v0.4.0 | 2026-09-19 | `data_class` on every call method with the `DataClass` vocabulary, ledger schema v7 (`data_class`), `data_class` and `call_uid` on `ChatResponse`, `--data-class` on both ledger commands, a cap for 07. Requested by 07 (access-to-information redaction), which passes `data_class="personal"` on every model decision and joins its document and page identifiers to the ledger on `call_uid`. 07 asked for a free-form metadata mapping on a call and was told no, with the reason in docs/interface.md section 11 |
+| v0.5.0 | 2026-09-19 | `boundary.redact`: `Analyzer`, `Span`, `EntityType`, the built-in recognisers, the optional Presidio adapter (`redact` extra), `Policy` with `outbound`, `rehydrate`, `check` and the vault, `RedactionRefused`. Pulled forward from Part B; built to B2.3 as amended from 07's brief. Precision and recall with intervals are not measured yet and the docs say so |
+| v0.5.1 | 2026-09-19 | Three fixes from 07's first run against 0.5.0 (a space-separated health number leaking, organisations never requested from Presidio, containment losing to score in overlap resolution) and `EntityType.ADDRESS`. 07's recall table, 5,355 values over 210 synthetic pages, is recorded in docs/redact.md as the first measurement. 07 pins this tag |
 | v1.0.0 | May 23 2027 | Everything in Part B; `boundary.redact` for 07; the proxy for 13 and 14 |
 
 03 pins `boundary>=0.1,<0.3` for Part A and moves to `>=1.0` when its Part B is built
@@ -559,6 +569,18 @@ The gateway never guesses a classification from content; a gateway that did woul
 making a compliance decision nobody reviewed. Violations are refused with a reason and
 audited.
 
+**Amended 2026-09-19 (0.4.0).** The four-word vocabulary is now the `DataClass` enum in the
+library and a `data_class` keyword on every call method, validated before the call and
+written to ledger schema v7. The proxy's `X-Data-Class` header maps onto that field and
+nothing else, so a library caller and a proxy caller write the same row. One thing is fixed
+by having shipped the field before the policy: **absent is null in the library**, not
+`personal`. The library records what was said; the proxy, which is the compliance boundary,
+is where absent means `personal` and fails closed. The two statements are not in tension.
+The proxy substitutes `personal` for an absent header and then passes it to the library as
+a declaration, so the row still says what the boundary decided, and a library caller that
+declared nothing is visible as such to `ledger report --data-class undeclared` rather than
+hidden under a default.
+
 ### B2.3 Reversible redaction
 
 Detection is Presidio's analyzer plus custom recognisers for Canadian identifiers: Social
@@ -570,6 +592,82 @@ short TTL, encrypted with AES-GCM under a per-team key, and never written to the
 log or the ledger. Rehydration substitutes placeholders back, with tolerant matching for
 the ways models mutate them (possessives, case, spacing); the mutation rate is measured
 and reported because it is the honest limit of the approach.
+
+**Amended 2026-09-19, from project 07's brief.** 07 is the first consumer of
+`boundary.redact` and built its own detector and policy in September 2026 while waiting
+for it, so Part B inherits a specification written from use rather than from the plan's
+guess. 07 does not need the proxy; the library is enough, and the two halves below must be
+usable independently. 07 keeps its own scrub until this ships and will keep it layered on
+top afterwards unless the third guarantee below is met.
+
+*Detection: what a span must carry.* 07 consumes a detector behind a protocol, so the
+adapter is one file whatever the API looks like, provided each span has: a **location** as
+page number plus character offsets into that page's text, half-open `[start, end)`, never
+document-global offsets; the matched **text** exactly; an **entity type** from a documented
+closed vocabulary; a **score** in `[0, 1]`; and the **recogniser id** that fired. The last
+is not optional. 07 publishes an error decomposition that splits leaks into "the detector
+never found it" against "the decision was wrong", and it cannot attribute detector misses
+without knowing which recogniser was responsible.
+
+*Two Presidio defects 07 hit and fixed, not to be inherited* (07's `sever/detect/engine.py`
+and `sever/detect/recognisers.py`, offered freely): PERSON spans that run across a line
+break, so "Wallace Penashue\nDate" came back as one person, which draws a box over a word
+that is not personal information and poisons any placeholder policy downstream, since "date"
+becomes an alias for a person; and a work address like `aaronpenashue@gov.nl.ca.example`
+missed entirely, with only the `gov.nl.ca` inside it classified, as a URL. Multi-label
+government domains are exactly what these records contain, and a missed work address is a
+leak; 07 added its own email recogniser at 0.95. *Recognisers stock Presidio lacks and this
+corpus needs*, added to the Canadian set the paragraph above already planned: NL medical
+care plan numbers, departmental file and case numbers, employee identifiers, Canadian postal
+codes, and labelled dates of birth.
+
+*The policy, and the warning that cost 07 most of a day.* What 07 wants is what the
+paragraph above describes: stable typed placeholders outbound, rehydration inbound, and a
+guard that **refuses to send** rather than warns. The warning is that **a policy built only
+from detections is not a privacy boundary.** 07's corpus-wide test found 74 real values
+leaving the boundary from three separate causes, and Part B's design has to answer each:
+
+1. **The policy was built from only the spans being sent.** The sentences around them are
+   full of entities the rules had already decided, and those sentences travel in the
+   payload. Build the policy over every entity in the document, not the request.
+2. **A detected full name did not license substitution of its parts.** The detector finds
+   "Marie Chaulk"; the prose two sentences later says "Marie". Exact-surface-form matching
+   replaces the first and ships the second. Substitution has to cover the parts of a name,
+   and the placeholder for a part is the placeholder for the whole.
+3. **Detector recall is not 100 percent, and a boundary built on detections inherits every
+   miss.** After fixing the first two, seven names still got through simply because
+   Presidio had not found them. No amount of care in the policy fixes this. 07 solved it
+   with a detector-independent second pass that masks anything proper-noun-shaped or
+   identifier-shaped unless it is on a vocabulary of terms that carry decision-relevant
+   meaning and identify nobody. **Part B does the same**, and the redaction results table
+   reports the two passes separately, so the reader can see what detection alone would have
+   leaked. If Part B did the first two and not the third, it would be offering a guarantee
+   it cannot keep, and 07 would rightly keep its own scrub on top.
+
+*One interface requirement.* The policy is a **library object 07 can call locally**, not
+only something the gateway applies inside a call: build the outbound request from a
+document and its entities, and assert on it in tests with no gateway, no configuration and
+no network. 07's whole privacy test does exactly that, and Part B's own rehydration
+round-trip property test wants the same object. The B4 sketch's `Redactor.analyze`,
+`redact` and `rehydrate` stand, with `redact` taking the document-wide entity set as an
+argument rather than re-detecting on the text it is handed.
+
+Full write-up in 07's `docs/rejected.md`.
+
+**Built 2026-09-19, as `boundary.redact` in 0.5.0**, on Peter's decision to pull it forward
+the same day. Everything in the amendment above is in: per-page half-open offsets, the
+recogniser id on every span, the line-break cut and overlap resolution as analyzer
+guarantees, the eight recognisers stock Presidio lacks, Presidio behind the protocol as an
+optional extra, the document-wide policy, name parts as `<PERSON_n.m>`, the always-on
+second pass with the decision vocabulary, the refusing guard, tolerant rehydration, and a
+sixty-seed round-trip property test. Run live, Presidio 2.x reproduced both defects exactly.
+Two things from the paragraph before the amendment are **not** in 0.5 and stay here for the
+proxy: the Redis vault under a per-team key (the library vault is in memory, per policy),
+and the gazetteer of Newfoundland and Labrador place and organisation names (today an
+unlisted place name is masked by the second pass, which is the fail-closed direction; the
+gazetteer would make the mask typed as `LOCATION` rather than `NAME_LIKE`). The
+precision-and-recall table and the mutation rate are still B1's deliverables and are not
+claimed. See docs/redact.md.
 
 ### B2.4 A hash-chained, anchored audit log
 
@@ -648,10 +746,12 @@ boundary/
   server/          FastAPI: /v1/chat/completions (SSE streaming), /v1/models, /healthz;
                    team key auth; X-Data-Class handling; layered call path
   policy.py        class -> allowed providers and regions -> required layers; fail closed
-  redact/          analyzer.py (Presidio + recognisers/ca.py), placeholders.py, vault.py
-                   (Redis, AES-GCM, per-team key, TTL), rehydrate.py (tolerant matching)
-                   Public API for 07: Redactor.analyze(text) -> spans; redact(text) -> (text, token);
-                   rehydrate(text, token) -> text
+  redact/          BUILT 2026-09-19 (0.5.0), shape differs from this sketch: types.py (Span,
+                   EntityType, Recogniser protocol), recognisers.py (the built-in patterns),
+                   analyzer.py (line-break cut, overlap resolution, per-page offsets),
+                   presidio.py (optional adapter), vocabulary.py, policy.py (Policy: outbound,
+                   check, rehydrate, in-memory vault, RedactionRefused). Still to come for the
+                   proxy: vault.py (Redis, AES-GCM, per-team key, TTL) and the NL gazetteer
   audit/           chain.py, store.py (Postgres append-only), anchor.py (daily head commit), verify
   semcache/        embed.py (bge-small, local), store.py (pgvector), threshold.py, metrics.py
   screen/          injection classifier and rules; advisory or blocking per policy
@@ -719,8 +819,10 @@ open-weights provider in the residency demonstration. Actuals go to STATUS.
 ## B7. Handover
 
 `boundary` v1.0.0 on May 23 2027: the proxy image; `boundary.redact` as an importable
-engine with `analyze`, `redact` and `rehydrate`, which 07 builds its access-to-information
-workflow on in August; the ledger ingestion endpoint 03's Part B dashboard reads from; the
+engine with `analyze`, `redact` and `rehydrate`, built to the specification in B2.3 (amended
+2026-09-19 from 07's brief: per-page half-open offsets, recogniser id on every span, the
+document-wide policy, name parts, the detector-independent second pass, and a policy object
+usable with no gateway), which 07 builds its access-to-information workflow on in August; the ledger ingestion endpoint 03's Part B dashboard reads from; the
 policy and audit modules 13 and 14 inherit by pointing their gateway base URL here. 10 reads
 the ledger and the spans as its production signal.
 
@@ -766,7 +868,7 @@ the ledger and the spans as its production signal.
 - [ ] Observability dashboard shows every project's calls and costs live; completeness panel against local ledgers
 - [ ] Hosted demo live at gateway.peterparker.ca
 - [ ] Foundry, Bedrock and Vertex adapters each exercised with calls recorded
-- [ ] `boundary.redact` importable and documented for 07
+- [x] `boundary.redact` importable and documented for 07. **Done 2026-09-19 (0.5.0)**, docs/redact.md; the measured rows above are still open
 - [ ] One rejected approach documented with evidence (Rule C)
 - [ ] Repository public, `v1.0.0` tagged
 
