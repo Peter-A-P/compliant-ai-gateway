@@ -12,7 +12,9 @@ import argparse
 import datetime as dt
 import sys
 from collections import defaultdict
+from collections.abc import Mapping, Sequence
 from pathlib import Path
+from typing import Any
 
 from boundary import __version__
 from boundary.config import (
@@ -291,11 +293,15 @@ def _open_ledger(args: argparse.Namespace) -> LedgerStore | None:
     return LedgerStore(path)
 
 
-def _data_class_arg(args: argparse.Namespace) -> str | None:
-    """The validated `--data-class` filter, or None. A misspelt class is refused rather than
-    matched against nothing, because an empty report reads as "no such calls"."""
+def _data_class_arg(args: argparse.Namespace, rows: Sequence[Mapping[str, Any]]) -> str | None:
+    """The validated `--data-class` filter, or None. A word that matches nothing anywhere is
+    refused rather than filtered on, because an empty report reads as "no such calls"; a
+    class this version does not know but the ledger holds is allowed, because an auditor has
+    to be able to ask about the rows in front of them."""
     wanted = getattr(args, "data_class", None)
-    return data_class_filter.check_filter(wanted) if wanted else None
+    if not wanted:
+        return None
+    return data_class_filter.check_filter(wanted, data_class_filter.present_in(rows))
 
 
 def cmd_ledger_report(args: argparse.Namespace) -> int:
@@ -303,13 +309,14 @@ def cmd_ledger_report(args: argparse.Namespace) -> int:
     if store is None:
         return 1
     try:
-        wanted = _data_class_arg(args)
+        all_rows = store.rows()
+        wanted = _data_class_arg(args, all_rows)
     except ValueError as bad_filter:
         store.close()
         print(f"error: {bad_filter}", file=sys.stderr)
         return 2
     try:
-        rows = store.rows()
+        rows = all_rows
         month = args.month
         if month:
             rows = [r for r in rows if str(r["ts_utc"]).startswith(month)]
@@ -338,18 +345,22 @@ def cmd_ledger_report(args: argparse.Namespace) -> int:
                 b["uncosted"] += 1
             if r["cost_usd"] is not None and r["costed"]:
                 b["cost"] += float(r["cost_usd"])
+        # Wide enough for the longest project name present, so one long name does not push
+        # every column out of line and make the table unreadable. The plan's project names
+        # run to 31 characters.
+        pw = max(24, *(len(key[2]) for key in by)) if by else 24
         print(
-            f"{'month':<8} {'env':<8} {'project':<24} {'class':<10} {'model':<44} {'calls':>6} {'err':>4} {'unc':>4} {'in':>9} {'out':>8} {'USD':>10}"
+            f"{'month':<8} {'env':<8} {'project':<{pw}} {'class':<10} {'model':<44} {'calls':>6} {'err':>4} {'unc':>4} {'in':>9} {'out':>8} {'USD':>10}"
         )
         total = 0.0
         for (m, e, p, dc, model), b in sorted(by.items()):
             total += b["cost"]
             print(
-                f"{m:<8} {e:<8} {p:<24} {dc:<10} {model:<44} {int(b['calls']):>6} {int(b['errors']):>4} "
+                f"{m:<8} {e:<8} {p:<{pw}} {dc:<10} {model:<44} {int(b['calls']):>6} {int(b['errors']):>4} "
                 f"{int(b['uncosted']):>4} {int(b['in']):>9} {int(b['out']):>8} {b['cost']:>10.4f}"
             )
         print(
-            f"{'total':<8} {'':<8} {'':<24} {'':<10} {'':<44} {len(rows):>6} {'':>4} {store.uncosted_count():>4} {'':>9} {'':>8} {total:>10.4f}"
+            f"{'total':<8} {'':<8} {'':<{pw}} {'':<10} {'':<44} {len(rows):>6} {'':>4} {store.uncosted_count():>4} {'':>9} {'':>8} {total:>10.4f}"
         )
         if wanted is not None:
             print(f"filtered to data class {wanted}: {len(rows)} row(s)")
@@ -376,9 +387,10 @@ def cmd_ledger_residency(args: argparse.Namespace) -> int:
     if store is None:
         return 1
     try:
-        wanted = _data_class_arg(args)
+        rows = store.rows()
+        wanted = _data_class_arg(args, rows)
         groups = residency_report.summarise(
-            store.rows(), month=args.month, project=args.project_filter, data_class=wanted
+            rows, month=args.month, project=args.project_filter, data_class=wanted
         )
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)

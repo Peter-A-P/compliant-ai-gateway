@@ -5,6 +5,29 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.5.4 (2026-09-20)
+
+Two things probing the command line turned up, both about reading the ledger rather than
+writing it.
+
+- **A data class written by a later version could not be queried.** `ledger report` printed
+  a row holding an unrecognised class, correctly and as stored, and then `--data-class` on
+  that same value exited 2 as a typo. The vocabulary is closed for writing, because a class
+  the Part B policy cannot place is a row nobody can act on; it should never have been
+  closed for reading, because an auditor has to be able to ask about the rows in front of
+  them, and an old reader that cannot query its own file is a different failure from the one
+  the vocabulary protects against. A filter is now accepted when it is in the vocabulary,
+  is `undeclared`, or occurs in the ledger being read. A word matching nothing anywhere is
+  still refused, and the message now names what the file does hold.
+- **A long project name pushed every column out of line.** The project column was 24
+  characters and the plan's names run to 31, so the ordinary report for project 07 was
+  unreadable exactly where somebody would be reading it. It is sized to the longest name
+  present, and a test asserts the header and the row still line up.
+- Measured while probing, not recorded as a result because there is no harness behind it:
+  `outbound` on a 2,500-token page with about 150 known values takes roughly 10 ms, against
+  Part B's budget of under 100 ms with redaction on. Detection without Presidio is about
+  3 ms a page. Presidio dominates when it is enabled.
+
 ## 0.5.3 (2026-09-20)
 
 One more found by probing, and it is the only failure in this module so far that makes the

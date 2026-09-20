@@ -214,6 +214,19 @@ def test_a_misspelt_filter_is_refused_rather_than_matching_nothing() -> None:
     assert data_class_filter.check_filter("undeclared") == "undeclared"
 
 
+def test_a_class_a_later_version_wrote_can_still_be_queried() -> None:
+    """The vocabulary is closed for writing and open for reading. A ledger written by a
+    later version can hold a class this one has never heard of, and an auditor has to be
+    able to ask about the rows in front of them; refusing there would make an old reader
+    unable to query its own data. A word that matches nothing anywhere is still refused,
+    and the message now names what the ledger does hold."""
+    present = {"personal", "restricted-future"}
+    assert data_class_filter.check_filter("restricted-future", present) == "restricted-future"
+    with pytest.raises(ValueError, match="this ledger also holds restricted-future"):
+        data_class_filter.check_filter("persnal", present)
+    assert data_class_filter.present_in(_rows()) == {"personal", "public"}
+
+
 def test_residency_can_answer_where_the_personal_calls_went() -> None:
     groups = summarise(_rows(), data_class="personal")
     assert [(g.provider, g.calls) for g in groups] == [("anthropic", 2)]
@@ -252,6 +265,28 @@ def test_report_groups_by_class_and_filters_on_it(
     assert code == 0
     assert "filtered to data class personal: 2 row(s)" in out
     assert "undeclared" not in out
+
+
+def test_report_columns_stay_aligned_under_a_long_project_name(
+    repo_config: BoundaryConfig, tmp_path: Path, keys: None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The plan's project names run to 31 characters and the column was 24, so one long
+    name pushed every column after it out of line and the table stopped being readable."""
+    g = make_gateway(repo_config, tmp_path, project="access-to-information-redaction")
+    try:
+        with respx.mock(assert_all_called=True) as mock:
+            mock.post(ANTHROPIC_URL).mock(return_value=anthropic_ok())
+            g.chat(_req(), purpose="dev", data_class="personal")
+    finally:
+        g.close()
+    assert (
+        main(["--config", CONFIG, "ledger", "report", "--ledger", str(tmp_path / "ledger.sqlite")])
+        == 0
+    )
+    lines = [ln for ln in capsys.readouterr().out.splitlines() if ln.strip()]
+    header, row = lines[0], lines[1]
+    assert header.index("class") == row.index("personal")
+    assert header.index("model") == row.index(HAIKU)
 
 
 def test_residency_command_filters_on_it_and_refuses_a_bad_filter(

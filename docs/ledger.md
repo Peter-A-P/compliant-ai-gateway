@@ -160,7 +160,9 @@ Three rules, the same direction as the residency ones:
   wants before Part B's policy starts refusing them.
 - **A misspelt filter exits 2** rather than matching nothing. An empty report reads as "no
   personal data left the boundary", which is the one wrong answer this column must never
-  give.
+  give. A class this version does not know but the file holds is not a misspelling: it is
+  accepted, because a ledger written by a later version must stay queryable by an older
+  reader, and the refusal message names what the file actually holds.
 - **The report groups by class without being asked.** The ordinary `ledger report` carries a
   `class` column in its key, so the month's table already says which calls carried personal
   data and which made no claim, without anybody having to think to ask.

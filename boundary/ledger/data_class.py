@@ -13,7 +13,7 @@ starts refusing them.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Collection, Iterable, Mapping
 from typing import Any
 
 from boundary.types import DataClass
@@ -22,7 +22,12 @@ from boundary.types import DataClass
 # residency, so the two reports say "nobody said" the same way.
 UNDECLARED = "undeclared"
 
-__all__ = ["UNDECLARED", "check_filter", "label", "matches"]
+__all__ = ["UNDECLARED", "check_filter", "label", "matches", "present_in"]
+
+
+def present_in(rows: Iterable[Mapping[str, Any]]) -> set[str]:
+    """Every data class these rows actually carry, null excluded."""
+    return {str(r["data_class"]) for r in rows if r.get("data_class")}
 
 
 def label(value: Any) -> str:
@@ -32,17 +37,28 @@ def label(value: Any) -> str:
     return UNDECLARED if value is None else str(value)
 
 
-def check_filter(wanted: str) -> str:
-    """Validate a `--data-class` argument: one of the vocabulary, or `undeclared`.
+def check_filter(wanted: str, present: Collection[str] = ()) -> str:
+    """Validate a `--data-class` argument: one of the vocabulary, `undeclared`, or a value
+    the ledger being read actually holds.
 
-    Refused rather than matched loosely, because a filter that silently matched nothing
-    would print an empty report that reads as "no personal data left", which is the one
-    wrong answer this column must never give.
+    A word that matches nothing anywhere is refused rather than filtered on, because an
+    empty report reads as "no personal data left", which is the one wrong answer this
+    column must never give, and a typo is the likeliest way to produce one.
+
+    `present` is what the ledger holds, and it is why this is not a closed check. A file
+    written by a later version can carry a class this version has never heard of, and an
+    auditor must be able to ask about the rows in front of them. Refusing there would make
+    an old reader unable to query its own data, which is a different failure from the one
+    the vocabulary protects against. The report prints such a value as stored either way.
     """
     if wanted == UNDECLARED or wanted in {c.value for c in DataClass}:
         return wanted
+    if wanted in present:
+        return wanted
     known = ", ".join(c.value for c in DataClass)
-    raise ValueError(f"data class {wanted!r} is not one of {known}, {UNDECLARED}")
+    extra = sorted(v for v in present if v and v not in {c.value for c in DataClass})
+    also = f"; this ledger also holds {', '.join(extra)}" if extra else ""
+    raise ValueError(f"data class {wanted!r} is not one of {known}, {UNDECLARED}{also}")
 
 
 def matches(row: Mapping[str, Any], wanted: str | None) -> bool:
