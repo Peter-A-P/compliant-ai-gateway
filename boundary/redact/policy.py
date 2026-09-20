@@ -92,6 +92,8 @@ _GROUPED_DIGITS = 8
 # Two tokens are one run when only spaces or tabs separate them. A line break ends a run,
 # for the same reason the analyzer cuts spans at one.
 _RUN_GAP = re.compile(r"[ \t]+")
+# The entity names a placeholder can carry, for reading one back out of a string.
+_ENTITY_NAMES = frozenset(e.value for e in EntityType)
 
 
 def _norm(value: str) -> str:
@@ -131,7 +133,7 @@ class Leak:
     nothing masked. Held in memory for the caller's test; never written anywhere by the
     library."""
 
-    kind: Literal["value", "shape"]
+    kind: Literal["value", "shape", "placeholder"]
     entity_type: EntityType
     start: int
     end: int
@@ -334,20 +336,36 @@ class Policy:
         vocabulary does not excuse. Offsets into `text`."""
         found: list[tuple[int, int, EntityType]] = []
         excused = self._excused(text)
-        # Regions between placeholders, so a placeholder is never re-masked.
+        # Regions between the placeholders THIS policy minted, so its own output is never
+        # masked twice. Placeholder-shaped text it did not mint is not skipped: it is
+        # ordinary text that happens to look like a placeholder, and a document can contain
+        # such text for real (an office's own procedure manual, a record already redacted by
+        # some other hand). Left alone it would be handed back to `rehydrate` as though this
+        # policy had written it.
         cursor = 0
         regions: list[tuple[int, int]] = []
+        foreign: list[tuple[int, int]] = []
         for m in PLACEHOLDER.finditer(text):
+            if self._lookup(m) is None:
+                foreign.append((m.start(), m.end()))
+                continue
             regions.append((cursor, m.start()))
             cursor = m.end()
         regions.append((cursor, len(text)))
 
         for lo, hi in regions:
-            # Codes written in pieces first: a value split across single spaces or dots is
+            # Placeholder-shaped text this policy did not write is masked whole, as one
+            # opaque token. Masking only the word inside it would leave the brackets and the
+            # number around a placeholder of ours, which reads as a nested placeholder and
+            # is the sort of thing a model helpfully tidies up.
+            claimed: list[tuple[int, int]] = [(s, e) for s, e in foreign if lo <= s and e <= hi]
+            found.extend((s, e, EntityType.ID_LIKE) for s, e in claimed)
+            # Codes written in pieces next: a value split across single spaces or dots is
             # one candidate, because judging the pieces separately masks some of them and
             # leaves the rest, which is a leak wearing a redaction.
-            claimed: list[tuple[int, int]] = self._code_runs(text, lo, hi, excused)
-            found.extend((s, e, EntityType.ID_LIKE) for s, e in claimed)
+            runs = self._code_runs(text, lo, hi, excused)
+            claimed += runs
+            found.extend((s, e, EntityType.ID_LIKE) for s, e in runs)
             # Then identifier-shaped tokens, outside anything already taken.
             for m in _ID_TOKEN.finditer(text, lo, hi):
                 tok = m.group(0).rstrip("-/")
@@ -476,9 +494,38 @@ class Policy:
         leaks.sort(key=lambda leak: (leak.start, -leak.end))
         return leaks
 
+    def minted_placeholders_in(self, text: str) -> list[Leak]:
+        """Placeholders in `text` that this policy minted.
+
+        In source text, one of these is unresolvable. `<PERSON_1>` written in a document is
+        indistinguishable from `<PERSON_1>` that this policy substituted, so rehydration
+        would put a real person's name where the document had only the word, and the record
+        released at the end would name somebody it never mentioned. `outbound` refuses on
+        it. A placeholder this policy did not mint is not ambiguous and is masked like any
+        other text, so it survives the round trip as itself.
+        """
+        out: list[Leak] = []
+        for m in PLACEHOLDER.finditer(text):
+            if self._lookup(m) is None:
+                continue
+            kind = (m.group(1) or m.group(3)).upper()
+            entity = EntityType(kind) if kind in _ENTITY_NAMES else EntityType.NAME_LIKE
+            out.append(Leak("placeholder", entity, m.start(), m.end(), m.group(0)))
+        return out
+
     def outbound(self, text: str) -> str:
         """Redact, then refuse unless the result is clean. This is the method to build a
-        request body with: it never returns text the policy cannot vouch for."""
+        request body with: it never returns text the policy cannot vouch for.
+
+        Source text carrying a placeholder this policy minted is refused before anything
+        else happens; see `minted_placeholders_in`. That makes `outbound` a method for
+        source text only. Handing it its own output raises rather than quietly redacting
+        twice, which is the honest answer to a call that has already lost track of which
+        side of the boundary its text is on. `redact` has no such guard and is idempotent.
+        """
+        clash = self.minted_placeholders_in(text)
+        if clash:
+            raise RedactionRefused(clash)
         redacted = self.redact(text)
         leaks = self.check(redacted)
         if leaks:

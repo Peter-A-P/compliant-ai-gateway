@@ -5,6 +5,28 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.5.3 (2026-09-20)
+
+One more found by probing, and it is the only failure in this module so far that makes the
+output **wrong** rather than unsafe: a document containing the literal text `<PERSON_1>`
+came back from `rehydrate` carrying a real person's name. The released record would name
+somebody it never mentioned, which in an access-to-information workflow is fabrication. A
+document can carry that text for real: an office's own procedure manual is about redaction,
+and a record may already have been redacted by another hand.
+
+- **A placeholder the policy did not mint is masked whole**, as one opaque token, and
+  rehydrates to itself. Masking only the word inside it, which is what the second pass did
+  once it stopped skipping foreign placeholders, left brackets and a number wrapped around a
+  placeholder of ours.
+- **A placeholder the policy did mint is refused** by `outbound`, through the new
+  `minted_placeholders_in`, because it cannot be told from the policy's own substitution and
+  there is no correct answer on the way back. `Leak.kind` gains `placeholder`.
+- **`outbound` is therefore for source text.** Handing it its own output now raises instead
+  of quietly redacting twice. `redact` keeps no such guard and is still idempotent, and the
+  test that used to assert that property through `outbound` asserts it through `redact`.
+- CI's new redact job passed on its first run, so the two live Presidio assertions now run
+  somewhere other than one laptop.
+
 ## 0.5.2 (2026-09-20)
 
 Four more leaks in the second pass, found by probing it with the names project 07's corpus

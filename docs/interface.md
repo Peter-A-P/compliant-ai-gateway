@@ -300,10 +300,11 @@ from boundary.redact.presidio import PresidioRecogniser   # optional `redact` ex
 | A recogniser | protocol: `id: str`, `analyze(text, page) -> Sequence[Span]` | 0.5 | Built-ins in `boundary.redact.recognisers`; `RegexRecogniser(id, entity_type, pattern, score, group=0, validate=None)` builds one |
 | Presidio | `PresidioRecogniser(engine=None, *, language="en", entities=...)` | 0.5 | `ConfigError` without the extra. Accepts any object with Presidio's `analyze(text=, language=, entities=)` shape |
 | Policy | `Policy(spans, *, allow=(), allow_patterns=(), vocabulary=DECISION_VOCABULARY)` | 0.5 | Document-wide. Placeholders `<TYPE_n>` and, for name parts, `<PERSON_n.m>` |
-| Outbound | `policy.outbound(text) -> str` | 0.5 | Substitute, second pass, then refuse with `RedactionRefused` unless clean. `redact(text)` is the same without the refusal; `check(text) -> list[Leak]` is the refusal's reason |
+| Outbound | `policy.outbound(text) -> str` | 0.5 | Substitute, second pass, then refuse with `RedactionRefused` unless clean. **For source text only** since 0.5.3: text carrying a placeholder this policy minted is refused first, because rehydration could not tell it from the policy's own work. `redact(text)` is the same without either refusal and is idempotent; `check(text) -> list[Leak]` is the second refusal's reason |
+| Placeholder clash | `policy.minted_placeholders_in(text) -> list[Leak]` | 0.5.3 | What `outbound` refuses source text for. A placeholder the policy did **not** mint is not ambiguous: it is masked whole, as an opaque token, and survives the round trip as itself |
 | Inbound | `policy.rehydrate(text) -> str`, `policy.unresolved(text) -> list[str]` | 0.5 | Tolerant of case, inner spaces and dropped brackets |
 | Vault | `policy.vault -> Mapping[str, str]` | 0.5 | placeholder to value, in memory. Grows as the second pass masks. Never written by the library |
-| Errors | `RedactionRefused(BoundaryError)` with `.leaks: tuple[Leak, ...]` | 0.5 | Message carries counts only |
+| Errors | `RedactionRefused(BoundaryError)` with `.leaks: tuple[Leak, ...]` | 0.5 | Message carries counts only. `Leak.kind` is `value`, `shape` or, since 0.5.3, `placeholder` |
 
 ## 11. Choices the plan left open
 

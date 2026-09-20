@@ -471,7 +471,37 @@ def test_the_vocabulary_breaks_a_run_and_a_placeholder_is_never_remasked() -> No
     policy = Policy([_span("Marie Chaulk")])
     out = policy.outbound("Marie Chaulk Department Gander")
     assert out == "<PERSON_1> Department <NAME_LIKE_1>"
-    assert policy.outbound(out) == out, "redacting redacted text changes nothing"
+    assert policy.redact(out) == out, "redacting redacted text changes nothing"
+
+
+def test_placeholder_shaped_text_in_a_document_never_becomes_somebody_s_name() -> None:
+    """A document can contain `<PERSON_7>` for real: an office's own procedure manual, or a
+    record already redacted by another hand. Left alone it comes back from `rehydrate` as
+    though this policy had written it, and the released record names somebody it never
+    mentioned."""
+    policy = Policy([_span("Marie Chaulk")])
+
+    # One this policy did not mint is masked whole, as an opaque token, and survives the
+    # round trip as itself. Masking only the word inside it would leave a nested placeholder.
+    text = "The form said <PERSON_7> lives at Gander."
+    out = policy.redact(text)
+    assert out == "The form said <ID_LIKE_1> lives at <NAME_LIKE_1>."
+    assert policy.rehydrate(out) == text
+
+    # One it did mint is unresolvable in source text: it cannot be told from this policy's
+    # own substitution, so `outbound` refuses rather than fabricating a name on the way back.
+    with pytest.raises(RedactionRefused) as ei:
+        policy.outbound("The form said <PERSON_1> lives at Gander.")
+    assert [leak.kind for leak in ei.value.leaks] == ["placeholder"]
+    assert policy.minted_placeholders_in("nothing here") == []
+
+
+def test_outbound_is_for_source_text_and_says_so_when_handed_its_own_output() -> None:
+    policy = Policy([_span("Marie Chaulk")])
+    out = policy.outbound("Marie Chaulk called")
+    with pytest.raises(RedactionRefused):
+        policy.outbound(out)
+    assert policy.redact(out) == out, "redact has no such guard and stays idempotent"
 
 
 def test_allow_terms_and_patterns_extend_the_vocabulary() -> None:

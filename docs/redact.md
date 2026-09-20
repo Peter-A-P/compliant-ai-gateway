@@ -216,6 +216,29 @@ than returning text the policy cannot vouch for. By construction it should never
 exists because "should never" is not a guarantee. The exception's message carries counts
 by kind and type only; the details are on `.leaks`, so a traceback is safe to paste.
 
+### Text that already looks like a placeholder
+
+A document can contain `<PERSON_7>` for real. An access-to-information office's own
+procedure manual is about redaction; a record may already have been redacted by another
+hand. Left alone, that text comes back from `rehydrate` as though this policy had written
+it, and the record released at the end names somebody it never mentioned. That is
+fabrication rather than disclosure, and it is the one failure in this module that makes the
+output wrong instead of merely unsafe.
+
+Two cases, because only one of them is answerable:
+
+- **A placeholder this policy did not mint** is ordinary text that happens to look like a
+  placeholder. It is masked whole, as one opaque token, and rehydrates to itself. Masking
+  only the word inside it would leave brackets and a number wrapped around a placeholder of
+  ours, which reads as a nested placeholder and is exactly the sort of thing a model tidies
+  up on your behalf.
+- **A placeholder this policy did mint** cannot be told from its own substitution, so there
+  is no correct answer on the way back. `outbound` refuses, with `minted_placeholders_in`
+  as the reason. This makes `outbound` a method for source text: handing it its own output
+  raises rather than silently redacting twice. `redact` keeps no such guard and stays
+  idempotent, so a caller that genuinely wants the second pass over redacted text can have
+  it.
+
 ### Rehydration
 
 Tolerant of the ways models mutate a placeholder: any case (`<person_1>`), spaces inside
