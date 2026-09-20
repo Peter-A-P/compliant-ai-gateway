@@ -28,6 +28,7 @@ from boundary.redact import (
     Span,
     cut_at_line_break,
     resolve_overlaps,
+    sweep,
 )
 from boundary.redact.presidio import PresidioRecogniser
 from boundary.redact.recognisers import (
@@ -41,6 +42,7 @@ from boundary.redact.recognisers import (
     SIN,
     luhn_ok,
 )
+from boundary.redact.sweep import SWEEP_ID
 
 
 def _span(
@@ -348,8 +350,11 @@ def test_parts_match_case_sensitively_and_honorifics_are_not_parts() -> None:
     policy = Policy([_span("Dr. Will Grant")])
     out = policy.outbound("Dr. Will Grant will grant the request. Dr. Grant agreed.")
     # "will grant" in lower case is prose and stays; "Grant" capitalised is the person. The
-    # honorific is not a part, so a bare "Dr." is never substituted.
-    assert out == "<PERSON_1> will grant the request. Dr. <PERSON_1.2> agreed."
+    # honorific is not a part, so a bare "Dr." is never substituted. "Will" is licensed as
+    # nothing, because it is a vocabulary word: this is the cost of the 0.5.6 guard, stated
+    # rather than hidden. The full name is still masked wherever it appears; what a bare
+    # "Will" buys is that a sentence beginning "Will the department..." stays readable.
+    assert out == "<PERSON_1> will grant the request. Dr. <PERSON_1.1> agreed."
     assert policy.rehydrate(out) == "Dr. Will Grant will grant the request. Dr. Grant agreed."
 
 
@@ -681,3 +686,79 @@ def test_round_trip_property_redact_then_rehydrate_is_the_identity(seed: int) ->
         for place in _PLACES:
             assert place not in out, "undetected place names are masked by the second pass"
         assert policy.rehydrate(out) == page
+
+
+# -- the sweep (0.5.6) ---------------------------------------------------------------------
+#
+# Project 07 built this on its own detector first and measured it: person recall on its hard
+# pool 93.4 -> 98.0 percent, a two-token surname +6.8, a bare accented forename +8.0. These
+# tests are the four guards it named, each of which releases a name or blacks out a word
+# when it is missing.
+
+
+def _person(page: int, text: str, start: int, score: float = 0.85) -> Span:
+    return Span(page, start, start + len(text), text, EntityType.PERSON, score, "t")
+
+
+def test_sweep_finds_a_bare_forename_on_a_later_page() -> None:
+    pages = ["Marie Chaulk applied on 3 March.", "Marie asked for a review."]
+    found = sweep(pages, [_person(1, "Marie Chaulk", 0)])
+    swept = [s for s in found if s.recogniser == SWEEP_ID]
+    assert [(s.page, s.text) for s in swept] == [(2, "Marie")]
+    assert swept[0].entity_type is EntityType.PERSON
+    assert swept[0].score == 0.85, "the sweep adds no confidence of its own"
+
+
+def test_sweep_is_case_sensitive_and_whole_word() -> None:
+    pages = ["Le Drew signed the form.", "He withdrew it. Andrew agreed. drew a line."]
+    found = sweep(pages, [_person(1, "Le Drew", 0)])
+    assert [s for s in found if s.recogniser == SWEEP_ID] == []
+
+
+def test_sweep_claims_a_two_token_surname_whole() -> None:
+    # Claiming only "Drew" releases "Le", and a partly covered name is a leak wearing a
+    # redaction.
+    pages = ["Le Drew signed.", "Le Drew was present."]
+    swept = [s for s in sweep(pages, [_person(1, "Le Drew", 0)]) if s.recogniser == SWEEP_ID]
+    assert [(s.page, s.start, s.text) for s in swept] == [(2, 0, "Le Drew")]
+
+
+def test_sweep_refuses_vocabulary_words() -> None:
+    # A heading the detector typed as a PERSON would otherwise black out an ordinary word
+    # on every page. The heading itself stays masked; the sweep just does not spread it.
+    pages = ["Decision Letter", "The Decision was sent by Letter."]
+    found = sweep(pages, [_person(1, "Decision Letter", 0, 0.6)])
+    assert [s for s in found if s.recogniser == SWEEP_ID] == []
+    assert [s.text for s in found] == ["Decision Letter"]
+
+
+def test_sweep_never_covers_an_existing_span() -> None:
+    pages = ["Marie Chaulk applied.", "Marie Chaulk again."]
+    known = [_person(1, "Marie Chaulk", 0), _person(2, "Marie Chaulk", 0)]
+    assert [s for s in sweep(pages, known) if s.recogniser == SWEEP_ID] == []
+
+
+def test_sweep_sees_an_accented_name_beside_a_letter() -> None:
+    # The ASCII word boundary used elsewhere in this package would let a part match inside
+    # a longer accented word. These are exactly the names the sweep is worth the most for.
+    pages = ["Emile Berube applied.".replace("Emile", "Émile").replace("Berube", "Bérubé")]
+    pages.append("Émile signed. Émiles is not a person.")
+    swept = [s for s in sweep(pages, [_person(1, "Émile Bérubé", 0)]) if s.recogniser == SWEEP_ID]
+    assert [(s.page, s.text) for s in swept] == [(2, "Émile")]
+
+
+def test_sweep_output_feeds_the_policy_without_a_second_placeholder() -> None:
+    pages = ["Marie Chaulk applied. Le Drew signed.", "Marie asked. Le Drew agreed."]
+    known = [_person(1, "Marie Chaulk", 0), _person(1, "Le Drew", 22, 0.8)]
+    policy = Policy(sweep(pages, known))
+    assert policy.redact(pages[1]) == "<PERSON_1.1> asked. <PERSON_2> agreed."
+    assert policy.rehydrate(policy.redact(pages[1])) == pages[1]
+
+
+def test_a_vocabulary_word_is_not_licensed_as_a_name_part() -> None:
+    # The same hole on the policy side: "Decision Letter" detected as a PERSON used to make
+    # every "Decision" in the record a placeholder.
+    spans = [_person(1, "Decision Letter", 0, 0.6), _person(1, "Marie Chaulk", 40)]
+    policy = Policy(spans)
+    out = policy.redact("The Decision Letter and the Decision reached. Marie signed.")
+    assert out == "The <PERSON_1> and the Decision reached. <PERSON_2.1> signed."

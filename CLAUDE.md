@@ -1,6 +1,7 @@
 # Working notes for Claude Code
 
-This repository is the Compliant AI Gateway: the `boundary` library that every project in
+This repository is Inside the Boundary, On the Record (renamed 2026-09-20; was the Compliant AI Gateway):
+the `boundary` library that every project in
 the portfolio calls models through (Part A, September 2026) and, from May 2027, the full
 gateway with redaction, residency routing, audit log, cache, budgets and the portfolio
 observability dashboard (Part B). Both are planned in [PLAN.md](PLAN.md).

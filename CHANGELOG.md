@@ -5,6 +5,47 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.5.6 (2026-09-20)
+
+Project 07 built the document-wide sweep on its own detector, measured it, and sent the
+mechanism back. It is a detection stage this library did not have, and its warning about
+the guards turned out to name a hole here as well.
+
+- **`boundary.redact.sweep`**: a person the detector found anywhere in a document licenses
+  the other whole-word occurrences of that person's name parts everywhere else. The loss it
+  recovers is lexical rather than semantic: a model reads "Marie Chaulk applied" and answers,
+  and three pages later the prose says only "Marie", in a position carrying no signal. 07
+  measured person recall on its hard name pool going 93.4 to 98.0 percent, and the two
+  shapes that cost the most gained the most: a two-token surname by 6.8 points, a bare
+  accented forename by 8.0. The four guards are 07's, each one a bug it hit first:
+  case-sensitive, whole word, token runs rather than single words, and vocabulary words
+  refused. The whole-word boundary here knows about accents, since those are the names the
+  stage is worth the most for.
+
+  `Policy` has masked the bare "Marie" since 0.5.0, so this changes no redacted output. What
+  it adds is the **span**: a workflow drawing boxes on a page, and an error decomposition
+  attributing a miss to the detector rather than to the decision, could not see that
+  occurrence before. `sweep` returns the spans it was given plus the ones it found, overlaps
+  resolved, with the added ones carrying `recogniser == "boundary:sweep"`.
+
+- **A name part the vocabulary allows is no longer licensed**, which was a real
+  over-redaction here and is the guard 07 warned about. "Decision Letter" typed as a PERSON
+  at 0.6, which is the sort of thing a model does to a heading, turned every "Decision" in
+  an access-to-information record into a placeholder: the one word such a record is about,
+  blacked out on every page, by a policy nobody would suspect. The detected span itself is
+  still masked, because the detector said so and this library fails closed. What the policy
+  declines to do is carry one detection across a document it was never asked about. The cost
+  is stated rather than hidden: a forename that is also a common word, "Will Grant", is
+  masked whole wherever it appears and a bare "Will" three pages later is released, which is
+  what the second pass does with that word in any case.
+
+- **`boundary.redact.names`**: `is_name_shaped` and `name_parts`, which the policy and the
+  sweep both need. Two copies of that judgement is a leak waiting for a disagreement.
+
+- The comparison in docs/redact.md is labelled again: 07's published figure is now 98.6% with
+  its sweep, against 96.3% here measured without one. Both are shipped engines rather than
+  models, and this library has not been re-measured since gaining the stage.
+
 ## 0.5.5 (2026-09-20)
 
 Project 07 reported two things about 0.5.4 and a number. One was a real gap, one was a

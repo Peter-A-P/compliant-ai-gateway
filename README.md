@@ -1,9 +1,15 @@
-# Compliant AI Gateway
+# Inside the Boundary, On the Record
 
-Lets a bank, insurer, hospital or government department use frontier AI models without
-personal data ever leaving the boundary, with a tamper-evident record of every call and a
-hard cap on every team's spend. The blocker most regulated organisations cite for AI
-adoption, removed, with the latency overhead measured and published rather than promised.
+An AI gateway for banks, insurers, hospitals and government. Frontier models stay usable
+while personal data is redacted before it leaves, every call carries a tamper-evident
+record and a cost, and every team has a hard cap enforced before the call. The blocker most
+regulated organisations cite for AI adoption, with the detection rate and the latency
+overhead measured and published rather than promised.
+
+Note what this does not say. Redaction is measured, not perfect, and the results table
+gives the rate. Residency is a declaration checked against the request, not a measurement,
+because no provider reports where a request was actually processed. The old name of this
+project asserted a compliance it declines to fake; see "What this does not do" below.
 
 **Status: Part A released as `v0.1.0` on 2026-09-10**, after one live call per provider. The interface is frozen
 ([docs/interface.md](docs/interface.md)); the library table below is measured. **`v0.2.0` followed on 2026-09-11**: ledger merge

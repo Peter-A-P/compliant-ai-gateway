@@ -41,6 +41,9 @@ from types import MappingProxyType
 from typing import Literal
 
 from boundary.errors import BoundaryError
+from boundary.redact.names import RSQUO as _RSQUO
+from boundary.redact.names import is_name_shaped as _is_name_shaped
+from boundary.redact.names import name_parts as _name_parts
 from boundary.redact.types import EntityType, Span
 from boundary.redact.vocabulary import DECISION_VOCABULARY
 
@@ -50,15 +53,9 @@ PLACEHOLDER = re.compile(
     r"<\s*([A-Za-z_]+?)_(\d+(?:\.\d+)?)\s*>|(?<![A-Za-z0-9_])([A-Z_]+?)_(\d+(?:\.\d+)?)(?![A-Za-z0-9_])"
 )
 
-# Titles that precede a name and are not part of it.
-_HONORIFICS = frozenset(
-    {"mr", "mrs", "ms", "mx", "miss", "dr", "prof", "hon", "sir", "madam", "rev", "sgt", "cst"}
-)
-
-# The right single quotation mark, built from its code point because the formatter would
-# otherwise write the character itself into this file, and this repository keeps to plain
-# punctuation.
-_RSQUO = chr(0x2019)
+# The word shapes and the parts of a name live in boundary.redact.names, because the
+# sweep needs the same answers and two copies of this judgement is a leak waiting for a
+# disagreement.
 # One word: a run of letters in any script, joined by hyphens or apostrophes. `[^\W\d_]` is
 # "a word character that is neither a digit nor an underscore", which on a str pattern means
 # any Unicode letter.
@@ -98,21 +95,6 @@ _ENTITY_NAMES = frozenset(e.value for e in EntityType)
 
 def _norm(value: str) -> str:
     return " ".join(value.split()).casefold()
-
-
-def _is_name_shaped(token: str) -> bool:
-    """Whether a word could be part of somebody's name, judged on case alone.
-
-    Two or more letters, starting with a capital. An internal capital is fine and is the
-    point: `MacDonald`, `McCarthy`, `LeBlanc`, `O'Brien` and `Jean-Pierre` are all one word.
-    Accented and non-Latin letters count, because `isupper` knows about them and a character
-    class written in ASCII does not. An all-capitals word needs three letters, so `OK` and
-    `NL` stay readable while `GAGNE` and `PENASHUE` do not.
-    """
-    letters = [c for c in token if c.isalpha()]
-    if len(letters) < 2 or not letters[0].isupper():
-        return False
-    return not (len(letters) < 3 and all(c.isupper() for c in letters))
 
 
 def _is_identifier_shaped(token: str) -> bool:
@@ -262,15 +244,6 @@ class Policy:
         self._vault[placeholder] = value
         return placeholder
 
-    @staticmethod
-    def _name_parts(name: str) -> list[str]:
-        parts = []
-        for part in name.replace("-", " ").split():
-            cleaned = part.strip(".,;:'" + _RSQUO)
-            if len(cleaned) >= 2 and cleaned.casefold() not in _HONORIFICS:
-                parts.append(cleaned)
-        return parts
-
     def _build(self, spans: list[Span]) -> None:
         # Document order, so <PERSON_1> is the first person the document mentions.
         persons: list[tuple[str, str]] = []
@@ -281,7 +254,7 @@ class Policy:
             _norm(part)
             for s in spans
             if s.entity_type is EntityType.PERSON and len(s.text.split()) > 1
-            for part in self._name_parts(s.text)
+            for part in _name_parts(s.text)
         }
         for s in sorted(spans, key=lambda s: (s.page, s.start, -s.length)):
             if s.entity_type in (EntityType.NAME_LIKE, EntityType.ID_LIKE):
@@ -302,9 +275,22 @@ class Policy:
         # placeholder tied to that person (<PERSON_1.2>), so the two mentions are visibly
         # the same person and each rehydrates to what it was. A part shared by two people
         # gets its own top-level placeholder, since the text alone cannot say which one.
+        #
+        # A part the vocabulary allows is not spread (0.5.6). Project 07 warned of this
+        # from its own sweep and this policy had the same hole: a heading the detector
+        # typed as a PERSON, "Decision Letter" at 0.6, licensed `Decision` and `Letter`
+        # and then blacked out both words on every page of an access-to-information
+        # record, which is the one word such a record is about. The detected span itself
+        # is still masked, because the detector said so and this library fails closed.
+        # What the policy declines to do is carry one detection across a document it was
+        # never asked about. The cost is a surname that happens to be a vocabulary word:
+        # `Will Grant` ships as `<PERSON_1>` as before, and a bare `Grant` three pages
+        # later is released, where the second pass would have excused it in any case.
         owners: dict[str, list[tuple[str, str]]] = defaultdict(list)
         for placeholder, name in persons:
-            for part in self._name_parts(name):
+            for part in _name_parts(name):
+                if part.casefold() in self._allow or not _is_name_shaped(part):
+                    continue
                 # A part a restored vault already carries keeps the placeholder it had.
                 if _norm(part) not in self._table and part not in self._parts:
                     owners[_norm(part)].append((placeholder, part))

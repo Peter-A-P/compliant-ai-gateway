@@ -1,4 +1,4 @@
-# Plan: Compliant AI Gateway
+# Plan: Inside the Boundary, On the Record
 
 **Written:** 2026-09-06. **Status (2026-09-11):** Part A released as `v0.1.0` on 2026-09-10, three days ahead of the Sep 13 target, after one live call per provider. Version 0.2 is in progress on `main` (section 5.1). Part B is unchanged, May 2027. **Status (2026-09-19):** `v0.4.0` and `v0.5.0` on `main` (section 7). **The dates in this plan are no longer the schedule.** Peter's decision, 2026-09-19: every timeline is being pushed aggressively, and Part B's pieces are pulled forward as the projects that need them arrive rather than waiting for May 2027. The first is `boundary.redact`, built the same day to project 07's brief (B2.3) and shipped as 0.5.0. The design sections still hold; the dates in them are history, not commitments.
 

@@ -108,6 +108,63 @@ installed, which on 2026-09-19 reproduced both of 07's defects exactly: Presidio
 `gov.nl.ca` as a `URL` and nothing else in the address. Engine start-up is about ten
 seconds; build one and keep it.
 
+### The sweep
+
+`sweep(pages, spans)` is a second detection stage: a person found anywhere in the document
+licenses the other whole-word occurrences of that person's name parts everywhere else. It
+returns the spans it was given plus the ones it found, overlaps resolved, with the added
+ones carrying `recogniser == "boundary:sweep"` so a consumer measuring its detector can
+tell the two apart.
+
+```python
+spans = Analyzer().analyze(pages)
+spans = sweep(pages, spans)
+```
+
+The loss it recovers is lexical, not semantic. A model reads "Marie Chaulk applied" and
+answers confidently; three pages later the prose says only "Marie", in a position that
+carries no signal, and the model declines. The document holds the evidence that the page
+does not.
+
+Project 07 built this on its own detector first and measured it on 2026-09-20. Person
+recall, same detector, sweep off then on:
+
+| Name profile | Off | On | Gain |
+|---|---|---|---|
+| plain (published corpus) | 96.2% | 98.8% | +2.6 |
+| all five Newfoundland shapes | 93.4% | 98.0% | +4.6 |
+| two-token surname | 89.8% | 96.6% | +6.8 |
+| bare accented forename | 88.8% | 96.8% | +8.0 |
+
+The two shapes that cost the most gain the most, and the penalty for using this province's
+names falls from 2.8 points to 0.8. Intervals are in 07's `results/sweep.md`; the ablation
+there is the honest place to read two detectors against each other, because `results/names.md`
+now compares an engine with a sweep against one without.
+
+`Policy` has done the same thing at substitution time since 0.5.0 (finding 2 below), so the
+bare "Marie" was already masked with or without this. What the sweep adds is the **span**:
+a workflow drawing redaction boxes on a page, or an error decomposition attributing a miss
+to the detector rather than to the decision, could not see it until now.
+
+Four guards, each of which 07 hit before it had them:
+
+1. **Case-sensitive.** "Drew" is a person and "withdrew" is a verb.
+2. **Whole word**, on a boundary that knows about accents rather than the ASCII one used
+   elsewhere in this package, since these are exactly the names the sweep is worth most for.
+3. **Token runs, not single words.** Claim "Le Drew" whole, or you claim "Drew", release
+   "Le", and call the result a redaction.
+4. **Vocabulary words refused.** A heading the detector typed as a PERSON would otherwise
+   black out an ordinary word on every page. The same guard now applies to the policy's own
+   part licensing; see below.
+
+The sweep adds no confidence of its own: a swept span carries the score of the detection
+that licensed it, and a run carries the lowest score among its parts.
+
+**The limit 07 wrote into its plan rather than glossing**, and it applies here identically:
+the sweep needs the person found somewhere. A record that never names someone in a position
+a detector can read gains nothing. That residual is what a gazetteer would cover, and this
+does not.
+
 ## The policy
 
 `Policy(spans)` mints one typed placeholder per distinct value, `<PERSON_1>`, `<EMAIL_2>`,
@@ -127,7 +184,14 @@ spans and applies to any text.
 **2. A detected full name licenses its parts.** The detector finds "Marie Chaulk"; the
 prose two sentences later says "Marie". Each part of a person's name gets a placeholder
 tied to that person, `<PERSON_1.1>` and `<PERSON_1.2>`, so the second mention is visibly
-the same person and rehydrates to exactly what it was. A first name the detector also
+the same person and rehydrates to exactly what it was. A part the vocabulary allows is not
+licensed (0.5.6): "Decision Letter" detected as a person at 0.6, which is the sort of
+thing a model does to a heading, used to turn every "Decision" in an access-to-information
+record into a placeholder. The detected span itself is still masked, because the detector
+said so and this library fails closed; what the policy declines to do is carry one
+detection across a document it was never asked about. The cost is a forename that is also
+a common word: "Will Grant" is masked whole wherever it appears, and a bare "Will" three
+pages later is released, which is the same thing the second pass does with it anyway. A first name the detector also
 found alone is folded into the person it belongs to. A part two people share gets its own
 top-level placeholder, since the text alone cannot say which. Honorifics are not parts.
 Whole values are matched without regard to case; **parts are matched case-sensitively**,
@@ -297,6 +361,15 @@ and it reaches **97.4% overall**, so the honest current comparison is 96.3% here
 97.4% there, both on the large model. Most of what the old gap measured was the model, which
 is why the column is named for it. The remaining gap is 07's street-address and job-title
 recognisers plus the `DATE` type this vocabulary excludes by design.
+
+On 2026-09-20 07 added the sweep to its own detector and its published figure went to
+**98.6%**, with detector misses 25 to 16 and its leak rate 5.4 to 4.7 percent rules-only.
+That column now measures an engine with a sweep against a number measured here without one,
+because both the 96.3% and the 98.6% are what each project ships rather than what each
+model does. Neither is wrong and the pair is no longer like for like. 07's `results/sweep.md`
+holds the ablation, and with the sweep off the two engines are within a point on every name
+profile. This library gained the same stage in 0.5.6 and has not been re-measured with it;
+the figure that would move is person recall, and by how much is not known here.
 
 Three things 07 reported alongside the numbers, none of which changed the code:
 
