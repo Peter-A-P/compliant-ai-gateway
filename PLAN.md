@@ -738,6 +738,15 @@ than", which is true and useless. The delta and its interval are reported in bot
 directions, and the write-up states which was expected, since a hypothesis that inverted is
 worth more than one that held. See docs/redact.md.
 
+A null result is reported as a null result, with the effect size the run could have
+detected printed beside it. "No difference" from a gold set of 300 items is a statement
+about the gold set as much as about redaction, and an interval wide enough to contain both
+a real cost and a real benefit says only that this harness cannot tell. 07 said it would
+read a "no worse than" from this gate with the same suspicion the amendment above applies
+to the plan, and it is right to: the reason the one-sided test was wrong here is that it
+could return a comfortable answer without the evidence for it, and a two-sided test with no
+power reported can do exactly the same thing.
+
 ### B2.9 Out of scope in Part B, on purpose
 
 - Single sign-on and role-based access. Keys per team only; anything more is enterprise
