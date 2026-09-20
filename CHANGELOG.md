@@ -5,6 +5,15 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+- **Correction, 2026-09-22**: the raw arm of 07's ablation is 239 distinct payloads of 244
+  asks, not 240. 07 found it when it replaced a hand-written sentence with a measured
+  column, which is the better reason to trust the new figure than the size of the change.
+  The repeat rates it puts beside it are the useful pair: 30% masked against 2% raw. The
+  method note carries into PLAN.md B2.5, because it will bite this cache harder than it bit
+  07: count distinct payloads from the keys a run touches, not from the size of the cache,
+  or a warm re-run counts entries it never asked for and inflates the saving. The 0.5.8
+  entry below keeps the number it was written with.
+
 ## 0.5.8 (2026-09-21)
 
 Two things from project 07, one of which changes the plan.

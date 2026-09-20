@@ -231,11 +231,18 @@ with no key, no account and no spend.
 Two consequences here. The plan's B2.8 is now a two-sided comparison rather than a
 non-inferiority test (PLAN.md, amended 2026-09-21): a test shaped to bound a cost cannot
 report a benefit, and on the evidence so far the benefit is the likelier finding. And 07
-counted the requests: the placeholder arm needed 171 distinct ones where the raw arm needed
-240 for the same spans, because placeholder payloads repeat across documents once the names
-are gone and raw payloads are unique precisely because the names are. **A redacted corpus is
-more cacheable than an unredacted one**, which is an argument for the boundary with nothing
-to do with privacy, and a prediction Part B's semantic cache can check.
+counted the requests: **171 distinct payloads for the placeholder arm against 239 for the
+raw arm, out of 244 asks each**, a repeat rate of 30% masked against 2% raw. Placeholder
+payloads repeat across documents once the names are gone; raw payloads are unique precisely
+because the names are. **A redacted corpus is more cacheable than an unredacted one**, which
+is an argument for the boundary with nothing to do with privacy, and a prediction Part B's
+semantic cache can check.
+
+07 corrected that pair on 2026-09-22, from 240 to 239, when it replaced the hand-written
+sentence with a measured column. The method matters more than the digit and carries
+straight over to B2.5: **count distinct payloads from the keys a run touches, not from the
+size of the cache**, or a warm re-run counts entries it never asked for and inflates the
+saving.
 
 **The limit 07 wrote into its plan rather than glossing**, and it applies here identically:
 the sweep needs the person found somewhere. A record that never names someone in a position

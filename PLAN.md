@@ -694,13 +694,19 @@ returns a confident answer to a different question is worse than no cache, and t
 number says how often that happens.
 
 **Added 2026-09-21: report the hit rate for redacted and raw payloads separately.** Project
-07 counted the distinct requests behind its ablation and found 171 for the placeholder arm
-against 240 for the raw arm over the same spans. Placeholder payloads repeat across
-documents once the names are gone; raw payloads are unique precisely because the names are.
-If that holds at portfolio scale, redaction raises the cache hit rate, which is an argument
-for the boundary with nothing to do with privacy and one this cache is the right place to
-check. The two rates go in the table side by side; a single blended number would hide the
-effect, and the effect is the interesting part.
+07 counted the distinct payloads behind its ablation: 171 for the placeholder arm against
+239 for the raw arm, out of 244 asks each, a repeat rate of 30% masked against 2% raw.
+Placeholder payloads repeat across documents once the names are gone; raw payloads are
+unique precisely because the names are. If that holds at portfolio scale, redaction raises
+the cache hit rate, which is an argument for the boundary with nothing to do with privacy
+and one this cache is the right place to check. The two rates go in the table side by side;
+a single blended number would hide the effect, and the effect is the interesting part.
+
+Count distinct payloads from the keys a run touches, not from the size of the cache. 07
+found the second method wrong by one when it moved the figure from a hand-written sentence
+to a measured column, and the error grows with every warm re-run, because the cache holds
+entries the run never asked for. The replay harness reports keys touched, distinct keys and
+asks, so the three can be checked against each other.
 
 ### B2.6 Injection screening is advisory by default
 
