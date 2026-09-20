@@ -5,6 +5,43 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.5.7 (2026-09-21)
+
+Project 07 built the sweep on its own detector, hit a leak this library's version would
+have inherited, and sent the fix back the same day.
+
+- **The sweep re-types a bare name the detector called a place.** A span that is exactly
+  the name parts of a person the document attributes, and whose type is one a consumer
+  reads as impersonal (`LOCATION`, `ORGANISATION`, `NAME_LIKE`), is now re-typed `PERSON`.
+  Presidio typed "Bernadette Tuglavina" a `PERSON` in the introducing sentence and the bare
+  "Tuglavina" in the list below a `LOCATION`. The span is found, so recall counts it and
+  every table stays healthy, and then 07's release rule read `LOCATION` as not information
+  about an identifiable individual and printed that sentence in the schedule beside a third
+  party's surname. A miss would have been better, because a miss does not argue for itself.
+  On 07's corpus the fix moved the leak rate 4.7 to 2.8 percent rules-only, 7.2 to 5.3 with
+  the model, over-redaction 30.1 to 30.3, and **detector recall not at all**. That is the
+  finding, and it is entry 4 of 07's rejected list: recall asks whether a span was found,
+  not what it was called, and the label is what decides whether the text is released.
+
+  This library masks every span type, so the same mistype was never a leak here. It was a
+  wrong label handed to a consumer that had to act on it, which is what publishing spans is
+  for. A re-typed span carries `recogniser == f"{SWEEP_ID}:{original}"`, so the correction
+  and the recogniser that fired are both visible; `retype=()` switches it off. "Exactly" is
+  the whole guard: "Hearn" inside "Hearn Building" is a place doing honest work.
+
+- **The caseless-script limit, answered with a corpus instead of an assertion.** 07's
+  Labrador name profile, Innu surnames from Sheshatshiu and Natuashish and Inuit surnames
+  from the Nunatsiavut communities, is plain ASCII throughout and still loses 3.1 points
+  without the sweep. The mechanism was never the alphabet, it was the vocabulary: a name is
+  lost because nothing knows it. Syllabics stay outside what either engine reaches.
+
+- **The gazetteer residual measured on both engines**, which is the limit this library
+  named when the sweep landed. 23 of 07's 29 remaining person misses, 79%, are people its
+  detector never found as a person anywhere in the record, against 28 of 84, 33%, here. More
+  of what this library still misses is reachable by sweeping; more of what 07 misses needs a
+  gazetteer. 07 caught an error in its own first version of that figure before publishing it,
+  which had counted a persona as seen on the strength of an email address.
+
 ## 0.5.6 (2026-09-20)
 
 Project 07 built the document-wide sweep on its own detector, measured it, and sent the

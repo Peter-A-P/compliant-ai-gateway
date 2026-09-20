@@ -762,3 +762,58 @@ def test_a_vocabulary_word_is_not_licensed_as_a_name_part() -> None:
     policy = Policy(spans)
     out = policy.redact("The Decision Letter and the Decision reached. Marie signed.")
     assert out == "The <PERSON_1> and the Decision reached. <PERSON_2.1> signed."
+
+
+# -- re-typing a bare name the detector called a place (0.5.7) ------------------------------
+#
+# 07 hit this building its own sweep: the span is found, so recall counts it, and then the
+# label releases it. No recall-based test on either side catches that.
+
+
+def test_sweep_retypes_a_bare_surname_the_detector_called_a_location() -> None:
+    pages = ["Bernadette Tuglavina applied.", "Requests: Tuglavina, Hearn Building."]
+    known = [
+        _person(1, "Bernadette Tuglavina", 0),
+        Span(2, 10, 19, "Tuglavina", EntityType.LOCATION, 0.8, "presidio:SpacyRecognizer"),
+        Span(2, 21, 35, "Hearn Building", EntityType.LOCATION, 0.8, "presidio:SpacyRecognizer"),
+    ]
+    by_text = {s.text: s for s in sweep(pages, known)}
+    assert by_text["Tuglavina"].entity_type is EntityType.PERSON
+    assert by_text["Tuglavina"].recogniser == f"{SWEEP_ID}:presidio:SpacyRecognizer"
+    assert by_text["Tuglavina"].score == 0.8, "re-typing changes the label, not the confidence"
+    # "Hearn" inside "Hearn Building" is a place doing honest work, even with a Mary Hearn
+    # in the document. Exactly the name parts, and nothing looser.
+    assert by_text["Hearn Building"].entity_type is EntityType.LOCATION
+
+
+def test_sweep_retypes_a_multi_token_name_and_leaves_other_types_alone() -> None:
+    pages = ["Le Drew signed.", "Le Drew and gov.nl.ca"]
+    known = [
+        _person(1, "Le Drew", 0),
+        Span(2, 0, 7, "Le Drew", EntityType.ORGANISATION, 0.7, "presidio:SpacyRecognizer"),
+        Span(2, 12, 21, "gov.nl.ca", EntityType.URL, 0.6, "presidio:UrlRecognizer"),
+    ]
+    found = {s.text: s.entity_type for s in sweep(pages, known)}
+    assert found["Le Drew"] is EntityType.PERSON
+    assert found["gov.nl.ca"] is EntityType.URL
+
+
+def test_retype_can_be_switched_off() -> None:
+    pages = ["Bernadette Tuglavina applied.", "Requests: Tuglavina."]
+    known = [
+        _person(1, "Bernadette Tuglavina", 0),
+        Span(2, 10, 19, "Tuglavina", EntityType.LOCATION, 0.8, "presidio:SpacyRecognizer"),
+    ]
+    found = sweep(pages, known, retype=())
+    assert [s.entity_type for s in found if s.page == 2] == [EntityType.LOCATION]
+
+
+def test_a_retyped_span_does_not_mint_a_second_placeholder() -> None:
+    pages = ["Bernadette Tuglavina applied.", "The file names Tuglavina."]
+    known = [
+        _person(1, "Bernadette Tuglavina", 0),
+        Span(2, 15, 24, "Tuglavina", EntityType.LOCATION, 0.8, "presidio:SpacyRecognizer"),
+    ]
+    policy = Policy(sweep(pages, known))
+    assert policy.redact(pages[1]) == "The file names <PERSON_1.2>."
+    assert policy.rehydrate(policy.redact(pages[1])) == pages[1]

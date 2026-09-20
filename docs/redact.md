@@ -160,10 +160,48 @@ Four guards, each of which 07 hit before it had them:
 The sweep adds no confidence of its own: a swept span carries the score of the detection
 that licensed it, and a run carries the lowest score among its parts.
 
+### Re-typing, and why recall could not see the leak it fixes
+
+The sweep does not only add spans. A span that is **exactly** the name parts of a person the
+document attributes, and whose type is one a consumer reads as impersonal (`LOCATION`,
+`ORGANISATION`, `NAME_LIKE`, the `retype` argument), is re-typed `PERSON` and carries
+`recogniser == "boundary:sweep:<original>"`, so both the correction and the recogniser that
+fired stay visible.
+
+07 found this building its own sweep, and it is the more useful half of the exchange.
+Presidio typed "Bernadette Tuglavina" a `PERSON` in the introducing sentence and the bare
+"Tuglavina" in the list below a `LOCATION`. The span was found, so recall counted it and
+every table stayed healthy; then 07's release rule read `LOCATION` as not information about
+an identifiable individual and printed that sentence in the schedule beside a third party's
+surname. **A miss would have been better, because a miss does not argue for itself.**
+
+| 07, rules only | Before | After |
+|---|---|---|
+| leak rate | 4.7% | 2.8% |
+| leak rate, rules and model | 7.2% | 5.3% |
+| over-redaction | 30.1% | 30.3% |
+| detector recall | 98.6% | 98.6% |
+
+Recall did not move at all, and that is the finding: **recall asks whether a span was found,
+not what it was called**, and in a tool that releases text the label is the decision. It is
+entry 4 of 07's `docs/rejected.md`. This library masks every span type, so the same mistype
+was not a leak here; it was still a wrong label handed to a consumer that had to act on it,
+which is what `boundary.redact` publishes spans for.
+
+"Exactly" is the whole guard. "Hearn" inside "Hearn Building" is a place doing honest work,
+even with a Mary Hearn in the document, and re-typing the building would be a worse error
+than the one this corrects.
+
 **The limit 07 wrote into its plan rather than glossing**, and it applies here identically:
 the sweep needs the person found somewhere. A record that never names someone in a position
 a detector can read gains nothing. That residual is what a gazetteer would cover, and this
-does not.
+does not. 07 measured it on both engines on 2026-09-21: **23 of its 29 remaining person
+misses, 79%, are people its detector never found as a person anywhere in the record, against
+28 of 84, 33%, for `boundary.redact`**. Proportionally more of what this library still misses
+is reachable by sweeping, and proportionally more of what 07 misses needs a gazetteer.
+07 corrected that figure before publishing it: the first version counted a persona as seen
+if any span of theirs was found at all, including an email address, which licenses nothing
+for a name sweep, and it put the unreachable share at 0%.
 
 ## The policy
 
@@ -276,6 +314,15 @@ This mattered less than it first looked for the case that prompted it. Project 0
 on 2026-09-20: the Labrador Inuttitut in its records is written in Latin script, so the
 pass reads it like any other name. The gap that was actually losing values there was
 narrower and more ordinary, and it is the one 0.5.2 fixed.
+
+07 answered the rest of it with a corpus rather than a claim on 2026-09-21. Its Labrador
+name profile, Innu surnames from Sheshatshiu and Natuashish and Inuit surnames from the
+Nunatsiavut communities, is plain ASCII throughout: no accent, no apostrophe, no internal
+capital. Orthographically those names are Doucette. They are found beside a forename and
+missed standing alone, exactly like the shape profiles, and the sweep recovers 3.1 points
+on them. So the mechanism was never the alphabet, it was the vocabulary: a name is lost
+because nothing knows it, not because of the letters it is spelled with. Syllabics remain
+outside what any of this reaches, on either side.
 
 ### The guard
 
