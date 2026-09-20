@@ -66,7 +66,12 @@ exist yet, and nothing here claims a precision. **`v0.5.2` the next day** is the
 of that caveat made concrete: probing the redaction pass with names the corpus does not
 contain, accented, `Mac` and `Mc` surnames, a postcode written with a space, found four more
 values leaving in clear with no refusal, none of which the measured 96.3% could have seen.
-A number is evidence about the inputs somebody thought to measure.
+A number is evidence about the inputs somebody thought to measure. **`v0.5.6`** takes the
+traffic the other way: project 07 built a document-wide sweep on its own detector, measured
+person recall on its hard name pool going 93.4 to 98.0 percent, and sent the mechanism back.
+It is now a detection stage here, and 07's warning about the guards it needs named a hole in
+this library too, where a heading typed as a person blacked out the word "Decision" on every
+page of a record.
 Both parts are planned in
 [PLAN.md](PLAN.md):
 Part A, the `boundary` library that every project in this portfolio calls models through;
