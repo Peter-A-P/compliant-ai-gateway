@@ -6,72 +6,51 @@ every call and a hard cap on every team's spend. The blocker most regulated orga
 cite for AI adoption, removed, with the latency overhead measured and published rather than
 promised.
 
-**Status: Part A released as `v0.1.0` on 2026-09-10**, after one live call per provider. The interface is frozen
-([docs/interface.md](docs/interface.md)); the library table below is measured. **`v0.2.0` followed on 2026-09-11**: ledger merge
-across environments, Anthropic Message Batches collected at half price, and merging that no
-longer writes to the ledgers it reads. Every provider and the batch path were exercised
-live, and a local model server answers at price zero. **The three hyperscaler adapters are
-written and one of them is exercised**: Claude on Amazon Bedrock answered from
-`ca-central-1`, first by hand on 2026-09-15 and then through this library from GitHub Actions
-on 2026-09-16, writing a ledger row that records the region it was sent to and the residency
-its configuration declared. That row is deliberately **uncosted**: AWS publishes its own rates,
-they were not readable from the published page, and an unknown price never becomes an estimate.
+**Status: Part A is released, and its interface is frozen**
+([docs/interface.md](docs/interface.md)). `v0.1.0` on 2026-09-10, after one live call per
+provider; the library table below is measured. Everything since is additive: ledger merge
+across environments and Anthropic Message Batches at half price (`v0.2.0`), the three
+hyperscaler adapters (`v0.2.1`), streaming with time to first token and measured price
+overlays for self-hosted GPU servers (`v0.3.0`), a data class declared on every call
+(`v0.4.0`), and the `boundary.redact` package pulled forward from Part B for project 07
+(`v0.5.0` to `v0.5.8`). Release by release, with the evidence for each: [CHANGELOG.md](CHANGELOG.md).
+Part B, the full gateway, is planned for May 2027 in [PLAN.md](PLAN.md).
 
-**Microsoft Foundry and Google Vertex have credentials and are refused by quota, not by
-code.** Foundry allocates zero requests a minute for every Anthropic model in every region
+Four things worth knowing before the tables.
+
+**Two of the three hyperscalers have credentials and are refused by quota, not by code.**
+Microsoft Foundry allocates zero requests a minute for every Anthropic model in every region
 that offers them, while 159 non-Anthropic quotas in the same region are normal. Vertex
 returned 429 on the first request the account ever made, against a bucket that carries no
 limit at all rather than a limit of zero, while the Google-model buckets beside it sit at
 600. Two vendors, the same shape: the platform's own catalogue is provisioned for a new
 customer and the partner's frontier models are not, and neither vendor's documentation
-mentions it. What that cost to find out, and the three different ways these platforms avoid
-saying where a request is processed, is in
+mentions it. Amazon Bedrock does answer: Claude from `ca-central-1`, by hand on 2026-09-15
+and through this library from GitHub Actions on 2026-09-16. That row is deliberately
+**uncosted**, because AWS's rates were not readable from the published page and an unknown
+price never becomes an estimate. What this cost to find out, and the three different ways
+these platforms avoid saying where a request is processed, is in
 [docs/hyperscaler-setup.md](docs/hyperscaler-setup.md).
 
-**One Canadian deployment does answer, and it needed no adapter code**: a `gpt-5.6-luna`
+**One Canadian deployment answers, and it needed no adapter code**: a `gpt-5.6-luna`
 deployment in `canadacentral`, reached through Foundry's OpenAI-compatible route, status 200
 on 2026-09-17. Its ledger row reads `region = canadacentral` and `residency = global`:
 deployed in Canada, processed anywhere, and it says both. That is the strongest honest
-Canadian claim available on any of the three platforms today. **`v0.3.0` on 2026-09-19** adds
-streaming for OpenAI-compatible hosts with time to first token in the ledger row, and
-measured price overlays for self-hosted GPU servers, both at project 06's request for its
-load tests. The first live streamed call, to a cold local model, waited 5,484 ms for its
-first token out of 5,557 ms in all, which is the kind of number the column exists to show.
-**`v0.4.0`, the same day**, adds a `data_class` a caller declares on every call, from the
-plan's closed vocabulary, written to the ledger row and the span and readable back with
-`boundary ledger residency --data-class personal`: which calls carried personal data, and
-where did they go. Requested by project 07, which had been smuggling the class into a label.
-Nothing enforces it yet; that is Part B, and the column is what lets Part B's policy be
-checked against calls made before it existed. **`v0.5.0`, also the same day**, pulls
-`boundary.redact` forward from Part B because project 07 is building on it now: detection
-with per-page offsets and the recogniser named on every span, and a personal-class policy
-that is built over the whole document, substitutes the parts of a detected name, masks
-anything name- or identifier-shaped that no detector claimed, and refuses to send rather
-than warn. The three rules come from 07's corpus-wide test, which found 74 real values
-leaving a policy built the obvious way. Project 07 measured 0.5.0's detection recall the
-same day, 5,355 labelled values over 210 synthetic pages, and found a live leak: a
-space-separated health number left unredacted on 57 of 210 pages with no refusal. 0.5.1
-fixes that in both the recogniser and the second pass, along with organisations never
-being requested from Presidio and containment losing to score in overlap resolution. The
-re-measurement on 0.5.1 puts overall detection recall at **96.3% (95.7 to 96.9)**, up from
-90.0%, with health numbers and organisations at 100% and 96.2%. The table, both runs and
-their caveats are in [docs/redact.md](docs/redact.md): recall only, on a synthetic corpus,
-so every row is an upper bound. This repository's own precision and recall harness does not
-exist yet, and nothing here claims a precision. **`v0.5.2` the next day** is the other half
-of that caveat made concrete: probing the redaction pass with names the corpus does not
-contain, accented, `Mac` and `Mc` surnames, a postcode written with a space, found four more
-values leaving in clear with no refusal, none of which the measured 96.3% could have seen.
-A number is evidence about the inputs somebody thought to measure. **`v0.5.6`** takes the
-traffic the other way: project 07 built a document-wide sweep on its own detector, measured
-person recall on its hard name pool going 93.4 to 98.0 percent, and sent the mechanism back.
-It is now a detection stage here, and 07's warning about the guards it needs named a hole in
-this library too, where a heading typed as a person blacked out the word "Decision" on every
-page of a record.
-Both parts are planned in
-[PLAN.md](PLAN.md):
-Part A, the `boundary` library that every project in this portfolio calls models through;
-Part B, the full gateway with redaction, residency routing, audit log, cache, budgets and
-the portfolio-wide observability dashboard.
+Canadian claim available on any of the three platforms today.
+
+**The redaction engine has been measured, but not by this repository.** Project 07 ran its
+own corpus against it and found a live leak on the first pass: a space-separated health
+number left in clear on 57 of 210 pages with no refusal. Its re-measurement puts detection
+recall at **96.3% (95.7 to 96.9)**, up from 90.0%. That figure is recall only, on a
+synthetic corpus, so every row of it is an upper bound, and this repository has no precision
+and recall harness of its own yet. The table, both runs and their caveats are in
+[docs/redact.md](docs/redact.md).
+
+**A measured number is evidence about the inputs somebody thought to measure.** Probing the
+redaction pass with names that corpus does not contain, accented, `Mac` and `Mc` surnames, a
+postcode written with a space, found four more values leaving in clear with no refusal, none
+of which the 96.3% could have seen. Six of the seven defects found that way were in the
+layer whose whole job is to catch what the detector missed.
 
 ## Result
 
@@ -107,6 +86,24 @@ the no-guessed-prices rule doing its job, and the document bounds what they hide
 | Redaction precision / recall by entity (95% CI) | Rehydration fidelity | Quality effect of redaction (two-sided delta) | Residency violations | Cache hit rate / false-hit rate / saved, redacted and raw | Audit tamper detection |
 |---|---|---|---|---|---|
 | _not yet_ | | | | | |
+
+## What this does not do
+
+- It does not classify data. The caller declares a data class on every request; Part A
+  records that declaration on the row and the span, and Part B will enforce the policy for
+  it. Nothing enforces it today. A gateway that guessed classifications would be making a
+  compliance decision nobody reviewed.
+- It does not run in more than one region. Residency here means controlling where requests
+  are allowed to go, not where the proxy runs.
+- **It cannot verify residency, and no tool can.** It records what the operator declared and
+  checks the request against that declaration. Not one of the eight providers reports where
+  a request was actually processed. A product that presented a declaration as a measurement
+  would be selling the assurance this one refuses to fake.
+- It does not redact images or audio. Text only; non-text content is refused for anything
+  but the public class.
+- Redaction is not perfect. Part B's table will say by how much per entity type, measured
+  here; until then the only numbers are project 07's, on its own corpus, and they are
+  recall without precision. See [docs/redact.md](docs/redact.md).
 
 ## Where the data went
 
@@ -148,21 +145,6 @@ vendor's conduct. The command prints that sentence itself, because the moment so
 most likely to over-read a clean report is while they are looking at one. The detail is in
 [docs/ledger.md](docs/ledger.md).
 
-## What this does not do
-
-- It does not classify data. The caller declares a data class on every request, and the
-  gateway enforces the policy for that class. A gateway that guessed classifications would
-  be making a compliance decision nobody reviewed.
-- It does not run in more than one region. Residency here means controlling where requests
-  are allowed to go, not where the proxy runs.
-- **It cannot verify residency, and no tool can.** It records what the operator declared and
-  checks the request against that declaration. Not one of the eight providers reports where
-  a request was actually processed. A product that presented a declaration as a measurement
-  would be selling the assurance this one refuses to fake.
-- It does not redact images or audio. Text only; non-text content is refused for anything
-  but the public class.
-- Redaction is not perfect, and the results table says by how much, per entity type.
-
 ## What did not work
 
 A central ledger written over the network, instead of one file per environment combined by
@@ -175,6 +157,14 @@ be checked when the host holding the totals is the thing that is unreachable. Lo
 lost nothing. The evidence, the method and what was kept from the idea are in
 [docs/rejected.md](docs/rejected.md), reproducible with
 `boundary experiment remote-ledger`.
+
+Two more are written up on the same page. **Costing a call from a local token estimate**,
+measured against 16,800 real calls from project 03, was rejected because needing a
+tokenizer to state a cost is the design the no-guessed-prices rule exists to avoid. And
+**judging a detector by recall alone**, which is what the redaction figure above does: that
+one is not this repository's measurement but project 07's, recorded because it is about a
+number published here. Recall asks whether a span was found, not what it was called, and
+the label is what decides whether text is released.
 
 ## How it works
 
@@ -204,8 +194,8 @@ and costs.
 ## Part of a portfolio
 
 One of fifteen projects. This one is the plumbing the others share:
-every model call in the portfolio goes through it, the release-gate project measures the
-quality cost of its redaction, and the access-to-information redaction project builds on
+every model call in the portfolio goes through it, the release-gate project measures what
+its redaction does to answer quality, and the access-to-information redaction project builds on
 its redaction engine.
 
 ## How this was built

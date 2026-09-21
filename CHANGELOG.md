@@ -5,7 +5,21 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
-- **Correction, 2026-09-22**: the raw arm of 07's ablation is 239 distinct payloads of 244
+- **Documentation pass, 2026-09-20.** No code changed. The README's release narrative had
+  grown into a changelog sitting between the one-liner and the results tables, which is the
+  opposite of the order this repository's own rule sets, so it is a short status block and a
+  link to this file now, and the honest limitation moved up above the supporting detail.
+  `docs/explained.md` was still describing 0.1: it said the library does not stream and
+  does not inspect content, both of which stopped being true in 0.3 and 0.5. The version
+  history in `docs/interface.md` was one run-on paragraph that stopped at 0.5.1 and is a
+  table through 0.5.8 now, with `BatchItemResult`, `__version__` and the eight redaction
+  names that were exported but undocumented. PLAN.md's handover table was out of order and
+  missing three releases. Dates on 0.5.7 and 0.5.8 were written a day ahead and are
+  corrected to 2026-09-20. `docs/rejected.md` gains a third entry, judging a detector by
+  recall alone, which is 07's measurement and is recorded here because it is about a number
+  this repository publishes.
+
+- **Correction, 2026-09-20**: the raw arm of 07's ablation is 239 distinct payloads of 244
   asks, not 240. 07 found it when it replaced a hand-written sentence with a measured
   column, which is the better reason to trust the new figure than the size of the change.
   The repeat rates it puts beside it are the useful pair: 30% masked against 2% raw. The
@@ -14,7 +28,7 @@ major version are additive only; see docs/interface.md.
   or a warm re-run counts entries it never asked for and inflates the saving. The 0.5.8
   entry below keeps the number it was written with.
 
-## 0.5.8 (2026-09-21)
+## 0.5.8 (2026-09-20)
 
 Two things from project 07, one of which changes the plan.
 
@@ -44,7 +58,7 @@ Two things from project 07, one of which changes the plan.
   redaction raises the hit rate, which is an argument for the boundary with nothing to do
   with privacy. A blended number would hide it.
 
-## 0.5.7 (2026-09-21)
+## 0.5.7 (2026-09-20)
 
 Project 07 built the sweep on its own detector, hit a leak this library's version would
 have inherited, and sent the fix back the same day.

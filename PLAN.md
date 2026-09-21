@@ -1,6 +1,6 @@
 # Plan: Inside the Boundary, On the Record
 
-**Written:** 2026-09-06. **Status (2026-09-11):** Part A released as `v0.1.0` on 2026-09-10, three days ahead of the Sep 13 target, after one live call per provider. Version 0.2 is in progress on `main` (section 5.1). Part B is unchanged, May 2027. **Status (2026-09-19):** `v0.4.0` and `v0.5.0` on `main` (section 7). **The dates in this plan are no longer the schedule.** Peter's decision, 2026-09-19: every timeline is being pushed aggressively, and Part B's pieces are pulled forward as the projects that need them arrive rather than waiting for May 2027. The first is `boundary.redact`, built the same day to project 07's brief (B2.3) and shipped as 0.5.0. The design sections still hold; the dates in them are history, not commitments.
+**Written:** 2026-09-06. **Status (2026-09-11):** Part A released as `v0.1.0` on 2026-09-10, three days ahead of the Sep 13 target, after one live call per provider. Version 0.2 is in progress on `main` (section 5.1). Part B is unchanged, May 2027. **Status (2026-09-20):** `v0.5.8` on `main` (section 7). B2.3's redaction engine is built and has been through nine releases in two days, almost all of them driven by project 07 using it; B2.5 and B2.8 are amended below from what 07 measured. **The dates in this plan are no longer the schedule.** Peter's decision, 2026-09-19: every timeline is being pushed aggressively, and Part B's pieces are pulled forward as the projects that need them arrive rather than waiting for May 2027. The first is `boundary.redact`, built the same day to project 07's brief (B2.3) and shipped as 0.5.0. The design sections still hold; the dates in them are history, not commitments.
 
 Two parts, one repository, one Python package called `boundary`:
 
@@ -398,11 +398,14 @@ from October the ledger-against-invoice difference is recorded there too (sectio
 | v0.3.0 | 2026-09-19 | Streaming for `openai_compat` (`chat_stream`, `achat_stream`, `ttft_ms`, ledger schema v6), measured price overlays for self-hosted hosts (`self_hosted`, `self_hosted_prices`), a cap for 06. Requested by 06 for its load tests against vLLM and llama.cpp; 06 pins this tag |
 | v0.4.0 | 2026-09-19 | `data_class` on every call method with the `DataClass` vocabulary, ledger schema v7 (`data_class`), `data_class` and `call_uid` on `ChatResponse`, `--data-class` on both ledger commands, a cap for 07. Requested by 07 (access-to-information redaction), which passes `data_class="personal"` on every model decision and joins its document and page identifiers to the ledger on `call_uid`. 07 asked for a free-form metadata mapping on a call and was told no, with the reason in docs/interface.md section 11 |
 | v0.5.0 | 2026-09-19 | `boundary.redact`: `Analyzer`, `Span`, `EntityType`, the built-in recognisers, the optional Presidio adapter (`redact` extra), `Policy` with `outbound`, `rehydrate`, `check` and the vault, `RedactionRefused`. Pulled forward from Part B; built to B2.3 as amended from 07's brief. Precision and recall with intervals are not measured yet and the docs say so |
-| v0.5.5 | 2026-09-20 | `Policy(vault=)`, so a policy rebuilt between redacting and rehydrating resolves what the second pass found; the library half of Part B's vault. A whole-word test for the substring false positive 07 hit in its own guard. 07's second name pool recorded: person recall 94.2% against 96.5%, overall 95.4% against 96.3%. **07 pins this tag** |
-| v0.5.4 | 2026-09-20 | A data class a later version wrote is queryable by an older reader, because the vocabulary is closed for writing and should not be for reading; the report's project column is sized to the longest name present |
-| v0.5.3 | 2026-09-20 | Placeholder-shaped text in a source document no longer rehydrates into a real name: one the policy did not mint is masked whole, one it did mint is refused, and `outbound` is for source text only |
-| v0.5.2 | 2026-09-20 | Four more second-pass leaks, found by probing rather than reported: names outside ASCII and with internal capitals were invisible, `O'Brien` and `A1B 2C3` were half masked, and an acronym inside a code was masked twice. A stated limit for caseless scripts. CI now runs the redact tests with Presidio installed |
 | v0.5.1 | 2026-09-19 | Three fixes from 07's first run against 0.5.0 (a space-separated health number leaking, organisations never requested from Presidio, containment losing to score in overlap resolution) and `EntityType.ADDRESS`. 07's recall table, 5,355 values over 210 synthetic pages, is recorded in docs/redact.md as the first measurement |
+| v0.5.2 | 2026-09-20 | Four more second-pass leaks, found by probing rather than reported: names outside ASCII and with internal capitals were invisible, `O'Brien` and `A1B 2C3` were half masked, and an acronym inside a code was masked twice. A stated limit for caseless scripts. CI now runs the redact tests with Presidio installed |
+| v0.5.3 | 2026-09-20 | Placeholder-shaped text in a source document no longer rehydrates into a real name: one the policy did not mint is masked whole, one it did mint is refused, and `outbound` is for source text only |
+| v0.5.4 | 2026-09-20 | A data class a later version wrote is queryable by an older reader, because the vocabulary is closed for writing and should not be for reading; the report's project column is sized to the longest name present |
+| v0.5.5 | 2026-09-20 | `Policy(vault=)`, so a policy rebuilt between redacting and rehydrating resolves what the second pass found; the library half of Part B's vault. A whole-word test for the substring false positive 07 hit in its own guard. 07's second name pool recorded: person recall 94.2% against 96.5%, overall 95.4% against 96.3%. |
+| v0.5.6 | 2026-09-20 | `sweep`: a person found anywhere in a document licenses the other whole-word occurrences of their name parts everywhere else, which 07 built on its own detector first and measured at +4.6 points of person recall on its hard name pool. A name part the vocabulary allows is no longer licensed, which was a real over-redaction here: a heading typed as a PERSON blacked out an ordinary word on every page |
+| v0.5.7 | 2026-09-20 | The sweep re-types a span that is exactly a detected person's name parts and carries a type a consumer reads as impersonal. 07 hit the leak this prevents: a bare surname typed `LOCATION`, found by the detector so recall counted it, then released by a rule that reads `LOCATION` as not personal. On 07's corpus, leak rate 4.7 to 2.8 percent and recall unmoved |
+| v0.5.8 | 2026-09-20 | `swept`, `retyped` and `original_recogniser`: the sweep's two buckets, countable, so a consumer can report what was never found separately from what was found and mislabelled. **07 pins this tag** |
 | v1.0.0 | May 23 2027 | Everything in Part B; `boundary.redact` for 07; the proxy for 13 and 14 |
 
 03 pins `boundary>=0.1,<0.3` for Part A and moves to `>=1.0` when its Part B is built
@@ -504,7 +507,7 @@ The numbers a stranger can check:
 | Latency overhead p50, p95, p99 in milliseconds at 50, 200 and 500 requests per second, per feature layer (routing and ledger; plus audit; plus redaction; plus cache), 5 runs each, 95% CIs across runs, on a stated VPS size | Engineering, not assembly; the number an interviewer will probe |
 | Redaction precision and recall per entity type on public PII corpora, and on a hand-built Canadian identifier set, with 95% CIs | Redaction accuracy measured, not asserted, including the failure modes |
 | Rehydration fidelity: share of placeholders in model responses restored correctly, and the rate at which models mutate placeholders | Reversibility actually works, and where it does not |
-| Quality effect of redaction: paired two-sided test through the 03 gate on 03's gold set, redacted against unredacted prompts, delta and interval in both directions (amended 2026-09-21; see B2.8) | Whether redaction makes answers worse, better, or neither, and by how much |
+| Quality effect of redaction: paired two-sided test through the 03 gate on 03's gold set, redacted against unredacted prompts, delta and interval in both directions (amended 2026-09-20; see B2.8) | Whether redaction makes answers worse, better, or neither, and by how much |
 | Residency policy violations under an adversarial suite of N requests (must be zero), plus refusals correctly raised | Policy is enforced, not documented |
 | Semantic cache on replayed portfolio traffic: hit rate, dollars saved, and false-hit rate on 200 hand-labelled hits | Savings with the risk next to them |
 | Injection screen: detection rate and false-positive rate on public sets and 03's suite | Screening measured against its cost in blocked legitimate requests |
@@ -693,7 +696,7 @@ with the false-hit rate from hand-labelling 200 hits printed next to it. A cache
 returns a confident answer to a different question is worse than no cache, and the
 number says how often that happens.
 
-**Added 2026-09-21: report the hit rate for redacted and raw payloads separately.** Project
+**Added 2026-09-20: report the hit rate for redacted and raw payloads separately.** Project
 07 counted the distinct payloads behind its ablation: 171 for the placeholder arm against
 239 for the raw arm, out of 244 asks each, a repeat rate of 30% masked against 2% raw.
 Placeholder payloads repeat across documents once the names are gone; raw payloads are
@@ -727,7 +730,7 @@ The gate from project 03 answers the question a buyer will ask: does redaction h
 answers? Redacted and unredacted prompts over 03's gold set, three models, paired, over the
 same harness every other project uses, which is the point.
 
-**Amended 2026-09-21: two-sided, not non-inferiority.** This section said paired
+**Amended 2026-09-20: two-sided, not non-inferiority.** This section said paired
 non-inferiority with the gate's default delta, which is a test shaped to bound a cost and
 cannot report a benefit. Project 07 ran the ablation on its own task and the premise
 inverted: typed placeholders leaked 30.1% (21.7 to 39.0) against 60.2% (53.7 to 66.7) for

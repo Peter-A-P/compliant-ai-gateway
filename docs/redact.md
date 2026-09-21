@@ -5,12 +5,16 @@ Detection and the personal-class policy, as library objects. Built 2026-09-19 to
 corpus-wide test rather than from a plan, and pulled forward from Part B because 07 is the
 first consumer and had already found what a policy built the obvious way leaks.
 
+Every name this package exports, with the version each one arrived in, is in
+[interface.md](interface.md) section 12. This page is the reasoning behind them.
+
 Two halves, usable independently, with no gateway, no configuration and no network:
 
 ```python
-from boundary.redact import Analyzer, Policy, RedactionRefused
+from boundary.redact import Analyzer, Policy, RedactionRefused, sweep
 
 spans = Analyzer().analyze(pages)              # every entity in the document, per page
+spans = sweep(pages, spans)                    # a name found once, found everywhere
 policy = Policy(spans, allow={"Corner Brook"})  # placeholders for every one of them
 body = policy.outbound(prompt)                 # substituted text, or RedactionRefused
 answer = policy.rehydrate(model_output)        # the values back
@@ -195,7 +199,7 @@ than the one this corrects.
 `swept(spans)` and `retyped(spans)` return the two buckets, and `original_recogniser(span)`
 gives back the detector that fired whatever the sweep did to the span afterwards. A
 consumer that prints `len(retyped(spans))` beside its recall is reporting the half of
-detection recall is blind to. 07 split its own leaks three ways with this on 2026-09-21:
+detection recall is blind to. 07 split its own leaks three ways with this on 2026-09-20:
 **16 never found, 23 found and mislabelled, zero from the decision rules.** The figure it
 had been publishing as 50 decision errors was never about decisions at all. Neither project
 had that split before the sweep made the second bucket countable, and neither has anything
@@ -204,7 +208,7 @@ else that catches a wrong label without a person going looking for one.
 ### What taking the names away does to the answer
 
 Part B plans to measure the quality cost of redaction through the 03 gate, and the plan
-until now assumed there was a cost to bound. Project 07 measured it on 2026-09-21 and the
+until now assumed there was a cost to bound. Project 07 measured it on 2026-09-20 and the
 premise inverted. Same spans, same model, twice, 20 documents, intervals printed:
 
 | Arm | Leak rate | Over-redaction | Escalation |
@@ -229,7 +233,7 @@ size. It is also the only part of either project's model layer a stranger can re
 with no key, no account and no spend.
 
 Two consequences here. The plan's B2.8 is now a two-sided comparison rather than a
-non-inferiority test (PLAN.md, amended 2026-09-21): a test shaped to bound a cost cannot
+non-inferiority test (PLAN.md, amended 2026-09-20): a test shaped to bound a cost cannot
 report a benefit, and on the evidence so far the benefit is the likelier finding. And 07
 counted the requests: **171 distinct payloads for the placeholder arm against 239 for the
 raw arm, out of 244 asks each**, a repeat rate of 30% masked against 2% raw. Placeholder
@@ -238,7 +242,7 @@ because the names are. **A redacted corpus is more cacheable than an unredacted 
 is an argument for the boundary with nothing to do with privacy, and a prediction Part B's
 semantic cache can check.
 
-07 corrected that pair on 2026-09-22, from 240 to 239, when it replaced the hand-written
+07 corrected that pair on 2026-09-20, from 240 to 239, when it replaced the hand-written
 sentence with a measured column. The method matters more than the digit and carries
 straight over to B2.5: **count distinct payloads from the keys a run touches, not from the
 size of the cache**, or a warm re-run counts entries it never asked for and inflates the
@@ -247,7 +251,7 @@ saving.
 **The limit 07 wrote into its plan rather than glossing**, and it applies here identically:
 the sweep needs the person found somewhere. A record that never names someone in a position
 a detector can read gains nothing. That residual is what a gazetteer would cover, and this
-does not. 07 measured it on both engines on 2026-09-21: **23 of its 29 remaining person
+does not. 07 measured it on both engines on 2026-09-20: **23 of its 29 remaining person
 misses, 79%, are people its detector never found as a person anywhere in the record, against
 28 of 84, 33%, for `boundary.redact`**. Proportionally more of what this library still misses
 is reachable by sweeping, and proportionally more of what 07 misses needs a gazetteer.
@@ -367,7 +371,7 @@ on 2026-09-20: the Labrador Inuttitut in its records is written in Latin script,
 pass reads it like any other name. The gap that was actually losing values there was
 narrower and more ordinary, and it is the one 0.5.2 fixed.
 
-07 answered the rest of it with a corpus rather than a claim on 2026-09-21. Its Labrador
+07 answered the rest of it with a corpus rather than a claim on 2026-09-20. Its Labrador
 name profile, Innu surnames from Sheshatshiu and Natuashish and Inuit surnames from the
 Nunatsiavut communities, is plain ASCII throughout: no accent, no apostrophe, no internal
 capital. Orthographically those names are Doucette. They are found beside a forename and

@@ -7,8 +7,8 @@ interface is [interface.md](interface.md).
 ## Why it exists
 
 This portfolio is fifteen projects built over a year to show, in public and with numbers a
-stranger can check, how production machine learning and AI systems are built. Eight of
-the ten call AI models from vendors such as Anthropic, OpenAI and Google.
+stranger can check, how production machine learning and AI systems are built. Most of them
+call AI models from vendors such as Anthropic, OpenAI and Google.
 
 If each project called the vendors directly, three things would go wrong. When a vendor
 retires or reprices a model, ten codebases would need changing. Nobody could say what the
@@ -23,9 +23,11 @@ that leaves goes through it, and everything that leaves gets logged.
 ## What it does
 
 **One way to call any vendor.** A project writes one kind of request, and the library
-translates it into whatever each vendor expects. Four vendors are covered in version 0.1:
-Anthropic, OpenAI, Google, and any host that speaks the OpenAI-compatible protocol, which
-is how open-weights models and local servers are reached. The library talks to them over
+translates it into whatever each vendor expects. Version 0.1 covered four: Anthropic,
+OpenAI, Google, and any host that speaks the OpenAI-compatible protocol, which is how
+open-weights models and local servers are reached. Version 0.2.1 added the three large
+cloud platforms that resell those models, Microsoft Foundry, Amazon Bedrock and Google
+Vertex, which brings it to seven ways in. The library talks to them over
 raw HTTP with pinned API version headers rather than through the vendors' own software
 kits, because those kits change their behaviour between releases, and a measurement cannot
 tolerate that.
@@ -76,19 +78,35 @@ including error shapes. Byte equality in pass-through. A process killed mid-call
 leaves its ledger row. A cap refusal makes zero upstream calls. A scan of every committed
 file for anything shaped like an API key.
 
-## What happens next
+## What has been added since
 
-Version 0.1.0 is the library the portfolio's other projects pin. Small additions follow in
-October as projects need them: adapters for the three large cloud platforms and the
-half-price batch endpoint. Merging ledgers from different machines is already in, ahead of
-the plan, because the experiment above needed it to argue against. In 2027 the same
-library becomes the core of the full gateway, which adds reversible redaction of personal
-data, routing by data classification, a tamper-evident audit trail and a published latency
-budget, the things regulated organisations ask about before they let a model near their
-data. Nothing built now is thrown away then.
+The plan put everything below in 2027. Each one arrived early because a project needed it,
+which is the rule this library is maintained by: a feature arrives when something is
+waiting for it, and not before.
+
+The three cloud platforms and the half-price batch endpoint came in 0.2. Streaming, with
+the time to the first token recorded, came in 0.3 for the project that load-tests model
+servers. A **data class** the caller declares on every call came in 0.4, so the record can
+answer which calls carried personal data and where they went; the library records that
+declaration and never guesses one.
+
+**Reversible redaction** came in 0.5, two years before the plan expected it, because the
+access-to-information project is building on it now. Personal values in a document are
+replaced by typed placeholders (`<PERSON_1>`, `<HEALTH_NUMBER_2>`) before the text is sent,
+and the real values are put back in the answer. The library refuses to send rather than
+warn: if anything it recognises is still in the text after redaction, the call does not
+happen. That engine has been through nine releases in two days, almost all of them fixing
+something the other project found by using it, and the reasoning behind each is in
+[redact.md](redact.md).
+
+What is still ahead: the network proxy itself, routing by data class rather than merely
+recording it, the tamper-evident audit trail, the cache, per-team budgets and the published
+latency budget. Nothing built now is thrown away then.
 
 ## What it deliberately does not do
 
-It does not stream, does not type tool calls, does not serve as a network proxy, and does
-not inspect or classify content. Version 0 moves bytes and counts money. Each of those
-arrives in a later version when a project needs it, and not before.
+It does not serve as a network proxy, does not type tool calls, and does not decide what
+kind of data a request carries: the caller declares that, because a library that guessed
+would be making a compliance decision nobody reviewed. It reads content only where a caller
+hands it text to redact, and it never puts content in the record: spans and ledger rows
+carry counts, costs, timings and identifiers, never prompts or answers.

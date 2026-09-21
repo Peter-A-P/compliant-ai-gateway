@@ -8,6 +8,10 @@ before any of them was measured. Two are now measured and written up here:
 2. **Costing a call from a local token estimate**, measured on 2026-09-14 once project
    03's first official run had produced 16,800 real calls to measure against.
 
+A third is written up below and is not this project's own measurement:
+**judging a detector by recall alone**, rejected on project 07's evidence and recorded here
+because this library's published recall figure carries the same weakness.
+
 ---
 
 # A central ledger written over the network
@@ -229,6 +233,37 @@ plausible fictions.
 About three minutes, no network, no cost. `bench/token-estimates.json` holds the full result
 including the per-vendor token totals. tiktoken is a development dependency and deliberately
 not a runtime one: needing a tokenizer to state a cost is the design this experiment rejects.
+
+---
+
+# Judging a detector by recall alone
+
+**Not measured here.** The evidence is project 07's, on 07's corpus, and it is recorded on
+this page because it is about the number this repository publishes.
+
+**The approach:** report detection recall per entity type and treat it as the measure of a
+detector. It is the natural thing to do, it is what `docs/redact.md` publishes, and it is
+what both projects were doing.
+
+**What it misses:** recall asks whether a span was **found**. It does not ask what the span
+was **called**, and in any tool that decides what to release, the label is the decision.
+Presidio typed "Bernadette Tuglavina" a `PERSON` in an introducing sentence and the bare
+"Tuglavina" in the list below a `LOCATION`. Recall counted that span, every table stayed
+healthy, and then 07's release rule read `LOCATION` as not information about an identifiable
+individual and printed that sentence in the schedule beside a third party's surname. A miss
+would have been better, because a miss does not argue for itself.
+
+**The evidence.** 07 split its leaks three ways and got 16 never found, 23 found and
+mislabelled, and zero from the decision rules. The figure it had been publishing as 50
+decision errors was not about decisions at all. Correcting the labels moved its leak rate
+from 4.7% to 2.8% rules-only and 7.2% to 5.3% with the model, and moved **detector recall
+not at all**.
+
+**What was kept.** The sweep does the correction (0.5.7) and `swept(spans)` and
+`retyped(spans)` make the two buckets countable (0.5.8), so a consumer can print the
+mislabel count beside its recall. Part B's redaction table will carry precision as well as
+recall for the same reason: a number that can only go up when more text is covered is not a
+measure of a boundary. The 96.3% in `docs/redact.md` stands, with this next to it.
 
 ---
 

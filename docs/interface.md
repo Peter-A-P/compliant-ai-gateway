@@ -10,17 +10,31 @@ written from Sep 16 and needs `Gateway.chat` in pass-through mode, the raw store
 ledger row. The 02 runner (November) needs standard mode, batches (v0.2) and the local
 price-zero host.
 
-Column "since" is the version each item first appeared in. Everything added after the
-freeze is listed here with its version: 0.2 (released 2026-09-11) adds the `env` argument
-and configuration key, ledger schema v2's two columns and v3's one, Anthropic Message
-Batches with their command-line collection, `boundary ledger merge` and
-`boundary experiment`. Nothing that 0.1.0 offered has changed shape. 0.2.1 (released 2026-09-18) adds the three hyperscaler adapters, the `credentials` and `residency` provider fields, ledger schema v4's `residency` column and `boundary ledger residency`. 0.2.2 adds schema v5's `price_sha256` column and the matching field on `ChatResponse`. 0.3.0 (released 2026-09-19) adds streaming for `openai_compat` hosts (`chat_stream`, `achat_stream`, `ttft_ms` on `ChatResponse`, ledger schema v6's `ttft_ms` column), measured price overlays for self-hosted hosts (`self_hosted` on a provider entry, `self_hosted_prices` in the configuration) and `boundary smoke --stream`. 0.4.0 (2026-09-19, for project 07) adds a `data_class` keyword on every call method, the `DataClass` vocabulary, ledger schema v7's `data_class` column, `data_class` and `call_uid` on `ChatResponse`, and `--data-class` on both ledger commands. 0.5.0 (2026-09-19) adds the `boundary.redact` package (section 12), pulled forward from Part B for 07; 0.5.1 the same day fixes three findings from 07's first run against it and adds `EntityType.ADDRESS`. All additive; nothing that 0.3.0 offered has changed shape.
+Column "since" is the version each item first appeared in. Every release after the freeze is
+listed here; nothing any earlier version offered has changed shape.
+
+| Version | Date | What it added to this interface |
+|---|---|---|
+| 0.1.0 | 2026-09-10 | The frozen interface: `Gateway`, `ChatRequest`, `ChatResponse`, `Usage`, `Mode`, the error hierarchy, the ledger row and the raw store |
+| 0.2.0 | 2026-09-11 | The `env` argument and configuration key, ledger schema v2's two columns and v3's one, Anthropic Message Batches with their command-line collection, `boundary ledger merge`, `boundary experiment` |
+| 0.2.1 | 2026-09-18 | The three hyperscaler adapters, the `credentials` and `residency` provider fields, schema v4's `residency` column, `boundary ledger residency` |
+| 0.2.2 | 2026-09-18 | Schema v5's `price_sha256` column and the matching field on `ChatResponse` |
+| 0.3.0 | 2026-09-19 | Streaming for `openai_compat` hosts (`chat_stream`, `achat_stream`, `ttft_ms` on `ChatResponse`, schema v6's `ttft_ms` column), measured price overlays for self-hosted hosts (`self_hosted`, `self_hosted_prices`), `boundary smoke --stream` |
+| 0.4.0 | 2026-09-19 | `data_class` on every call method, the `DataClass` vocabulary, schema v7's `data_class` column, `data_class` and `call_uid` on `ChatResponse`, `--data-class` on both ledger commands |
+| 0.5.0 | 2026-09-19 | The `boundary.redact` package (section 12), pulled forward from Part B for project 07 |
+| 0.5.1 | 2026-09-19 | `EntityType.ADDRESS`; three fixes from 07's first run, none of them interface changes |
+| 0.5.2 to 0.5.4 | 2026-09-19, 2026-09-20 | Leak fixes in the policy's second pass, the placeholder clash guard (`minted_placeholders_in`, `Leak.kind == "placeholder"`), and a `--data-class` filter that accepts a class a later version wrote |
+| 0.5.5 | 2026-09-20 | `Policy(..., vault=...)`, so a policy rebuilt between redacting and rehydrating resolves what the first one found |
+| 0.5.6 | 2026-09-20 | `sweep`, `SWEEP_ID`, `is_name_shaped`, `name_parts`; a name part the vocabulary allows is no longer licensed |
+| 0.5.7 | 2026-09-20 | `retype` on `sweep` and the `RETYPED` default: a span that is exactly a detected person's name parts and carries an impersonal type is re-typed `PERSON` |
+| 0.5.8 | 2026-09-20 | `swept`, `retyped`, `original_recogniser`: the sweep's two buckets, countable |
 
 ## 1. Importing
 
 ```python
 from boundary import Gateway, ChatRequest, ChatResponse, Usage, Mode
 from boundary import DataClass  # 0.4
+from boundary import __version__  # the installed version, as a string
 from boundary import (
     BoundaryError,
     ConfigError,
@@ -115,7 +129,11 @@ another process" work.
 `len(handle)` is the number of requests.
 
 `BatchProgress` (from `batch_status`) carries `batch_id`, `processing_status`, `ended`,
-`results_url` and `counts`. Each `ChatResponse` from `batch_results` has `latency_ms` of
+`results_url` and `counts`. `BatchItemResult` (0.2, exported from `boundary`) is one
+request's outcome inside a batch, matched back by `custom_id`: `custom_id`, `outcome` (the
+vendor's word, `succeeded`, `errored`, `canceled` or `expired`), `parsed`, `error`, and the
+`succeeded` property. Only a succeeded item has a parsed response, and only it is billed for
+output. Each `ChatResponse` from `batch_results` has `latency_ms` of
 0.0 and no headers: a batched request has no wall time or response of its own. Its `status`
 is 200 when the vendor answered it, and otherwise the vendor's word for what happened
 (`errored`, `expired`, `canceled`) or `missing`.
@@ -305,6 +323,10 @@ from boundary.redact.presidio import PresidioRecogniser   # optional `redact` ex
 | Placeholder clash | `policy.minted_placeholders_in(text) -> list[Leak]` | 0.5.3 | What `outbound` refuses source text for. A placeholder the policy did **not** mint is not ambiguous: it is masked whole, as an opaque token, and survives the round trip as itself |
 | Inbound | `policy.rehydrate(text) -> str`, `policy.unresolved(text) -> list[str]` | 0.5 | Tolerant of case, inner spaces and dropped brackets |
 | Vault | `policy.vault -> Mapping[str, str]` | 0.5 | placeholder to value, in memory. Grows as the second pass masks. Never written by the library |
+| Sweep buckets | `swept(spans) -> list[Span]`, `retyped(spans) -> list[Span]`, `original_recogniser(span) -> str` | 0.5.8 | What the sweep added, against what it re-typed: an occurrence nothing found, against one that was found and called something impersonal. A recall figure sees only the first. `original_recogniser` gives back the detector that fired whatever the sweep did to the span |
+| Analyzer parts | `resolve_overlaps(spans, *, priority=()) -> list[Span]`, `cut_at_line_break(span) -> Span | None` | 0.5 | The analyzer's two guarantees, for a consumer assembling its own pipeline from other recognisers |
+| Name shapes | `is_name_shaped(token) -> bool`, `name_parts(name) -> list[str]` | 0.5.6 | The judgements the policy's second pass and the sweep share. A caseless script is never name-shaped; see docs/redact.md |
+| Placeholder pattern | `PLACEHOLDER: re.Pattern[str]` | 0.5 | What `rehydrate` reads. Tolerant of case, inner spaces and dropped brackets, which are the ways models mutate a placeholder |
 | Errors | `RedactionRefused(BoundaryError)` with `.leaks: tuple[Leak, ...]` | 0.5 | Message carries counts only. `Leak.kind` is `value`, `shape` or, since 0.5.3, `placeholder` |
 
 ## 11. Choices the plan left open
