@@ -35,6 +35,7 @@ jobs:
       # this step is here so the table a reader sees is printed by a run rather than
       # copied from one.
       - run: uv run boundary redact eval --identifiers --per-family 20
+      - run: uv run boundary redact eval --rehydration --pages 40
 
   # The `redact` extra and its spaCy model are deliberately absent from the job above, so
   # the suite there runs with Presidio missing and exercises the import guard. They are

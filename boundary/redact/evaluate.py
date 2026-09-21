@@ -35,14 +35,14 @@ from __future__ import annotations
 import math
 import re
 import time
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass, field
 
 from boundary.redact.analyzer import Analyzer
 from boundary.redact.corpus import Corpus, Label, build
-from boundary.redact.policy import PLACEHOLDER, Policy, RedactionRefused
+from boundary.redact.policy import PLACEHOLDER, Policy, RedactionRefused, placeholder_kind
 from boundary.redact.sweep import sweep
-from boundary.redact.types import Recogniser, Span
+from boundary.redact.types import EntityType, Recogniser, Span
 
 # A word-like token: a run of letters, digits, apostrophes, hyphens and slashes. The
 # denominator of the over-redaction rate, so it is written down rather than implied.
@@ -526,6 +526,130 @@ def identifiers(
     )
 
 
+# What a model does to a placeholder on the way back. Each entry rewrites the placeholders
+# in a redacted page the way a model plausibly would, and the harness then asks whether the
+# values come back. Written from what models do to markup rather than from what would be
+# convenient to support: three of these resolved to nothing before 0.6.4.
+MUTATIONS: dict[str, Callable[[str], str]] = {
+    "as minted": lambda s: s,
+    "lower case": lambda s: PLACEHOLDER.sub(lambda m: m.group(0).lower(), s),
+    "spaces inside": lambda s: PLACEHOLDER.sub(
+        lambda m: m.group(0).replace("<", "< ").replace(">", " >"), s
+    ),
+    "brackets dropped": lambda s: PLACEHOLDER.sub(lambda m: m.group(0).strip("<>"), s),
+    "square brackets": lambda s: PLACEHOLDER.sub(lambda m: "[" + m.group(0).strip("<>") + "]", s),
+    "round brackets": lambda s: PLACEHOLDER.sub(lambda m: "(" + m.group(0).strip("<>") + ")", s),
+    "bold markdown": lambda s: PLACEHOLDER.sub(lambda m: "**" + m.group(0) + "**", s),
+    "backticked": lambda s: PLACEHOLDER.sub(lambda m: "`" + m.group(0) + "`", s),
+    "possessive": lambda s: PLACEHOLDER.sub(lambda m: m.group(0) + "'s", s),
+    "hyphen separator": lambda s: PLACEHOLDER.sub(lambda m: m.group(0).replace("_", "-"), s),
+    "space separator": lambda s: PLACEHOLDER.sub(lambda m: m.group(0).replace("_", " "), s),
+    "wrapped before the number": lambda s: PLACEHOLDER.sub(
+        lambda m: chr(10).join(m.group(0).rsplit("_", 1)), s
+    ),
+    "wrapped inside the name": lambda s: PLACEHOLDER.sub(
+        lambda m: m.group(0).replace("_", "_" + chr(10), 1), s
+    ),
+    "leading zero": lambda s: PLACEHOLDER.sub(
+        lambda m: re.sub(r"_(\d)", "_0" + chr(92) + "1", m.group(0)), s
+    ),
+    "prefixed": lambda s: PLACEHOLDER.sub(lambda m: "PLACEHOLDER_" + m.group(0).strip("<>"), s),
+}
+
+
+@dataclass
+class MutationRow:
+    mutation: str
+    placeholders: int
+    resolved: int
+
+    @property
+    def resolution(self) -> Rate:
+        return Rate(self.resolved, self.placeholders)
+
+
+@dataclass
+class RehydrationResults:
+    boundary_version: str
+    ran_utc: str
+    seed: int
+    pages: int
+    mutations: list[MutationRow]
+    fabrications: int
+    invented: int
+
+    def table(self) -> str:
+        lines = [
+            f"boundary {self.boundary_version}, rehydration against "
+            f"{len(self.mutations)} mutation forms over {self.pages} pages, seed {self.seed}",
+            "",
+            f"{'mutation':<28}{'placeholders':>14}{'values restored':>28}",
+        ]
+        for row in sorted(self.mutations, key=lambda r: (-r.resolution.value, r.mutation)):
+            lines.append(f"{row.mutation:<28}{row.placeholders:>14}{row.resolution!s:>28}")
+        lines += [
+            "",
+            f"fabrications          {self.fabrications} of {self.invented} invented "
+            "placeholders resolved to a value",
+        ]
+        return chr(10).join(lines)
+
+
+def rehydration(*, pages: int = 200, seed: int = 20260920) -> RehydrationResults:
+    """What survives the trip back: every mutation form a model plausibly applies to a
+    placeholder, against the values coming out the other side.
+
+    Part B's table calls this rehydration fidelity. It is measured here without a model,
+    because the mutation forms are the thing being tested and a sampled model run measures
+    which ones that model happens to produce today, which is a different and less
+    reproducible question.
+
+    The last row is the one that must stay at zero. A placeholder this policy never minted
+    must never resolve to anything: a document that contains `<PERSON_7>` for real, or a
+    model that invents one, would otherwise have somebody's name put where the text had
+    only the word, which is fabrication rather than disclosure.
+    """
+    import datetime as dt
+
+    from boundary import __version__
+
+    corpus = build(pages=pages, seed=seed)
+    spans = sweep(corpus.pages, Analyzer().analyze(corpus.pages))
+    policy = Policy(spans)
+    redacted = [policy.redact(page) for page in corpus.pages]
+
+    rows = {name: MutationRow(name, 0, 0) for name in MUTATIONS}
+    for text in redacted:
+        minted = [m.group(0) for m in PLACEHOLDER.finditer(text)]
+        values = [policy.vault.get(_canonical(m)) for m in PLACEHOLDER.finditer(text)]
+        wanted = [v for v in values if v is not None]
+        for name, mutate in MUTATIONS.items():
+            row = rows[name]
+            row.placeholders += len(minted)
+            out = policy.rehydrate(mutate(text))
+            row.resolved += sum(1 for v in wanted if v in out)
+
+    # Invented placeholders, one per entity type plus a type that does not exist.
+    invented = [f"<{e.value}_9001>" for e in EntityType] + ["<NOT_A_TYPE_1>"]
+    probe = " ".join(invented)
+    out = policy.rehydrate(probe)
+    fabrications = sum(1 for p in invented if p not in out)
+    return RehydrationResults(
+        boundary_version=__version__,
+        ran_utc=dt.datetime.now(dt.UTC).isoformat(timespec="seconds"),
+        seed=seed,
+        pages=pages,
+        mutations=list(rows.values()),
+        fabrications=fabrications,
+        invented=len(invented),
+    )
+
+
+def _canonical(m: re.Match[str]) -> str:
+    kind, number = placeholder_kind(m)
+    return f"<{kind}_{number}>"
+
+
 def to_json(results: EvalResults) -> str:
     import json
 
@@ -551,13 +675,17 @@ def write_readme(readme, row: str) -> None:  # type: ignore[no-untyped-def]
 
 
 __all__ = [
+    "MUTATIONS",
     "EntityRow",
     "EvalResults",
     "FamilyRow",
     "IdentifierResults",
+    "MutationRow",
     "Rate",
+    "RehydrationResults",
     "ShapeRow",
     "identifiers",
+    "rehydration",
     "run",
     "to_json",
     "wilson",

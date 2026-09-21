@@ -50,8 +50,36 @@ from boundary.redact.vocabulary import DECISION_VOCABULARY
 # <PERSON_1>, <PERSON_1.2>, <EMAIL_3>. Tolerant on the way back in: any case, spaces inside
 # the brackets, or the brackets dropped altogether, which are the ways models mutate them.
 PLACEHOLDER = re.compile(
-    r"<\s*([A-Za-z_]+?)_(\d+(?:\.\d+)?)\s*>|(?<![A-Za-z0-9_])([A-Z_]+?)_(\d+(?:\.\d+)?)(?![A-Za-z0-9_])"
+    r"<\s*([A-Za-z][A-Za-z_\-\s]*?)[_\-\s]\s*(\d+(?:\.\d+)?)\s*>"
+    r"|(?<![A-Za-z0-9_])([A-Z_]+?)_(\d+(?:\.\d+)?)(?![A-Za-z0-9_])"
 )
+
+
+def placeholder_kind(m: re.Match[str]) -> tuple[str, str]:
+    """The entity name and number a placeholder match carries, in canonical form.
+
+    Inside the brackets the separator may be an underscore, a hyphen or whitespace, and the
+    name may carry either in place of its underscore: `<EMAIL-1>`, `<NAME LIKE 2>`, and a
+    placeholder a model line-wrapped in the middle all resolve to what they plainly mean.
+    The measurement in evaluate.py is what set this list (0.6.4); before it, four mutation
+    forms models actually produce resolved to nothing and `unresolved` reported them, which
+    is safe and is also a value the reader never gets back.
+
+    The widening is deliberately confined to the bracketed form. Outside brackets the exact
+    `TYPE_n` spelling is still required, because tolerance there is not a kindness: a
+    document that really contains such text would have it replaced by somebody's name, which
+    is the fabrication `minted_placeholders_in` exists to prevent.
+    """
+    name = (m.group(1) or m.group(3)).upper()
+    # Any run of separators inside the brackets is one underscore, so a placeholder a model
+    # wrapped across a line break in the middle of its name reads as the name it plainly is.
+    name = re.sub(r"[\s_-]+", "_", name)
+    number = m.group(2) or m.group(4)
+    # A zero-padded index can only mean the index. `<EMAIL_01>` is `<EMAIL_1>`, and a part
+    # index keeps its own padding rules for the same reason.
+    number = ".".join(str(int(part)) for part in number.split("."))
+    return name, number
+
 
 # The word shapes and the parts of a name live in boundary.redact.names, because the
 # sweep needs the same answers and two copies of this judgement is a leak waiting for a
@@ -249,10 +277,10 @@ class Policy:
             m = PLACEHOLDER.fullmatch(placeholder)
             if m is None:
                 raise ValueError(f"{placeholder!r} is not a placeholder this library writes")
-            name = (m.group(1) or m.group(3)).upper()
+            name = placeholder_kind(m)[0]
             if name not in _ENTITY_NAMES:
                 raise ValueError(f"{placeholder!r} names no entity type this version knows")
-            number = m.group(2) or m.group(4)
+            number = placeholder_kind(m)[1]
             # Stored under the canonical spelling whatever the caller wrote, because that is
             # the only form `rehydrate` looks up. A vault that came back from somewhere else
             # having lost its brackets would otherwise restore without complaint and then
@@ -598,7 +626,7 @@ class Policy:
         for m in PLACEHOLDER.finditer(text):
             if self._lookup(m) is None:
                 continue
-            kind = (m.group(1) or m.group(3)).upper()
+            kind = placeholder_kind(m)[0]
             entity = EntityType(kind) if kind in _ENTITY_NAMES else EntityType.NAME_LIKE
             out.append(Leak("placeholder", entity, m.start(), m.end(), m.group(0)))
         return out
@@ -625,8 +653,7 @@ class Policy:
     # -- inbound ---------------------------------------------------------------------------
 
     def _lookup(self, m: re.Match[str]) -> str | None:
-        kind = (m.group(1) or m.group(3)).upper()
-        number = m.group(2) or m.group(4)
+        kind, number = placeholder_kind(m)
         return self._vault.get(f"<{kind}_{number}>")
 
     def rehydrate(self, text: str) -> str:
@@ -647,4 +674,4 @@ class Policy:
         return [m.group(0) for m in PLACEHOLDER.finditer(text) if self._lookup(m) is None]
 
 
-__all__ = ["PLACEHOLDER", "Leak", "Policy", "RedactionRefused"]
+__all__ = ["PLACEHOLDER", "Leak", "Policy", "RedactionRefused", "placeholder_kind"]

@@ -492,6 +492,37 @@ misses, and both are covered by the second pass rather than leaked, which is why
 rate does not move. There is still no measurement of what a model does to a placeholder in
 flight; that is Part B's rehydration mutation rate and it needs the proxy.
 
+### Rehydration fidelity, from 0.6.4
+
+    boundary redact eval --rehydration
+
+Part B's table calls this rehydration fidelity and plans to sample it from a model. This
+measures the prior question, which is the one that can be answered reproducibly: of the
+ways a model rewrites markup around a placeholder, how many still resolve. A sampled run
+would measure which forms one model happens to produce today; this measures whether the
+library survives the forms at all, and it needs no model.
+
+2,007 placeholders over 200 pages, 15 mutation forms. **Fourteen restore 100% of the values
+(99.8 to 100)**: as minted, lower case, spaces inside the brackets, brackets dropped, square
+brackets, round brackets, bold markdown, backticks, a possessive after it, a hyphen instead
+of the underscore, a space instead of the underscore, a zero-padded index, and a line break
+wrapped either before the number or inside the name.
+
+**One is zero on purpose.** `PLACEHOLDER_EMAIL_1` does not resolve. That is not a mutation
+of a placeholder, it is other text around one, and tolerating a prefix means resolving
+anything that ends in `TYPE_n`. The asymmetry decides it: an unresolved placeholder is
+visible in `unresolved` and costs a reader one value, and an over-resolved one puts
+somebody's name into a record that never mentioned them.
+
+**Fabrications: 0 of 16.** Every entity type with an index this policy never minted, plus a
+type that does not exist, resolves to nothing. This is the row that must stay at zero, and
+it is the same failure the 0.5.3 guard exists for from the other side.
+
+Four of those forms resolved to nothing before 0.6.4, and the measurement is what found
+them. The tolerance was widened **inside the brackets only**: any run of separators there is
+one underscore, and a zero-padded index is the index. Outside the brackets the exact
+`TYPE_n` spelling is still required, because widening there would resolve ordinary text.
+
 ### The Canadian identifier set, from 0.6.1
 
     boundary redact eval --identifiers

@@ -13,6 +13,7 @@ import math
 
 import pytest
 
+from boundary.errors import BoundaryError
 from boundary.redact import EntityType, Policy
 from boundary.redact.corpus import DISTRACTORS, Label, build
 from boundary.redact.evaluate import Rate, run, to_json, wilson
@@ -271,3 +272,66 @@ def test_a_date_written_in_words_has_no_backstop_and_the_number_says_so() -> Non
     )
     assert 0.6 < row.backstop.value < 0.7
     assert row.masking.value == 1.0, "with the recogniser present, every form is masked"
+
+
+# -- rehydration fidelity -------------------------------------------------------------------
+
+
+def test_every_mutation_form_but_one_returns_the_values() -> None:
+    from boundary.redact.evaluate import rehydration
+
+    results = rehydration(pages=12)
+    by_name = {r.mutation: r for r in results.mutations}
+    for name, row in by_name.items():
+        if name == "prefixed":
+            continue
+        assert row.resolution.value == 1.0, f"{name} lost values on the way back"
+    # Prefixed stays at zero on purpose. Tolerating a prefix means resolving arbitrary text
+    # that happens to end in TYPE_n, which is the fabrication the 0.5.3 guard exists for.
+    assert by_name["prefixed"].resolution.value == 0.0
+
+
+def test_no_invented_placeholder_ever_resolves() -> None:
+    # The row that must stay at zero. A placeholder this policy never minted resolving to a
+    # value puts somebody's name where the text had only the word: fabrication, not
+    # disclosure, and the one failure in this module that makes output wrong rather than
+    # merely unsafe.
+    from boundary.redact.evaluate import rehydration
+
+    assert rehydration(pages=6).fabrications == 0
+
+
+def test_a_placeholder_survives_the_ways_a_model_rewrites_markup() -> None:
+    policy = Policy([])
+    policy.redact("Write to marie.chaulk@gov.nl.ca today.")
+    for written in (
+        "<EMAIL_1>",
+        "<email_1>",
+        "< EMAIL_1 >",
+        "EMAIL_1",
+        "[EMAIL_1]",
+        "(EMAIL_1)",
+        "**<EMAIL_1>**",
+        "`<EMAIL_1>`",
+        "<EMAIL_1>'s",
+        "<EMAIL-1>",
+        "<EMAIL 1>",
+        "<EMAIL_01>",
+    ):
+        assert policy.rehydrate(written).count("marie.chaulk@gov.nl.ca") == 1, written
+    # A prefix is not a mutation of the placeholder, it is other text around one, and
+    # resolving it would resolve anything.
+    assert "marie.chaulk" not in policy.rehydrate("PLACEHOLDER_EMAIL_1")
+
+
+def test_widening_the_pattern_did_not_widen_the_fabrication_surface() -> None:
+    # The separator tolerance added in 0.6.4 lives inside the brackets only, so the guard
+    # that refuses source text carrying a minted placeholder sees the new forms too, and
+    # nothing outside brackets became resolvable.
+    policy = Policy([])
+    policy.redact("Write to marie.chaulk@gov.nl.ca today.")
+    with pytest.raises(BoundaryError):
+        policy.outbound("The template uses <EMAIL-1> as an example.")
+    assert (
+        policy.rehydrate("<PERSON_9001> and <NOT_A_TYPE_1>") == "<PERSON_9001> and <NOT_A_TYPE_1>"
+    )

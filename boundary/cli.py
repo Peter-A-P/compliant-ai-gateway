@@ -525,6 +525,10 @@ def cmd_redact_eval(args: argparse.Namespace) -> int:
 
         extra.append(PresidioRecogniser())
         detector = "built-in recognisers and Presidio"
+    if args.rehydration:
+        rehy = evaluate.rehydration(pages=args.pages, seed=args.seed)
+        print(rehy.table())
+        return 0
     if args.identifiers:
         ident = evaluate.identifiers(
             per_family=args.per_family,
@@ -665,6 +669,12 @@ def main(argv: list[str] | None = None) -> int:
         "in every written form, the shapes no recogniser claims, and the near-misses",
     )
     rev.add_argument("--per-family", dest="per_family", type=int, default=50)
+    rev.add_argument(
+        "--rehydration",
+        action="store_true",
+        help="what survives the trip back: every mutation form a model applies to a "
+        "placeholder, and the fabrication count that must stay at zero",
+    )
     rev.add_argument("--seed", type=int, default=20260920)
     rev.add_argument(
         "--presidio",

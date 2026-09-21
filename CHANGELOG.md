@@ -5,6 +5,34 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.6.4 (2026-09-21)
+
+**Rehydration fidelity, measured**, which is the last of Part B's redaction rows that can be
+answered without the proxy. `boundary redact eval --rehydration` applies fifteen mutation
+forms to a redacted page, the ways a model rewrites markup around a placeholder, and asks
+whether the values come back.
+
+- **Fourteen forms restore 100% of the values (99.8 to 100)** over 2,007 placeholders: as
+  minted, lower case, spaces inside the brackets, brackets dropped, square and round
+  brackets, bold markdown, backticks, a possessive, a hyphen or a space in place of the
+  underscore, a zero-padded index, and a line break wrapped either before the number or
+  inside the name.
+
+- **Four of those resolved to nothing before this release**, and the measurement is what
+  found them. The tolerance is widened **inside the brackets only**: any run of separators
+  there is one underscore, and a zero-padded index is the index. Outside the brackets the
+  exact `TYPE_n` spelling is still required.
+
+- **`PLACEHOLDER_EMAIL_1` is 0% and stays there.** That is text around a placeholder rather
+  than a mutation of one, and tolerating a prefix means resolving anything ending in
+  `TYPE_n`. The asymmetry decides it: an unresolved placeholder costs a reader one value and
+  is listed in `unresolved`; an over-resolved one puts somebody's name into a record that
+  never mentioned them.
+
+- **Fabrications: 0 of 16.** Every entity type with an index this policy never minted, plus
+  a type that does not exist, resolves to nothing. That row must stay at zero, and there is
+  a test asserting the widened pattern did not widen it.
+
 ## 0.6.3 (2026-09-21)
 
 **Two files in this package were contradicting each other**, and the contradiction was

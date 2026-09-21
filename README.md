@@ -107,6 +107,11 @@ no recogniser claims at all, and the near-misses. **No recogniser fired on any o
 near-misses**, and nothing in the set left in clear, including business numbers, driver's
 licences and passport numbers that this library has no recogniser for and masks anyway.
 
+`boundary redact eval --rehydration` measures what survives the trip back: of fifteen ways a
+model rewrites the markup around a placeholder, **fourteen restore 100% of the values (99.8
+to 100)** over 2,007 placeholders, and no placeholder this policy never minted resolves to
+anything. The fifteenth is zero deliberately, and [docs/redact.md](docs/redact.md) says why.
+
 **Gateway (Part B)**
 
 | Layer | Load (rps) | Overhead p50 / p95 / p99 ms (95% CI) |

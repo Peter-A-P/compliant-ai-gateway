@@ -409,7 +409,8 @@ from October the ledger-against-invoice difference is recorded there too (sectio
 | v0.6.0 | 2026-09-20 | `boundary redact eval`: a labelled corpus generated from a seed and the first redaction measurement this repository owns, with precision as well as recall and a Wilson interval on every row. Rules only, no model and no network: detection recall 35.3% and leak rate 0.0%, which is the second pass measured rather than argued. It found a leak on its first run, an accented email address missed by both layers, fixed in both |
 | v0.6.1 | 2026-09-20 | The Canadian identifier set: `boundary redact eval --identifiers`. Every claimed shape in every written form, the three families this library claims no recogniser for, and 700 near-misses that must not fire and did not |
 | v0.6.2 | 2026-09-20 | The identifier set measures the second pass with every recogniser removed, which found a bracketed area code published beside its own placeholder. A date written in words has no backstop, recorded as a limit with a test |
-| v0.6.3 | 2026-09-21 | `Policy.second_pass`: which placeholders the fallback minted. 0.6.0 had the second pass mint `EMAIL`, which made `types.py` and `policy.py` disagree about whether the entity type says which pass produced a placeholder. **07 pins this tag** |
+| v0.6.3 | 2026-09-21 | `Policy.second_pass`: which placeholders the fallback minted. 0.6.0 had the second pass mint `EMAIL`, which made `types.py` and `policy.py` disagree about whether the entity type says which pass produced a placeholder |
+| v0.6.4 | 2026-09-21 | Rehydration fidelity measured: 15 mutation forms, 14 restoring every value, 0 fabrications. Four of them resolved to nothing before the measurement existed. **07 pins this tag** |
 | v1.0.0 | May 23 2027 | Everything in Part B; `boundary.redact` for 07; the proxy for 13 and 14 |
 
 03 pins `boundary>=0.1,<0.3` for Part A and moves to `>=1.0` when its Part B is built
@@ -902,7 +903,7 @@ the ledger and the spans as its production signal.
 - [ ] Everything in Part A's definition of done
 - [ ] OpenAI-compatible: a real client library works by changing only the base URL and key, streaming included
 - [ ] Data classification header enforced, absent means `personal`; residency violations zero on the adversarial suite, with correct refusals
-- [ ] Reversible redaction round-trips under property tests; rehydration fidelity and mutation rate reported
+- [ ] Reversible redaction round-trips under property tests; rehydration fidelity and mutation rate reported. **Property tests and fidelity done 2026-09-21 (0.6.4)**: the round trip is a property test over generated documents, and `boundary redact eval --rehydration` reports resolution per mutation form with intervals, 14 of 15 at 100% and 0 fabrications. The **mutation rate** is what remains, and it needs the proxy: which of those forms a model actually produces, sampled from real answers
 - [ ] Redaction precision and recall per entity type on public corpora and the Canadian set, with CIs
 - [ ] Quality effect of redaction measured through the 03 gate, two-sided, with interval
 - [ ] Semantic cache hit rate, dollars saved and false-hit rate on replayed traffic
