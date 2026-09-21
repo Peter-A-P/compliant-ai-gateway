@@ -19,6 +19,13 @@ major version are additive only; see docs/interface.md.
   recall alone, which is 07's measurement and is recorded here because it is about a number
   this repository publishes.
 
+- **`tests/test_docs.py`**: the checks that would have caught the drift above. Every name
+  exported from `boundary` and `boundary.redact` appears in the frozen interface document;
+  every released version in this file is accounted for there; the newest entry here and
+  `boundary.__version__` agree; no page carries a typographic dash, a curly quote or an
+  ellipsis character; and every relative link resolves. Five of those failed against the
+  tree as it stood this morning.
+
 - **Correction, 2026-09-20**: the raw arm of 07's ablation is 239 distinct payloads of 244
   asks, not 240. 07 found it when it replaced a hand-written sentence with a measured
   column, which is the better reason to trust the new figure than the size of the change.
