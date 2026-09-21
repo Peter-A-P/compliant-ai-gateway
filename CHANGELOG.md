@@ -5,6 +5,31 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.6.3 (2026-09-21)
+
+**Two files in this package were contradicting each other**, and the contradiction was
+introduced here three releases ago. Project 07 named the class on 2026-09-21 after finding
+one of its own, where a job title was sent to a vendor on the grounds that it is not
+personal information and boxed in the same document on the grounds that it might be. Its
+point is the useful part: the defect is not in a component, it is in two components that
+are each defensible alone, and nothing that tests a module in isolation can see it.
+
+- `types.py` promised that second-pass output is reported under its own entity type "so
+  that the two passes stay separable". 0.6.0 had the second pass mint `EMAIL` for an
+  address no recogniser claimed, which is the accurate type and the right thing for a model
+  to read, and from that moment a consumer counting `<EMAIL_n>` could not tell a detection
+  from a guess. Project 07's error decomposition is built on exactly that distinction.
+
+- **`Policy.second_pass`** is the fix, and it gives up neither side: the type stays the most
+  accurate one available, and the policy records which pass minted each placeholder. A span
+  typed `NAME_LIKE` by somebody else's detector is that detector's work and is not in the
+  set, which is checked, because 07 returns shape-based spans of its own.
+
+- A policy rebuilt from an earlier one's `vault` reports an empty set, because a vault
+  carries values and not provenance, which is the same reason it has to be passed at all.
+  Stated in the docstring and the docs rather than left to be discovered, since an empty
+  set there does not mean no fallback work happened.
+
 ## 0.6.2 (2026-09-20)
 
 **The identifier set now measures the second pass with every recogniser taken away**, and

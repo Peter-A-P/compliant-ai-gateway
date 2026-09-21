@@ -1,6 +1,6 @@
 [project]
 name = "boundary"
-version = "0.6.2"
+version = "0.6.3"
 description = "One library every model call in the portfolio goes through: raw-HTTP adapters, routing by configuration, a cost ledger row and a telemetry span per call, spend caps, and an inviolable pass-through mode."
 readme = "README.md"
 requires-python = ">=3.13,<3.14"

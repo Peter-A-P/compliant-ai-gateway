@@ -835,3 +835,39 @@ def test_the_sweep_reports_its_two_buckets_separately() -> None:
     assert original_recogniser(swept(found)[0]) == SWEEP_ID
     # Every span is in exactly one bucket or neither, never both.
     assert not set(swept(found)) & set(retyped(found))
+
+
+def test_which_pass_minted_a_placeholder_is_readable_from_the_policy() -> None:
+    """Two modules in contradiction, fixed in 0.6.3.
+
+    types.py promised that second-pass output carries its own entity type, so that the two
+    passes stay separable. 0.6.0 had the second pass mint EMAIL for an address no
+    recogniser claimed, which is the accurate type and quietly broke the promise: a
+    consumer counting `<EMAIL_n>` could no longer tell a detection from a guess. Project 07
+    named this class of defect on 2026-09-21, two components each defensible alone and
+    disagreeing with each other, which nothing that tests a module in isolation can see.
+
+    The type stays accurate and the policy carries the provenance.
+    """
+    detected = Span(1, 0, 22, "marie.chaulk@gov.nl.ca", EntityType.EMAIL, 0.95, "boundary:email")
+    policy = Policy([detected])
+    out = policy.redact("marie.chaulk@gov.nl.ca and wallace.p@gov.nl.ca were written to.")
+    assert out == "<EMAIL_1> and <EMAIL_2> were written to."
+    assert policy.second_pass == frozenset({"<EMAIL_2>"})
+    # And a NAME_LIKE span from somebody else's detector is that detector's work, not this
+    # policy's fallback. 07 returns shape-based spans of its own.
+    theirs = Policy([Span(1, 0, 6, "Chaulk", EntityType.NAME_LIKE, 0.5, "sever:shape")])
+    assert theirs.redact("Chaulk applied.") == "<NAME_LIKE_1> applied."
+    assert theirs.second_pass == frozenset()
+
+
+def test_a_rebuilt_policy_reports_only_its_own_second_pass() -> None:
+    first = Policy([])
+    first.redact("Write to marie.chaulk@gov.nl.ca today.")
+    assert first.second_pass
+    rebuilt = Policy([], vault=first.vault)
+    assert rebuilt.rehydrate("<EMAIL_1>") == "marie.chaulk@gov.nl.ca"
+    # A vault carries values, not provenance, which is the same reason it has to be passed
+    # at all. Stated rather than implied, because the empty set here is not "no fallback
+    # work happened".
+    assert rebuilt.second_pass == frozenset()

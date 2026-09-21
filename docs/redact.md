@@ -380,6 +380,26 @@ on them. So the mechanism was never the alphabet, it was the vocabulary: a name 
 because nothing knows it, not because of the letters it is spelled with. Syllabics remain
 outside what any of this reaches, on either side.
 
+### Which pass masked it
+
+`policy.vault` says what a placeholder stands for. `policy.second_pass` says which
+placeholders the **fallback** minted rather than a recogniser's span, which is what a
+consumer attributing a redaction to its detector or to the backstop needs.
+
+Until 0.6.3 that was readable from the entity type, because the second pass only ever
+minted `NAME_LIKE` and `ID_LIKE`, and `types.py` said so in as many words. Then 0.6.0 had
+it mint `EMAIL` for an address no recogniser claimed, which is the accurate type and the
+right thing for a model to read, and the promise in the other file quietly stopped holding.
+Two components each defensible on their own, disagreeing with each other, which is the
+class of defect project 07 named on 2026-09-21 after finding one of its own: a job title
+sent to a vendor as not personal information and boxed in the same document as though it
+might be. Nothing that tests a module in isolation sees it.
+
+The type stays the most accurate one available and the policy carries the provenance.
+`second_pass` is this policy's own work: one rebuilt from an earlier `vault` cannot say
+which pass found what, for the same reason the rebuild was needed at all, and that is
+stated rather than left to be discovered.
+
 ### The guard
 
 `outbound` runs `check` on its own output: any vault value present in clear, and any shape

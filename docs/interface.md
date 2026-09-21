@@ -31,6 +31,7 @@ listed here; nothing any earlier version offered has changed shape.
 | 0.6.0 | 2026-09-20 | `boundary redact eval` and the modules behind it, `boundary.redact.corpus` and `boundary.redact.evaluate`: a generated labelled corpus and the first redaction measurement this repository owns. The EMAIL recogniser reads letters in any script and the policy's second pass masks address-shaped text, both from a leak the harness found on its first run |
 | 0.6.1 | 2026-09-20 | `boundary redact eval --identifiers` and `boundary.redact.identifiers`: the Canadian identifier set, every claimed shape in every written form, the shapes no recogniser claims, and the near-misses that must not fire |
 | 0.6.2 | 2026-09-20 | The identifier set measures the second pass with every recogniser removed, a column that found a bracketed area code being published beside its own placeholder. `FamilyRow.backstop` |
+| 0.6.3 | 2026-09-21 | `Policy.second_pass`: which placeholders the fallback minted, after 0.6.0 made the entity type stop answering that |
 
 ## 1. Importing
 
@@ -325,6 +326,7 @@ from boundary.redact.presidio import PresidioRecogniser   # optional `redact` ex
 | Outbound | `policy.outbound(text) -> str` | 0.5 | Substitute, second pass, then refuse with `RedactionRefused` unless clean. **For source text only** since 0.5.3: text carrying a placeholder this policy minted is refused first, because rehydration could not tell it from the policy's own work. `redact(text)` is the same without either refusal and is idempotent; `check(text) -> list[Leak]` is the second refusal's reason |
 | Placeholder clash | `policy.minted_placeholders_in(text) -> list[Leak]` | 0.5.3 | What `outbound` refuses source text for. A placeholder the policy did **not** mint is not ambiguous: it is masked whole, as an opaque token, and survives the round trip as itself |
 | Inbound | `policy.rehydrate(text) -> str`, `policy.unresolved(text) -> list[str]` | 0.5 | Tolerant of case, inner spaces and dropped brackets |
+| Which pass | `policy.second_pass -> frozenset[str]` | 0.6.3 | The placeholders the fallback minted rather than a recogniser's span. Read this, not the entity type: since 0.6.0 the second pass mints `EMAIL` for an address no recogniser claimed. This policy's own work only; one rebuilt from a `vault` reports an empty set |
 | Vault | `policy.vault -> Mapping[str, str]` | 0.5 | placeholder to value, in memory. Grows as the second pass masks. Never written by the library |
 | Sweep buckets | `swept(spans) -> list[Span]`, `retyped(spans) -> list[Span]`, `original_recogniser(span) -> str` | 0.5.8 | What the sweep added, against what it re-typed: an occurrence nothing found, against one that was found and called something impersonal. A recall figure sees only the first. `original_recogniser` gives back the detector that fired whatever the sweep did to the span |
 | Analyzer parts | `resolve_overlaps(spans, *, priority=()) -> list[Span]`, `cut_at_line_break(span) -> Span | None` | 0.5 | The analyzer's two guarantees, for a consumer assembling its own pipeline from other recognisers |

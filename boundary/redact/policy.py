@@ -210,6 +210,18 @@ class Policy:
         )
         # placeholder -> the value it stands for; the vault.
         self._vault: dict[str, str] = {}
+        # The placeholders the second pass minted, as opposed to those derived from a span.
+        #
+        # Which pass produced a placeholder used to be readable from its type, because the
+        # second pass only ever minted NAME_LIKE and ID_LIKE. In 0.6.0 it began minting
+        # EMAIL as well, for an address no recogniser claimed, and that quietly broke the
+        # separability types.py promises: a consumer counting `<EMAIL_n>` could no longer
+        # tell a detection from a guess. Two modules each defensible on their own and in
+        # contradiction with each other, which is the class of defect project 07 named on
+        # 2026-09-21 after finding one of its own. The answer is neither to give the address
+        # a worse type nor to drop the promise: the policy records which pass minted what,
+        # and the type stays the most accurate one available.
+        self._from_second_pass: set[str] = set()
         # normalised value -> placeholder; the substitution table, matched without regard
         # to case or spacing.
         self._table: dict[str, str] = {}
@@ -255,11 +267,13 @@ class Policy:
             entity = EntityType(name)
             self._counters[entity] = max(self._counters[entity], int(number.split(".")[0]))
 
-    def _mint(self, entity_type: EntityType, value: str) -> str:
+    def _mint(self, entity_type: EntityType, value: str, *, second_pass: bool = False) -> str:
         key = _norm(value)
         existing = self._table.get(key)
         if existing is not None:
             return existing
+        if second_pass:
+            self._from_second_pass.add(f"<{entity_type.value}_{self._counters[entity_type] + 1}>")
         self._counters[entity_type] += 1
         placeholder = f"<{entity_type.value}_{self._counters[entity_type]}>"
         self._table[key] = placeholder
@@ -356,6 +370,21 @@ class Policy:
     def vault(self) -> Mapping[str, str]:
         """placeholder -> value. Grows as the second pass masks things. Never log it."""
         return MappingProxyType(self._vault)
+
+    @property
+    def second_pass(self) -> frozenset[str]:
+        """The placeholders the second pass minted, rather than a recogniser's span.
+
+        A consumer attributing a redaction to the detector or to the fallback reads this,
+        not the entity type: since 0.6.0 the second pass mints `EMAIL` for an address no
+        recogniser claimed, because that is the accurate type for it, and the type alone
+        can no longer say which pass produced it.
+
+        This policy's own work only. A policy rebuilt from an earlier one's `vault` resolves
+        the placeholders that one found and cannot say which pass found them, for the same
+        reason the rebuild was needed at all: a vault carries values, not provenance.
+        """
+        return frozenset(self._from_second_pass)
 
     @property
     def placeholders(self) -> Mapping[str, str]:
@@ -523,7 +552,7 @@ class Policy:
         cursor = 0
         for s, e, kind in shapes:
             out.append(text[cursor:s])
-            out.append(self._mint(kind, text[s:e]))
+            out.append(self._mint(kind, text[s:e], second_pass=True))
             cursor = e
         out.append(text[cursor:])
         return "".join(out)

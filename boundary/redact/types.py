@@ -42,7 +42,13 @@ class EntityType(StrEnum):
     URL = "URL"
     # The policy's second pass (policy.py): something shaped like a name or an identifier
     # that no recogniser claimed. Masked because a boundary built on detections inherits
-    # every miss, and reported under its own type so that the two passes stay separable.
+    # every miss.
+    #
+    # These are the types the second pass uses when it has nothing better. It is not the
+    # case that second-pass output always carries one of them: since 0.6.0 an address no
+    # recogniser claimed is minted as EMAIL, because that is what it is and a placeholder
+    # is read by a model. Which pass minted a placeholder is `Policy.second_pass`, and this
+    # comment said otherwise until 0.6.3, which made two files in this package disagree.
     NAME_LIKE = "NAME_LIKE"
     ID_LIKE = "ID_LIKE"
 
