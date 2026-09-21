@@ -283,7 +283,13 @@ async def test_sixty_four_concurrent_streams_each_write_a_row_with_a_ttft(gw: Ga
     assert gw.ledger.count() == n
     assert all(r["ttft_ms"] is not None and r["costed"] == 1 for r in gw.ledger.rows())
     # Serialised, this would take at least 64 x 150 ms = 9.6 s. Concurrent, about one delay.
-    assert wall < n * FIRST_TOKEN_DELAY_S / 4, f"streams ran serially: {wall:.2f}s for {n}"
+    #
+    # Half of that rather than a quarter (2026-09-20): the quarter is 2.4 s, and a loaded
+    # hosted runner took 2.46 s on a run where nothing was serial, which made a timing
+    # margin into a flake and the flake into a red build on an unrelated change. What this
+    # assertion is for is telling concurrent from serial, and 4.8 s against a serial floor
+    # of 9.6 s still does that without ambiguity. A tighter bound measures the runner.
+    assert wall < n * FIRST_TOKEN_DELAY_S / 2, f"streams ran serially: {wall:.2f}s for {n}"
 
 
 def test_the_pool_admits_at_least_sixty_four_connections() -> None:
