@@ -13,7 +13,7 @@ import math
 
 import pytest
 
-from boundary.redact import EntityType
+from boundary.redact import EntityType, Policy
 from boundary.redact.corpus import DISTRACTORS, Label, build
 from boundary.redact.evaluate import Rate, run, to_json, wilson
 
@@ -221,3 +221,53 @@ def test_the_unclaimed_families_are_masked_without_being_detected() -> None:
     for row in unclaimed:
         assert row.masked == row.cases
         assert row.detection.value < 0.2
+
+
+def test_the_second_pass_alone_covers_every_identifier_family() -> None:
+    # Project 07's point, 2026-09-20: its EMAIL recogniser found every address, so its
+    # corpus never asked the second pass whether it could, and the backstop was untested
+    # rather than working. This asserts the layer that exists for when a recogniser is
+    # wrong, with every recogniser taken away.
+    from boundary.redact.evaluate import identifiers
+
+    results = identifiers(per_family=12)
+    weak = [
+        r
+        for r in results.families
+        if r.expect != "ignore" and r.backstop.value < 1.0 and r.family != "date_of_birth"
+    ]
+    assert weak == [], f"the second pass alone does not cover: {[r.family for r in weak]}"
+
+
+def test_a_bracketed_area_code_is_masked_with_the_rest_of_the_number() -> None:
+    # Found by measuring the backstop on its own: (709) ended the run, 555-0199 was masked
+    # alone, and the area code was published beside the placeholder. Half a value masked is
+    # the 0.5.2 failure in another shape.
+    policy = Policy([])
+    out = policy.redact("Call (709) 555-0199 today.")
+    assert "709" not in out
+    # And the thing that keeps the brackets from widening it: a section reference is not a
+    # code because it does not carry eight digits.
+    assert policy.redact("See section 31(1) and page 12 of 40.") == (
+        "See section 31(1) and page 12 of 40."
+    )
+
+
+def test_a_date_written_in_words_has_no_backstop_and_the_number_says_so() -> None:
+    # 66.7%, not 100%, and on purpose. "14 March 1978" is masked only because the
+    # DATE_OF_BIRTH recogniser sees the label in front of it; the second pass leaves it,
+    # because masking every written date would black out the dates a decision turns on.
+    # If that judgement is ever revisited, this test is where the revisit shows up.
+    policy = Policy([])
+    assert policy.redact("The meeting of 14 March 1978 was minuted.") == (
+        "The meeting of 14 March 1978 was minuted."
+    )
+    from boundary.redact.evaluate import identifiers
+
+    row = next(
+        r
+        for r in identifiers(per_family=12).families
+        if r.family == "date_of_birth" and r.expect == "detect"
+    )
+    assert 0.6 < row.backstop.value < 0.7
+    assert row.masking.value == 1.0, "with the recogniser present, every form is masked"

@@ -5,6 +5,29 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.6.2 (2026-09-20)
+
+**The identifier set now measures the second pass with every recogniser taken away**, and
+that column found two holes the recognisers were covering. The idea is project 07's, from
+its own version of the email leak: its EMAIL recogniser found every address, so its corpus
+never asked the second pass whether it could, and the backstop was untested rather than
+working. A masking column where a recogniser is doing the work says nothing about the layer
+that exists for when a recogniser is wrong.
+
+- **`(709) 555-0199` was half masked.** The bracket ended the code run, `555-0199` was
+  masked on its own, and the area code was published in clear beside the placeholder. This
+  is the `A1B 2C3` failure of 0.5.2 in another shape, and the recogniser had been hiding it.
+  A bracketed group is part of a run now. Brackets cannot widen what is masked on their own,
+  because an all-digit run still needs eight digits before it is masked, which is what keeps
+  `section 31(1)` and `page 12 of 40` readable, and there is a test for each.
+
+- **A date written in words has no backstop, and the number now says so.** `14 March 1978`
+  is not masked by the second pass, so a date of birth in that form is masked only because
+  the recogniser sees the label in front of it. The column reads 66.7% rather than 100%.
+  Masking every written date would black out the dates a decision turns on, which is the
+  judgement the DATE_OF_BIRTH recogniser already makes by requiring a label, so this is
+  recorded as a limit with a test rather than closed.
+
 ## 0.6.1 (2026-09-20)
 
 **The Canadian identifier set**, `boundary redact eval --identifiers`, which is the other

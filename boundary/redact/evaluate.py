@@ -379,6 +379,8 @@ class FamilyRow:
     detected: int
     typed: int
     masked: int
+    # Masked with every recogniser taken away: the second pass on its own.
+    backstopped: int = 0
 
     @property
     def detection(self) -> Rate:
@@ -391,6 +393,10 @@ class FamilyRow:
     @property
     def masking(self) -> Rate:
         return Rate(self.masked, self.cases)
+
+    @property
+    def backstop(self) -> Rate:
+        return Rate(self.backstopped, self.cases)
 
 
 @dataclass
@@ -416,14 +422,16 @@ class IdentifierResults:
             if not rows:
                 continue
             third = "masked by the policy" if expect != "ignore" else "masked (over-redaction)"
+            fourth = "second pass alone" if expect != "ignore" else "second pass alone (cost)"
             lines += [
                 "",
                 titles[expect],
-                f"{'family':<18}{'cases':>7}{'detected':>26}{third:>26}",
+                f"{'family':<18}{'cases':>7}{'detected':>26}{third:>26}{fourth:>26}",
             ]
             for row in sorted(rows, key=lambda r: r.family):
                 lines.append(
-                    f"{row.family:<18}{row.cases:>7}{row.detection!s:>26}{row.masking!s:>26}"
+                    f"{row.family:<18}{row.cases:>7}{row.detection!s:>26}"
+                    f"{row.masking!s:>26}{row.backstop!s:>26}"
                 )
         wrong = [r for r in self.families if r.expect == "detect" and r.typed < r.detected]
         if wrong:
@@ -441,6 +449,29 @@ class IdentifierResults:
             ),
         ]
         return chr(10).join(lines)
+
+
+def _redacted(text: str, spans: Sequence[Span]) -> str:
+    policy = Policy(spans)
+    try:
+        return policy.outbound(text)
+    except RedactionRefused:
+        # A refusal is not a release: nothing left. Report it as the strongest possible
+        # masking rather than as an absence.
+        return ""
+
+
+def _gone(value: str, output: str) -> bool:
+    """Whether none of `value` survives in `output`.
+
+    Not `value not in output`, which passes a half-masked value: `(709) 555-0199` reduced to
+    `(709) <ID_LIKE_1>` no longer contains the value and has published the area code. Any
+    run of three or more digits from the value counts as surviving, and so does the value
+    itself.
+    """
+    if value in output:
+        return False
+    return all(run not in output for run in re.findall(r"\d{3,}", value.replace(" ", "")))
 
 
 def identifiers(
@@ -477,15 +508,15 @@ def identifiers(
                 s.entity_type is case.entity_type for s in found
             ):
                 row.typed += 1
-        policy = Policy(analyzer.analyze_page(case.text, 1))
-        try:
-            out = policy.outbound(case.text)
-        except RedactionRefused:
-            # A refusal is not a release. The value did not leave.
+        if _gone(case.value, _redacted(case.text, analyzer.analyze_page(case.text, 1))):
             row.masked += 1
-            continue
-        if case.value not in out:
-            row.masked += 1
+        # The same case with every recogniser taken away. Project 07 made this point on
+        # 2026-09-20 and it lands here: its EMAIL recogniser found every address, so its
+        # corpus never asked the second pass whether it could, and the backstop was
+        # untested rather than working. A column where a recogniser is doing the work says
+        # nothing about the layer that exists for when a recogniser is wrong.
+        if _gone(case.value, _redacted(case.text, [])):
+            row.backstopped += 1
     return IdentifierResults(
         boundary_version=__version__,
         ran_utc=dt.datetime.now(dt.UTC).isoformat(timespec="seconds"),

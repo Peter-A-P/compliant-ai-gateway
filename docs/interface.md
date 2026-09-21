@@ -30,6 +30,7 @@ listed here; nothing any earlier version offered has changed shape.
 | 0.5.8 | 2026-09-20 | `swept`, `retyped`, `original_recogniser`: the sweep's two buckets, countable |
 | 0.6.0 | 2026-09-20 | `boundary redact eval` and the modules behind it, `boundary.redact.corpus` and `boundary.redact.evaluate`: a generated labelled corpus and the first redaction measurement this repository owns. The EMAIL recogniser reads letters in any script and the policy's second pass masks address-shaped text, both from a leak the harness found on its first run |
 | 0.6.1 | 2026-09-20 | `boundary redact eval --identifiers` and `boundary.redact.identifiers`: the Canadian identifier set, every claimed shape in every written form, the shapes no recogniser claims, and the near-misses that must not fire |
+| 0.6.2 | 2026-09-20 | The identifier set measures the second pass with every recogniser removed, a column that found a bracketed area code being published beside its own placeholder. `FamilyRow.backstop` |
 
 ## 1. Importing
 

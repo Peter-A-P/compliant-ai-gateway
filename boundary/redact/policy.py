@@ -72,14 +72,26 @@ PLACEHOLDER = re.compile(
 _WORD = re.compile(r"[^\W\d_]+(?:[-'" + _RSQUO + r"][^\W\d_]+)*")
 # Something an identifier is made of: letters, digits, slashes, hyphens, no spaces.
 _ID_TOKEN = re.compile(r"[A-Za-z0-9][A-Za-z0-9/-]*")
-# One piece of a code: letters, digits, slashes and hyphens, carrying at least one digit.
-_CODE_TOKEN = r"[A-Za-z0-9/-]*\d[A-Za-z0-9/-]*"
+# One piece of a code: letters, digits, slashes and hyphens, carrying at least one digit,
+# optionally wrapped in brackets.
+#
+# The brackets arrived in 0.6.2, from measuring the second pass with every recogniser taken
+# away. `(709) 555-0199` was the one North American phone form the backstop did not cover:
+# the bracket ended the run, `555-0199` was masked on its own, and the area code was
+# published beside the placeholder. A value half masked is the failure 0.5.2 fixed for
+# `A1B 2C3`, and it was still here in another shape. Brackets cannot widen what is masked
+# on their own, because a run still has to carry eight digits to be masked when it is all
+# digits, which is what keeps `section 31(1)` readable.
+_CODE_TOKEN = r"\(?[A-Za-z0-9/-]*\d[A-Za-z0-9/-]*\)?"
 # Several of them joined by single spaces or dots, so that a value written in pieces is one
 # candidate and not several: "123 456 789 012", "A1B 2C3", "709.555.0199". A piece without a
 # digit ends the run, which is what keeps "12 of 40" and "pages 3, 4 and 5" readable.
 _CODE_RUN = re.compile(
     r"(?<![A-Za-z0-9/-])" + _CODE_TOKEN + r"(?:[ .]" + _CODE_TOKEN + r")*(?![A-Za-z0-9/-])"
 )
+# Brackets are part of a piece, not a boundary, so they come off before the pieces are
+# counted and judged.
+_RUN_TRIM = "-/.()"
 _RUN_SPLIT = re.compile(r"[ .]")
 # How many digits an all-digit run needs before it is masked. Eight masks a health number,
 # a SIN and a phone number written in pieces, and leaves a short list of small numbers
@@ -450,7 +462,7 @@ class Policy:
         """
         runs: list[tuple[int, int]] = []
         for m in _CODE_RUN.finditer(text, lo, hi):
-            run = m.group(0).rstrip("-/.")
+            run = m.group(0).rstrip(_RUN_TRIM)
             pieces = _RUN_SPLIT.split(run)
             if len(pieces) < 2:
                 continue

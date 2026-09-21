@@ -510,6 +510,27 @@ The 8% on business numbers is the SIN recogniser: a business number's first nine
 the Luhn check about one time in ten, so it is masked under the wrong type, which the
 identifier set makes visible and the leak rate does not.
 
+**The column that matters most: the second pass on its own.** Project 07 made the point on
+2026-09-20 and it applies here exactly: its EMAIL recogniser found every address, so its
+corpus never asked the second pass whether it could, and the backstop was untested rather
+than working. So every case is also run with **every recogniser taken away**, and the table
+carries that column. It found two holes the recognisers were covering:
+
+- **`(709) 555-0199`**. The bracket ended the code run, `555-0199` was masked on its own,
+  and the area code was published beside the placeholder. Half a value masked is the failure
+  0.5.2 fixed for `A1B 2C3`, still here in another shape. Fixed in 0.6.2: a bracketed group
+  is part of a run, and brackets cannot widen what is masked, because an all-digit run still
+  needs eight digits, which is what keeps `section 31(1)` readable.
+- **A date written in words.** `14 March 1978` is not masked by the second pass, so a date
+  of birth in that form is masked only because the recogniser sees the label in front of it.
+  The column says 66.7% rather than 100% and that is the honest number: there is no backstop
+  for a written-out date. Masking every one of them would black out the dates a decision
+  turns on, which is the same judgement the DATE_OF_BIRTH recogniser makes by requiring a
+  label. It is a stated limit with a test on it, not an oversight.
+
+Every other family is at 100% with no recogniser at all, including the three this library
+claims no recogniser for.
+
 **The near-misses: no recogniser fired on one.** Nine digits failing the Luhn check, a
 postcode carrying a letter Canada Post does not use in that position, a fiscal year written
 `2024-2025`, an unlabelled date, a count of staff, a handle with no domain: 0% detected in
