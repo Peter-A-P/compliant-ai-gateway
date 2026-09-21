@@ -5,6 +5,51 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.6.0 (2026-09-20)
+
+**This repository can now measure its own redaction.** Every figure `boundary.redact` had
+published belonged to project 07, which was honest and was not the rule this portfolio is
+built on: each project ends with a number a stranger can check by running one command
+against the repository. `boundary redact eval` is that command. It needs no key, no
+account, no network and no model.
+
+- **`boundary.redact.corpus`**: a labelled corpus generated from a seed, shipped as code
+  rather than data. Values are planted in prose written to contain none, which is what makes
+  a **precision** figure possible: a span outside a label is a false positive and can be
+  counted, and no number this library published before had that. The name pool carries the
+  five orthographic shapes in the proportions that broke this library rather than in equal
+  ones, four of which 07's corpus contains none of. Towns and departments are labelled as
+  `LOCATION` and `ORGANISATION` but marked impersonal, so a detector that finds them is not
+  punished for being right and the leak rate stays a count of personal values.
+
+- **`boundary.redact.evaluate`**: detection recall, how often a found span was **typed**
+  correctly, precision, the leak rate after `outbound`, over-redaction, the round trip and
+  latency, each with a Wilson 95% interval. Wilson rather than the normal approximation
+  because several rows sit at exactly 0 and exactly 1, where the textbook interval claims
+  certainty or leaves the unit interval.
+
+  200 pages, 1,700 labelled entities, 1,450 personal. Rules only: detection recall 35.3%
+  (33.1 to 37.6), precision 100% (99.4 to 100), **leak rate 0.0% (0.0 to 0.3)**,
+  over-redaction 2.3%, round trip 100%, 1.1 ms a page. With Presidio: recall 94.6% (93.5 to
+  95.6), precision 93.2%, leak rate unchanged, 18.4 ms a page. The first column against the
+  fourth is the case for the second pass, stated as a measurement for the first time: a
+  third of the entities are detected and none of them leak.
+
+- **A leak the harness found on its first run**, which is why it was worth building rather
+  than reasoning about. An email address spelled with accents matched neither the EMAIL
+  recogniser, whose pattern was ASCII, nor any shape in the second pass, because an address
+  with no digit is not identifier-shaped and a lowercase word is not name-shaped. Both
+  layers missed the same value and it left in clear with no refusal. The recogniser now
+  reads letters in any script, and the second pass masks address-shaped text whether or not
+  a recogniser claimed it: that layer exists for when a recogniser is wrong, and it was not
+  holding. Same class of defect as the accented-name leak of 0.5.2, one layer down.
+
+- **Two detection gaps recorded rather than fixed**: `file_number` at 66.7% rules-only,
+  because the recogniser wants a label word adjacent ("File ATIPP-2024-0153") and the corpus
+  also writes "whose file is ATIPP-2024-0153"; and `location` at 74.0% with the model. Both
+  are covered by the second pass, so neither moves the leak rate, and that is exactly the
+  distinction the table now makes visible.
+
 - **Documentation pass, 2026-09-20.** No code changed. The README's release narrative had
   grown into a changelog sitting between the one-liner and the results tables, which is the
   opposite of the order this repository's own rule sets, so it is a short status block and a

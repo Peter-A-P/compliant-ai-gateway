@@ -77,15 +77,39 @@ merged into one ledger, US$61.3551 to 2026-09-14, reconciling with project 03's 
 accounting to within US$0.000001 over 35,728 of those calls. Nine rows are uncosted, which is
 the no-guessed-prices rule doing its job, and the document bounds what they hide.
 
+**Redaction (`boundary.redact`, pulled forward from Part B)**
+
+| Detection recall | Typed correctly | Detection precision | Leak rate after `outbound` | Over-redaction | Round trip | Latency p50 / p95 |
+|---|---|---|---|---|---|---|
+<!-- redact:start -->
+| 35.3% (33.1% to 37.6%) | 100.0% (99.4% to 100.0%) | 100.0% (99.4% to 100.0%) | 0.0% (0.0% to 0.3%) | 2.3% (2.1% to 2.6%) | 100.0% (98.1% to 100.0%) | 0.8 / 0.9 ms |
+<!-- redact:end -->
+
+Filled by `boundary redact eval --write-readme` over 200 generated pages holding 1,700
+labelled entities, 1,450 of them personal, with the built-in recognisers and **no model**,
+so anyone can reproduce it with a checkout and no key, no account and no network. Adding
+Presidio (`--presidio`) takes detection recall to **94.6% (93.5% to 95.6%)** and precision
+to 93.2% (91.9% to 94.3%) for 18.4 ms a page instead of 0.2.
+
+Read the first column against the fourth. Detection recall is 35.3% because there is no
+`PERSON` recogniser without a model, and **nothing leaks anyway**, because the policy's
+second pass masks what no detector claimed and refuses to send what it cannot vouch for.
+That gap is the whole argument for having a second pass, and a table reporting only the
+first column would have hidden it. The cost is the fifth: about one word in forty is masked
+that did not need to be. Intervals are Wilson score intervals at 95%, and the corpus is
+synthetic, so every recall figure is an upper bound on the same figure over real records.
+Method, limits and the leak this harness found on its first run:
+[docs/redact.md](docs/redact.md).
+
 **Gateway (Part B)**
 
 | Layer | Load (rps) | Overhead p50 / p95 / p99 ms (95% CI) |
 |---|---|---|
 | _not yet_ | | |
 
-| Redaction precision / recall by entity (95% CI) | Rehydration fidelity | Quality effect of redaction (two-sided delta) | Residency violations | Cache hit rate / false-hit rate / saved, redacted and raw | Audit tamper detection |
-|---|---|---|---|---|---|
-| _not yet_ | | | | | |
+| Rehydration mutation rate under a model | Quality effect of redaction (two-sided delta) | Residency violations | Cache hit rate / false-hit rate / saved, redacted and raw | Audit tamper detection |
+|---|---|---|---|---|
+| _not yet_ | | | | |
 
 ## What this does not do
 

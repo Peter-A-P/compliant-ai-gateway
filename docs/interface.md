@@ -28,6 +28,7 @@ listed here; nothing any earlier version offered has changed shape.
 | 0.5.6 | 2026-09-20 | `sweep`, `SWEEP_ID`, `is_name_shaped`, `name_parts`; a name part the vocabulary allows is no longer licensed |
 | 0.5.7 | 2026-09-20 | `retype` on `sweep` and the `RETYPED` default: a span that is exactly a detected person's name parts and carries an impersonal type is re-typed `PERSON` |
 | 0.5.8 | 2026-09-20 | `swept`, `retyped`, `original_recogniser`: the sweep's two buckets, countable |
+| 0.6.0 | 2026-09-20 | `boundary redact eval` and the modules behind it, `boundary.redact.corpus` and `boundary.redact.evaluate`: a generated labelled corpus and the first redaction measurement this repository owns. The EMAIL recogniser reads letters in any script and the policy's second pass masks address-shaped text, both from a leak the harness found on its first run |
 
 ## 1. Importing
 
@@ -327,6 +328,8 @@ from boundary.redact.presidio import PresidioRecogniser   # optional `redact` ex
 | Analyzer parts | `resolve_overlaps(spans, *, priority=()) -> list[Span]`, `cut_at_line_break(span) -> Span | None` | 0.5 | The analyzer's two guarantees, for a consumer assembling its own pipeline from other recognisers |
 | Name shapes | `is_name_shaped(token) -> bool`, `name_parts(name) -> list[str]` | 0.5.6 | The judgements the policy's second pass and the sweep share. A caseless script is never name-shaped; see docs/redact.md |
 | Placeholder pattern | `PLACEHOLDER: re.Pattern[str]` | 0.5 | What `rehydrate` reads. Tolerant of case, inner spaces and dropped brackets, which are the ways models mutate a placeholder |
+| Corpus | `corpus.build(*, pages=200, seed=20260920) -> Corpus` with `Corpus.pages`, `.labels`, `.personal`, and `Label(page, start, end, text, entity_type, shape, personal)` | 0.6 | A labelled corpus generated from a seed. `Label` validates its own offsets against the page, for the same reason `Span` does and with more at stake |
+| Evaluate | `evaluate.run(*, pages=200, seed=20260920, extra=(), detector=...) -> EvalResults`, `evaluate.wilson(hits, total) -> tuple[float, float]` | 0.6 | Detection recall, type accuracy, precision, leak rate after `outbound`, over-redaction, round trip and latency, each with a Wilson 95% interval. `boundary redact eval` is this with a table around it |
 | Errors | `RedactionRefused(BoundaryError)` with `.leaks: tuple[Leak, ...]` | 0.5 | Message carries counts only. `Leak.kind` is `value`, `shape` or, since 0.5.3, `placeholder` |
 
 ## 11. Choices the plan left open

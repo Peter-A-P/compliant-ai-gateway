@@ -1,0 +1,136 @@
+{
+  "boundary_version": "0.5.8",
+  "ran_utc": "2026-09-21T01:05:26+00:00",
+  "seed": 20260920,
+  "pages": 200,
+  "values": 1450,
+  "detector": "built-in recognisers only",
+  "entities": [
+    {
+      "entity_type": "PERSON",
+      "planted": 800,
+      "found": 0,
+      "typed": 0
+    },
+    {
+      "entity_type": "EMAIL",
+      "planted": 150,
+      "found": 150,
+      "typed": 150
+    },
+    {
+      "entity_type": "PHONE",
+      "planted": 100,
+      "found": 100,
+      "typed": 100
+    },
+    {
+      "entity_type": "FILE_NUMBER",
+      "planted": 150,
+      "found": 100,
+      "typed": 100
+    },
+    {
+      "entity_type": "ORGANISATION",
+      "planted": 150,
+      "found": 0,
+      "typed": 0
+    },
+    {
+      "entity_type": "SIN",
+      "planted": 50,
+      "found": 50,
+      "typed": 50
+    },
+    {
+      "entity_type": "HEALTH_NUMBER",
+      "planted": 50,
+      "found": 50,
+      "typed": 50
+    },
+    {
+      "entity_type": "POSTAL_CODE",
+      "planted": 50,
+      "found": 50,
+      "typed": 50
+    },
+    {
+      "entity_type": "DATE_OF_BIRTH",
+      "planted": 50,
+      "found": 50,
+      "typed": 50
+    },
+    {
+      "entity_type": "LOCATION",
+      "planted": 100,
+      "found": 0,
+      "typed": 0
+    },
+    {
+      "entity_type": "EMPLOYEE_ID",
+      "planted": 50,
+      "found": 50,
+      "typed": 50
+    }
+  ],
+  "shapes": [
+    {
+      "shape": "internal",
+      "planted": 178,
+      "found": 0,
+      "leaked": 0
+    },
+    {
+      "shape": "plain",
+      "planted": 297,
+      "found": 0,
+      "leaked": 0
+    },
+    {
+      "shape": "not a name",
+      "planted": 900,
+      "found": 600,
+      "leaked": 0
+    },
+    {
+      "shape": "hyphenated",
+      "planted": 89,
+      "found": 0,
+      "leaked": 0
+    },
+    {
+      "shape": "apostrophe",
+      "planted": 116,
+      "found": 0,
+      "leaked": 0
+    },
+    {
+      "shape": "accented",
+      "planted": 120,
+      "found": 0,
+      "leaked": 0
+    }
+  ],
+  "precision_hits": 600,
+  "precision_total": 600,
+  "leaks": 0,
+  "refusals": 0,
+  "round_trips": 200,
+  "over_redacted": 247,
+  "over_redaction_total": 10571,
+  "latency": {
+    "detect_p50_ms": 0.1756999990902841,
+    "detect_p95_ms": 0.20710000535473228,
+    "outbound_p50_ms": 0.750900013372302,
+    "outbound_p95_ms": 0.9494000114500523,
+    "pages": 200
+  },
+  "summary": {
+    "recall": "35.3% (33.1% to 37.6%)",
+    "type_accuracy": "100.0% (99.4% to 100.0%)",
+    "precision": "100.0% (99.4% to 100.0%)",
+    "leak_rate": "0.0% (0.0% to 0.3%)",
+    "over_redaction": "2.3% (2.1% to 2.6%)",
+    "round_trip": "100.0% (98.1% to 100.0%)"
+  }
+}

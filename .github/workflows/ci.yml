@@ -25,6 +25,12 @@ jobs:
       # transport, and that the expiry it sets is naive.
       - run: uv sync --frozen --extra vertex
       - run: uv run pytest tests/test_credentials.py
+      # The redaction table in the README, run for real on every push. It needs no key, no
+      # account, no network and no model, which is the property that makes it the one
+      # measurement here a stranger can reproduce, and a published number that nothing runs
+      # is a number nobody is checking. Fewer pages than the published run: this is a
+      # smoke test of the harness, and the README row is written from the 200-page run.
+      - run: uv run boundary redact eval --pages 40 --out /tmp/redact.json
 
   # The `redact` extra and its spaCy model are deliberately absent from the job above, so
   # the suite there runs with Presidio missing and exercises the import guard. They are
@@ -52,3 +58,7 @@ jobs:
       # job green while checking nothing, which is worse than a red one.
       - run: uv run python -c "import presidio_analyzer, en_core_web_lg"
       - run: uv run pytest tests/test_redact.py -v
+      # And the measurement with the model, which is the column the README quotes for
+      # person recall. Presidio is the only reason that column exists, so it is checked
+      # where Presidio is installed.
+      - run: uv run boundary redact eval --pages 40 --presidio --out /tmp/redact-presidio.json

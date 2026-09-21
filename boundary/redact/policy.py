@@ -89,6 +89,16 @@ _GROUPED_DIGITS = 8
 # Two tokens are one run when only spaces or tabs separate them. A line break ends a run,
 # for the same reason the analyzer cuts spans at one.
 _RUN_GAP = re.compile(r"[ \t]+")
+# Anything written as an address: a run of word characters, dots, and the punctuation a
+# local part carries, around an @. Letters in any script.
+#
+# The second pass masks this even though a recogniser claims addresses, because the
+# evaluation harness found both layers missing the same value on its first run (0.6.0): an
+# address spelled with accents matched neither the ASCII pattern in recognisers.py nor any
+# shape here, since an address carrying no digit is not identifier-shaped and a lowercase
+# word is not name-shaped. The recogniser is fixed; this is the layer that is supposed to
+# hold when a recogniser is wrong, and it was not holding.
+_ADDRESSISH = re.compile(r"[^\W_][\w.%+-]*@[^\W_][\w-]*(?:\.[^\W_][\w-]*)+")
 # The entity names a placeholder can carry, for reading one back out of a string.
 _ENTITY_NAMES = frozenset(e.value for e in EntityType)
 
@@ -387,10 +397,22 @@ class Policy:
             # is the sort of thing a model helpfully tidies up.
             claimed: list[tuple[int, int]] = [(s, e) for s, e in foreign if lo <= s and e <= hi]
             found.extend((s, e, EntityType.ID_LIKE) for s, e in claimed)
+            # Addresses next, whole, before anything can claim a piece of one.
+            addresses = [
+                (m.start(), m.end())
+                for m in _ADDRESSISH.finditer(text, lo, hi)
+                if not self._allowed(m.group(0), m.start(), m.end(), excused)
+            ]
+            claimed += addresses
+            found.extend((s, e, EntityType.EMAIL) for s, e in addresses)
             # Codes written in pieces next: a value split across single spaces or dots is
             # one candidate, because judging the pieces separately masks some of them and
             # leaves the rest, which is a leak wearing a redaction.
-            runs = self._code_runs(text, lo, hi, excused)
+            runs = [
+                r
+                for r in self._code_runs(text, lo, hi, excused)
+                if not any(cs <= r[0] and r[1] <= ce for cs, ce in claimed)
+            ]
             claimed += runs
             found.extend((s, e, EntityType.ID_LIKE) for s, e in runs)
             # Then identifier-shaped tokens, outside anything already taken.

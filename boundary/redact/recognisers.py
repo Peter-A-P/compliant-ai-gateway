@@ -92,10 +92,24 @@ def _mcp(m: re.Match[str]) -> float | None:
     return 0.95 if _MCP_LABEL.search(window) else 0.6
 
 
+# An address, with the letters written in any script. `[^\W_]` is a word character that is
+# not an underscore, which on a str pattern is any Unicode letter or digit.
+#
+# It was `[A-Za-z0-9._%+-]` until 0.6.0, and the evaluation harness found the leak on its
+# first run: `therese.gagne@example.gov.nl.ca` spelled with its accents matched nothing
+# here, and the policy's second pass does not mask it either, because an address carrying
+# no digit is not identifier-shaped and a lowercase word is not name-shaped. So it left in
+# clear with no refusal. Internationalised addresses are ordinary (RFC 6531), and in a
+# province with French, Innu and Mi'kmaq names a government address carrying an accent is
+# not an edge case. Same class of defect as the accented-name leak fixed in 0.5.2, in a
+# different layer, found by measuring rather than by being told.
+_LOCAL = r"[^\W_](?:[^\W_]|[._%+\-])*"
+_LABEL = r"[^\W_](?:[^\W_]|-)*"
+
 EMAIL = RegexRecogniser(
     id="boundary:email",
     entity_type=EntityType.EMAIL,
-    pattern=re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+"),
+    pattern=re.compile(_LOCAL + r"@" + _LABEL + r"(?:\." + _LABEL + r")+"),
     score=0.95,
 )
 

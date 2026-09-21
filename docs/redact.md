@@ -421,11 +421,60 @@ silently rendered.
 
 ## What has been measured, and by whom
 
-This repository has no evaluation harness for redaction yet; that is Part B's table, with
-precision and recall per entity type on public corpora and a Canadian identifier set, and
-the rehydration mutation rate. Nothing here claims a precision.
+### Measured here, from 0.6.0
 
-**Project 07 measured this engine's detection recall on 2026-09-19**, first against 0.5.0
+    boundary redact eval                  # rules only: no key, no account, no network, no model
+    boundary redact eval --presidio       # with the model, for the PERSON rows
+
+200 generated pages holding 1,700 labelled entities, 1,450 of them personal, from seed
+20260920. The corpus is code (`boundary/redact/corpus.py`), so the same command gives the
+same numbers on any machine with a checkout.
+
+| | Rules only | With Presidio |
+|---|---|---|
+| Detection recall, all entities | 35.3% (33.1 to 37.6) | 94.6% (93.5 to 95.6) |
+| Found and typed correctly | 100.0% (99.4 to 100) | 97.2% (96.3 to 97.9) |
+| Detection precision | 100.0% (99.4 to 100) | 93.2% (91.9 to 94.3) |
+| **Leak rate after `outbound`** | **0.0% (0.0 to 0.3)** | **0.0% (0.0 to 0.3)** |
+| Over-redaction | 2.3% (2.1 to 2.6) | 3.5% (3.2 to 3.9) |
+| Round trip | 100.0% (98.1 to 100) | 100.0% (98.1 to 100) |
+| Latency per page, detect | 0.2 ms p50, 0.3 p95 | 18.4 ms p50, 22.3 p95 |
+| Latency per page, `outbound` | 1.1 ms p50, 2.1 p95 | 1.7 ms p50, 2.1 p95 |
+
+Person recall is 100% (99.5 to 100) with Presidio and 0% without, since there is no PERSON
+recogniser in the built-in set. Every other entity type is at 100% in both columns except
+`file_number`, at 66.7% rules-only and 76.7% with the model, and `location`, at 74.0%.
+
+**The first column against the fourth is the point of the whole design.** Rules-only
+detection finds 35.3% of the entities and leaks none of them, because the policy's second
+pass masks what no detector claimed and `outbound` refuses to return text it cannot vouch
+for. A table reporting detection alone would have called this engine a third as good as it
+is; a table reporting the leak rate alone would have hidden that the model is carrying the
+detection. The cost is the over-redaction row: about one word in forty is masked that did
+not need to be, mostly place names the vocabulary does not carry, which is the fail-closed
+direction and is chosen on purpose.
+
+**The harness found a leak on its first run**, which is the argument for having built it
+rather than reasoning about it. `therese.gagne@example.gov.nl.ca` spelled with its accents
+matched neither the EMAIL recogniser, whose pattern was ASCII, nor any shape in the second
+pass, because an address carrying no digit is not identifier-shaped and a lowercase word is
+not name-shaped. Both layers missed the same value and it left in clear with no refusal.
+Fixed in both in 0.6.0: the recogniser reads letters in any script, and the second pass
+masks anything written as an address whether or not a recogniser claimed it.
+
+**What these numbers are not.** The corpus is synthetic, so every value is well formed and
+sits in a sentence written for it, and every recall figure is an upper bound on the same
+figure over real records. Precision is measured against planted labels in prose written to
+contain no personal values, which is what makes a precision figure possible at all and also
+what bounds it: a false positive here is a span over text this corpus knows to be nothing,
+not over the messy near-values a real record holds. The `file_number` rows are honest
+misses, and both are covered by the second pass rather than leaked, which is why the leak
+rate does not move. There is still no measurement of what a model does to a placeholder in
+flight; that is Part B's rehydration mutation rate and it needs the proxy.
+
+### Measured by project 07
+
+**07 measured this engine's detection recall on 2026-09-19**, first against 0.5.0
 and then again against 0.5.1, using its persona corpus: 5,355 values over 210 synthetic
 pages with labels known by construction, reproducible in 07's repository with
 `sever eval-detector --documents 210`. Recall only; precision is not claimed, because the

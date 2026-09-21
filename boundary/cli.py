@@ -1,6 +1,6 @@
 """Command line: boundary smoke <provider> | routes show | prices check |
 ledger report | ledger residency | ledger merge | batch status | batch collect | bench |
-experiment remote-ledger.
+redact eval | experiment remote-ledger.
 
 Every command takes --config (default: config/boundary.yaml next to the current directory
 or the installed package's config) and --project.
@@ -509,6 +509,40 @@ def cmd_bench(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_redact_eval(args: argparse.Namespace) -> int:
+    """Measure boundary.redact against a corpus generated from a seed.
+
+    No key, no account, no network and no model: the corpus is code and the engine is
+    local, which is what makes this the one measurement in this repository that a stranger
+    can reproduce with nothing but a checkout.
+    """
+    from boundary.redact import evaluate
+
+    extra: list[object] = []
+    detector = "built-in recognisers only"
+    if args.presidio:
+        from boundary.redact.presidio import PresidioRecogniser
+
+        extra.append(PresidioRecogniser())
+        detector = "built-in recognisers and Presidio"
+    results = evaluate.run(
+        pages=args.pages,
+        seed=args.seed,
+        extra=extra,  # type: ignore[arg-type]
+        detector=detector,
+    )
+    print(results.table())
+    if args.out is not None:
+        args.out.parent.mkdir(parents=True, exist_ok=True)
+        args.out.write_text(evaluate.to_json(results) + "\n", encoding="utf-8")
+        print(f"written to {args.out}")
+    if args.write_readme:
+        readme = args.config.resolve().parent.parent / "README.md"
+        evaluate.write_readme(readme, results.readme_row())
+        print(f"README row written to {readme}")
+    return 0
+
+
 def cmd_experiment_token_estimates(args: argparse.Namespace) -> int:
     """Rule C candidate 2: a local token estimate against the vendor's returned usage."""
     from boundary.experiment import token_estimates
@@ -607,6 +641,23 @@ def main(argv: list[str] | None = None) -> int:
     bench.add_argument("--out", type=Path, default=Path("bench/results.json"))
     bench.add_argument("--write-readme", dest="write_readme", action="store_true")
     bench.set_defaults(func=cmd_bench)
+
+    redact = sub.add_parser("redact", help="redaction commands").add_subparsers(
+        dest="sub", required=True
+    )
+    rev = redact.add_parser(
+        "eval", help="measure detection, leaks, over-redaction and latency on a generated corpus"
+    )
+    rev.add_argument("--pages", type=int, default=200)
+    rev.add_argument("--seed", type=int, default=20260920)
+    rev.add_argument(
+        "--presidio",
+        action="store_true",
+        help="add the Presidio recogniser (needs the redact extra and a spaCy model)",
+    )
+    rev.add_argument("--out", type=Path, default=Path("bench/redact.json"))
+    rev.add_argument("--write-readme", dest="write_readme", action="store_true")
+    rev.set_defaults(func=cmd_redact_eval)
 
     ledger = sub.add_parser("ledger", help="ledger commands").add_subparsers(
         dest="sub", required=True

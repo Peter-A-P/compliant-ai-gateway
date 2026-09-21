@@ -1,6 +1,6 @@
 # Plan: Inside the Boundary, On the Record
 
-**Written:** 2026-09-06. **Status (2026-09-11):** Part A released as `v0.1.0` on 2026-09-10, three days ahead of the Sep 13 target, after one live call per provider. Version 0.2 is in progress on `main` (section 5.1). Part B is unchanged, May 2027. **Status (2026-09-20):** `v0.5.8` on `main` (section 7). B2.3's redaction engine is built and has been through nine releases in two days, almost all of them driven by project 07 using it; B2.5 and B2.8 are amended below from what 07 measured. **The dates in this plan are no longer the schedule.** Peter's decision, 2026-09-19: every timeline is being pushed aggressively, and Part B's pieces are pulled forward as the projects that need them arrive rather than waiting for May 2027. The first is `boundary.redact`, built the same day to project 07's brief (B2.3) and shipped as 0.5.0. The design sections still hold; the dates in them are history, not commitments.
+**Written:** 2026-09-06. **Status (2026-09-11):** Part A released as `v0.1.0` on 2026-09-10, three days ahead of the Sep 13 target, after one live call per provider. Version 0.2 is in progress on `main` (section 5.1). Part B is unchanged, May 2027. **Status (2026-09-20):** `v0.6.0` on `main` (section 7). B2.3's redaction engine is built and has been through nine releases in two days, almost all of them driven by project 07 using it; B2.5 and B2.8 are amended below from what 07 measured. **The dates in this plan are no longer the schedule.** Peter's decision, 2026-09-19: every timeline is being pushed aggressively, and Part B's pieces are pulled forward as the projects that need them arrive rather than waiting for May 2027. The first is `boundary.redact`, built the same day to project 07's brief (B2.3) and shipped as 0.5.0. The design sections still hold; the dates in them are history, not commitments.
 
 Two parts, one repository, one Python package called `boundary`:
 
@@ -405,7 +405,8 @@ from October the ledger-against-invoice difference is recorded there too (sectio
 | v0.5.5 | 2026-09-20 | `Policy(vault=)`, so a policy rebuilt between redacting and rehydrating resolves what the second pass found; the library half of Part B's vault. A whole-word test for the substring false positive 07 hit in its own guard. 07's second name pool recorded: person recall 94.2% against 96.5%, overall 95.4% against 96.3%. |
 | v0.5.6 | 2026-09-20 | `sweep`: a person found anywhere in a document licenses the other whole-word occurrences of their name parts everywhere else, which 07 built on its own detector first and measured at +4.6 points of person recall on its hard name pool. A name part the vocabulary allows is no longer licensed, which was a real over-redaction here: a heading typed as a PERSON blacked out an ordinary word on every page |
 | v0.5.7 | 2026-09-20 | The sweep re-types a span that is exactly a detected person's name parts and carries a type a consumer reads as impersonal. 07 hit the leak this prevents: a bare surname typed `LOCATION`, found by the detector so recall counted it, then released by a rule that reads `LOCATION` as not personal. On 07's corpus, leak rate 4.7 to 2.8 percent and recall unmoved |
-| v0.5.8 | 2026-09-20 | `swept`, `retyped` and `original_recogniser`: the sweep's two buckets, countable, so a consumer can report what was never found separately from what was found and mislabelled. **07 pins this tag** |
+| v0.5.8 | 2026-09-20 | `swept`, `retyped` and `original_recogniser`: the sweep's two buckets, countable, so a consumer can report what was never found separately from what was found and mislabelled |
+| v0.6.0 | 2026-09-20 | `boundary redact eval`: a labelled corpus generated from a seed and the first redaction measurement this repository owns, with precision as well as recall and a Wilson interval on every row. Rules only, no model and no network: detection recall 35.3% and leak rate 0.0%, which is the second pass measured rather than argued. It found a leak on its first run, an accented email address missed by both layers, fixed in both. **07 pins this tag** |
 | v1.0.0 | May 23 2027 | Everything in Part B; `boundary.redact` for 07; the proxy for 13 and 14 |
 
 03 pins `boundary>=0.1,<0.3` for Part A and moves to `>=1.0` when its Part B is built
@@ -909,7 +910,8 @@ the ledger and the spans as its production signal.
 - [ ] Observability dashboard shows every project's calls and costs live; completeness panel against local ledgers
 - [ ] Hosted demo live at gateway.peterparker.ca
 - [ ] Foundry, Bedrock and Vertex adapters each exercised with calls recorded
-- [x] `boundary.redact` importable and documented for 07. **Done 2026-09-19 (0.5.0)**, docs/redact.md; the measured rows above are still open
+- [x] `boundary.redact` importable and documented for 07. **Done 2026-09-19 (0.5.0)**, docs/redact.md
+- [ ] Redaction precision and recall per entity type **on public corpora and the Canadian set**, with CIs. **Half done 2026-09-20 (0.6.0)**: `boundary redact eval` measures precision, recall, type accuracy, leak rate, over-redaction, round trip and latency per entity with Wilson intervals, on a corpus this repository generates, and the README carries the table. What the line still wants is a public corpus and a Canadian identifier set, because a generated corpus measures the engine against the shapes somebody thought to generate
 - [ ] One rejected approach documented with evidence (Rule C)
 - [ ] Repository public, `v1.0.0` tagged
 
