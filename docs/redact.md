@@ -472,6 +472,59 @@ misses, and both are covered by the second pass rather than leaked, which is why
 rate does not move. There is still no measurement of what a model does to a placeholder in
 flight; that is Part B's rehydration mutation rate and it needs the proxy.
 
+### The Canadian identifier set, from 0.6.1
+
+    boundary redact eval --identifiers
+
+PLAN.md B10 asks for the Canadian set beside the corpora. There is no public corpus of
+Canadian government identifiers, and one is not needed for this half: a Social Insurance
+Number, a provincial health number and a postal code have exact published shapes, so the
+suite writes each one in every form a clerk writes it in, and pairs it with the things that
+look like it and are not. 1,150 cases from seed 20260920, built-in recognisers only.
+
+**Claimed, and found** (every row is 100% detected and 100% masked): SIN spaced,
+hyphenated and bare; health number in the same three forms; postal code spaced, unspaced
+and in lower case; phone hyphenated, bracketed, dotted, with a country code and as long
+distance; email in ASCII and accented; date of birth slashed, ISO and written out, each
+after a label; employee id after a label.
+
+**Claimed, and half found**: `file_number` at 50.0% (40.4 to 59.6). The recogniser wants a
+label word next to the value ("File ATIPP-2024-0153") and half the cases write "whose file
+is ATIPP-2024-0153", which is ordinary English. Every one of them is masked, by the second
+pass rather than the recogniser. This is the same gap the prose corpus shows at 66.7%, on a
+harder split.
+
+**Not claimed at all, and still not released**:
+
+| Family | Detected | Masked by the policy |
+|---|---|---|
+| business number | 8.0% (3.2 to 18.8) | 100.0% (92.9 to 100) |
+| driver licence | 0.0% (0.0 to 7.1) | 100.0% (92.9 to 100) |
+| passport | 0.0% (0.0 to 7.1) | 100.0% (92.9 to 100) |
+
+This library has no recogniser for any of the three, and their rows say so. They are in the
+suite because leaving them out would make the table describe the recognisers rather than
+the boundary, and the boundary is what a reader is deciding whether to trust. What the
+second column shows is the second pass carrying values nothing here was written to find.
+The 8% on business numbers is the SIN recogniser: a business number's first nine digits pass
+the Luhn check about one time in ten, so it is masked under the wrong type, which the
+identifier set makes visible and the leak rate does not.
+
+**The near-misses: no recogniser fired on one.** Nine digits failing the Luhn check, a
+postcode carrying a letter Canada Post does not use in that position, a fiscal year written
+`2024-2025`, an unlabelled date, a count of staff, a handle with no domain: 0% detected in
+every family, 700 cases. That is the precision figure for the identifier half, and it is
+the one a regular expression can actually be held to.
+
+**What it costs.** The second pass masks most of those near-misses anyway: 100% of the
+invalid SINs, the short order numbers, the invalid postcodes, the unlabelled dates and the
+fiscal years. `2024-2025` becoming a placeholder in every ATIPP record is a real readability
+cost, and it is the fail-closed direction chosen deliberately: eight digits in two groups is
+a shape this library will not release on the argument that this particular one is a year.
+A caller who wants them back passes an `allow_patterns` entry matching a year range,
+which is what that argument is for. The default does not, because a default that releases is
+a default nobody reviewed.
+
 ### Measured by project 07
 
 **07 measured this engine's detection recall on 2026-09-19**, first against 0.5.0

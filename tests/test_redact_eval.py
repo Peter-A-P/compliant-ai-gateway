@@ -147,3 +147,77 @@ def test_a_label_checks_its_own_offsets() -> None:
         Label(1, 0, 4, "Marie", EntityType.PERSON)
     with pytest.raises(ValueError, match="0 <= start < end"):
         Label(1, 4, 4, "", EntityType.PERSON)
+
+
+# -- the Canadian identifier set ------------------------------------------------------------
+
+
+def test_every_case_contains_its_own_value() -> None:
+    from boundary.redact.identifiers import build_cases
+
+    cases = build_cases(per_family=10)
+    assert cases
+    for case in cases:
+        assert case.value in case.text
+
+
+def test_a_case_that_does_not_contain_its_value_is_refused() -> None:
+    from boundary.redact.identifiers import Case
+
+    with pytest.raises(ValueError, match="is not in its own sentence"):
+        Case("sin", "spaced", "nothing here", "046 454 286", EntityType.SIN)
+
+
+def test_the_set_carries_all_three_kinds_of_case() -> None:
+    from boundary.redact.identifiers import build_cases
+
+    kinds = {case.expect for case in build_cases(per_family=5)}
+    assert kinds == {"detect", "mask only", "ignore"}
+
+
+def test_the_negatives_really_are_negatives() -> None:
+    # A suite whose near-misses are near-misses only in the author's head measures nothing.
+    # These two are checkable: a SIN negative must fail the Luhn check, and a postcode
+    # negative must use a letter Canada Post does not.
+    from boundary.redact.identifiers import _luhn_ok, build_cases
+
+    cases = build_cases(per_family=20)
+    sins = [c for c in cases if c.family == "sin" and c.expect == "ignore"]
+    assert sins
+    assert all(not _luhn_ok(c.value.replace(" ", "")) for c in sins)
+    posts = [c for c in cases if c.family == "postal_code" and c.expect == "ignore"]
+    assert posts
+    assert all(
+        any(ch in "DFIOQUWZ" for ch in c.value.upper().replace(" ", "")[:1])
+        or any(ch in "DFIOQU" for ch in c.value.upper().replace(" ", ""))
+        for c in posts
+    )
+
+
+def test_nothing_in_the_identifier_set_leaves_in_clear() -> None:
+    from boundary.redact.evaluate import identifiers
+
+    results = identifiers(per_family=12)
+    leaked = [r for r in results.families if r.expect != "ignore" and r.masked < r.cases]
+    assert leaked == [], f"a claimed or unclaimed identifier left in clear: {leaked}"
+
+
+def test_no_recogniser_fires_on_a_near_miss() -> None:
+    from boundary.redact.evaluate import identifiers
+
+    results = identifiers(per_family=12)
+    fired = [r for r in results.families if r.expect == "ignore" and r.detected > 0]
+    assert fired == [], f"a recogniser claimed something that is not one: {fired}"
+
+
+def test_the_unclaimed_families_are_masked_without_being_detected() -> None:
+    # The second pass carrying values nothing in this repository was written to find. If a
+    # recogniser is ever added for one of these, this test says so rather than going quiet.
+    from boundary.redact.evaluate import identifiers
+
+    results = identifiers(per_family=12)
+    unclaimed = [r for r in results.families if r.expect == "mask only"]
+    assert {r.family for r in unclaimed} == {"business number", "driver licence", "passport"}
+    for row in unclaimed:
+        assert row.masked == row.cases
+        assert row.detection.value < 0.2

@@ -371,6 +371,130 @@ def run(
     return results
 
 
+@dataclass
+class FamilyRow:
+    family: str
+    expect: str
+    cases: int
+    detected: int
+    typed: int
+    masked: int
+
+    @property
+    def detection(self) -> Rate:
+        return Rate(self.detected, self.cases)
+
+    @property
+    def type_accuracy(self) -> Rate:
+        return Rate(self.typed, self.detected)
+
+    @property
+    def masking(self) -> Rate:
+        return Rate(self.masked, self.cases)
+
+
+@dataclass
+class IdentifierResults:
+    boundary_version: str
+    ran_utc: str
+    seed: int
+    detector: str
+    families: list[FamilyRow]
+
+    def table(self) -> str:
+        titles = {
+            "detect": "claimed: a recogniser must find it",
+            "mask only": "not claimed: no recogniser, and it must still not leave",
+            "ignore": "near-misses: nothing should fire, and masking one is a cost",
+        }
+        lines = [
+            f"boundary {self.boundary_version}, {self.detector}, "
+            f"the Canadian identifier set, seed {self.seed}",
+        ]
+        for expect in ("detect", "mask only", "ignore"):
+            rows = [r for r in self.families if r.expect == expect]
+            if not rows:
+                continue
+            third = "masked by the policy" if expect != "ignore" else "masked (over-redaction)"
+            lines += [
+                "",
+                titles[expect],
+                f"{'family':<18}{'cases':>7}{'detected':>26}{third:>26}",
+            ]
+            for row in sorted(rows, key=lambda r: r.family):
+                lines.append(
+                    f"{row.family:<18}{row.cases:>7}{row.detection!s:>26}{row.masking!s:>26}"
+                )
+        wrong = [r for r in self.families if r.expect == "detect" and r.typed < r.detected]
+        if wrong:
+            lines += ["", "found but typed as something else:"]
+            for row in wrong:
+                lines.append(f"  {row.family}: {row.detected - row.typed} of {row.detected}")
+        leaked = [r for r in self.families if r.expect != "ignore" and r.masked < r.cases]
+        lines += [
+            "",
+            "leaks: "
+            + (
+                "none"
+                if not leaked
+                else ", ".join(f"{r.family} {r.cases - r.masked} of {r.cases}" for r in leaked)
+            ),
+        ]
+        return chr(10).join(lines)
+
+
+def identifiers(
+    *,
+    per_family: int = 50,
+    seed: int = 20260920,
+    extra: Sequence[Recogniser] = (),
+    detector: str = "built-in recognisers only",
+) -> IdentifierResults:
+    """The Canadian identifier set: every claimed shape in every written form, the shapes
+    this library claims no recogniser for, and the near-misses that must not fire.
+
+    Each case is its own document, because an identifier written in a sentence is what a
+    recogniser sees, and a policy built over one page is what decides whether it leaves.
+    """
+    import datetime as dt
+
+    from boundary import __version__
+    from boundary.redact.identifiers import build_cases
+
+    analyzer = Analyzer(extra=extra)
+    rows: dict[tuple[str, str], FamilyRow] = {}
+    for case in build_cases(per_family=per_family, seed=seed):
+        row = rows.setdefault(
+            (case.family, case.expect), FamilyRow(case.family, case.expect, 0, 0, 0, 0)
+        )
+        row.cases += 1
+        start = case.text.index(case.value)
+        end = start + len(case.value)
+        found = [s for s in analyzer.analyze_page(case.text, 1) if s.start < end and start < s.end]
+        if found:
+            row.detected += 1
+            if case.entity_type is not None and any(
+                s.entity_type is case.entity_type for s in found
+            ):
+                row.typed += 1
+        policy = Policy(analyzer.analyze_page(case.text, 1))
+        try:
+            out = policy.outbound(case.text)
+        except RedactionRefused:
+            # A refusal is not a release. The value did not leave.
+            row.masked += 1
+            continue
+        if case.value not in out:
+            row.masked += 1
+    return IdentifierResults(
+        boundary_version=__version__,
+        ran_utc=dt.datetime.now(dt.UTC).isoformat(timespec="seconds"),
+        seed=seed,
+        detector=detector,
+        families=list(rows.values()),
+    )
+
+
 def to_json(results: EvalResults) -> str:
     import json
 
@@ -398,8 +522,11 @@ def write_readme(readme, row: str) -> None:  # type: ignore[no-untyped-def]
 __all__ = [
     "EntityRow",
     "EvalResults",
+    "FamilyRow",
+    "IdentifierResults",
     "Rate",
     "ShapeRow",
+    "identifiers",
     "run",
     "to_json",
     "wilson",

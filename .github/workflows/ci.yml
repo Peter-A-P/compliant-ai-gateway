@@ -31,6 +31,10 @@ jobs:
       # is a number nobody is checking. Fewer pages than the published run: this is a
       # smoke test of the harness, and the README row is written from the 200-page run.
       - run: uv run boundary redact eval --pages 40 --out /tmp/redact.json
+      # The Canadian identifier set. Its assertions live in tests/test_redact_eval.py;
+      # this step is here so the table a reader sees is printed by a run rather than
+      # copied from one.
+      - run: uv run boundary redact eval --identifiers --per-family 20
 
   # The `redact` extra and its spaCy model are deliberately absent from the job above, so
   # the suite there runs with Presidio missing and exercises the import guard. They are

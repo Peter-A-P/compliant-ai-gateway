@@ -525,6 +525,15 @@ def cmd_redact_eval(args: argparse.Namespace) -> int:
 
         extra.append(PresidioRecogniser())
         detector = "built-in recognisers and Presidio"
+    if args.identifiers:
+        ident = evaluate.identifiers(
+            per_family=args.per_family,
+            seed=args.seed,
+            extra=extra,  # type: ignore[arg-type]
+            detector=detector,
+        )
+        print(ident.table())
+        return 0
     results = evaluate.run(
         pages=args.pages,
         seed=args.seed,
@@ -649,6 +658,13 @@ def main(argv: list[str] | None = None) -> int:
         "eval", help="measure detection, leaks, over-redaction and latency on a generated corpus"
     )
     rev.add_argument("--pages", type=int, default=200)
+    rev.add_argument(
+        "--identifiers",
+        action="store_true",
+        help="the Canadian identifier set instead of the prose corpus: every claimed shape "
+        "in every written form, the shapes no recogniser claims, and the near-misses",
+    )
+    rev.add_argument("--per-family", dest="per_family", type=int, default=50)
     rev.add_argument("--seed", type=int, default=20260920)
     rev.add_argument(
         "--presidio",

@@ -5,6 +5,41 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.6.1 (2026-09-20)
+
+**The Canadian identifier set**, `boundary redact eval --identifiers`, which is the other
+half of the measurement PLAN.md B10 asks for. There is no public corpus of Canadian
+government identifiers and one is not needed here: a SIN, a provincial health number and a
+postal code have exact published shapes, so the suite writes each in every form a clerk
+writes it in and pairs it with the things that look like it and are not. 1,150 cases from a
+seed, built-in recognisers only, no network.
+
+- **Every claimed shape is found and masked at 100%** except `file_number` at 50.0% (40.4
+  to 59.6), which is the gap the prose corpus already showed at 66.7% on an easier split:
+  the recogniser wants a label word adjacent, and half the cases write "whose file is
+  ATIPP-2024-0153". Every one is masked by the second pass regardless.
+
+- **No recogniser fired on a single near-miss**, over 700 of them: nine digits failing the
+  Luhn check, a postcode carrying a letter Canada Post does not use in that position, a
+  fiscal year written `2024-2025`, an unlabelled date, a count of staff, a handle with no
+  domain. That is the precision figure for the half of this engine a regular expression can
+  actually be held to.
+
+- **Three families this library claims no recogniser for are in the suite on purpose**:
+  business number, driver's licence and passport. Their rows say 0% detected, and 100%
+  masked by the policy. Leaving them out would make the table describe the recognisers
+  rather than the boundary. The 8% detected on business numbers is the SIN recogniser: a
+  business number's first nine digits pass the Luhn check about one time in ten, so it is
+  masked under the wrong type. The identifier set makes that visible and the leak rate
+  cannot.
+
+- **What the fail-closed default costs, measured**: the second pass masks 100% of the
+  invalid SINs, short order numbers, invalid postcodes, unlabelled dates and fiscal years
+  in the near-miss set. `2024-2025` becoming a placeholder in every record is a real
+  readability cost and it is chosen rather than overlooked; a caller who wants year ranges
+  back passes an `allow_patterns` entry, and the default does not, because a default that
+  releases is a default nobody reviewed.
+
 ## 0.6.0 (2026-09-20)
 
 **This repository can now measure its own redaction.** Every figure `boundary.redact` had

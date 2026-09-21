@@ -101,6 +101,12 @@ synthetic, so every recall figure is an upper bound on the same figure over real
 Method, limits and the leak this harness found on its first run:
 [docs/redact.md](docs/redact.md).
 
+`boundary redact eval --identifiers` runs the Canadian identifier set beside it: 1,150 cases
+covering every shape these recognisers claim, in every form a clerk writes it in, the shapes
+no recogniser claims at all, and the near-misses. **No recogniser fired on any of the 700
+near-misses**, and nothing in the set left in clear, including business numbers, driver's
+licences and passport numbers that this library has no recogniser for and masks anyway.
+
 **Gateway (Part B)**
 
 | Layer | Load (rps) | Overhead p50 / p95 / p99 ms (95% CI) |
