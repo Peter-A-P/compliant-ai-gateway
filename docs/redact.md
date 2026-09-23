@@ -626,8 +626,36 @@ boundary redact eval --tab --presidio  # both configurations, which is what the 
 The test split (127 judgments, 647,638 characters) is downloaded once into `.cache/tab/` at a
 pinned commit, `558e09e2`, and refused unless its SHA-256 matches. Nothing from it is
 committed, and nothing here quotes a name from it. **Nothing in the engine was changed after
-seeing it**, and nothing may be: a fix for what it found has to be developed on TAB's train
-or dev split, and the test figure re-reported afterwards with that said.
+seeing it** at 0.8.0. The one fix since (0.9.0, below) was developed on TAB's train split
+and checked on dev before test was run again, and the two test runs are reported side by
+side.
+
+#### 0.9.0: initials and particles, fixed on train, checked on dev, reported on test once
+
+The first run's misses had a shape (below): an initial published beside a masked surname,
+`Mr G` masked nowhere, a particle such as `van der` left between two masked halves of a
+name. 0.9.0 teaches the second pass three things, each found on TAB's **train** split and
+none tuned on test: a capital followed by a full stop, or alone after a title, is an
+initial and joins the name run it touches; a run of two or more initials standing alone is
+masked unless its letters are a common initialism (`U.K.`); and a particle joins a run only
+between two parts of a name, never at either end. The generated corpus and the Canadian
+identifier set are unchanged by it: over-redaction stays 2.3%, and no near-miss fires.
+
+| Built-in recognisers | Split | Direct masked | Quasi masked | Precision | Safe touched |
+|---|---|---|---|---|---|
+| 0.8.0 | train (developed on) | 95.2% (94.1 to 96.2) | 18.7% | 34.3% | 72.2% |
+| 0.9.0 | train | 97.2% (96.5 to 97.9) | 26.4% | 36.1% | 73.8% |
+| 0.8.0 | dev (checked on) | 95.4% (92.2 to 98.1) | 26.4% | 31.5% | 76.9% |
+| 0.9.0 | dev | 98.6% (97.5 to 99.6) | 36.1% | 33.7% | 77.9% |
+| 0.8.0 | **test** (first run) | 93.3% (89.6 to 96.4) | 22.0% | 30.0% | 77.9% |
+| 0.9.0 | **test** (second run) | **97.1% (94.7 to 98.9)** | 32.0% | 32.2% | 78.4% |
+
+**People found with no model went from 37.5% to 92.7%** on test, against Presidio's 95.5%,
+at a median 4 ms a judgment against 77. In these judgments a person is very often written as
+initials, and an entity counts only when every mention is masked, so one leaked initial had
+been failing the whole person. The price is about one more safe span in a hundred touched.
+The test split has now been run twice; the second run is reported with the first beside it
+rather than in place of it, and any further change is developed on train again.
 
 #### Scored the way TAB scores itself, and checked against its own script
 
@@ -646,7 +674,7 @@ and "A" were being ignored as the possessive and the article when they were init
 Intervals here are a **bootstrap over judgments**, not Wilson intervals, because mentions in
 one judgment are not independent: one missing rule misses a name in every paragraph.
 
-#### The result, output of `boundary redact eval --tab --presidio` at 0.8.0
+#### The first run, output of `boundary redact eval --tab --presidio` at 0.8.0
 
 | | Built-in recognisers | With Presidio |
 |---|---|---|

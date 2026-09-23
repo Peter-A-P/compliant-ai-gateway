@@ -413,6 +413,7 @@ from October the ledger-against-invoice difference is recorded there too (sectio
 | v0.6.4 | 2026-09-21 | Rehydration fidelity measured: 15 mutation forms, 14 restoring every value, 0 fabrications. Four of them resolved to nothing before the measurement existed. **07 pins this tag** |
 | v0.7.0 | 2026-09-22 | `boundary.audit`: the hash chain over ledger rows, the append-only log, anchors, `boundary audit seal`, `anchor`, `verify` and `tamper-test`. Pulled forward from Part B (B2.4, amended); nothing downstream imports it yet, and no pin needs to move |
 | v0.8.0 | 2026-09-23 | `Policy.redact_with_spans` and `boundary.redact.tab`: the Text Anonymization Benchmark, the first public corpus and real text. Nothing downstream needs to move; 07 may read the over-redaction finding, which is about the vocabulary it also uses |
+| v0.9.0 | 2026-09-23 | The second pass masks initials and surname particles, a fix for the leak TAB's first run found, developed on its train split: direct identifiers on test 93.3% to 97.1%, people found without a model 37.5% to 92.7%. A behaviour change for 07 when it next moves its pin |
 | v1.0.0 | May 23 2027 | Everything in Part B; `boundary.redact` for 07; the proxy for 13 and 14 |
 
 03 pins `boundary>=0.1,<0.3` for Part A and moves to `>=1.0` when its Part B is built

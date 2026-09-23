@@ -871,3 +871,42 @@ def test_a_rebuilt_policy_reports_only_its_own_second_pass() -> None:
     # at all. Stated rather than implied, because the empty set here is not "no fallback
     # work happened".
     assert rebuilt.second_pass == frozenset()
+
+
+# -- initials and particles (0.9.0), from the Text Anonymization Benchmark's train split ----
+
+
+@pytest.mark.parametrize(
+    ("text", "gone"),
+    [
+        ("The applicant, Mr M. Trznadel, appealed.", ["M.", "Trznadel"]),
+        ("Judgment in J.F. Muller was delivered.", ["J", "F", "Muller"]),
+        ("Mr G said he had seen it.", [" G "]),
+        ("Ms A. was not present.", ["A."]),
+        ("In A.B. v. Switzerland the Court held.", ["A.B"]),
+        ("Johan van der Merwe gave evidence.", ["Johan", "van der", "Merwe"]),
+        ("Maria Lopez de Souza wrote.", ["Lopez de Souza"]),
+    ],
+)
+def test_initials_and_particles_inside_a_name_are_masked_with_it(
+    text: str, gone: list[str]
+) -> None:
+    out = Policy([]).redact(text)
+    for piece in gone:
+        assert piece not in out, (text, out)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "See appendix A. The figures follow.",
+        "Relations with the U.K. were discussed.",
+        "The report was written in de facto terms.",
+        "She moved to van accommodation.",
+    ],
+)
+def test_a_lone_initial_an_initialism_and_a_stray_particle_stay_readable(text: str) -> None:
+    out = Policy([]).redact(text)
+    for word in ("A.", "U.K.", " de ", " van "):
+        if word in text:
+            assert word in out, (text, out)

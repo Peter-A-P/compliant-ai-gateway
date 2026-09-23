@@ -5,6 +5,32 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.9.0 (2026-09-23)
+
+**Initials and surname particles are masked with the name they belong to.** The first run on
+the Text Anonymization Benchmark (0.8.0) found real judgments naming people in a way no
+generated corpus did: `Mr M. Trznadel` came out as `Mr M. <NAME_LIKE_1>`, `Mr G` was masked
+nowhere, and `van der` sat in clear between two masked halves of a name.
+
+- **The second pass** now treats a capital followed by a full stop, or alone after a title,
+  as an initial that joins the name run it touches; masks a run of two or more initials
+  standing alone unless its letters are a common initialism (`U.K.`); and joins a particle
+  (`van`, `der`, `de`, `von`, `nee` and others, in `names.PARTICLES`) only between two parts
+  of a name. A lone initial with no title (`appendix A.`) and a stray `de` stay readable.
+
+- **Developed on TAB's train split, checked on dev, and the test split run once more**:
+  direct identifiers 93.3% to **97.1% (94.7 to 98.9)** with the built-in recognisers, people
+  found without a model 37.5% to **92.7%** against Presidio's 95.5%, precision 30.0% to
+  32.2%, safe spans touched 77.9% to 78.4%. Both test runs are in docs/redact.md.
+
+- **Unchanged elsewhere**: the generated corpus (over-redaction 2.3%, leak rate 0.0%) and the
+  Canadian identifier set (no near-miss fires) reproduce.
+
+- **A behaviour change for consumers of the policy**: text that used to keep an initial or a
+  particle now masks it. Project 07 pins 0.6.4 and sees nothing until it moves.
+
+- `boundary.redact.tab` pins TAB's train and dev splits beside test, for developing a fix.
+
 ## 0.8.0 (2026-09-23)
 
 **The first public corpus, and the first real text: the Text Anonymization Benchmark.**

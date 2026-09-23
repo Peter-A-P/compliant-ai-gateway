@@ -14,6 +14,26 @@ HONORIFICS = frozenset(
     {"mr", "mrs", "ms", "mx", "miss", "dr", "prof", "hon", "sir", "madam", "rev", "sgt", "cst"}
 )
 
+# Lower-case words that sit inside a surname: `van der Merwe`, `de Souza`, `von Hannover`.
+# Joined into a name run only between two parts of it, never at either end, so a sentence
+# that happens to contain "de" or "van" is not masked on that account. `nee` is the
+# unaccented spelling people type for `née`.
+PARTICLES = frozenset(
+    {
+        "van", "der", "den", "de", "del", "della", "di", "da", "das", "dos", "du", "von",
+        "zu", "ter", "ten", "le", "la", "bin", "ibn", "al", "el", "née", "nee",
+    }
+)  # fmt: skip
+
+# Letters that read as initials and are not a person: a run of initials standing alone is
+# masked unless its letters are one of these.
+COMMON_INITIALISMS = frozenset(
+    {
+        "uk", "us", "usa", "eu", "un", "ussr", "am", "pm", "eg", "ie", "nb", "ad", "bc",
+        "phd", "llb", "llm", "ba", "ma", "bsc", "msc", "qc", "kc", "mp", "cv", "op",
+    }
+)  # fmt: skip
+
 # The right single quotation mark, built from its code point because the formatter would
 # otherwise write the character itself into this file, and this repository keeps to plain
 # punctuation.
@@ -56,4 +76,4 @@ def name_parts(name: str) -> list[str]:
     return parts
 
 
-__all__ = ["HONORIFICS", "RSQUO", "is_name_shaped", "name_parts"]
+__all__ = ["COMMON_INITIALISMS", "HONORIFICS", "PARTICLES", "RSQUO", "is_name_shaped", "name_parts"]

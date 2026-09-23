@@ -35,6 +35,7 @@ listed here; nothing any earlier version offered has changed shape.
 | 0.6.4 | 2026-09-21 | `boundary redact eval --rehydration` and `placeholder_kind`. Inside the brackets a placeholder now tolerates a hyphen, a space or a line break where its underscore was, and a zero-padded index; four mutation forms models produce used to resolve to nothing |
 | 0.7.0 | 2026-09-22 | The `boundary.audit` package (section 13): the hash chain, the append-only SQLite log, anchors, and `boundary audit seal`, `anchor`, `verify` and `tamper-test`. Nothing any earlier version exposes changed, and the gateway does not call it |
 | 0.8.0 | 2026-09-23 | `Policy.redact_with_spans`, which `redact` now calls, and `boundary.redact.tab` with `boundary redact eval --tab`: the Text Anonymization Benchmark, the first public corpus and the first real text. `redact` returns exactly what it did |
+| 0.9.0 | 2026-09-23 | No new names. The policy's second pass masks initials and surname particles with the name they belong to (`names.PARTICLES`, `names.COMMON_INITIALISMS`), a change in what `redact` and `outbound` mask rather than in any signature; `tab.fetch` accepts `train` and `dev` |
 
 ## 1. Importing
 

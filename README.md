@@ -119,8 +119,8 @@ script scores it:
 | Detector | Direct identifiers masked | Quasi identifiers masked | Precision | Safe spans touched |
 |---|---|---|---|---|
 <!-- tab:start -->
-| built-in recognisers only | 93.3% (89.6% to 96.4%) | 22.0% (17.4% to 27.1%) | 30.0% (27.4% to 32.7%) | 77.9% (74.9% to 80.7%) |
-| built-in recognisers and Presidio | 98.7% (97.4% to 99.6%) | 33.2% (28.9% to 38.0%) | 27.8% (25.6% to 30.2%) | 80.7% (78.2% to 83.1%) |
+| built-in recognisers only | 97.1% (94.7% to 98.9%) | 32.0% (27.6% to 36.9%) | 32.2% (29.9% to 34.9%) | 78.4% (75.3% to 81.2%) |
+| built-in recognisers and Presidio | 98.7% (97.4% to 99.6%) | 33.7% (29.3% to 38.6%) | 27.9% (25.8% to 30.3%) | 80.7% (78.2% to 83.1%) |
 <!-- tab:end -->
 
 Filled by `boundary redact eval --tab --presidio --write-readme`, which downloads the split
@@ -131,12 +131,14 @@ in five of the spans the annotators marked safe to leave are touched**, because 
 pass masks every capitalised run it cannot vouch for and its vocabulary knows nothing of
 British courts and ministries: the most-touched safe spans are "United Kingdom", "Court of
 Appeal" and "Secretary of State". Direct identifiers, the ones that name somebody on their
-own, are the part the engine exists for, and the misses there are mostly the title `Dr`,
-which TAB counts and the engine leaves readable, and initials (`Mr J.H.`), which the second
-pass does not treat as a name. Quasi identifiers are low by design:
-dates, amounts and nationalities are left readable. Nothing in the engine was changed after
-seeing this split; per-type figures, the cross-check against TAB's own script and what a
-fix would have to be developed on are in [docs/redact.md](docs/redact.md).
+own, are the part the engine exists for. **The first run on this split (`v0.8.0`) found
+initials and surname particles published beside masked names** (`Mr M. Trznadel`, `Mr G`,
+`van der`); `v0.9.0` masks them, a fix developed on TAB's train split and confirmed on its
+dev split before this split was run a second time. It took direct identifiers from 93.3% to
+97.1% and people found without a model from 37.5% to 92.7%, close to Presidio's 95.5% at a
+twentieth of the latency, and it cost half a point of safe spans. Quasi identifiers are low
+by design: dates, amounts and nationalities are left readable. Per-type figures, both runs,
+and the cross-check against TAB's own script are in [docs/redact.md](docs/redact.md).
 
 `boundary redact eval --identifiers` runs the Canadian identifier set beside it: 1,150 cases
 covering every shape these recognisers claim, in every form a clerk writes it in, the shapes

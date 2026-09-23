@@ -60,6 +60,12 @@ TAB_URL = "https://raw.githubusercontent.com/NorskRegnesentral/text-anonymizatio
 # benchmark whose contents can change under a fixed name is not a benchmark.
 SPLITS: dict[str, tuple[str, str]] = {
     "test": ("echr_test.json", "cd0f0f15f84a8739654c7cf30c6be8ce27b051ef73974d39d792a0cb8c846379"),
+    # For developing a fix. The test split is for reporting one, once.
+    "train": (
+        "echr_train.json",
+        "4aba41f8ac305ff9e93dd6f0bbc16756e57e9ace396c827931fab70e18d8c6a6",
+    ),
+    "dev": ("echr_dev.json", "8c3c7306f46b8d54debeb38ae11d8b0b8bcf4bdccbc3b6f13c12ad7be16893ec"),
 }
 DEFAULT_DIR = Path(".cache/tab")
 

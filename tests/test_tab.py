@@ -128,10 +128,10 @@ def test_counts_are_micro_averaged_over_annotators(tmp_path: Path) -> None:
 def test_the_run_scores_a_real_policy_and_every_figure_has_an_interval(tmp_path: Path) -> None:
     docs = tab.load(_corpus(tmp_path))
     r = tab.run(docs)
-    # The second pass masks both surnames, "Oskar" and "Oslo", and leaves the year by
-    # design. It also leaves the initial in "Mr O. Brandt", so annotator 1's person, whose
-    # mentions include that one, is not masked and annotator 2's is: the finding TAB made.
-    assert r.direct.value == 0.5
+    # The second pass masks both names, the initial in "Mr O. Brandt" (since 0.9.0; before
+    # it the initial was published beside the masked surname, which is what TAB found) and
+    # "Oslo", and leaves the year by design.
+    assert r.direct.value == 1.0
     assert r.quasi.value == 0.5
     assert r.safe_touched.value == 1.0
     lo, hi = r.precision.interval()
@@ -144,9 +144,10 @@ def test_precision_scores_each_masked_token_by_the_annotators_who_masked_it(
 ) -> None:
     docs = tab.load(_corpus(tmp_path))
     r = tab.run(docs)
-    # Four masked tokens, two annotators: Oskar (both), Brandt (both), the second Brandt
-    # (annotator 1 only) and Oslo (annotator 2 only, who called it QUASI) = 6 of 8.
-    assert (sum(r.precision.hits), sum(r.precision.totals)) == (6, 8)
+    # Five masked tokens, two annotators: Oskar (both), Brandt (both), then O and the
+    # second Brandt (annotator 1 only) and Oslo (annotator 2 only, who called it QUASI):
+    # 2 + 2 + 1 + 1 + 1 = 7 of 10.
+    assert (sum(r.precision.hits), sum(r.precision.totals)) == (7, 10)
 
 
 # -- the download --------------------------------------------------------------------------

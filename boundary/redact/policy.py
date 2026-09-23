@@ -41,6 +41,9 @@ from types import MappingProxyType
 from typing import Literal
 
 from boundary.errors import BoundaryError
+from boundary.redact.names import COMMON_INITIALISMS as _COMMON_INITIALISMS
+from boundary.redact.names import HONORIFICS as _HONORIFICS
+from boundary.redact.names import PARTICLES as _PARTICLES
 from boundary.redact.names import RSQUO as _RSQUO
 from boundary.redact.names import is_name_shaped as _is_name_shaped
 from boundary.redact.names import name_parts as _name_parts
@@ -129,6 +132,10 @@ _GROUPED_DIGITS = 8
 # Two tokens are one run when only spaces or tabs separate them. A line break ends a run,
 # for the same reason the analyzer cuts spans at one.
 _RUN_GAP = re.compile(r"[ \t]+")
+# After an initial the full stop belongs to it, so `J.F.` and `M. Trznadel` are contiguous.
+_INITIAL_GAP = re.compile(r"\.[ \t]*")
+# Between a title and what follows it: spaces, after an optional full stop (`Dr. G`).
+_TITLE_GAP = re.compile(r"\.?[ \t]+")
 # Anything written as an address: a run of word characters, dots, and the punctuation a
 # local part carries, around an @. Letters in any script.
 #
@@ -540,10 +547,52 @@ class Policy:
         claimed: Sequence[tuple[int, int]] = (),
     ) -> list[tuple[int, int, EntityType]]:
         """Name-shaped runs inside text[lo:hi]: adjacent name-shaped words separated by
-        spaces only, with vocabulary words breaking a run rather than joining it."""
+        spaces only, with vocabulary words breaking a run rather than joining it.
+
+        Three shapes join a run as well, all found on the train split of the Text
+        Anonymization Benchmark (0.9.0), where real judgments name people in ways the
+        generated corpora never did:
+
+        - **Initials**: a capital letter followed by a full stop, or a capital on its own
+          straight after a title. `Mr M. Trznadel`, `J.F. Muller`, `Mr G`, `Ms A.`. Before
+          this, the surname was masked and the initial published beside it.
+        - **Particles** such as `van der` and `de`, between two parts of a name and never
+          at either end of it, so `Johan van der Merwe` is one run and a sentence with
+          "de" in it is not masked on that account.
+        - A run made only of initials is masked when a title precedes it or when it has two
+          or more letters (`H.W.K.`, `A.B. v. Switzerland`), unless those letters are a
+          common initialism (`U.K.`). A single initial with no title (`Annex A.`) is not.
+        """
         runs: list[tuple[int, int, EntityType]] = []
-        run: list[tuple[int, int]] = []
+        # (start, end, kind), kind one of "name", "initial", "particle"
+        run: list[tuple[int, int, str]] = []
+        run_after_title = False
         last_end = -1
+        last_kind = ""
+        prev_word = ""
+        prev_end = -1
+
+        def flush() -> None:
+            nonlocal run
+            while run and run[-1][2] == "particle":
+                run.pop()
+            if run:
+                kinds = {k for _, _, k in run}
+                initials = [s for s, _, k in run if k == "initial"]
+                letters = "".join(text[s] for s in initials).casefold()
+                keep = (
+                    "name" in kinds
+                    or run_after_title
+                    or (
+                        len(initials) >= 2
+                        and letters not in _COMMON_INITIALISMS
+                        and letters not in self._allow
+                    )
+                )
+                if keep:
+                    runs.append((run[0][0], run[-1][1], EntityType.NAME_LIKE))
+            run = []
+
         for m in _WORD.finditer(text, lo, hi):
             s, e = m.start(), m.end()
             tok = m.group(0)
@@ -551,18 +600,33 @@ class Policy:
             # identifier this pass has already taken is already covered.
             glued = (s > 0 and text[s - 1].isdigit()) or (e < len(text) and text[e].isdigit())
             inside = any(cs <= s and e <= ce for cs, ce in claimed)
-            contiguous = last_end >= 0 and _RUN_GAP.fullmatch(text[last_end:s]) is not None
-            allowed = (
-                glued or inside or not _is_name_shaped(tok) or self._allowed(tok, s, e, excused)
+            gap = text[last_end:s] if last_end >= 0 else ""
+            contiguous = last_end >= 0 and (
+                _RUN_GAP.fullmatch(gap) is not None
+                or (last_kind == "initial" and _INITIAL_GAP.fullmatch(gap) is not None)
             )
-            if (allowed or not contiguous) and run:
-                runs.append((run[0][0], run[-1][1], EntityType.NAME_LIKE))
-                run = []
-            if not allowed:
-                run.append((s, e))
-            last_end = e
-        if run:
-            runs.append((run[0][0], run[-1][1], EntityType.NAME_LIKE))
+            after_title = (
+                prev_word.casefold() in _HONORIFICS
+                and _TITLE_GAP.fullmatch(text[prev_end:s]) is not None
+            )
+            kind = ""
+            if not (glued or inside):
+                if len(tok) == 1 and tok.isupper() and (text[e : e + 1] == "." or after_title):
+                    kind = "initial"
+                elif _is_name_shaped(tok) and not self._allowed(tok, s, e, excused):
+                    kind = "name"
+                elif tok in _PARTICLES and run and contiguous:
+                    kind = "particle"
+            if kind and run and contiguous:
+                run.append((s, e, kind))
+            else:
+                flush()
+                if kind in ("name", "initial"):
+                    run = [(s, e, kind)]
+                    run_after_title = after_title
+            last_end, last_kind = e, kind
+            prev_word, prev_end = tok, e
+        flush()
         return runs
 
     def redact(self, text: str) -> str:
