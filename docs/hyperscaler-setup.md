@@ -660,7 +660,7 @@ Measured 2026-09-15 and 2026-09-16, from the accounts rather than from documenta
 |---|---|---|---|---|
 | **Foundry**, `claude-haiku-4-5`, `eastus2` | 80 RPM | **0** | **No** | A form, evaluated individually, not guaranteed |
 | **Bedrock**, Claude Haiku 4.5, `ca-central-1` | 10,000 RPM | **10** | **Yes** | Standard quota increase request |
-| **Vertex**, `claude-haiku-4-5`, `global` | not published per model | **no limit set at all** | **No** | Ordinary self-service quota increase; the project is eligible (checked 2026-09-18) |
+| **Vertex**, `claude-haiku-4-5`, `global` | not published per model | **no limit set at all** | **No** | Self-service increase requests accepted and **auto-denied within the minute**, twice (2026-09-16 and 2026-09-18); support or sales remains |
 
 **All three.** Three vendors, three brand new accounts, three refusals or near-refusals of
 Claude, and on none of them does the published figure describe what a new customer receives.
@@ -842,10 +842,41 @@ are unlimited. What has nothing is **every current Claude model, and only those*
 much narrower and more interesting claim than "partner models are not provisioned", and a
 harder one to explain away.
 
-It also changes what a buyer should do about it. The route is the ordinary self-service quota
-increase, not a sales conversation:
+It seemed to change what a buyer should do about it: the ordinary self-service quota increase,
 [Vertex AI quotas in the console](https://console.cloud.google.com/iam-admin/quotas?service=aiplatform.googleapis.com),
-filtered to the metric the 429 named.
+filtered to the metric the 429 named. **That route was tried twice and is closed**; the next
+section is the record, written up late (2026-09-23) rather than on the day.
+
+### Asked twice through self-service, denied twice within the minute
+
+Both requests were filed by Peter from the console, on the exact quota the 429 named, and both
+are still listed under **Increase requests** on the project's quota page:
+
+| Request | Filed | Quota and dimension | Original | Asked | Approved | Answered | Status |
+|---|---|---|---:|---:|---:|---|---|
+| `4f3395470ad14732a0` | 2026-09-16 22:33 | `global_online_prediction_requests_per_base_model`, `base_model: anthropic-claude-haiku-4-5` | 0 | 100 | - | 2026-09-16 22:33 | **Denied** |
+| `f97b0edf8a7f437691` | 2026-09-18 13:54 | same | 0 | 60 | - | 2026-09-18 13:54 | **Denied** |
+
+Three things in that table matter more than the refusal itself.
+
+- **Both were answered in the minute they were filed.** Nobody read them. A self-service
+  increase on this quota is decided by an automated check, and the check says no for a new
+  project, whatever the size of the ask: 60 was refused as quickly as 100.
+- **The console calls the original value 0.** The quota API reports no value at all for the
+  same bucket (above). Two surfaces of one vendor disagree about whether the limit is zero or
+  unset; the decision is the same either way.
+- **"Eligible" meant eligible to be refused.** The Cloud Quotas API's `isEligible: true` was
+  read on 2026-09-18 as refuting the original inference, that this was not a quota the
+  self-service flow could raise. The second request was denied the same afternoon. So the
+  inference the section above calls refuted was, in practice, right: the self-service flow
+  accepts the request and cannot grant it. The remaining route is Google Cloud support or a
+  sales contact, with no published lead time, which is exactly where Foundry's form left the
+  other platform.
+
+**What it means for this repository.** Vertex is exercised to the vendor's refusal: the adapter
+is under goldens, the live row exists and is a 429 with three retries, and the quota wall is
+documented from three sources (the 429, the quota API, and two denied requests). A costed row
+now depends on a support conversation, not on anything this library or this account can do.
 
 ### No Canadian region, confirmed from a second source
 
