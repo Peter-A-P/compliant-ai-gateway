@@ -419,13 +419,6 @@ class Policy:
         """normalised value -> placeholder, and exact name part -> part placeholder."""
         return MappingProxyType({**self._table, **self._parts})
 
-    def _substitute(self, text: str) -> str:
-        if self._pattern is not None:
-            text = self._pattern.sub(lambda m: self._table[_norm(m.group(0))], text)
-        if self._parts_pattern is not None:
-            text = self._parts_pattern.sub(lambda m: self._parts[m.group(0)], text)
-        return text
-
     def _excused(self, text: str) -> list[tuple[int, int]]:
         """Regions of `text` the allow patterns and phrases cover."""
         return [(m.start(), m.end()) for p in self._allow_patterns for m in p.finditer(text)]
@@ -572,24 +565,74 @@ class Policy:
             runs.append((run[0][0], run[-1][1], EntityType.NAME_LIKE))
         return runs
 
-    def _second_pass(self, text: str) -> str:
-        shapes = self._shapes(text)
-        if not shapes:
-            return text
-        out: list[str] = []
-        cursor = 0
-        for s, e, kind in shapes:
-            out.append(text[cursor:s])
-            out.append(self._mint(kind, text[s:e], second_pass=True))
-            cursor = e
-        out.append(text[cursor:])
-        return "".join(out)
-
     def redact(self, text: str) -> str:
         """Placeholders for every known value, then the second pass over what is left.
         Deterministic for a given policy: the same value always gets the same placeholder,
         and a shape masked on one call is a known value on the next."""
-        return self._second_pass(self._substitute(text))
+        return self.redact_with_spans(text)[0]
+
+    def redact_with_spans(self, text: str) -> tuple[str, list[tuple[int, int]]]:
+        """`redact`, and the half-open character ranges of `text` it replaced.
+
+        The ranges are what a benchmark scored on offsets needs (docs/redact.md, TAB): which
+        characters of the source were masked, rather than which placeholders came out. They
+        are computed by the same three steps `redact` runs, whole values, name parts and the
+        second pass, so the two can never disagree; `redact` is this with the ranges dropped.
+        Sorted, non-overlapping, and merged where two masks touch.
+        """
+        # origin[i] is the index in `text` of character i of the current text, or -1 for a
+        # character a placeholder put there.
+        origin = list(range(len(text)))
+        masked: list[tuple[int, int]] = []
+        current = text
+
+        def apply(matches: list[tuple[int, int, str]]) -> None:
+            nonlocal current, origin
+            if not matches:
+                return
+            out: list[str] = []
+            new_origin: list[int] = []
+            cursor = 0
+            for s, e, replacement in matches:
+                out.append(current[cursor:s])
+                new_origin.extend(origin[cursor:s])
+                source = [o for o in origin[s:e] if o >= 0]
+                if source:
+                    masked.append((min(source), max(source) + 1))
+                out.append(replacement)
+                new_origin.extend([-1] * len(replacement))
+                cursor = e
+            out.append(current[cursor:])
+            new_origin.extend(origin[cursor:])
+            current, origin = "".join(out), new_origin
+
+        if self._pattern is not None:
+            apply(
+                [
+                    (m.start(), m.end(), self._table[_norm(m.group(0))])
+                    for m in self._pattern.finditer(current)
+                ]
+            )
+        if self._parts_pattern is not None:
+            apply(
+                [
+                    (m.start(), m.end(), self._parts[m.group(0)])
+                    for m in self._parts_pattern.finditer(current)
+                ]
+            )
+        apply(
+            [
+                (s, e, self._mint(kind, current[s:e], second_pass=True))
+                for s, e, kind in self._shapes(current)
+            ]
+        )
+        merged: list[tuple[int, int]] = []
+        for s, e in sorted(masked):
+            if merged and s <= merged[-1][1]:
+                merged[-1] = (merged[-1][0], max(merged[-1][1], e))
+            else:
+                merged.append((s, e))
+        return current, merged
 
     def check(self, text: str) -> list[Leak]:
         """What the guard would refuse `text` for: any vault value in clear, and any shape

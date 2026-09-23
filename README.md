@@ -46,14 +46,16 @@ on 2026-09-17. Its ledger row reads `region = canadacentral` and `residency = gl
 deployed in Canada, processed anywhere, and it says both. That is the strongest honest
 Canadian claim available on any of the three platforms today.
 
-**The redaction engine has been measured twice, by two projects on two corpora.** Project
+**The redaction engine has been measured three times, on three corpora.** Project
 07 ran its own corpus against it first and found a live leak on the first pass: a
 space-separated health number left in clear on 57 of 210 pages with no refusal. Its
 re-measurement puts detection recall at **96.3% (95.7 to 96.9)**, up from 90.0%. Since
 `v0.6.0` this repository has its own harness as well, with precision beside recall and an
 interval on every row (the redaction table below). Both corpora are synthetic, so every
-recall figure is an upper bound, and neither is a public corpus yet. Both runs and their
-caveats are in [docs/redact.md](docs/redact.md).
+recall figure is an upper bound. Since `v0.8.0` it has also been run on a public corpus of
+real text, the Text Anonymization Benchmark, and that run is where its limitation shows (the
+redaction section below). All three runs and their caveats are in
+[docs/redact.md](docs/redact.md).
 
 **A measured number is evidence about the inputs somebody thought to measure.** Probing the
 redaction pass with names that corpus does not contain, accented, `Mac` and `Mc` surnames, a
@@ -110,6 +112,32 @@ synthetic, so every recall figure is an upper bound on the same figure over real
 Method, limits and the leak this harness found on its first run:
 [docs/redact.md](docs/redact.md).
 
+**On real text: the Text Anonymization Benchmark (TAB)**, 127 European Court of Human Rights
+judgments annotated by hand, the benchmark's test split, scored the way its own evaluation
+script scores it:
+
+| Detector | Direct identifiers masked | Quasi identifiers masked | Precision | Safe spans touched |
+|---|---|---|---|---|
+<!-- tab:start -->
+| built-in recognisers only | 93.3% (89.6% to 96.4%) | 22.0% (17.4% to 27.1%) | 30.0% (27.4% to 32.7%) | 77.9% (74.9% to 80.7%) |
+| built-in recognisers and Presidio | 98.7% (97.4% to 99.6%) | 33.2% (28.9% to 38.0%) | 27.8% (25.6% to 30.2%) | 80.7% (78.2% to 83.1%) |
+<!-- tab:end -->
+
+Filled by `boundary redact eval --tab --presidio --write-readme`, which downloads the split
+once at a pinned commit and refuses a file whose checksum differs. **This is the honest
+limitation of the whole redaction engine, measured.** On the synthetic corpus above about one
+word in forty is over-masked; on real judgments **precision is under a third and about four
+in five of the spans the annotators marked safe to leave are touched**, because the second
+pass masks every capitalised run it cannot vouch for and its vocabulary knows nothing of
+British courts and ministries: the most-touched safe spans are "United Kingdom", "Court of
+Appeal" and "Secretary of State". Direct identifiers, the ones that name somebody on their
+own, are the part the engine exists for, and the misses there are mostly the title `Dr`,
+which TAB counts and the engine leaves readable, and initials (`Mr J.H.`), which the second
+pass does not treat as a name. Quasi identifiers are low by design:
+dates, amounts and nationalities are left readable. Nothing in the engine was changed after
+seeing this split; per-type figures, the cross-check against TAB's own script and what a
+fix would have to be developed on are in [docs/redact.md](docs/redact.md).
+
 `boundary redact eval --identifiers` runs the Canadian identifier set beside it: 1,150 cases
 covering every shape these recognisers claim, in every form a clerk writes it in, the shapes
 no recogniser claims at all, and the near-misses. **No recogniser fired on any of the 700
@@ -162,10 +190,11 @@ chain cannot tell from a row not yet sealed, are in [docs/audit.md](docs/audit.m
   would be selling the assurance this one refuses to fake.
 - It does not redact images or audio. Text only; non-text content is refused for anything
   but the public class.
-- Redaction is not perfect. The redaction table above says by how much, per entity type in
-  [docs/redact.md](docs/redact.md), but on corpora generated here and in project 07. No
-  public corpus has been run yet, and a generated corpus only contains the shapes somebody
-  thought to generate.
+- Redaction is not perfect, and on real text it errs heavily towards masking. On the Text
+  Anonymization Benchmark it masks most direct identifiers but touches about four in five of
+  the spans annotators marked safe, because its default vocabulary is Canadian and it masks
+  what it cannot vouch for. A deployment in another jurisdiction has to supply its own
+  `allow` list of public bodies, and the figure above is what happens when it does not.
 
 ## Where the data went
 

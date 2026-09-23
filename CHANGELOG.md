@@ -5,6 +5,40 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.8.0 (2026-09-23)
+
+**The first public corpus, and the first real text: the Text Anonymization Benchmark.**
+`boundary redact eval --tab` scores the engine on TAB's test split, 127 European Court of
+Human Rights judgments annotated by hand, the way TAB's own evaluation script scores it.
+Method, per-type tables and limits: docs/redact.md.
+
+- **Direct identifiers masked: 93.3% (89.6 to 96.4) with the built-in recognisers, 98.7%
+  (97.4 to 99.6) with Presidio.** Quasi identifiers 22.0% and 33.2%, low on purpose: dates,
+  9,088 of the 16,291, are left readable unless labelled as a date of birth.
+
+- **The limitation, measured: precision 30.0% and 27.8%, and 77.9% and 80.7% of the spans
+  annotators marked safe are touched.** The second pass masks every capitalised run the
+  vocabulary cannot vouch for, and the default vocabulary is Canadian, so "United Kingdom",
+  "Court of Appeal" and "Secretary of State" are masked. The README says so beside the table.
+
+- **Cross-checked against TAB's own `evaluation.py`** on the same masks: direct recall and
+  precision identical to four decimals, quasi recall 0.2197 against 0.2198. Getting there
+  found two bugs in this module's word list, both of which flattered the engine: a bare
+  initial "S" or "A" was ignored as a possessive or an article.
+
+- **`Policy.redact_with_spans`**: the character ranges `redact` replaced, which an
+  offset-scored benchmark needs. `redact` now calls it, so the two cannot disagree; the
+  redaction table in the README reproduces unchanged.
+
+- **Nothing in the engine changed after seeing the test split**, and the two gaps it found,
+  initials and a foreign jurisdiction's public bodies, are left unfixed here on purpose. A
+  fix has to be developed on TAB's train or dev split, or the test figure stops meaning
+  anything.
+
+- **PLAN.md B3 changes**: TAB replaces the ai4privacy corpus the plan named, whose licence is
+  academic and non-commercial only, forbids redistribution and derived works, and which is
+  synthetic besides.
+
 ## 0.7.0 (2026-09-22)
 
 **`boundary.audit`: the hash-chained audit log, and a tamper test that measures it.** PLAN.md

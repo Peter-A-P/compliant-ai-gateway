@@ -526,6 +526,8 @@ def cmd_redact_eval(args: argparse.Namespace) -> int:
 
         extra.append(PresidioRecogniser())
         detector = "built-in recognisers and Presidio"
+    if args.tab:
+        return _redact_eval_tab(args)
     if args.rehydration:
         rehy = evaluate.rehydration(pages=args.pages, seed=args.seed)
         print(rehy.table())
@@ -554,6 +556,45 @@ def cmd_redact_eval(args: argparse.Namespace) -> int:
         readme = args.config.resolve().parent.parent / "README.md"
         evaluate.write_readme(readme, results.readme_row())
         print(f"README row written to {readme}")
+    return 0
+
+
+def _redact_eval_tab(args: argparse.Namespace) -> int:
+    """The Text Anonymization Benchmark: real court judgments, public, MIT licence.
+
+    Downloads the test split once into .cache/tab at a pinned commit and refuses a file
+    whose SHA-256 differs. Built-in recognisers always; Presidio as a second configuration
+    when --presidio is given, because the README reports the two side by side.
+    """
+    import json
+
+    from boundary.redact import tab
+
+    docs = tab.load(tab.fetch())
+    configs: list[tuple[str, list[object]]] = [("built-in recognisers only", [])]
+    if args.presidio:
+        from boundary.redact.presidio import PresidioRecogniser
+
+        configs.append(("built-in recognisers and Presidio", [PresidioRecogniser()]))
+    results = []
+    for detector, extra in configs:
+        r = tab.run(docs, extra=extra, detector=detector)  # type: ignore[arg-type]
+        print(r.table())
+        print()
+        results.append(r)
+    if args.out is not None:
+        out = args.out.with_name("redact-tab.json")
+        out.parent.mkdir(parents=True, exist_ok=True)
+        payload = [json.loads(tab.to_json(r)) for r in results]
+        out.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        print(f"written to {out}")
+    if args.write_readme:
+        if not args.presidio:
+            print("the README reports both configurations; add --presidio", file=sys.stderr)
+            return 2
+        readme = args.config.resolve().parent.parent / "README.md"
+        tab.write_readme(readme, [r.readme_cells() for r in results])
+        print(f"README rows written to {readme}")
     return 0
 
 
@@ -773,6 +814,12 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="what survives the trip back: every mutation form a model applies to a "
         "placeholder, and the fabrication count that must stay at zero",
+    )
+    rev.add_argument(
+        "--tab",
+        action="store_true",
+        help="the Text Anonymization Benchmark instead: real court judgments, test split, "
+        "downloaded once at a pinned commit (with --presidio, both configurations)",
     )
     rev.add_argument("--seed", type=int, default=20260920)
     rev.add_argument(

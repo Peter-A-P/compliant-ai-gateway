@@ -597,6 +597,107 @@ A caller who wants them back passes an `allow_patterns` entry matching a year ra
 which is what that argument is for. The default does not, because a default that releases is
 a default nobody reviewed.
 
+### Real text: the Text Anonymization Benchmark, from 0.8.0
+
+Every figure above this section comes from text somebody generated. **TAB** is the first
+public corpus and the first real text: judgments of the European Court of Human Rights,
+annotated by hand, some by as many as ten annotators, every mention marked **DIRECT**
+(identifies somebody on its own: a name, an application number), **QUASI** (identifies in
+combination: a date, a place, a nationality) or **NO_MASK** (safe to leave). Pilan, Lison,
+Ovrelid, Papadopoulou, Sanchez and Batet, *The Text Anonymization Benchmark (TAB)*,
+Computational Linguistics 48(4), 2022,
+[arXiv:2202.00443](https://arxiv.org/abs/2202.00443); data and evaluation script at
+[NorskRegnesentral/text-anonymization-benchmark](https://github.com/NorskRegnesentral/text-anonymization-benchmark),
+MIT licence.
+
+**Why TAB and not the corpus PLAN.md B3 first named.** B3 named the ai4privacy PII masking
+corpus. Its [licence](https://huggingface.co/datasets/ai4privacy/pii-masking-400k/blob/main/license.md)
+grants academic and non-commercial use only, forbids redistribution and derived works
+without a written licence, and says the data is watermarked for enforcement, which does not
+fit a public repository in a professional portfolio. It is also synthetic, so it would have
+been a third generated corpus and would not have closed the gap this section exists for.
+TAB is real, public, MIT, and made of the kind of document this engine is for.
+
+```
+boundary redact eval --tab             # built-in recognisers
+boundary redact eval --tab --presidio  # both configurations, which is what the README shows
+```
+
+The test split (127 judgments, 647,638 characters) is downloaded once into `.cache/tab/` at a
+pinned commit, `558e09e2`, and refused unless its SHA-256 matches. Nothing from it is
+committed, and nothing here quotes a name from it. **Nothing in the engine was changed after
+seeing it**, and nothing may be: a fix for what it found has to be developed on TAB's train
+or dev split, and the test figure re-reported afterwards with that said.
+
+#### Scored the way TAB scores itself, and checked against its own script
+
+`boundary/redact/tab.py` reimplements TAB's `evaluation.py` rather than calling it, so the
+measurement needs no spaCy model: an entity counts as masked only if every mention of it
+that needs masking is masked; a mention counts when every character is covered, ignoring
+punctuation, "Mr", "Mrs", "Ms" and function words; counts are micro-averaged over
+annotators; precision is TAB's token-level precision with uniform weights. The one
+deviation is that TAB finds function words by spaCy part of speech and this uses a fixed
+list. **Checked once against TAB's own script** on the same masks, with `en_core_web_lg`:
+direct recall 0.9326 against 0.9326, precision 0.2996 against 0.2996, quasi recall 0.2197
+against 0.2198, and 3 of about 30,500 mentions judged differently. Getting there found two
+bugs in the word list, both in the direction of flattering the engine: a bare capital "S"
+and "A" were being ignored as the possessive and the article when they were initials.
+
+Intervals here are a **bootstrap over judgments**, not Wilson intervals, because mentions in
+one judgment are not independent: one missing rule misses a name in every paragraph.
+
+#### The result, output of `boundary redact eval --tab --presidio` at 0.8.0
+
+| | Built-in recognisers | With Presidio |
+|---|---|---|
+| Direct identifiers masked (1,157 annotator-entities) | 93.3% (89.6 to 96.4) | 98.7% (97.4 to 99.6) |
+| Quasi identifiers masked (16,291) | 22.0% (17.4 to 27.1) | 33.2% (28.9 to 38.0) |
+| Precision, TAB uniform | 30.0% (27.4 to 32.7) | 27.8% (25.6 to 30.2) |
+| Safe (NO_MASK) spans with any word masked | 77.9% (74.9 to 80.7) | 80.7% (78.2 to 83.1) |
+| Characters masked | 13.9% | 17.2% |
+| Time per judgment, median | 3 ms | 91 ms |
+
+| Entity type, direct and quasi | Built-in | With Presidio | Entities |
+|---|---|---|---:|
+| DATETIME | 0.8% | 0.8% | 9,088 |
+| PERSON | 37.5% | 93.1% | 3,011 |
+| CODE | 94.6% | 94.4% | 1,583 |
+| ORG | 66.2% | 85.4% | 1,062 |
+| LOC | 96.2% | 95.4% | 1,000 |
+| DEM | 35.1% | 36.4% | 701 |
+| QUANTITY | 0.2% | 2.1% | 629 |
+| MISC | 12.3% | 14.4% | 374 |
+
+Raw results with every interval: `bench/redact-tab.json`.
+
+#### What it says
+
+- **Over-redaction is the limitation, and it is large.** On the generated corpus about one
+  word in forty is masked needlessly. On real judgments about four in five safe spans are
+  touched and fewer than a third of masked tokens are ones an annotator masked. The cause is
+  the design, not a bug: the second pass masks every capitalised run the vocabulary does not
+  excuse, and `DECISION_VOCABULARY` is built for Canadian access-to-information records. The
+  most-touched safe spans are "United Kingdom", "Foreign and Commonwealth Office", "Court of
+  Appeal", "Secretary of State", "High Court" and "Parole Board". Every one is a public body
+  a deployment in that jurisdiction would put in its `allow` list; this run deliberately
+  uses the default so that the figure is what a caller gets without one.
+- **Direct identifiers are where the engine is aimed, and the misses have a shape.** Of 78
+  missed with the built-in recognisers, 68 are people, and the words left in clear are the
+  title `Dr` most of all, then initials (`O.`, `J.H.`, `S.D.`) and particles such as `von`. TAB
+  ignores `Mr`, `Mrs` and `Ms` but not `Dr`, so a doctor's title left in clear counts as a
+  miss; that is TAB's rule and it is kept. Initials are a real gap: the second pass does not
+  treat a single capital as name-shaped, and in these judgments an applicant is often
+  written only as initials. With Presidio the misses fall to 15: 7 people, 5 dates, 3
+  citations written in law-report form.
+- **Quasi identifiers are low on purpose.** DATETIME is 9,088 of the 16,291 and is 0.8%
+  masked, because dates are what a decision turns on and the engine masks a date only when a
+  label says it is a date of birth. TAB's annotators mask dates that, combined, could
+  identify an applicant. The two views are both defensible and they are not the same view,
+  and the table says which one this engine takes rather than blending them.
+- **Presidio buys people and organisations at thirty times the latency.** Person recall goes
+  from 37.5% to 93.1% and organisations from 66.2% to 85.4%, for 91 ms a judgment instead of
+  3, and precision falls slightly because it finds more organisations annotators left alone.
+
 ### Measured by project 07
 
 **07 measured this engine's detection recall on 2026-09-19**, first against 0.5.0
