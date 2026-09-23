@@ -118,15 +118,32 @@ model rewrites the markup around a placeholder, **fourteen restore 100% of the v
 to 100)** over 2,007 placeholders, and no placeholder this policy never minted resolves to
 anything. The fifteenth is zero deliberately, and [docs/redact.md](docs/redact.md) says why.
 
+**Audit chain (`boundary.audit`, pulled forward from Part B)**
+
+| Tampering detected before the last anchor | False alarms on an untouched log | Detected after the last anchor | Verify time |
+|---|---|---|---|
+<!-- audit:start -->
+| 2,400/2,400 = 100.0% (99.8% to 100.0%), 12 kinds | 0/400 = 0.0% (0.0% to 1.0%) | 1,193/2,400 = 49.7% (47.7% to 51.7%); 6 of 12 kinds never, by design | 8.3 ms for 500 records |
+<!-- audit:end -->
+
+Filled by `boundary audit tamper-test --write-readme`: a 500-record chain over a generated
+ledger, anchored every 50 records except the last 50, corrupted 200 times per kind in each
+region, from a seed and with no network. The kinds run from a careless edit to a forger who
+owns every file, recomputes every hash and edits the ledger to agree. **Read the third column
+as the design, not a shortfall.** After the last anchor a competent rewrite leaves nothing to
+disagree with it, and no hash chain can do better. That window is one anchor interval, which
+is why Part B anchors daily in this repository. The per-kind table, and the one deletion the
+chain cannot tell from a row not yet sealed, are in [docs/audit.md](docs/audit.md).
+
 **Gateway (Part B)**
 
 | Layer | Load (rps) | Overhead p50 / p95 / p99 ms (95% CI) |
 |---|---|---|
 | _not yet_ | | |
 
-| Rehydration mutation rate under a model | Quality effect of redaction (two-sided delta) | Residency violations | Cache hit rate / false-hit rate / saved, redacted and raw | Audit tamper detection |
+| Rehydration mutation rate under a model | Quality effect of redaction (two-sided delta) | Residency violations | Cache hit rate / false-hit rate / saved, redacted and raw | Audit tamper detection with daily anchors |
 |---|---|---|---|---|
-| _not yet_ | | | | |
+| _not yet_ | _not yet_ | _not yet_ | _not yet_ | _not yet_; the chain is measured above, the published anchors are Part B |
 
 ## What this does not do
 

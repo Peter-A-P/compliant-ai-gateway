@@ -411,6 +411,7 @@ from October the ledger-against-invoice difference is recorded there too (sectio
 | v0.6.2 | 2026-09-20 | The identifier set measures the second pass with every recogniser removed, which found a bracketed area code published beside its own placeholder. A date written in words has no backstop, recorded as a limit with a test |
 | v0.6.3 | 2026-09-21 | `Policy.second_pass`: which placeholders the fallback minted. 0.6.0 had the second pass mint `EMAIL`, which made `types.py` and `policy.py` disagree about whether the entity type says which pass produced a placeholder |
 | v0.6.4 | 2026-09-21 | Rehydration fidelity measured: 15 mutation forms, 14 restoring every value, 0 fabrications. Four of them resolved to nothing before the measurement existed. **07 pins this tag** |
+| v0.7.0 | 2026-09-22 | `boundary.audit`: the hash chain over ledger rows, the append-only log, anchors, `boundary audit seal`, `anchor`, `verify` and `tamper-test`. Pulled forward from Part B (B2.4, amended); nothing downstream imports it yet, and no pin needs to move |
 | v1.0.0 | May 23 2027 | Everything in Part B; `boundary.redact` for 07; the proxy for 13 and 14 |
 
 03 pins `boundary>=0.1,<0.3` for Part A and moves to `>=1.0` when its Part B is built
@@ -691,6 +692,23 @@ public repository, so tampering by the operator, not only by an outsider, is det
 by anyone who can read the repository. `boundary audit verify` recomputes the chain and
 checks it against the anchors.
 
+**Amended 2026-09-22: the library half is built, in 0.7.0** (`boundary.audit`,
+docs/audit.md), because none of it needed the proxy. Three things differ from the paragraph
+above, each on purpose. The chain **seals ledger rows after the fact** rather than being
+written by the proxy as it answers, so the gateway, the pass-through path and the overhead
+figure are untouched; Part B's proxy appends to the same format. The store is **SQLite with
+triggers** refusing both statements, not Postgres; the chain and the verifier are pure
+functions, so Part B changes where records are kept and not what they are. And `verify`
+also **checks the ledger against the chain**, which the paragraph did not ask for and turned
+out to matter: a forger who rewrites the log and forgets the ledger is caught by the
+disagreement even inside the unanchored window. **The measurement changed what "detects
+every injected corruption" in B10 can honestly mean.** Before the last anchor it holds,
+2,400 of 2,400. After it, a forger who rewrites every hash and edits the ledger to agree is
+undetectable by any chain, so B10's line is read as "every corruption before the last
+anchor", and the width of the window after it is reported beside it rather than left out.
+Not built, and still Part B: the daily anchoring Action, Postgres with the grants revoked,
+and the proxy appending.
+
 ### B2.5 Semantic cache, with its risk measured
 
 Local `bge-small` embeddings and pgvector; a cosine threshold tuned on replayed traffic
@@ -908,7 +926,7 @@ the ledger and the spans as its production signal.
 - [ ] Quality effect of redaction measured through the 03 gate, two-sided, with interval
 - [ ] Semantic cache hit rate, dollars saved and false-hit rate on replayed traffic
 - [ ] Injection screen detection and false-positive rates reported (unless dropped, and then said so)
-- [ ] Audit log chain verification tool included; daily anchors in the public repository; tamper test detects every injected corruption
+- [ ] Audit log chain verification tool included; daily anchors in the public repository; tamper test detects every injected corruption. **Tool and tamper test done 2026-09-22 (0.7.0)**: `boundary audit verify`, and `boundary audit tamper-test` detecting 2,400 of 2,400 corruptions across twelve kinds before the last anchor with 0 false alarms, the six kinds a chain cannot see after it reported beside them (B2.4, amended). **Daily anchors in the public repository** are what remain, and they need the proxy's always-on log to anchor
 - [ ] Per-team budgets and quotas enforced; 429 body names the limit
 - [ ] Load test published: p50, p95, p99 overhead by layer and load level, with CIs and the VPS size stated
 - [ ] Observability dashboard shows every project's calls and costs live; completeness panel against local ledgers

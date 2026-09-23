@@ -5,7 +5,7 @@ Public interface (frozen 2026-09-08, see docs/interface.md):
     errors below.
 """
 
-__version__ = "0.6.4"
+__version__ = "0.7.0"
 
 from boundary.errors import (
     BatchNotReady,

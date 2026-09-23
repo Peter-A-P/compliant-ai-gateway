@@ -1,0 +1,197 @@
+{
+  "boundary_version": "0.7.0",
+  "ran_utc": "2026-09-23T01:08:23+00:00",
+  "seed": 20260922,
+  "records": 500,
+  "anchor_interval": 50,
+  "anchors": 9,
+  "trials": 200,
+  "verify_ms": 8.274,
+  "rows": [
+    {
+      "kind": "none (control)",
+      "before": [
+        0,
+        200
+      ],
+      "after": [
+        0,
+        200
+      ],
+      "caught_by": {}
+    },
+    {
+      "kind": "edit a ledger row",
+      "before": [
+        200,
+        200
+      ],
+      "after": [
+        200,
+        200
+      ],
+      "caught_by": {
+        "ledger_changed": 400
+      }
+    },
+    {
+      "kind": "delete a ledger row",
+      "before": [
+        200,
+        200
+      ],
+      "after": [
+        200,
+        200
+      ],
+      "caught_by": {
+        "ledger_missing": 400
+      }
+    },
+    {
+      "kind": "edit a record",
+      "before": [
+        200,
+        200
+      ],
+      "after": [
+        200,
+        200
+      ],
+      "caught_by": {
+        "hash": 400
+      }
+    },
+    {
+      "kind": "edit a record, rehash it",
+      "before": [
+        200,
+        200
+      ],
+      "after": [
+        200,
+        200
+      ],
+      "caught_by": {
+        "link": 391,
+        "ledger_changed": 9
+      }
+    },
+    {
+      "kind": "delete a record",
+      "before": [
+        200,
+        200
+      ],
+      "after": [
+        193,
+        200
+      ],
+      "caught_by": {
+        "sequence": 393
+      }
+    },
+    {
+      "kind": "edit a record, rewrite after it",
+      "before": [
+        200,
+        200
+      ],
+      "after": [
+        200,
+        200
+      ],
+      "caught_by": {
+        "anchor": 200,
+        "ledger_changed": 200
+      }
+    },
+    {
+      "kind": "edit row and record, rewrite after",
+      "before": [
+        200,
+        200
+      ],
+      "after": [
+        0,
+        200
+      ],
+      "caught_by": {
+        "anchor": 200
+      }
+    },
+    {
+      "kind": "delete call from both, rewrite after",
+      "before": [
+        200,
+        200
+      ],
+      "after": [
+        0,
+        200
+      ],
+      "caught_by": {
+        "anchor": 200
+      }
+    },
+    {
+      "kind": "insert a forged call, rewrite after",
+      "before": [
+        200,
+        200
+      ],
+      "after": [
+        0,
+        200
+      ],
+      "caught_by": {
+        "anchor": 200
+      }
+    },
+    {
+      "kind": "swap two records, rewrite after",
+      "before": [
+        200,
+        200
+      ],
+      "after": [
+        0,
+        200
+      ],
+      "caught_by": {
+        "anchor": 200
+      }
+    },
+    {
+      "kind": "truncate the log and the ledger",
+      "before": [
+        200,
+        200
+      ],
+      "after": [
+        0,
+        200
+      ],
+      "caught_by": {
+        "truncated": 200
+      }
+    },
+    {
+      "kind": "replace the log and the ledger",
+      "before": [
+        200,
+        200
+      ],
+      "after": [
+        0,
+        200
+      ],
+      "caught_by": {
+        "anchor": 200
+      }
+    }
+  ],
+  "before": "100.0% (99.8% to 100.0%)",
+  "after": "49.7% (47.7% to 51.7%)",
+  "false_alarms": "0.0% (0.0% to 1.0%)"
+}

@@ -5,6 +5,42 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.7.0 (2026-09-22)
+
+**`boundary.audit`: the hash-chained audit log, and a tamper test that measures it.** PLAN.md
+B2.4, pulled forward from Part B because none of it needs the proxy: every call already
+writes a ledger row, so the chain seals those rows after the fact, and the gateway is not
+touched. Pass-through, the overhead figure and every existing test are exactly what they
+were. Method and limits: docs/audit.md.
+
+- **A record is `sha256(previous hash || canonical body)`**, and the body is a fixed list of
+  ledger columns (`SEALED`): identifiers, counts, hashes, the declared region, residency and
+  data class, the price fingerprint and the cost. Never content, and a test calls the
+  gateway with a name in the prompt and asserts it is in no record.
+
+- **`boundary audit seal`, `anchor` and `verify`.** Sealing is idempotent and appends a
+  second record when a sealed row changes. A row in flight is held for 24 hours and then
+  sealed as it stands, because a killed call never completes and still has to be on the
+  record. `verify` recomputes the chain, checks every anchor, and checks the ledger against
+  the latest record for each call, so an edit to the **ledger** after sealing is caught as
+  well as an edit to the log, and the break names the columns that changed.
+
+- **Measured, `boundary audit tamper-test`: 2,400 of 2,400 corruptions detected before the
+  last anchor, 100.0% (99.8 to 100.0), across twelve kinds**, including a forger who
+  recomputes every hash and edits the ledger to agree; 0 false alarms in 400 checks of an
+  untouched log. **After the last anchor, six of the twelve kinds are never detected**, which
+  is what any hash chain is, and the README reports it in its own column rather than
+  leaving it out. The window is one anchor interval.
+
+- **One gap the measurement found and the design cannot close**: deleting the newest record
+  leaves nothing linking to it, and its ledger row reads as not yet sealed, 7 of 200 trials
+  in the unanchored tail. A test asserts it, and the next anchor covers it.
+
+- **Not in 0.7, on purpose**: the daily anchor committed to this repository, because until
+  the proxy exists there is no always-on log to anchor, and an anchor pointing at a laptop's
+  file is a claim nobody else could check. Postgres, and the proxy appending as it answers.
+  All three are Part B.
+
 ## 0.6.4 (2026-09-21)
 
 **Rehydration fidelity, measured**, which is the last of Part B's redaction rows that can be

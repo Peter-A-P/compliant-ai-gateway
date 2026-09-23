@@ -33,6 +33,7 @@ listed here; nothing any earlier version offered has changed shape.
 | 0.6.2 | 2026-09-20 | The identifier set measures the second pass with every recogniser removed, a column that found a bracketed area code being published beside its own placeholder. `FamilyRow.backstop` |
 | 0.6.3 | 2026-09-21 | `Policy.second_pass`: which placeholders the fallback minted, after 0.6.0 made the entity type stop answering that |
 | 0.6.4 | 2026-09-21 | `boundary redact eval --rehydration` and `placeholder_kind`. Inside the brackets a placeholder now tolerates a hyphen, a space or a line break where its underscore was, and a zero-padded index; four mutation forms models produce used to resolve to nothing |
+| 0.7.0 | 2026-09-22 | The `boundary.audit` package (section 13): the hash chain, the append-only SQLite log, anchors, and `boundary audit seal`, `anchor`, `verify` and `tamper-test`. Nothing any earlier version exposes changed, and the gateway does not call it |
 
 ## 1. Importing
 
@@ -294,6 +295,10 @@ every row as a failure at no cost rather than leaving it in flight at an estimat
 | `boundary ledger merge --into <dest> <sources...>` | 0.2 | Combines per-environment ledgers. Idempotent; `--dry-run` reports without writing |
 | `boundary batch status <id>` | 0.2 | Where the vendor has got to with a batch. Writes nothing; exits non-zero until it has ended, so a script can wait on it |
 | `boundary batch collect <id>` | 0.2 | Completes the ledger rows of a batch submitted earlier, possibly by another process. `--ledger` points at the ledger that submitted it |
+| `boundary audit seal` | 0.7 | Appends a record for every ledger row new or changed since the last seal. Idempotent. `--settle-hours` (default 24) holds a row in flight before sealing it as it stands |
+| `boundary audit anchor --anchors FILE` | 0.7 | Appends the current head to an anchor file, one canonical JSON line; never rewrites the lines before it. Refuses an empty log |
+| `boundary audit verify` | 0.7 | Recomputes the chain, checks every anchor in `--anchors`, and checks the ledger against the latest record for each call unless `--no-ledger`. Exits 1 on any break, and reports every break rather than the first |
+| `boundary audit tamper-test` | 0.7 | The README's audit row: twelve kinds of corruption before and after the last anchor, with a control. In memory, from a seed |
 | `boundary experiment remote-ledger` | 0.2 | The Rule C measurement behind `docs/rejected.md` |
 | `boundary experiment token-estimates <run-dir>` | 0.2.1 | The second Rule C measurement: local token estimates against returned usage, over a drift run's raw store and ledgers. Reads only; no network |
 
@@ -337,6 +342,25 @@ from boundary.redact.presidio import PresidioRecogniser   # optional `redact` ex
 | Identifier set | `identifiers.build_cases(*, per_family=50, seed=20260920) -> list[Case]`, `evaluate.identifiers(...) -> IdentifierResults` | 0.6.1 | Every Canadian identifier shape in every written form, the shapes no recogniser claims, and the near-misses that must not fire. `Case.expect` is `detect`, `mask only` or `ignore`. `boundary redact eval --identifiers` |
 | Evaluate | `evaluate.run(*, pages=200, seed=20260920, extra=(), detector=...) -> EvalResults`, `evaluate.wilson(hits, total) -> tuple[float, float]` | 0.6 | Detection recall, type accuracy, precision, leak rate after `outbound`, over-redaction, round trip and latency, each with a Wilson 95% interval. `boundary redact eval` is this with a table around it |
 | Errors | `RedactionRefused(BoundaryError)` with `.leaks: tuple[Leak, ...]` | 0.5 | Message carries counts only. `Leak.kind` is `value`, `shape` or, since 0.5.3, `placeholder` |
+
+## 13. `boundary.audit` (0.7)
+
+A hash chain over ledger rows, the append-only log that holds it, and the verifier. The full
+page is `docs/audit.md`. Part B's proxy will append to the same chain format; the record
+body carries `"schema": 1` so that a later format is a new number rather than a silent change.
+
+```python
+from boundary.audit import AuditLog, Anchor, verify, read_anchors, append_anchor
+```
+
+| Item | Signature | Since | Notes |
+|---|---|---|---|
+| The log | `AuditLog(path)`, a context manager; `.seal(ledger_rows, *, settle_s=DEFAULT_SETTLE_S, now=None) -> SealStats`, `.records() -> list[Record]`, `.head() -> tuple[int, str]`, `.anchor(*, ts_utc=None) -> Anchor`, `.append_bodies(bodies) -> list[Record]` | 0.7 | SQLite, with triggers refusing `UPDATE` and `DELETE`. `seal` takes rows as `LedgerStore.rows()` returns them |
+| Seal counts | `SealStats(sealed, resealed, unchanged, held_in_flight, no_call_uid, head_seq, head)` | 0.7 | Frozen |
+| A record | `Record(seq, prev_hash, record_hash, body)` | 0.7 | Frozen. `body` is canonical JSON; `SEALED` lists the ledger columns it carries |
+| An anchor | `Anchor(seq, head, ts_utc)` with `.to_line()` and `Anchor.from_line(line)`; `read_anchors(path)`, `append_anchor(path, anchor)` | 0.7 | One canonical JSON line per anchor. A missing file is no anchors |
+| Verify | `verify(records, anchors=(), *, ledger_rows=None) -> Verification` | 0.7 | `Verification.ok`, `.breaks: tuple[Break, ...]`, `.unanchored`, `.unsealed`, `.resealable`, `.summary()`. `Break(kind, seq, detail)`; the kinds are `BREAK_KINDS` |
+| Constants | `GENESIS`, `SEALED`, `BREAK_KINDS` | 0.7 | `GENESIS` is 64 zeros, the hash the first record links to |
 
 ## 11. Choices the plan left open
 

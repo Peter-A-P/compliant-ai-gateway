@@ -1,6 +1,7 @@
 """Command line: boundary smoke <provider> | routes show | prices check |
 ledger report | ledger residency | ledger merge | batch status | batch collect | bench |
-redact eval | experiment remote-ledger.
+redact eval | audit seal | audit verify | audit anchor | audit tamper-test |
+experiment remote-ledger.
 
 Every command takes --config (default: config/boundary.yaml next to the current directory
 or the installed package's config) and --project.
@@ -556,6 +557,104 @@ def cmd_redact_eval(args: argparse.Namespace) -> int:
     return 0
 
 
+def _audit_paths(args: argparse.Namespace) -> tuple[Path, Path]:
+    """The ledger and the audit log beside it. The log defaults to `<ledger>.audit.sqlite`,
+    so one ledger has one chain and a merge destination gets its own."""
+    cfg = load_config(args.config)
+    ledger = Path(args.ledger) if args.ledger else cfg.ledger.path
+    audit = Path(args.audit) if args.audit else ledger.with_name(ledger.stem + ".audit.sqlite")
+    return ledger, audit
+
+
+def cmd_audit_seal(args: argparse.Namespace) -> int:
+    from boundary.audit import AuditLog
+
+    ledger_path, audit_path = _audit_paths(args)
+    if not ledger_path.is_file():
+        print(f"no ledger at {ledger_path}", file=sys.stderr)
+        return 1
+    store = LedgerStore(ledger_path)
+    try:
+        rows = store.rows()
+    finally:
+        store.close()
+    with AuditLog(audit_path) as log:
+        stats = log.seal(rows, settle_s=args.settle_hours * 3600)
+    print(f"{audit_path}: {stats}")
+    return 0
+
+
+def cmd_audit_verify(args: argparse.Namespace) -> int:
+    from boundary.audit import AuditLog, read_anchors, verify
+
+    ledger_path, audit_path = _audit_paths(args)
+    if not audit_path.is_file():
+        print(f"no audit log at {audit_path}", file=sys.stderr)
+        return 1
+    with AuditLog(audit_path) as log:
+        records = log.records()
+    anchors = read_anchors(Path(args.anchors)) if args.anchors else []
+    rows = None
+    if not args.no_ledger:
+        if not ledger_path.is_file():
+            print(f"no ledger at {ledger_path}; pass --no-ledger to check the chain alone")
+            return 1
+        store = LedgerStore(ledger_path)
+        try:
+            rows = store.rows()
+        finally:
+            store.close()
+    result = verify(records, anchors, ledger_rows=rows)
+    print(result.summary())
+    return 0 if result.ok else 1
+
+
+def cmd_audit_anchor(args: argparse.Namespace) -> int:
+    from boundary.audit import AuditLog, append_anchor
+
+    _, audit_path = _audit_paths(args)
+    if not audit_path.is_file():
+        print(f"no audit log at {audit_path}", file=sys.stderr)
+        return 1
+    with AuditLog(audit_path) as log:
+        anchor = log.anchor()
+    if anchor.seq == 0:
+        print("the log is empty; there is nothing to anchor", file=sys.stderr)
+        return 1
+    append_anchor(Path(args.anchors), anchor)
+    print(f"anchored seq {anchor.seq} head {anchor.head} in {args.anchors}")
+    return 0
+
+
+def cmd_audit_tamper_test(args: argparse.Namespace) -> int:
+    """Corrupt a generated chain every way an operator could and count what is detected.
+
+    In memory, from a seed: no ledger of anybody's and no network, like `redact eval`.
+    """
+    from boundary.audit import tamper
+
+    results = tamper.run(
+        records=args.records,
+        anchor_interval=args.anchor_interval,
+        trials=args.trials,
+        seed=args.seed,
+    )
+    print(results.table())
+    if args.out is not None:
+        args.out.parent.mkdir(parents=True, exist_ok=True)
+        args.out.write_text(tamper.to_json(results) + "\n", encoding="utf-8")
+        print(f"written to {args.out}")
+    if args.write_readme:
+        readme = args.config.resolve().parent.parent / "README.md"
+        tamper.write_readme(readme, results.readme_row())
+        print(f"README row written to {readme}")
+    if args.write_doc:
+        doc = args.config.resolve().parent.parent / "docs" / "audit.md"
+        tamper.write_doc(doc, results.doc_block())
+        print(f"table written to {doc}")
+    return 0
+
+
 def cmd_experiment_token_estimates(args: argparse.Namespace) -> int:
     """Rule C candidate 2: a local token estimate against the vendor's returned usage."""
     from boundary.experiment import token_estimates
@@ -731,6 +830,57 @@ def main(argv: list[str] | None = None) -> int:
         help="report what would be inserted without writing to the destination",
     )
     merge.set_defaults(func=cmd_ledger_merge)
+
+    audit = sub.add_parser(
+        "audit", help="the hash-chained audit log over a ledger (docs/audit.md)"
+    ).add_subparsers(dest="sub", required=True)
+    for name, help_text, func in (
+        ("seal", "append a record for every ledger row new or changed since", cmd_audit_seal),
+        (
+            "verify",
+            "recompute the chain and check it against anchors and the ledger",
+            cmd_audit_verify,
+        ),
+        ("anchor", "append the current head to an anchor file", cmd_audit_anchor),
+    ):
+        sp = audit.add_parser(name, help=help_text)
+        sp.add_argument("--ledger", help="the ledger the log seals (default from config)")
+        sp.add_argument("--audit", help="the audit log (default <ledger>.audit.sqlite)")
+        if name == "seal":
+            sp.add_argument(
+                "--settle-hours",
+                dest="settle_hours",
+                type=float,
+                default=24.0,
+                help="hold a row still in flight this long before sealing it as it stands",
+            )
+        if name == "verify":
+            sp.add_argument("--anchors", help="an anchor file, one JSON line per anchor")
+            sp.add_argument(
+                "--no-ledger",
+                dest="no_ledger",
+                action="store_true",
+                help="check the chain and anchors only, not the ledger against the chain",
+            )
+        if name == "anchor":
+            sp.add_argument("--anchors", required=True, help="the anchor file to append to")
+        sp.set_defaults(func=func)
+    tt = audit.add_parser(
+        "tamper-test", help="corrupt a generated chain every way and count detections"
+    )
+    tt.add_argument("--records", type=int, default=500)
+    tt.add_argument("--anchor-interval", dest="anchor_interval", type=int, default=50)
+    tt.add_argument("--trials", type=int, default=200)
+    tt.add_argument("--seed", type=int, default=20260922)
+    tt.add_argument("--out", type=Path, default=Path("bench/audit.json"))
+    tt.add_argument("--write-readme", dest="write_readme", action="store_true")
+    tt.add_argument(
+        "--write-doc",
+        dest="write_doc",
+        action="store_true",
+        help="fill the per-kind table in docs/audit.md between its markers",
+    )
+    tt.set_defaults(func=cmd_audit_tamper_test)
 
     batch = sub.add_parser(
         "batch", help="a vendor batch submitted earlier: ask after it, or collect it"
