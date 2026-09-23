@@ -5,6 +5,30 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.11.0 (2026-09-23)
+
+**A caller's allow list now reaches a detector's places and organisations.** 0.10.0 found
+that `allow` excused terms only from the second pass, so with Presidio a derived list moved
+safe spans touched by under two points.
+
+- **`Policy(allow=...)`** releases a detector span of type LOCATION or ORGANISATION
+  (`RELEASABLE`) when the span, less a leading article, is one of the caller's phrases or is
+  made only of the caller's words. Never a person, an address or an identifier; never on
+  the default vocabulary alone, so a caller who passes no `allow` gets exactly what 0.10
+  gave; never a span the list only partly accounts for. `Policy.released` lists what was let
+  through.
+
+- **Test split, once**: Presidio with the derived list, safe spans touched 78.9% to
+  **51.4%**, precision 29.5% to **37.6%**, direct identifiers unmoved at 98.7%, quasi 33.2%
+  to 32.2%. The article step was found by reading dev's misses, so dev's figure is
+  optimistic and is reported as such in docs/redact.md.
+
+- **Unchanged**: every generated-corpus figure, and the built-in configuration on TAB, since
+  no built-in recogniser returns a place or an organisation.
+
+- **A behaviour change for a consumer that passes `allow` and a detector returning places or
+  organisations**, which project 07 does. It pins 0.6.4 and sees nothing until it moves.
+
 ## 0.10.0 (2026-09-23)
 
 **A jurisdiction's allow list, measured.** The over-masking TAB exposed comes from a Canadian

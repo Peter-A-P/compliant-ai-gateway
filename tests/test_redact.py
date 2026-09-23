@@ -910,3 +910,43 @@ def test_a_lone_initial_an_initialism_and_a_stray_particle_stay_readable(text: s
     for word in ("A.", "U.K.", " de ", " van "):
         if word in text:
             assert word in out, (text, out)
+
+
+# -- a caller's allow list releases impersonal detector spans (0.11.0) -----------------------
+
+
+def _span_of(text: str, value: str, kind: EntityType) -> Span:
+    s = text.index(value)
+    return Span(1, s, s + len(value), value, kind, 0.85, "test")
+
+
+def test_a_place_the_caller_vouched_for_is_released_article_and_all() -> None:
+    text = "The appeal went to the Court of Appeal in London."
+    spans = [
+        _span_of(text, "the Court of Appeal", EntityType.ORGANISATION),
+        _span_of(text, "London", EntityType.LOCATION),
+    ]
+    policy = Policy(spans, allow=["Court of Appeal", "London"])
+    assert policy.redact(text) == text
+    assert [s.text for s in policy.released] == ["the Court of Appeal", "London"]
+
+
+def test_a_person_is_never_released_whatever_the_list_says() -> None:
+    text = "Mr London gave evidence."
+    policy = Policy([_span_of(text, "London", EntityType.PERSON)], allow=["London"])
+    assert "London" not in policy.redact(text)
+    assert policy.released == ()
+
+
+def test_a_span_the_list_only_partly_covers_is_kept() -> None:
+    text = "She was treated at Oslo University Hospital."
+    span = _span_of(text, "Oslo University Hospital", EntityType.ORGANISATION)
+    policy = Policy([span], allow=["Oslo"])
+    assert "Oslo University Hospital" not in policy.redact(text)
+
+
+def test_the_default_vocabulary_alone_releases_nothing() -> None:
+    """No caller list, no change: what 0.10 masked, 0.11 masks."""
+    text = "The office in St. John's replied."
+    policy = Policy([_span_of(text, "St. John's", EntityType.LOCATION)])
+    assert policy.released == ()

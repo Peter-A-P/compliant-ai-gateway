@@ -150,6 +150,13 @@ _ADDRESSISH = re.compile(r"[^\W_][\w.%+-]*@[^\W_][\w-]*(?:\.[^\W_][\w-]*)+")
 _ENTITY_NAMES = frozenset(e.value for e in EntityType)
 
 
+# The detector types a caller's allow list may release (0.11.0): a place or an organisation
+# is a public fact often enough that a jurisdiction can vouch for its own. A person, an
+# address and every identifier type are never released, whatever the list says.
+RELEASABLE = frozenset({EntityType.LOCATION, EntityType.ORGANISATION})
+_LEADING_ARTICLE = re.compile(r"^(?:the|a|an)\s+", re.I)
+
+
 def _norm(value: str) -> str:
     return " ".join(value.split()).casefold()
 
@@ -201,7 +208,12 @@ class Policy:
         about to be sent (finding 1).
     allow: terms the second pass leaves alone, on top of the default vocabulary. A project
         adds its own decision-relevant terms here: the department names, the programme
-        names, the legislation it cites.
+        names, the legislation it cites. Since 0.11.0 they also release a detector's own
+        LOCATION or ORGANISATION span when the span is one of these terms, or made only of
+        them (`RELEASABLE`): the caller has said the term identifies nobody, and the
+        second pass would have left it alone. Never a PERSON or an identifier, and never on
+        the strength of the default vocabulary alone, so a caller who passes no `allow`
+        gets exactly what they got before.
     allow_patterns: regular expressions whose whole match the second pass leaves alone, for
         shapes rather than words: an ISO date, a dollar amount, a section reference.
     vocabulary: the base vocabulary; the default is `DECISION_VOCABULARY`.
@@ -226,6 +238,14 @@ class Policy:
     ) -> None:
         self._allow: frozenset[str] = frozenset(
             {w.casefold() for w in vocabulary} | {w.casefold() for w in allow}
+        )
+        # The caller's own terms, kept apart from the default vocabulary because only these
+        # may release a detector's span (0.11.0).
+        self._caller_words: frozenset[str] = frozenset(
+            w.strip().casefold() for w in allow if len(w.split()) == 1
+        )
+        self._caller_phrases: frozenset[str] = frozenset(
+            _norm(w) for w in allow if len(w.split()) > 1
         )
         # A multi-word allow term ("Corner Brook") is a phrase to excuse wherever it
         # appears, so it joins the patterns rather than the word set.
@@ -269,11 +289,46 @@ class Policy:
         # than minting a second one for the same value.
         if vault is not None:
             self._restore(vault)
-        self._build(list(spans))
+        self._released: list[Span] = []
+        kept: list[Span] = []
+        for s in spans:
+            (self._released if self._releases(s) else kept).append(s)
+        self._build(kept)
         self._pattern = self._compile()
         self._parts_pattern = self._compile_parts()
 
     # -- building --------------------------------------------------------------------------
+
+    def _releases(self, span: Span) -> bool:
+        """Whether the caller's allow list releases this detector span (0.11.0).
+
+        Only an impersonal type, and only when the whole span is one of the caller's
+        phrases, or every word in it that could be a name is one of the caller's words
+        (`Court of Appeal` when `Court` and `Appeal` are). Anything else is kept, because a
+        span the list does not fully account for may carry something it does not know
+        about: "Oslo" is on no list that mentions "University of Oslo Hospital".
+        """
+        if span.entity_type not in RELEASABLE:
+            return False
+        if not (self._caller_words or self._caller_phrases):
+            return False
+        # A detector's span often carries the article in front of a name ("the United
+        # Kingdom"), and an article is not part of what the caller vouched for.
+        text = _LEADING_ARTICLE.sub("", span.text)
+        if _norm(text) in self._caller_phrases:
+            return True
+        words = [m.group(0) for m in _WORD.finditer(text)]
+        named = [w for w in words if _is_name_shaped(w)]
+        return bool(named) and all(w.casefold() in self._caller_words for w in named)
+
+    @property
+    def released(self) -> tuple[Span, ...]:
+        """The detector spans the caller's allow list released rather than masked (0.11.0).
+
+        Reported so that a consumer can count what its list let through, the same way
+        `second_pass` reports what the fallback caught.
+        """
+        return tuple(self._released)
 
     def _restore(self, vault: Mapping[str, str]) -> None:
         """Take on an earlier policy's placeholders, so this one resolves what that one

@@ -122,7 +122,7 @@ script scores it:
 | built-in recognisers only | 97.1% (94.7% to 98.9%) | 32.0% (27.6% to 36.9%) | 32.2% (29.9% to 34.9%) | 78.4% (75.3% to 81.2%) |
 | built-in recognisers only, allow list of 1,013 | 97.1% (94.7% to 98.8%) | 29.4% (25.0% to 34.5%) | 45.4% (42.6% to 48.4%) | 41.7% (37.8% to 45.5%) |
 | built-in recognisers and Presidio | 98.7% (97.4% to 99.6%) | 33.7% (29.3% to 38.6%) | 27.9% (25.8% to 30.3%) | 80.7% (78.2% to 83.1%) |
-| built-in recognisers and Presidio, allow list of 1,013 | 98.7% (97.4% to 99.6%) | 33.2% (28.9% to 38.2%) | 29.5% (27.2% to 32.0%) | 78.9% (76.3% to 81.4%) |
+| built-in recognisers and Presidio, allow list of 1,013 | 98.7% (97.4% to 99.6%) | 32.2% (27.8% to 37.2%) | 37.6% (34.9% to 40.5%) | 51.4% (47.2% to 55.5%) |
 <!-- tab:end -->
 
 Filled by `boundary redact eval --tab --presidio --tab-allow train --write-readme`, which
@@ -138,9 +138,11 @@ from TAB's train split, with no person and no cited case among its sources, take
 touched from 78.4% to 41.7% and precision from 32.2% to 45.4%, with direct identifiers
 unmoved and quasi identifiers down 2.6 points, which is the price of releasing places the
 annotators occasionally masked. The list's two settings were chosen on the dev split by a
-rule written before this split was run. **With Presidio the list barely helps**, because it
-only reaches the second pass and Presidio's own place and organisation spans are masked
-regardless; that is the next fix, and it will be developed on train. Direct identifiers, the ones that name somebody on their
+rule written before this split was run. With Presidio the list at first barely helped,
+because it reached only the second pass; since `v0.11.0` it also releases a detector's own
+place or organisation span that is one of its terms (never a person, never on the default
+vocabulary alone), which takes Presidio's safe spans touched from 78.9% to 51.4% and
+precision from 29.5% to 37.6%, direct identifiers unmoved. Direct identifiers, the ones that name somebody on their
 own, are the part the engine exists for. **The first run on this split (`v0.8.0`) found
 initials and surname particles published beside masked names** (`Mr M. Trznadel`, `Mr G`,
 `van der`); `v0.9.0` masks them, a fix developed on TAB's train split and confirmed on its
@@ -207,7 +209,7 @@ chain cannot tell from a row not yet sealed, are in [docs/audit.md](docs/audit.m
   the spans annotators marked safe, because its default vocabulary is Canadian and it masks
   what it cannot vouch for. A deployment in another jurisdiction has to supply its own
   `allow` list; one derived for these judgments halves the over-masking and still leaves
-  two safe spans in five touched, and it does not yet reach what a model detector finds.
+  two safe spans in five touched without a model, and one in two with Presidio.
 
 ## Where the data went
 

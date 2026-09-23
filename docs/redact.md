@@ -714,6 +714,43 @@ Two findings beside the headline:
   median judgment went from 5 to 34 ms. Still well inside a request's budget, and one
   combined pattern is the fix if it ever matters.
 
+#### 0.11.0: the list reaches a detector's places and organisations
+
+0.10.0 found that `allow` excused terms only from the second pass, so a place Presidio
+returned was masked whatever the caller's list said. 0.11.0 lets a caller's own terms
+release a detector span when the span's type is LOCATION or ORGANISATION (`RELEASABLE`) and
+the span, less a leading article, is one of the caller's phrases or is made only of the
+caller's words. Three limits hold it in:
+
+- **Never a person, an address or an identifier**, whatever the list says, so a surname that
+  happens to be on a list of places is still masked when a detector calls it a person.
+- **Never on the default vocabulary alone.** Only terms the caller passed release anything,
+  so a caller who passes no `allow` gets exactly what 0.10 gave, and every figure on the
+  generated corpora reproduces.
+- **Never a span the list only partly accounts for.** "Oslo" on the list does not release
+  "Oslo University Hospital".
+
+`Policy.released` lists what the list let through, for a consumer to count.
+
+**How it was developed, stated plainly.** The rule was first written without the article
+step, and on dev it moved Presidio's safe spans touched only from 78.4% to 73.0%. Reading
+dev's remaining misses showed why: Presidio's spans carry the article ("the United
+Kingdom", "the Court of Appeal") and so never matched a phrase exactly. The article step was
+added from that reading, which makes dev a development set for this change, and its figure
+(53.1%) optimistic. The test split, run once afterwards, is the check:
+
+| Presidio, test split | Direct | Quasi | Precision | Safe touched | Time per judgment |
+|---|---|---|---|---|---|
+| No list | 98.7% (97.4 to 99.6) | 33.7% | 27.9% | 80.7% | 85 ms |
+| Derived list, 0.10.0 (second pass only) | 98.7% (97.4 to 99.6) | 33.2% | 29.5% | 78.9% | 116 ms |
+| Derived list, 0.11.0 (detector spans too) | 98.7% (97.4 to 99.6) | 32.2% | **37.6%** | **51.4%** | 114 ms |
+
+The built-in configuration is unchanged by construction, since no built-in recogniser
+returns a place or an organisation. Presidio with the list still touches more safe spans
+than the built-in recognisers with it (51.4% against 41.7%), because Presidio finds places
+and organisations the list has never heard of, and a span the list cannot account for is
+kept. That is the direction this engine should err in.
+
 #### Scored the way TAB scores itself, and checked against its own script
 
 `boundary/redact/tab.py` reimplements TAB's `evaluation.py` rather than calling it, so the
