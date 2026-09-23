@@ -12,15 +12,20 @@ provider; the library table below is measured. Everything since is additive: led
 across environments and Anthropic Message Batches at half price (`v0.2.0`), the three
 hyperscaler adapters (`v0.2.1`), streaming with time to first token and measured price
 overlays for self-hosted GPU servers (`v0.3.0`), a data class declared on every call
-(`v0.4.0`), and the `boundary.redact` package pulled forward from Part B for project 07
-(`v0.5.0` to `v0.5.8`). Release by release, with the evidence for each: [CHANGELOG.md](CHANGELOG.md).
+(`v0.4.0`), the `boundary.redact` package pulled forward from Part B for project 07
+(`v0.5.0` to `v0.5.8`), and this repository's own redaction measurements: the labelled
+corpus, the Canadian identifier set and rehydration fidelity (`v0.6.0` to `v0.6.4`).
+Release by release, with the evidence for each: [CHANGELOG.md](CHANGELOG.md).
 Part B, the full gateway, is planned for May 2027 in [PLAN.md](PLAN.md).
 
 Four things worth knowing before the tables.
 
-**Two of the three hyperscalers have credentials and are refused by quota, not by code.**
-Microsoft Foundry allocates zero requests a minute for every Anthropic model in every region
-that offers them, while 159 non-Anthropic quotas in the same region are normal. Vertex
+**Foundry and Bedrock answer this library live; Vertex refuses it by quota, not by code.**
+Claude in particular is refused on two of the three. Microsoft Foundry allocates zero requests
+a minute for every Anthropic model in every region that offers them, while 159 non-Anthropic
+quotas in the same region are normal, so the live Foundry calls here go to a GPT deployment
+on the same subscription (below) and the Claude-on-Foundry adapter is covered by goldens
+only. Vertex
 returned 429 on the first request the account ever made, against a bucket that carries no
 limit at all rather than a limit of zero, while the Google-model buckets beside it sit at
 600. Two vendors, the same shape: the platform's own catalogue is provisioned for a new
@@ -38,13 +43,14 @@ on 2026-09-17. Its ledger row reads `region = canadacentral` and `residency = gl
 deployed in Canada, processed anywhere, and it says both. That is the strongest honest
 Canadian claim available on any of the three platforms today.
 
-**The redaction engine has been measured, but not by this repository.** Project 07 ran its
-own corpus against it and found a live leak on the first pass: a space-separated health
-number left in clear on 57 of 210 pages with no refusal. Its re-measurement puts detection
-recall at **96.3% (95.7 to 96.9)**, up from 90.0%. That figure is recall only, on a
-synthetic corpus, so every row of it is an upper bound, and this repository has no precision
-and recall harness of its own yet. The table, both runs and their caveats are in
-[docs/redact.md](docs/redact.md).
+**The redaction engine has been measured twice, by two projects on two corpora.** Project
+07 ran its own corpus against it first and found a live leak on the first pass: a
+space-separated health number left in clear on 57 of 210 pages with no refusal. Its
+re-measurement puts detection recall at **96.3% (95.7 to 96.9)**, up from 90.0%. Since
+`v0.6.0` this repository has its own harness as well, with precision beside recall and an
+interval on every row (the redaction table below). Both corpora are synthetic, so every
+recall figure is an upper bound, and neither is a public corpus yet. Both runs and their
+caveats are in [docs/redact.md](docs/redact.md).
 
 **A measured number is evidence about the inputs somebody thought to measure.** Probing the
 redaction pass with names that corpus does not contain, accented, `Mac` and `Mc` surnames, a
@@ -136,9 +142,10 @@ anything. The fifteenth is zero deliberately, and [docs/redact.md](docs/redact.m
   would be selling the assurance this one refuses to fake.
 - It does not redact images or audio. Text only; non-text content is refused for anything
   but the public class.
-- Redaction is not perfect. Part B's table will say by how much per entity type, measured
-  here; until then the only numbers are project 07's, on its own corpus, and they are
-  recall without precision. See [docs/redact.md](docs/redact.md).
+- Redaction is not perfect. The redaction table above says by how much, per entity type in
+  [docs/redact.md](docs/redact.md), but on corpora generated here and in project 07. No
+  public corpus has been run yet, and a generated corpus only contains the shapes somebody
+  thought to generate.
 
 ## Where the data went
 
