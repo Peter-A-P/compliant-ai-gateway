@@ -221,6 +221,9 @@ class BoundaryConfig(_Strict):
     ledger: LedgerConfig = Field(default_factory=LedgerConfig)
     telemetry: TelemetryConfig = Field(default_factory=TelemetryConfig)
     cache: CacheConfig = Field(default_factory=CacheConfig)
+    # Optional (0.12): a data policy file (boundary.enforce). Absent, nothing is enforced and
+    # the gateway behaves exactly as it did before 0.12.
+    policy: Path | None = None
 
     @model_validator(mode="after")
     def _consistent(self) -> BoundaryConfig:
@@ -379,6 +382,7 @@ def load_config(path: str | Path) -> BoundaryConfig:
                 else None
             ),
             "caps": _resolve(base, cfg.caps),
+            "policy": _resolve(base, cfg.policy) if cfg.policy is not None else None,
             "ledger": cfg.ledger.model_copy(update={"path": _resolve(base, cfg.ledger.path)}),
             "cache": cfg.cache.model_copy(update={"path": _resolve(base, cfg.cache.path)}),
         }

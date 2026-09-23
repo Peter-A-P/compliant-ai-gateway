@@ -13,9 +13,12 @@ across environments and Anthropic Message Batches at half price (`v0.2.0`), the 
 hyperscaler adapters (`v0.2.1`), streaming with time to first token and measured price
 overlays for self-hosted GPU servers (`v0.3.0`), a data class declared on every call
 (`v0.4.0`), the `boundary.redact` package pulled forward from Part B for project 07
-(`v0.5.0` to `v0.5.8`), and this repository's own redaction measurements: the labelled
-corpus, the Canadian identifier set and rehydration fidelity (`v0.6.0` to `v0.6.4`).
-Release by release, with the evidence for each: [CHANGELOG.md](CHANGELOG.md).
+(`v0.5.0` to `v0.5.8`), this repository's own redaction measurements: the labelled corpus,
+the Canadian identifier set and rehydration fidelity (`v0.6.0` to `v0.6.4`), a hash-chained
+audit log over the ledger (`v0.7.0`), redaction measured on real court judgments and the
+fixes that measurement led to (`v0.8.0` to `v0.11.0`), and opt-in enforcement of the data
+policy (`v0.12.0`). The last four are pieces of Part B pulled forward because none of them
+needed the proxy. Release by release, with the evidence for each: [CHANGELOG.md](CHANGELOG.md).
 Part B, the full gateway, is planned for May 2027 in [PLAN.md](PLAN.md).
 
 Four things worth knowing before the tables.
@@ -180,6 +183,26 @@ disagree with it, and no hash chain can do better. That window is one anchor int
 is why Part B anchors daily in this repository. The per-kind table, and the one deletion the
 chain cannot tell from a row not yet sealed, are in [docs/audit.md](docs/audit.md).
 
+**Data policy (`boundary.enforce`, pulled forward from Part B)**
+
+| Residency violations on the adversarial suite | False refusals | Refusals audited on the ledger |
+|---|---|---|
+<!-- policy:start -->
+| 0 of 550 forbidden cases sent, 0.0% (0.0% to 0.7%) | 0 of 100 allowed cases refused | 209 of 209 refusals on the ledger |
+<!-- policy:end -->
+
+Filled by `boundary policy eval --write-readme`: every provider entry and alias in this
+configuration, the four declared classes, no declaration at all and five malformed ones,
+through all five entry points (`chat` in both modes, `chat_stream`, `batch_submit`, `raw`),
+driven through a real gateway against an in-process upstream that counts what reaches it.
+The expected answer comes from an oracle that reads [config/policy.yaml](config/policy.yaml)
+as plain data and shares no code with the engine. **The policy is the Canadian worked
+example, and it is written to show the refusal**: personal data may go only where single-
+region processing in Canada can be declared, no hosted vendor here can declare it, and so the
+only provider personal data may reach is the local model. What it enforces is the operator's
+declaration, not a vendor's conduct, and the command says so. Detail in
+[docs/policy.md](docs/policy.md).
+
 **Gateway (Part B)**
 
 | Layer | Load (rps) | Overhead p50 / p95 / p99 ms (95% CI) |
@@ -192,10 +215,11 @@ chain cannot tell from a row not yet sealed, are in [docs/audit.md](docs/audit.m
 
 ## What this does not do
 
-- It does not classify data. The caller declares a data class on every request; Part A
-  records that declaration on the row and the span, and Part B will enforce the policy for
-  it. Nothing enforces it today. A gateway that guessed classifications would be making a
-  compliance decision nobody reviewed.
+- It does not classify data. The caller declares a data class on every request, and since
+  `v0.12.0` a gateway given a data policy refuses a call whose class its provider's declared
+  residency does not fit (below). It never infers a class from content: a gateway that
+  guessed classifications would be making a compliance decision nobody reviewed. Enforcement
+  is opt-in until Part B's proxy, where an absent class becomes `personal` at the door.
 - It does not run in more than one region. Residency here means controlling where requests
   are allowed to go, not where the proxy runs.
 - **It cannot verify residency, and no tool can.** It records what the operator declared and

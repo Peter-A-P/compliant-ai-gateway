@@ -5,13 +5,14 @@ Public interface (frozen 2026-09-08, see docs/interface.md):
     errors below.
 """
 
-__version__ = "0.11.0"
+__version__ = "0.12.0"
 
 from boundary.errors import (
     BatchNotReady,
     BoundaryError,
     ConfigError,
     PassthroughViolation,
+    PolicyRefused,
     ProviderError,
     SpendCapExceeded,
     UnknownAlias,
@@ -34,6 +35,7 @@ __all__ = [
     "Gateway",
     "Mode",
     "PassthroughViolation",
+    "PolicyRefused",
     "ProviderError",
     "RawResponse",
     "SpendCapExceeded",

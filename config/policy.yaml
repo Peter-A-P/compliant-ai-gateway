@@ -1,0 +1,40 @@
+# The data policy (boundary.enforce, 0.12): which provider a call may reach, by the class of
+# data its caller declared. Opt-in: boundary.yaml does not name this file, so nothing is
+# enforced until a gateway is given it (`policy: policy.yaml` in boundary.yaml, or
+# Gateway(..., policy=load_policy(path))). PLAN.md B2.2.
+#
+# This is the Canadian worked example, and it is written to show the refusal rather than to
+# design around it. Personal data may go only where the operator can declare single-region
+# processing in Canada. No hosted vendor in this configuration can: Bedrock in ca-central-1
+# is `geo` (Canada or the United States, unspecified), the Canada Central Foundry deployment
+# is `global`, and Vertex has no Canadian region for Claude. So for personal data the
+# compliant set is the local model server and nothing else, which is the finding
+# docs/hyperscaler-setup.md records, enforced rather than described.
+#
+# Residency is the operator's declaration on each provider entry, never an observation: no
+# vendor reports where a request was processed.
+version: 1
+
+# What a call that declared nothing is treated as. B2.2: absent means personal, fail closed.
+undeclared: personal
+
+classes:
+  # Published or publishable material. Anywhere, and the development cache may hold it.
+  public:
+    cache: true
+
+  # Internal but not personal: drafts, code, policy text. Any declared residency, so a
+  # provider entry that declares none is still refused, because null is no claim.
+  internal:
+    max_residency: global
+    cache: true
+
+  # Anything about an identifiable person. Single-region processing in a Canadian region.
+  personal:
+    max_residency: single-region
+    regions: [localhost, ca-central-1, canadacentral, canadaeast, northamerica-northeast1, northamerica-northeast2]
+
+  # Health, criminal, financial and the like. The local model only.
+  sensitive:
+    max_residency: single-region
+    regions: [localhost]

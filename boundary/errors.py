@@ -137,3 +137,19 @@ class ProviderError(BoundaryError):
         sent this project looking at the retry loop, which was working correctly.
         """
         return self._message()
+
+
+class PolicyRefused(BoundaryError):
+    """The data policy forbids this class of data from reaching this provider (0.12).
+
+    Nothing was sent, and a ledger row was written with `error_type = 'policy_refused'`, so
+    an attempted violation is on the record rather than only in the caller's exception log.
+    `ledger_id` is that row. PLAN.md B2.2: violations are refused with a reason and audited.
+    """
+
+    def __init__(self, data_class: str, provider: str, reason: str, ledger_id: int) -> None:
+        self.data_class = data_class
+        self.provider = provider
+        self.reason = reason
+        self.ledger_id = ledger_id
+        super().__init__(f"refused by the data policy: {reason} (ledger row {ledger_id})")

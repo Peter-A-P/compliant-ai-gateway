@@ -43,12 +43,14 @@ from boundary.config import (
     load_config,
 )
 from boundary.credentials import GoogleADCToken
+from boundary.enforce import DataPolicy, decide, load_policy
 from boundary.env import find_dotenv, load_dotenv
 from boundary.errors import (
     BatchNotReady,
     BoundaryError,
     ConfigError,
     PassthroughViolation,
+    PolicyRefused,
     ProviderError,
     SpendCapExceeded,
     UnknownPrice,
@@ -126,6 +128,9 @@ class _Call:
     # audited back to the measurement that produced it and not to the vendor list.
     prices: PriceList | None = None
     cached: HttpResult | None = None
+    # Whether the data policy lets the development cache store this call (0.12). True when
+    # no policy is configured, which is the behaviour before 0.12.
+    cache_ok: bool = True
     error_detail: str = ""
     # Streaming (0.3). A streamed call parses events as they arrive rather than a body after
     # it has, so the parser rides on the call, as does the moment its first token came.
@@ -155,6 +160,10 @@ def _residency(pc: ProviderConfig) -> str | None:
     return pc.residency.value if pc.residency is not None else None
 
 
+# The error_type a policy refusal is written with (0.12). A row carrying it was never sent.
+POLICY_REFUSED = "policy_refused"
+
+
 class Gateway:
     def __init__(
         self,
@@ -171,8 +180,14 @@ class Gateway:
         env: str | None = None,
         sleep: Callable[[float], None] = time.sleep,
         asleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+        policy: DataPolicy | None = None,
     ) -> None:
         self.config = config
+        # The data policy (0.12): given here, or named by the configuration, or none. None
+        # enforces nothing, which is what every gateway did before 0.12.
+        self.policy: DataPolicy | None = policy
+        if self.policy is None and config.policy is not None:
+            self.policy = load_policy(config.policy)
         self.project = project
         self.strict_cost = strict_cost
         self.caps = caps or load_caps(config.caps)
@@ -339,6 +354,17 @@ class Gateway:
         price exists for the model it names."""
         declared = data_class_value(data_class)
         pc = self._provider(provider)
+        self._enforce(
+            declared,
+            provider=provider,
+            pc=pc,
+            region=pc.region,
+            purpose=purpose,
+            run_id=run_id,
+            mode=mode,
+            model_requested=f"{provider}/raw:{path}",
+            alias=None,
+        )
         adapter = self._adapter(pc)
         prices = self._prices_for(pc)
         if mode is Mode.PASSTHROUGH and self.raw_store is None:
@@ -456,6 +482,21 @@ class Gateway:
                 f"endpoint; got {', '.join(providers)}"
             )
         provider, pc = refs[0].provider, refs[0].provider_config
+        # One class covers the batch, so one refusal covers it too: every request is written
+        # as refused, and nothing is submitted.
+        for ref in refs:
+            self._enforce(
+                declared,
+                provider=ref.provider,
+                pc=ref.provider_config,
+                region=ref.region,
+                purpose=purpose,
+                run_id=run_id,
+                mode=Mode.STANDARD,
+                model_requested=ref.explicit,
+                alias=ref.alias,
+                batch=refs,
+            )
         batch_adapter = self._batch_adapter(provider, pc)
         adapter = self._adapter(pc)
         api_key = self._api_key(provider, pc)
@@ -1009,6 +1050,17 @@ class Gateway:
             )
         ref = resolve(request.model, self.config, mode)
         pc = ref.provider_config
+        cache_ok = self._enforce(
+            declared,
+            provider=ref.provider,
+            pc=pc,
+            region=ref.region,
+            purpose=purpose,
+            run_id=run_id,
+            mode=mode,
+            model_requested=ref.explicit,
+            alias=ref.alias,
+        )
         if mode is Mode.PASSTHROUGH:
             if request.max_tokens is None:
                 raise PassthroughViolation(
@@ -1064,7 +1116,7 @@ class Gateway:
 
         cached: HttpResult | None = None
         # A stream never reads the cache: a cached answer has no first token to time.
-        if mode is Mode.STANDARD and self.cache is not None and not stream:
+        if mode is Mode.STANDARD and self.cache is not None and not stream and cache_ok:
             cached = self.cache.get(built)
         return _Call(
             request=effective,
@@ -1078,7 +1130,61 @@ class Gateway:
             prices=prices,
             cached=cached,
             streamed=stream,
+            cache_ok=cache_ok,
         )
+
+    def _enforce(
+        self,
+        declared: str | None,
+        *,
+        provider: str,
+        pc: ProviderConfig,
+        region: str | None,
+        purpose: str,
+        run_id: str | None,
+        mode: Mode,
+        model_requested: str,
+        alias: str | None,
+        batch: Sequence[ModelRef] | None = None,
+    ) -> bool:
+        """Apply the data policy (0.12). Returns whether the cache may hold the call.
+
+        With no policy, allows everything and the cache as before. A refusal writes one
+        ledger row per request, completed at once with `error_type = 'policy_refused'` and a
+        cost of zero, and raises `PolicyRefused` naming the first row. Nothing is sent, no
+        key is read and no body is built, because all of that happens after this returns.
+        """
+        if self.policy is None:
+            return True
+        decision = decide(
+            self.policy, declared, provider=provider, provider_config=pc, region=region
+        )
+        if decision.allowed:
+            return decision.cache
+        targets = list(batch) if batch is not None else [None]
+        ids: list[int] = []
+        for ref in targets:
+            row = LedgerRow(
+                ts_utc=utc_now(),
+                boundary_version=__version__,
+                project=self.project,
+                purpose=purpose,
+                mode=mode.value,
+                provider=provider,
+                model_requested=ref.explicit if ref is not None else model_requested,
+                run_id=run_id,
+                alias=ref.alias if ref is not None else alias,
+                region=ref.region if ref is not None else region,
+                residency=_residency(pc),
+                cost_usd=0.0,
+                costed=True,
+                env=self.env,
+                data_class=declared,
+            )
+            ids.append(self.ledger.begin(row))
+            row.error_type = POLICY_REFUSED
+            self.ledger.complete(row)
+        raise PolicyRefused(decision.data_class, provider, decision.reason, ids[0])
 
     def _check_caps(self, run_id: str | None, *, estimate: float) -> None:
         month = utc_now()[:7]
@@ -1341,6 +1447,7 @@ class Gateway:
             and call.mode is Mode.STANDARD
             and result is not None
             and not call.streamed
+            and call.cache_ok
         ):
             self.cache.put(call.built, result)
 

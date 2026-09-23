@@ -5,6 +5,33 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.12.0 (2026-09-23)
+
+**The data policy: a personal-data call to a provider that could process it anywhere is
+refused.** Since 0.4 every call has declared its class and since 0.2.1 every row its
+provider's residency; nothing acted on either. PLAN.md B2.2, the library half, pulled
+forward. docs/policy.md.
+
+- **Opt-in**, by `policy:` in `boundary.yaml` or `Gateway(..., policy=)`. The checked-in
+  configuration names none, so 02, 03, the smoke workflow and pass-through are unchanged.
+
+- **Every rule fails closed**: no class is judged as `personal`; a class the policy does not
+  list is refused; a provider that declares no residency fails any limit, even `global`; a
+  region limit refuses an unset region.
+
+- **A refusal sends nothing, reads no key and builds no body**, and writes a ledger row with
+  `error_type = 'policy_refused'`, one per request for a batch. `PolicyRefused` carries the
+  reason and the row. Held on every entry point: `chat` in both modes, streaming,
+  `batch_submit` and `raw`. A class the policy keeps out of the cache is never cached.
+
+- **The Canadian worked example** (`config/policy.yaml`) leaves personal data exactly one
+  provider on this configuration, the local model, and a test asserts it.
+
+- **Measured, `boundary policy eval`**: 650 cases over every provider, alias, class and entry
+  point, 550 forbidden, **0 sent** (0.0 to 0.7), 0 false refusals of 100 allowed, every
+  refusal on the ledger. The expected answers come from an oracle that shares no code with
+  the engine.
+
 ## 0.11.0 (2026-09-23)
 
 **A caller's allow list now reaches a detector's places and organisations.** 0.10.0 found

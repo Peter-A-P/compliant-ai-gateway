@@ -416,6 +416,7 @@ from October the ledger-against-invoice difference is recorded there too (sectio
 | v0.9.0 | 2026-09-23 | The second pass masks initials and surname particles, a fix for the leak TAB's first run found, developed on its train split: direct identifiers on test 93.3% to 97.1%, people found without a model 37.5% to 92.7%. A behaviour change for 07 when it next moves its pin |
 | v0.10.0 | 2026-09-23 | A jurisdiction's allow list, derived from TAB's train split and chosen on dev: safe spans touched on test 78.4% to 41.7%, precision 32.2% to 45.4%, direct identifiers unmoved. It does not reach a detector's own spans; that is the next change |
 | v0.11.0 | 2026-09-23 | A caller's allow list releases a detector's own place and organisation spans, never a person: with Presidio on TAB's test split, safe spans touched 78.9% to 51.4% and precision 29.5% to 37.6%, direct identifiers unmoved. A behaviour change for 07 when it moves its pin |
+| v0.12.0 | 2026-09-23 | The data policy, opt-in: `Gateway(policy=)`, `PolicyRefused`, `boundary.enforce`, `boundary policy eval`. 0 of 550 forbidden cases sent on the adversarial suite. Nothing downstream changes unless it opts in |
 | v1.0.0 | May 23 2027 | Everything in Part B; `boundary.redact` for 07; the proxy for 13 and 14 |
 
 03 pins `boundary>=0.1,<0.3` for Part A and moves to `>=1.0` when its Part B is built
@@ -597,6 +598,17 @@ The proxy substitutes `personal` for an absent header and then passes it to the 
 a declaration, so the row still says what the boundary decided, and a library caller that
 declared nothing is visible as such to `ledger report --data-class undeclared` rather than
 hidden under a default.
+
+**Amended 2026-09-23 (0.12.0): the enforcement engine is built**, as the library half,
+opt-in, because turning it on for the pinned downstream runs would change what they measure.
+`boundary.enforce` applies a policy file per class (widest residency, regions, providers,
+cache), every rule failing closed; a refusal sends nothing and writes a `policy_refused`
+ledger row. The checked-in policy is the Canadian worked example, and on this configuration
+it leaves personal data exactly one provider, the local model, which is the empty-set
+refusal this section asked to be shown. `boundary policy eval` is the adversarial suite: 0
+of 550 forbidden cases sent, 0 false refusals. What stays in Part B is the `X-Data-Class`
+header and the proxy turning the policy on for every request; the redaction requirement is
+also the proxy's, because the library does not read content.
 
 ### B2.3 Reversible redaction
 
@@ -924,7 +936,7 @@ the ledger and the spans as its production signal.
 
 - [ ] Everything in Part A's definition of done
 - [ ] OpenAI-compatible: a real client library works by changing only the base URL and key, streaming included
-- [ ] Data classification header enforced, absent means `personal`; residency violations zero on the adversarial suite, with correct refusals
+- [ ] Data classification header enforced, absent means `personal`; residency violations zero on the adversarial suite, with correct refusals. **Engine and adversarial suite done 2026-09-23 (0.12.0)**: 0 of 550 forbidden cases sent, 0 false refusals, every refusal audited, absent judged as `personal`. The header itself is the proxy's
 - [ ] Reversible redaction round-trips under property tests; rehydration fidelity and mutation rate reported. **Property tests and fidelity done 2026-09-21 (0.6.4)**: the round trip is a property test over generated documents, and `boundary redact eval --rehydration` reports resolution per mutation form with intervals, 14 of 15 at 100% and 0 fabrications. The **mutation rate** is what remains, and it needs the proxy: which of those forms a model actually produces, sampled from real answers
 - [x] Redaction precision and recall per entity type on public corpora and the Canadian set, with CIs. **Done 2026-09-23 (0.8.0)**; detail on the annotated line below
 - [ ] Quality effect of redaction measured through the 03 gate, two-sided, with interval

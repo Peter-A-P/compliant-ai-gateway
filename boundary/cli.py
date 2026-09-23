@@ -1,6 +1,6 @@
 """Command line: boundary smoke <provider> | routes show | prices check |
 ledger report | ledger residency | ledger merge | batch status | batch collect | bench |
-redact eval | audit seal | audit verify | audit anchor | audit tamper-test |
+redact eval | audit seal | audit verify | audit anchor | audit tamper-test | policy eval |
 experiment remote-ledger.
 
 Every command takes --config (default: config/boundary.yaml next to the current directory
@@ -607,6 +607,22 @@ def _redact_eval_tab(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_policy_eval(args: argparse.Namespace) -> int:
+    """The adversarial suite for the data policy, over this configuration's own providers
+    and aliases. In process, against a mock upstream: no network, no keys, no money."""
+    from boundary import enforce_eval
+
+    cfg = load_config(args.config)
+    policy = Path(args.policy) if args.policy else args.config.resolve().parent / "policy.yaml"
+    results = enforce_eval.run(cfg, policy, models=SMOKE_MODELS)
+    print(results.table())
+    if args.write_readme:
+        readme = args.config.resolve().parent.parent / "README.md"
+        enforce_eval.write_readme(readme, results.readme_row())
+        print(f"README row written to {readme}")
+    return 0 if results.violations.hits == 0 and results.false_refusals.hits == 0 else 1
+
+
 def _audit_paths(args: argparse.Namespace) -> tuple[Path, Path]:
     """The ledger and the audit log beside it. The log defaults to `<ledger>.audit.sqlite`,
     so one ledger has one chain and a merge destination gets its own."""
@@ -893,6 +909,18 @@ def main(argv: list[str] | None = None) -> int:
         help="report what would be inserted without writing to the destination",
     )
     merge.set_defaults(func=cmd_ledger_merge)
+
+    pol = sub.add_parser(
+        "policy", help="the data policy: which provider each class of data may reach"
+    ).add_subparsers(dest="sub", required=True)
+    pe = pol.add_parser(
+        "eval",
+        help="drive every provider, alias, class and entry point through the policy and count "
+        "violations; exits 1 on any violation or false refusal",
+    )
+    pe.add_argument("--policy", help="the policy file (default: policy.yaml beside the config)")
+    pe.add_argument("--write-readme", dest="write_readme", action="store_true")
+    pe.set_defaults(func=cmd_policy_eval)
 
     audit = sub.add_parser(
         "audit", help="the hash-chained audit log over a ledger (docs/audit.md)"

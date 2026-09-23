@@ -38,6 +38,7 @@ listed here; nothing any earlier version offered has changed shape.
 | 0.9.0 | 2026-09-23 | No new names. The policy's second pass masks initials and surname particles with the name they belong to (`names.PARTICLES`, `names.COMMON_INITIALISMS`), a change in what `redact` and `outbound` mask rather than in any signature; `tab.fetch` accepts `train` and `dev` |
 | 0.10.0 | 2026-09-23 | `tab.derive_allow`, `tab.read_allow`, `allow=` on `tab.run`, and `boundary redact eval --tab-allow`: a jurisdiction's allow list derived from labelled data and measured. No change to the policy |
 | 0.11.0 | 2026-09-23 | `Policy.released` and `RELEASABLE`: a caller's `allow` terms also release a detector's LOCATION or ORGANISATION span that is one of them. A caller who passes no `allow` sees no change |
+| 0.12.0 | 2026-09-23 | The data policy (section 14): `Gateway(..., policy=)`, the `policy` configuration key, `PolicyRefused`, `boundary.enforce` and `boundary policy eval`. Opt-in: a gateway with no policy behaves as before |
 
 ## 1. Importing
 
@@ -201,6 +202,7 @@ All subclass `BoundaryError`.
 | `SpendCapExceeded` | The pre-call estimate would pass a cap. **No request was made** | `scope`, `cap_usd`, `spent_usd`, `estimate_usd` | 0.1 |
 | `PassthroughViolation` | Alias, cache, or missing `max_tokens` in pass-through mode; pass-through without a raw store; a streamed call asked for in pass-through mode (0.3) | message | 0.1 |
 | `BatchNotReady` | Results were asked for before the vendor finished the batch. Not a failure: "not yet" is the ordinary answer | `batch_id`, `processing_status`, `counts` | 0.2 |
+| `PolicyRefused` | The data policy forbids this class of data from reaching this provider (0.12). **No request was made**, and a ledger row with `error_type = 'policy_refused'` was written | `data_class`, `provider`, `reason`, `ledger_id` | 0.12 |
 | `ProviderError` | Non-2xx after retries (standard) or transport failure. In pass-through the same information is returned as a `ChatResponse` instead | `provider`, `status`, `body`, `retries`, `headers` | 0.1 |
 
 ## 7. The ledger row (schema v7)
@@ -303,6 +305,7 @@ every row as a failure at no cost rather than leaving it in flight at an estimat
 | `boundary audit anchor --anchors FILE` | 0.7 | Appends the current head to an anchor file, one canonical JSON line; never rewrites the lines before it. Refuses an empty log |
 | `boundary audit verify` | 0.7 | Recomputes the chain, checks every anchor in `--anchors`, and checks the ledger against the latest record for each call unless `--no-ledger`. Exits 1 on any break, and reports every break rather than the first |
 | `boundary audit tamper-test` | 0.7 | The README's audit row: twelve kinds of corruption before and after the last anchor, with a control. In memory, from a seed |
+| `boundary policy eval` | 0.12 | The adversarial suite for the data policy over this configuration's providers and aliases; exits 1 on any violation or false refusal. `--policy` names a file other than `policy.yaml` beside the configuration |
 | `boundary experiment remote-ledger` | 0.2 | The Rule C measurement behind `docs/rejected.md` |
 | `boundary experiment token-estimates <run-dir>` | 0.2.1 | The second Rule C measurement: local token estimates against returned usage, over a drift run's raw store and ledgers. Reads only; no network |
 
@@ -368,6 +371,23 @@ from boundary.audit import AuditLog, Anchor, verify, read_anchors, append_anchor
 | An anchor | `Anchor(seq, head, ts_utc)` with `.to_line()` and `Anchor.from_line(line)`; `read_anchors(path)`, `append_anchor(path, anchor)` | 0.7 | One canonical JSON line per anchor. A missing file is no anchors |
 | Verify | `verify(records, anchors=(), *, ledger_rows=None) -> Verification` | 0.7 | `Verification.ok`, `.breaks: tuple[Break, ...]`, `.unanchored`, `.unsealed`, `.resealable`, `.summary()`. `Break(kind, seq, detail)`; the kinds are `BREAK_KINDS` |
 | Constants | `GENESIS`, `SEALED`, `BREAK_KINDS` | 0.7 | `GENESIS` is 64 zeros, the hash the first record links to |
+
+## 14. The data policy (0.12)
+
+Opt-in enforcement of which provider a call may reach, by its declared class. The full page
+is `docs/policy.md`.
+
+```python
+from boundary import PolicyRefused
+from boundary.enforce import DataPolicy, ClassRule, load_policy, decide
+```
+
+| Item | Signature | Since | Notes |
+|---|---|---|---|
+| Turn it on | `Gateway(..., policy=load_policy(path))`, or `policy: policy.yaml` in `boundary.yaml` | 0.12 | Absent, nothing is enforced |
+| The policy | `DataPolicy(version=1, undeclared=DataClass.PERSONAL, classes={DataClass: ClassRule})`, `ClassRule(max_residency=None, regions=None, providers=None, cache=False)` | 0.12 | Frozen. `load_policy(path)` raises `ConfigError` on a malformed file |
+| Decide | `decide(policy, data_class, *, provider, provider_config, region) -> Decision` | 0.12 | `Decision(allowed, data_class, reason, cache)`. Pure; the gateway calls it straight after resolving the model |
+| Refusal | `PolicyRefused` | 0.12 | Section 6. The row's `data_class` is what the caller declared; the error's is what the policy judged it as |
 
 ## 11. Choices the plan left open
 

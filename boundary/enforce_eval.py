@@ -1,0 +1,311 @@
+"""The adversarial suite for the data policy: every way a call could reach a provider.
+
+PLAN.md B10 asks for "residency violations zero on the adversarial suite, with correct
+refusals". This builds the suite from the configuration itself, so it covers every provider
+entry and every alias the operator actually has, and drives each case through a real
+`Gateway` against an in-process upstream that counts what reaches it:
+
+- **Targets**: every provider entry by its explicit `provider/model` form, and every alias,
+  which is how a call arrives at a provider it did not name.
+- **Classes**: the four declared classes, no declaration at all, and five malformed ones
+  (`PERSONAL`, ` personal`, `Personal`, `secret`, the empty string).
+- **Entry points**: `chat` in standard and pass-through mode, `chat_stream`, `batch_submit`
+  and `raw`, because a policy checked on one door and not another is not a policy.
+
+The expected answer comes from an **oracle written separately** from `boundary.enforce`: it
+reads the policy file as plain YAML and applies the rules with set arithmetic, sharing no
+code with the pydantic model or `decide`. It is written by the same hand, which is the
+honest limit of an independent check inside one repository.
+
+A **violation** is a case the oracle refuses that put even one request on the wire. A
+**false refusal** is a case the oracle allows that the policy refused. An **unaudited
+refusal** is a policy refusal with no `policy_refused` ledger row for it.
+"""
+
+from __future__ import annotations
+
+import datetime as dt
+import os
+import tempfile
+from collections import Counter
+from collections.abc import Iterator
+from contextlib import contextmanager
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+from boundary._mock import MockUpstream, open_caps
+from boundary.config import BoundaryConfig
+from boundary.enforce import load_policy
+from boundary.errors import BoundaryError, PolicyRefused
+from boundary.gateway import POLICY_REFUSED, Gateway
+from boundary.redact.evaluate import Rate
+from boundary.transport import Transport
+from boundary.types import ChatRequest, DataClass, Mode
+
+MALFORMED = ("PERSONAL", " personal", "Personal", "secret", "")
+CLASSES: tuple[str | None, ...] = (None, *(c.value for c in DataClass), *MALFORMED)
+ENTRY_POINTS = ("chat", "chat-passthrough", "chat_stream", "batch_submit", "raw")
+_RANK = {"single-region": 0, "geo": 1, "global": 2}
+
+
+def oracle(
+    raw_policy: dict[str, Any],
+    data_class: str | None,
+    residency: str | None,
+    region: str | None,
+    provider: str,
+) -> bool:
+    """Whether the policy file, read as plain data, allows this call."""
+    if data_class is not None and data_class not in {c.value for c in DataClass}:
+        return False
+    effective = data_class if data_class is not None else raw_policy.get("undeclared", "personal")
+    rule = (raw_policy.get("classes") or {}).get(effective)
+    if rule is None:
+        return False
+    limit = rule.get("max_residency")
+    if limit is not None and (residency not in _RANK or _RANK[residency] > _RANK[limit]):
+        return False
+    regions = rule.get("regions")
+    if regions is not None and (region or "").casefold() not in {r.casefold() for r in regions}:
+        return False
+    providers = rule.get("providers")
+    return not (providers is not None and provider not in providers)
+
+
+@dataclass(frozen=True, slots=True)
+class Target:
+    model: str  # what the caller passes: provider/model or an alias
+    provider: str
+    region: str | None
+    residency: str | None
+    alias: bool
+
+
+@dataclass
+class Outcome:
+    target: Target
+    data_class: str | None
+    entry: str
+    expected_allowed: bool
+    sent: bool
+    refused_by_policy: bool
+    refused_otherwise: str  # the error type when something else stopped the call
+    audited_rows: int
+
+
+@dataclass
+class PolicyEvalResults:
+    boundary_version: str
+    ran_utc: str
+    policy: str
+    outcomes: list[Outcome] = field(default_factory=list)
+
+    @property
+    def forbidden(self) -> list[Outcome]:
+        return [o for o in self.outcomes if not o.expected_allowed]
+
+    @property
+    def violations(self) -> Rate:
+        f = self.forbidden
+        return Rate(sum(1 for o in f if o.sent), len(f))
+
+    @property
+    def policy_refusals(self) -> list[Outcome]:
+        return [o for o in self.outcomes if o.refused_by_policy]
+
+    @property
+    def false_refusals(self) -> Rate:
+        allowed = [o for o in self.outcomes if o.expected_allowed]
+        return Rate(sum(1 for o in allowed if o.refused_by_policy), len(allowed))
+
+    @property
+    def audited(self) -> Rate:
+        r = self.policy_refusals
+        return Rate(sum(1 for o in r if o.audited_rows > 0), len(r))
+
+    def table(self) -> str:
+        f = self.forbidden
+        stopped = Counter(
+            "policy" if o.refused_by_policy else (o.refused_otherwise or "SENT") for o in f
+        )
+        by_entry = Counter(o.entry for o in f if o.refused_by_policy)
+        lines = [
+            f"boundary {self.boundary_version}, policy {self.policy}: {len(self.outcomes)} "
+            f"cases, {len(f)} of which the policy forbids",
+            "",
+            f"violations (forbidden and sent)   {self.violations}   "
+            f"({self.violations.hits} of {self.violations.total})",
+            f"false refusals (allowed, refused) {self.false_refusals}",
+            f"policy refusals audited           {self.audited}",
+            "",
+            "forbidden cases, by what stopped them: "
+            + ", ".join(f"{k} {v}" for k, v in stopped.most_common()),
+            "policy refusals by entry point: "
+            + ", ".join(f"{k} {v}" for k, v in sorted(by_entry.items())),
+            "",
+            "Residency here is the operator's declaration. A clean run means every call went "
+            "to an endpoint whose declared limit fits its class, not that a vendor kept to it.",
+        ]
+        return "\n".join(lines)
+
+    def readme_row(self) -> str:
+        return (
+            f"| {self.violations.hits} of {self.violations.total} forbidden cases sent, "
+            f"{self.violations} | {self.false_refusals.hits} of {self.false_refusals.total} "
+            f"allowed cases refused | {self.audited.hits} of {self.audited.total} refusals on "
+            f"the ledger |"
+        )
+
+
+def targets(config: BoundaryConfig, models: dict[str, str]) -> list[Target]:
+    out: list[Target] = []
+    for name, pc in sorted(config.providers.items()):
+        model = models.get(name, f"{name}/policy-eval-model")
+        residency = pc.residency.value if pc.residency else None
+        out.append(Target(model, name, pc.region, residency, alias=False))
+    for alias, route in sorted(config.routes.items()):
+        pc = config.providers[route.provider]
+        residency = pc.residency.value if pc.residency else None
+        out.append(Target(alias, route.provider, route.region or pc.region, residency, True))
+    return out
+
+
+@contextmanager
+def _dummy_credentials(config: BoundaryConfig) -> Iterator[None]:
+    """Every key the configuration names, set to a dummy for the length of the run, so that
+    a case is stopped by the policy or reaches the mock, never by a missing key."""
+    names = {pc.api_key_env for pc in config.providers.values() if pc.api_key_env}
+    names.add("GOOGLE_VERTEX_ACCESS_TOKEN")
+    saved = {n: os.environ.get(n) for n in names}
+    for n in names:
+        os.environ[n] = "policy-eval-dummy"
+    try:
+        yield
+    finally:
+        for n, v in saved.items():
+            if v is None:
+                os.environ.pop(n, None)
+            else:
+                os.environ[n] = v
+
+
+def _call(gw: Gateway, entry: str, target: Target, data_class: str | None) -> None:
+    req = ChatRequest(
+        model=target.model, messages=[{"role": "user", "content": "policy eval"}], max_tokens=8
+    )
+    if entry == "chat":
+        gw.chat(req, purpose="policy-eval", data_class=data_class)
+    elif entry == "chat-passthrough":
+        gw.chat(req, purpose="policy-eval", mode=Mode.PASSTHROUGH, data_class=data_class)
+    elif entry == "chat_stream":
+        gw.chat_stream(req, purpose="policy-eval", data_class=data_class)
+    elif entry == "batch_submit":
+        gw.batch_submit([req, req], purpose="policy-eval", data_class=data_class)
+    elif entry == "raw":
+        gw.raw(
+            target.provider,
+            "POST",
+            "v1/policy-eval",
+            {"x": 1},
+            purpose="policy-eval",
+            data_class=data_class,
+        )
+
+
+def run(config: BoundaryConfig, policy_path: Path, *, models: dict[str, str]) -> PolicyEvalResults:
+    from boundary import __version__
+
+    policy = load_policy(policy_path)
+    raw_policy = yaml.safe_load(policy_path.read_text(encoding="utf-8"))
+    results = PolicyEvalResults(
+        boundary_version=__version__,
+        ran_utc=dt.datetime.now(dt.UTC).isoformat(timespec="seconds"),
+        policy=policy_path.name,
+    )
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp, _dummy_credentials(config):
+        work = Path(tmp)
+        n = 0
+        for target in targets(config, models):
+            for data_class in CLASSES:
+                for entry in ENTRY_POINTS:
+                    n += 1
+                    upstream = MockUpstream()
+                    gw = Gateway(
+                        config,
+                        project="policy-eval",
+                        ledger_path=work / f"{n}.sqlite",
+                        raw_store=work / "raw",
+                        transport=Transport(
+                            config.defaults.timeouts, sync_client=upstream.client()
+                        ),
+                        caps=open_caps("policy-eval"),
+                        env="policy-eval",
+                        sleep=lambda _s: None,
+                        policy=policy,
+                    )
+                    refused, other = False, ""
+                    try:
+                        _call(gw, entry, target, data_class)
+                    except PolicyRefused:
+                        refused = True
+                    except (BoundaryError, ValueError) as e:
+                        other = type(e).__name__
+                    except Exception as e:
+                        # Anything else that stopped a call after it was sent (a mock answer an
+                        # adapter cannot parse) is recorded by name; what counts here is
+                        # whether the upstream saw a request, and the mock says that.
+                        other = type(e).__name__
+                    finally:
+                        rows = [
+                            r for r in gw.ledger.rows() if r.get("error_type") == POLICY_REFUSED
+                        ]
+                        gw.close()
+                    results.outcomes.append(
+                        Outcome(
+                            target=target,
+                            data_class=data_class,
+                            entry=entry,
+                            expected_allowed=oracle(
+                                raw_policy,
+                                data_class,
+                                target.residency,
+                                target.region,
+                                target.provider,
+                            ),
+                            sent=upstream.calls > 0,
+                            refused_by_policy=refused,
+                            refused_otherwise=other,
+                            audited_rows=len(rows),
+                        )
+                    )
+    return results
+
+
+README_START = "<!-- policy:start -->"
+README_END = "<!-- policy:end -->"
+
+
+def write_readme(readme: Path, row: str) -> None:
+    text = readme.read_text(encoding="utf-8")
+    start = text.index(README_START)
+    end = text.index(README_END)
+    readme.write_text(
+        text[: start + len(README_START)] + "\n" + row + "\n" + text[end:], encoding="utf-8"
+    )
+
+
+__all__ = [
+    "CLASSES",
+    "ENTRY_POINTS",
+    "MALFORMED",
+    "Outcome",
+    "PolicyEvalResults",
+    "Target",
+    "oracle",
+    "run",
+    "targets",
+    "write_readme",
+]
