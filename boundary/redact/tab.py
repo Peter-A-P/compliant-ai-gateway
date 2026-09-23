@@ -10,8 +10,9 @@ Linguistics 48(4), 2022, arXiv:2202.00443. Released under the MIT licence
 (https://github.com/NorskRegnesentral/text-anonymization-benchmark); the notice is kept by
 citing it here and in docs/redact.md.
 
-Only the test split is used, and nothing in the engine was changed after seeing it. The
-file is downloaded at a pinned commit, checked against a fixed SHA-256, and kept in `.cache/`,
+The test split is for reporting. Fixes are developed on the train split and checked on dev
+before test is run again (0.9.0, 0.10.0), and every test run is kept beside the ones before
+it in docs/redact.md. Each file is downloaded at a pinned commit, checked against a fixed SHA-256, and kept in `.cache/`,
 which is gitignored: nothing from the corpus is committed, and only aggregate numbers are
 published, never a name from a judgment.
 
@@ -274,14 +275,99 @@ def _median(values: Sequence[float]) -> float:
     return s[len(s) // 2] if s else 0.0
 
 
+# The entity types a derived allow list may draw on. Never PERSON, so no name of anybody can
+# reach the list whatever the annotators did; never MISC, because a cited case such as
+# "Goodwin v. the United Kingdom" is MISC and carries a person's name inside it; and never
+# CODE, DATETIME or QUANTITY, which the second pass does not mask by shape anyway.
+ALLOW_TYPES = frozenset({"ORG", "LOC", "DEM"})
+
+
+def derive_allow(
+    path: Path, *, min_docs: int = 2, max_masked_share: float = 0.1, words: bool = True
+) -> list[str]:
+    """The terms a jurisdiction's allow list would hold, read off labelled data.
+
+    Two kinds, both mechanical so that nobody chose a word after looking at a result, and
+    both meant to be run on the train split only:
+
+    - **Phrases** annotators left in clear: an organisation, place, demonym or other named
+      thing marked NO_MASK in at least `min_docs` judgments, and masked by annotators in no
+      more than `max_masked_share` of its mentions. "United Kingdom" as the respondent
+      state is one; an applicant's home town is not.
+    - **Words** (`words=True`): a capitalised word that appears in at least `min_docs`
+      judgments and never inside any annotated mention at all. That is the
+      domain's own vocabulary, `Article`, `Chamber`, `Registrar`, and the sentence openers
+      the default vocabulary lacks, `However`, `According`.
+
+    The defaults, two judgments and a tenth, were chosen on the dev split by a rule written
+    before the test split was run: the highest precision whose direct recall stays within
+    half a point, and quasi recall within three points, of no list (docs/redact.md).
+
+    Neither PERSON nor MISC is a source, and a word that ever sits inside an annotated
+    mention is excluded, so no name of anybody can reach the list whatever the annotators
+    did. This stands in for what an operator writes for their own jurisdiction.
+    """
+    safe_docs: dict[str, set[str]] = {}
+    safe_n: dict[str, int] = {}
+    masked_n: dict[str, int] = {}
+    word_docs: dict[str, set[str]] = {}
+    tainted: set[str] = set()
+    for raw in json.loads(path.read_text(encoding="utf-8")):
+        text = raw["text"]
+        blocked = bytearray(len(text))
+        for ann in raw["annotations"].values():
+            for m in ann["entity_mentions"]:
+                phrase = " ".join(m["span_text"].split())
+                key = phrase.casefold()
+                if m["identifier_type"] in ("DIRECT", "QUASI"):
+                    masked_n[key] = masked_n.get(key, 0) + 1
+                elif m["entity_type"] in ALLOW_TYPES and any(c.isupper() for c in phrase):
+                    safe_docs.setdefault(phrase, set()).add(raw["doc_id"])
+                    safe_n[key] = safe_n.get(key, 0) + 1
+                # Any annotated mention at all blocks its words from the word list, so a
+                # surname inside a cited case is never mistaken for domain vocabulary.
+                s, e = m["start_offset"], m["end_offset"]
+                blocked[s:e] = b"\x01" * (e - s)
+        if words:
+            for w in _TOKEN.finditer(text):
+                tok = w.group(0)
+                if not (tok[0].isupper() and tok[0].isalpha()):
+                    continue
+                if any(blocked[w.start() : w.end()]):
+                    tainted.add(tok)
+                else:
+                    word_docs.setdefault(tok, set()).add(raw["doc_id"])
+    out = set()
+    for phrase, docs in safe_docs.items():
+        key = phrase.casefold()
+        share = masked_n.get(key, 0) / (masked_n.get(key, 0) + safe_n[key])
+        if len(docs) >= min_docs and share <= max_masked_share:
+            out.add(phrase)
+    for tok, docs in word_docs.items():
+        if len(docs) >= min_docs and tok not in tainted and len(tok) > 1:
+            out.add(tok)
+    return sorted(out)
+
+
+def read_allow(path: Path) -> list[str]:
+    """One term or phrase per line; blank lines and lines starting with # are skipped."""
+    lines = path.read_text(encoding="utf-8").splitlines()
+    return [line.strip() for line in lines if line.strip() and not line.lstrip().startswith("#")]
+
+
 def run(
     docs: Sequence[Document],
     *,
     extra: Sequence[Recogniser] = (),
     detector: str = "built-in recognisers only",
     split: str = "test",
+    allow: Sequence[str] = (),
 ) -> TabResults:
-    """Redact each judgment as one document and score it against every annotator."""
+    """Redact each judgment as one document and score it against every annotator.
+
+    `allow` is passed to the policy as a caller's own terms would be: what a deployment in
+    this jurisdiction adds to the default vocabulary.
+    """
     from boundary import __version__
 
     analyzer = Analyzer(extra=extra)
@@ -291,7 +377,7 @@ def run(
     for doc in docs:
         t0 = time.perf_counter()
         spans = sweep([doc.text], analyzer.analyze_page(doc.text, 1))
-        _, masked_spans = Policy(spans).redact_with_spans(doc.text)
+        _, masked_spans = Policy(spans, allow=allow).redact_with_spans(doc.text)
         ms.append((time.perf_counter() - t0) * 1000)
         masked = _mask_array(len(doc.text), masked_spans)
         chars.add(sum(masked), len(doc.text))
@@ -413,9 +499,11 @@ __all__ = [
     "Document",
     "Entity",
     "TabResults",
+    "derive_allow",
     "fetch",
     "load",
     "mention_masked",
+    "read_allow",
     "run",
     "to_json",
     "write_readme",

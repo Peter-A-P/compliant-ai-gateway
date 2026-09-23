@@ -5,6 +5,29 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.10.0 (2026-09-23)
+
+**A jurisdiction's allow list, measured.** The over-masking TAB exposed comes from a Canadian
+vocabulary meeting British public bodies, and `Policy(allow=...)` was always the remedy.
+This release measures what the remedy is worth.
+
+- **`tab.derive_allow`** reads a list off TAB's train split mechanically: phrases annotators
+  left in clear across judgments, and capitalised words that never sit inside any
+  annotation. No person and no cited case is a source, so no name reaches the list; the
+  first version drew on cited cases and was tightened when its output showed surnames.
+  `tab.read_allow` reads a list from a file, and `boundary redact eval --tab --tab-allow
+  train` (or a file) runs each detector with and without one.
+
+- **Chosen on dev, reported on test once**: 1,013 terms. Safe spans touched 78.4% to
+  **41.7%**, precision 32.2% to **45.4%**, direct identifiers unmoved at 97.1%, quasi
+  identifiers 32.0% to 29.4%. The rule that picked the settings was written before the test
+  split was run, and the whole dev grid is in docs/redact.md.
+
+- **With Presidio the list barely helps** (80.7% to 78.9%): `allow` reaches only the second
+  pass, and a detector's own place and organisation spans are masked regardless. Recorded
+  as the next change rather than made here, because it changes the policy for every
+  consumer.
+
 ## 0.9.0 (2026-09-23)
 
 **Initials and surname particles are masked with the name they belong to.** The first run on

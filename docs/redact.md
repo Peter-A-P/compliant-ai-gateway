@@ -657,6 +657,63 @@ been failing the whole person. The price is about one more safe span in a hundre
 The test split has now been run twice; the second run is reported with the first beside it
 rather than in place of it, and any further change is developed on train again.
 
+#### 0.10.0: a jurisdiction's allow list, derived from train, chosen on dev
+
+The over-masking has one cause, and the policy already has the remedy: `Policy(allow=...)`
+takes the terms a deployment's jurisdiction needs left in clear. What was missing was a list,
+and a way of making one that nobody could accuse of being written after the answer was
+known. `tab.derive_allow` reads it off the **train** split mechanically:
+
+- **Phrases** annotators left in clear: an organisation, place or demonym marked NO_MASK in
+  at least *k* judgments and masked in no more than a share *s* of its mentions.
+- **Words** that appear capitalised in at least *k* judgments and **never inside any
+  annotated mention**: the domain's vocabulary (`Article`, `Chamber`, `Registrar`) and the
+  sentence openers the default vocabulary lacks (`However`, `According`).
+- **Never a person**: PERSON is not a source; MISC is not a source because a cited case such
+  as "Goodwin v. the United Kingdom" is MISC and carries a surname; and a word that ever
+  sits inside an annotation is excluded. The first version of this function drew on MISC and
+  blocked words only inside masked or PERSON mentions; reading its output showed case names
+  and the surnames inside them, and it was tightened before anything was reported.
+
+**The two settings were chosen on dev** by a rule written down before test was run: the
+highest precision whose direct recall stays within half a point of no list and whose quasi
+recall stays within three points. Built-in recognisers, dev split:
+
+| *k* judgments | masked share *s* | Terms | Direct | Quasi | Precision | Safe touched |
+|---|---|---:|---|---|---|---|
+| no list | | 0 | 98.6% | 36.1% | 33.7% | 77.9% |
+| 2 | 0 | 950 | 98.6% | 33.9% | 41.4% | 66.2% |
+| **2** | **0.1** | **1,013** | **98.5%** | **33.6%** | **46.1%** | **42.8%** |
+| 2 | 0.25 | 1,103 | 98.5% | 31.6% | 47.6% | 29.2% |
+| 3 | 0 | 536 | 98.6% | 34.2% | 40.9% | 67.8% |
+| 3 | 0.1 | 599 | 98.5% | 33.8% | 45.4% | 44.3% |
+| 3 | 0.25 | 673 | 98.5% | 31.9% | 46.5% | 32.3% |
+
+A share of a quarter would have cut the over-masking again, and it fails the rule: it
+releases places annotators masked often enough that quasi recall falls four and a half
+points. That is the trade the grid makes visible, and the rule decides it in favour of
+identification over readability.
+
+**Test split, run once with the chosen list:**
+
+| | Direct | Quasi | Precision | Safe touched | Time per judgment |
+|---|---|---|---|---|---|
+| Built-in, no list | 97.1% (94.7 to 98.9) | 32.0% | 32.2% | 78.4% | 5 ms |
+| Built-in, derived list | 97.1% (94.7 to 98.8) | 29.4% | **45.4%** | **41.7%** | 34 ms |
+| Presidio, no list | 98.7% (97.4 to 99.6) | 33.7% | 27.9% | 80.7% | 90 ms |
+| Presidio, derived list | 98.7% (97.4 to 99.6) | 33.2% | 29.5% | 78.9% | 116 ms |
+
+Two findings beside the headline:
+
+- **The list does not reach a detector's own spans.** `allow` excuses terms from the second
+  pass; a span Presidio returns as a LOCATION or an ORGANIZATION becomes a placeholder
+  whatever the list says. So with Presidio the list moves safe spans touched by under two
+  points. Letting `allow` drop impersonal detector spans is the obvious next change; it
+  changes the policy for every consumer, and it will be developed on train like this one.
+- **A thousand phrases cost time.** Each multi-word phrase is its own pattern, and the
+  median judgment went from 5 to 34 ms. Still well inside a request's budget, and one
+  combined pattern is the fix if it ever matters.
+
 #### Scored the way TAB scores itself, and checked against its own script
 
 `boundary/redact/tab.py` reimplements TAB's `evaluation.py` rather than calling it, so the

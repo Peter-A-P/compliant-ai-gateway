@@ -414,6 +414,7 @@ from October the ledger-against-invoice difference is recorded there too (sectio
 | v0.7.0 | 2026-09-22 | `boundary.audit`: the hash chain over ledger rows, the append-only log, anchors, `boundary audit seal`, `anchor`, `verify` and `tamper-test`. Pulled forward from Part B (B2.4, amended); nothing downstream imports it yet, and no pin needs to move |
 | v0.8.0 | 2026-09-23 | `Policy.redact_with_spans` and `boundary.redact.tab`: the Text Anonymization Benchmark, the first public corpus and real text. Nothing downstream needs to move; 07 may read the over-redaction finding, which is about the vocabulary it also uses |
 | v0.9.0 | 2026-09-23 | The second pass masks initials and surname particles, a fix for the leak TAB's first run found, developed on its train split: direct identifiers on test 93.3% to 97.1%, people found without a model 37.5% to 92.7%. A behaviour change for 07 when it next moves its pin |
+| v0.10.0 | 2026-09-23 | A jurisdiction's allow list, derived from TAB's train split and chosen on dev: safe spans touched on test 78.4% to 41.7%, precision 32.2% to 45.4%, direct identifiers unmoved. It does not reach a detector's own spans; that is the next change |
 | v1.0.0 | May 23 2027 | Everything in Part B; `boundary.redact` for 07; the proxy for 13 and 14 |
 
 03 pins `boundary>=0.1,<0.3` for Part A and moves to `>=1.0` when its Part B is built

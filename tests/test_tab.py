@@ -205,3 +205,64 @@ def test_redact_with_spans_returns_what_redact_returns_and_the_ranges_it_replace
             cursor = e
         kept.append(page[cursor:])
         assert re.fullmatch(placeholders.join(re.escape(k) for k in kept), text), page[:60]
+
+
+# -- the derived allow list (0.10.0) ---------------------------------------------------------
+
+
+def _allow_corpus(tmp_path: Path) -> Path:
+    """Three judgments: a respondent state left in clear in all three, a court masked once in
+    four mentions, a cited case with a surname inside it, a person, and domain words."""
+    docs = []
+    for n in range(3):
+        text = (
+            "The Chamber held. However, the United Kingdom erred, as in Goodwin v. the "
+            f"United Kingdom. Mr Hale appealed to the High Court {n}."
+        )
+
+        def m(
+            phrase: str, kind: str, etype: str, eid: str, _t: str = text, _n: int = n
+        ) -> dict[str, object]:
+            s = _t.index(phrase)
+            return {
+                "entity_id": f"{_n}{eid}",
+                "entity_type": etype,
+                "identifier_type": kind,
+                "start_offset": s,
+                "end_offset": s + len(phrase),
+                "span_text": phrase,
+            }
+
+        mentions = [
+            m("United Kingdom", "NO_MASK", "LOC", "uk"),
+            m("Goodwin v. the United Kingdom", "NO_MASK", "MISC", "case"),
+            m("Hale", "DIRECT", "PERSON", "p"),
+            m("High Court", "QUASI" if n == 0 else "NO_MASK", "ORG", "hc"),
+        ]
+        docs.append(
+            {"doc_id": f"d{n}", "text": text, "annotations": {"a": {"entity_mentions": mentions}}}
+        )
+    path = tmp_path / "train.json"
+    path.write_text(json.dumps(docs), encoding="utf-8")
+    return path
+
+
+def test_the_derived_list_holds_safe_places_and_domain_words_and_no_name(tmp_path: Path) -> None:
+    allow = tab.derive_allow(_allow_corpus(tmp_path), min_docs=2, max_masked_share=0.0)
+    assert "United Kingdom" in allow
+    assert {"Chamber", "However"} <= set(allow)
+    # A person, a cited case, and a word that sits inside the cited case, are never sources.
+    assert not {"Hale", "Goodwin", "Goodwin v. the United Kingdom"} & set(allow)
+    # Masked in one of its three mentions, so a zero share excludes it...
+    assert "High Court" not in allow
+
+
+def test_the_masked_share_admits_a_phrase_annotators_rarely_masked(tmp_path: Path) -> None:
+    allow = tab.derive_allow(_allow_corpus(tmp_path), min_docs=2, max_masked_share=0.5)
+    assert "High Court" in allow
+
+
+def test_an_allow_file_skips_comments_and_blanks(tmp_path: Path) -> None:
+    path = tmp_path / "allow.txt"
+    path.write_text("# public bodies\nUnited Kingdom\n\n  Court of Appeal  \n", encoding="utf-8")
+    assert tab.read_allow(path) == ["United Kingdom", "Court of Appeal"]

@@ -571,6 +571,11 @@ def _redact_eval_tab(args: argparse.Namespace) -> int:
     from boundary.redact import tab
 
     docs = tab.load(tab.fetch())
+    allow: list[str] = []
+    if args.tab_allow == "train":
+        allow = tab.derive_allow(tab.fetch("train"))
+    elif args.tab_allow:
+        allow = tab.read_allow(Path(args.tab_allow))
     configs: list[tuple[str, list[object]]] = [("built-in recognisers only", [])]
     if args.presidio:
         from boundary.redact.presidio import PresidioRecogniser
@@ -578,10 +583,14 @@ def _redact_eval_tab(args: argparse.Namespace) -> int:
         configs.append(("built-in recognisers and Presidio", [PresidioRecogniser()]))
     results = []
     for detector, extra in configs:
-        r = tab.run(docs, extra=extra, detector=detector)  # type: ignore[arg-type]
-        print(r.table())
-        print()
-        results.append(r)
+        lists: list[tuple[list[str], str]] = [([], "")]
+        if allow:
+            lists.append((allow, f", allow list of {len(allow):,}"))
+        for terms, label in lists:
+            r = tab.run(docs, extra=extra, detector=detector + label, allow=terms)  # type: ignore[arg-type]
+            print(r.table())
+            print()
+            results.append(r)
     if args.out is not None:
         out = args.out.with_name("redact-tab.json")
         out.parent.mkdir(parents=True, exist_ok=True)
@@ -820,6 +829,13 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="the Text Anonymization Benchmark instead: real court judgments, test split, "
         "downloaded once at a pinned commit (with --presidio, both configurations)",
+    )
+    rev.add_argument(
+        "--tab-allow",
+        dest="tab_allow",
+        default="",
+        help="with --tab, also run with an allow list: 'train' derives one from TAB's train "
+        "split (docs/redact.md), anything else is a file of one term per line",
     )
     rev.add_argument("--seed", type=int, default=20260920)
     rev.add_argument(

@@ -1,6 +1,6 @@
 {
-  "boundary_version": "0.9.0",
-  "ran_utc": "2026-09-23T09:18:04+00:00",
+  "boundary_version": "0.10.0",
+  "ran_utc": "2026-09-23T09:36:27+00:00",
   "seed": 20260920,
   "pages": 200,
   "values": 1450,
@@ -119,10 +119,10 @@
   "over_redacted": 247,
   "over_redaction_total": 10571,
   "latency": {
-    "detect_p50_ms": 0.16599999798927456,
-    "detect_p95_ms": 0.18679999993764795,
-    "outbound_p50_ms": 0.8570999998482876,
-    "outbound_p95_ms": 0.998699997580843,
+    "detect_p50_ms": 0.2810000005410984,
+    "detect_p95_ms": 0.3252000024076551,
+    "outbound_p50_ms": 1.2514000009105075,
+    "outbound_p95_ms": 1.5860000021348242,
     "pages": 200
   },
   "summary": {
