@@ -28,7 +28,10 @@ on the same subscription (below) and the Claude-on-Foundry adapter is covered by
 only. Vertex
 returned 429 on the first request the account ever made, against a bucket that carries no
 limit at all rather than a limit of zero, while the Google-model buckets beside it sit at
-600. Two vendors, the same shape: the platform's own catalogue is provisioned for a new
+600, and two self-service requests to raise it were denied within the minute they were
+filed. Vertex therefore counts as exercised as far as the vendor allows: the adapter reached
+the platform and the ledger recorded the refusal, and a 200 now waits on a support
+conversation rather than on code. Two vendors, the same shape: the platform's own catalogue is provisioned for a new
 customer and the partner's frontier models are not, and neither vendor's documentation
 mentions it. Amazon Bedrock does answer: Claude from `ca-central-1`, by hand on 2026-09-15
 and through this library from GitHub Actions on 2026-09-16. That row is deliberately
