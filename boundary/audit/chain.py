@@ -27,7 +27,9 @@ from dataclasses import dataclass
 from typing import Any
 
 GENESIS = "0" * 64
-RECORD_SCHEMA = 1
+# Record schema 2 (0.18) seals `redacted` as well. A schema 1 record keeps verifying against
+# the fields it sealed; nothing already in a chain is rewritten.
+RECORD_SCHEMA = 2
 KIND_LEDGER_ROW = "ledger_row"
 
 # The ledger columns a record seals. Not `id`, which is per file and changes in a merge;
@@ -68,6 +70,10 @@ SEALED: tuple[str, ...] = (
     "batch_id",
     "ttft_ms",
 )
+# Schema 2 (0.18): whether the call was sent redacted (ledger v8). A redacted personal call is
+# then in the chain as redacted, not only in the ledger.
+SEALED_V2: tuple[str, ...] = (*SEALED, "redacted")
+_SEALED_BY_SCHEMA = {1: SEALED, 2: SEALED_V2}
 
 
 def canonical(value: Mapping[str, Any]) -> str:
@@ -86,9 +92,27 @@ def link(prev_hash: str, body: str) -> str:
     return hashlib.sha256(bytes.fromhex(prev_hash) + body.encode("ascii")).hexdigest()
 
 
-def sealed_fields(row: Mapping[str, Any]) -> dict[str, Any]:
-    """The part of a ledger row a record seals. A column an older ledger lacks is null."""
-    return {name: row.get(name) for name in SEALED}
+def sealed_fields(row: Mapping[str, Any], schema: int = RECORD_SCHEMA) -> dict[str, Any]:
+    """The part of a ledger row a record of this schema seals. A column an older ledger lacks
+    is null."""
+    return {name: row.get(name) for name in _SEALED_BY_SCHEMA[schema]}
+
+
+def fields_schema(fields: Mapping[str, Any]) -> int:
+    """Which record schema sealed these fields, read from the fields themselves."""
+    return 2 if "redacted" in fields else 1
+
+
+def needs_seal(before: Mapping[str, Any] | None, row: Mapping[str, Any]) -> bool:
+    """Whether a row has something its latest record does not hold: it was never sealed, it
+    changed since, or it was sealed under schema 1 and now carries a `redacted` that schema 1
+    had no place for. A schema 1 record of a row with nothing new is left as it is."""
+    if before is None:
+        return True
+    schema = fields_schema(before)
+    if dict(before) != sealed_fields(row, schema):
+        return True
+    return schema < 2 and row.get("redacted") is not None
 
 
 def ledger_body(row: Mapping[str, Any], *, sealed_utc: str) -> str:
@@ -274,12 +298,16 @@ def verify(
                 unsealed += 1
                 continue
             seq, fields = sealed
-            if fields == sealed_fields(row):
+            schema = fields_schema(fields)
+            if fields == sealed_fields(row, schema):
+                if needs_seal(fields, row):
+                    # Sealed under schema 1, and redacted since recorded: new, not changed.
+                    resealable += 1
                 continue
             if fields.get("error_type") == "in_flight" and row.get("error_type") != "in_flight":
                 resealable += 1
                 continue
-            changed = sorted(k for k in SEALED if fields.get(k) != row.get(k))
+            changed = sorted(k for k in _SEALED_BY_SCHEMA[schema] if fields.get(k) != row.get(k))
             breaks.append(Break("ledger_changed", seq, f"call {uid}: {', '.join(changed)}"))
         for uid, (seq, _) in latest.items():
             if uid not in present:
@@ -329,15 +357,18 @@ __all__ = [
     "KIND_LEDGER_ROW",
     "RECORD_SCHEMA",
     "SEALED",
+    "SEALED_V2",
     "Anchor",
     "Break",
     "Record",
     "Verification",
     "build",
     "canonical",
+    "fields_schema",
     "latest_sealed",
     "ledger_body",
     "link",
+    "needs_seal",
     "sealed_fields",
     "verify",
 ]

@@ -5,6 +5,25 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.18.0 (2026-09-25)
+
+**The proxy writes every call to the audit chain as it answers, and the chain now records
+whether a call was redacted.** PLAN.md B2.4. docs/audit.md.
+
+- **`boundary serve` appends as it answers**: each call is sealed into
+  `<ledger>.audit.sqlite` as soon as its row completes, policy and redaction refusals
+  included, by `AuditAppender`, which keeps a watermark instead of rereading the log per
+  request and holds a row still in flight until it finishes. `--audit`, `--no-audit`.
+  The window between a call and a later `boundary audit seal`, in which only the ledger held
+  the call, is closed for the proxy.
+- **Record schema 2 seals `redacted`**. Nothing is rewritten: schema 1 records verify against
+  the fields they sealed, a schema 1 row that has since gained a `redacted` value is sealed
+  once more and counted `resealable` rather than as a break, and editing `redacted` after it
+  was sealed is caught. The tamper test's figures are unchanged, and the laptop's real
+  2,811-record chain verified intact against its ledger.
+- `LedgerStore.rows_after`, for an appender.
+- Still not anchored: the daily Action needs the proxy on an always-on host.
+
 ## 0.17.0 (2026-09-25)
 
 **Redaction measured end to end through the proxy: 0 of 1,450 personal values reached the

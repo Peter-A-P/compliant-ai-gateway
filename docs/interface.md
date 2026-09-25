@@ -40,6 +40,7 @@ listed here; nothing any earlier version offered has changed shape.
 | 0.11.0 | 2026-09-23 | `Policy.released` and `RELEASABLE`: a caller's `allow` terms also release a detector's LOCATION or ORGANISATION span that is one of them. A caller who passes no `allow` sees no change |
 | 0.12.0 | 2026-09-23 | The data policy (section 14): `Gateway(..., policy=)`, the `policy` configuration key, `PolicyRefused`, `boundary.enforce` and `boundary policy eval`. Opt-in: a gateway with no policy behaves as before |
 | 0.13.0 | 2026-09-25 | The OpenAI-compatible proxy (section 15): `boundary.server`, the `server` extra, `boundary serve` and `boundary teams key`. `on_text` on `chat_stream` and `achat_stream`. Nothing a library caller already uses changed |
+| 0.18.0 | 2026-09-25 | Audit record schema 2 (`RECORD_SCHEMA = 2`, `SEALED_V2` with `redacted`, `fields_schema`, `needs_seal`, `sealed_fields(row, schema)`); `boundary.audit.appender.AuditAppender`; `LedgerStore.rows_after`; `create_app(..., audit_path=)` and `boundary serve --audit`, `--no-audit`. Schema 1 records verify as before |
 | 0.17.0 | 2026-09-25 | `boundary redact eval --proxy` and `boundary.server.redaction_eval`: the generated corpus through the proxy over HTTP, counting what reaches the wire and what comes back |
 | 0.16.0 | 2026-09-25 | `Gateway.record_refusal` and `CALLER_REFUSALS` (a redaction refusal is on the ledger); `boundary.redact.request` (`redact_request` with `allow=`, `StreamRehydrator`, moved from `boundary.server.redaction`, which re-exports them) and `boundary.redact.preserve`; `boundary redact overmask`; `boundary redact mutation --arms` and repeated `--score` |
 | 0.15.0 | 2026-09-25 | Redaction in the proxy (section 15). `redacted=` on `chat`, `achat`, `chat_stream` and `achat_stream`, `redacted` on `ChatResponse`, schema v8's `redacted` column; `ClassRule.redacted_as`, `decide(..., redacted=)` and `Decision.judged_as` (section 14). A caller that passes nothing new sees no change |
@@ -318,7 +319,7 @@ every row as a failure at no cost rather than leaving it in flight at an estimat
 | `boundary redact eval --proxy` | 0.17 | Every generated page through the proxy over HTTP as a personal request, plain and streamed, against an echoing mock: personal values that reached the wire and pages that came back as sent. Exits 1 on any leak or broken round trip. Needs the `server` extra |
 | `boundary redact overmask --gold DIR` | 0.16 | How much of a question's source page the proxy's redaction masks, and how many of the phrases its answer must mention, on project 03's gold set. Offline |
 | `boundary redact mutation` | 0.14 | Placeholder mutation under real models: `--models` (default Haiku 4.5, Llama 3.3 70B on Together, Gemini 3.5 Flash-Lite), `--pages` (default 20), `--max-usd` (default 0.35, after which no call is sent), `--out`. **Calls vendors and costs money.** `--score FILE` re-reads a stored run and makes no call; `--write-readme` fills the README rows from it |
-| `boundary serve` | 0.13 | The OpenAI-compatible proxy (section 15). Needs the `server` extra. `--teams`, `--policy`, `--ledger`, `--host` (default `127.0.0.1`), `--port` (default 8080). Refuses to start without a data policy |
+| `boundary serve` | 0.13 | The OpenAI-compatible proxy (section 15). Needs the `server` extra. `--teams`, `--policy`, `--ledger`, `--host` (default `127.0.0.1`), `--port` (default 8080). Refuses to start without a data policy. `--audit PATH` (0.18) is the audit chain it appends to as it answers, default `<ledger>.audit.sqlite`; `--no-audit` keeps none |
 | `boundary teams key --team NAME` | 0.13 | Mints a proxy key, prints it once, and prints the SHA-256 line for `teams.yaml`. The key is stored nowhere |
 | `boundary policy eval` | 0.12 | The adversarial suite for the data policy over this configuration's providers and aliases; exits 1 on any violation or false refusal. `--policy` names a file other than `policy.yaml` beside the configuration. `--proxy` (0.13.1) runs it through the proxy over HTTP instead, with the header's rules at the door; needs the `server` extra |
 | `boundary experiment remote-ledger` | 0.2 | The Rule C measurement behind `docs/rejected.md` |
@@ -374,7 +375,8 @@ from boundary.redact.presidio import PresidioRecogniser   # optional `redact` ex
 
 A hash chain over ledger rows, the append-only log that holds it, and the verifier. The full
 page is `docs/audit.md`. Part B's proxy will append to the same chain format; the record
-body carries `"schema": 1` so that a later format is a new number rather than a silent change.
+body carries `"schema": 1` so that a later format is a new number rather than a silent change,
+and since 0.18 new records carry `"schema": 2`, which also seals `redacted`.
 
 ```python
 from boundary.audit import AuditLog, Anchor, verify, read_anchors, append_anchor

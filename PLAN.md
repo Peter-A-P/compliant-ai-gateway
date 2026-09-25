@@ -423,6 +423,7 @@ from October the ledger-against-invoice difference is recorded there too (sectio
 | v0.15.0 | 2026-09-25 | Redaction in the proxy, and what it permits: `ClassRule.redacted_as`, `redacted=` on the chat methods, `ChatResponse.redacted`, ledger schema v8's `redacted` column. A caller that passes nothing new sees no change; 02, 03 and 07 need not move |
 | v0.16.0 | 2026-09-25 | `Gateway.record_refusal` and a ledger row for every redaction refusal; the proxy's preserve line measured (0.0% mutation on all three models); `boundary redact overmask` and the B2.8 plan it changed; `boundary.redact.request` and `boundary.redact.preserve` so both run without the server extra |
 | v0.17.0 | 2026-09-25 | `boundary redact eval --proxy`: 0 of 1,450 personal values reached the wire through the proxy, every page came back as sent |
+| v0.18.0 | 2026-09-25 | The proxy appends to the audit chain as it answers; record schema 2 seals `redacted` |
 | v1.0.0 | May 23 2027 | Everything in Part B; `boundary.redact` for 07; the proxy for 13 and 14 |
 
 03 pins `boundary>=0.1,<0.3` for Part A and moves to `>=1.0` when its Part B is built
@@ -770,6 +771,12 @@ undetectable by any chain, so B10's line is read as "every corruption before the
 anchor", and the width of the window after it is reported beside it rather than left out.
 Not built, and still Part B: the daily anchoring Action, Postgres with the grants revoked,
 and the proxy appending.
+
+**Amended 2026-09-25 (0.18.0): the proxy appends.** `boundary serve` seals each call into
+the chain as soon as its row completes, refusals included, through an appender that keeps a
+watermark rather than rereading the log per request. Record schema 2 seals `redacted` as
+well; schema 1 records keep verifying against what they sealed. Still Part B: the daily
+anchoring Action, which needs the proxy on an always-on host, and Postgres.
 
 ### B2.5 Semantic cache, with its risk measured
 

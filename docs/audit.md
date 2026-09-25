@@ -30,6 +30,17 @@ changes in a merge; not `raw_path`, which is a path on somebody's disk; not the 
 The list is fixed rather than "whatever the row holds", so a column a later ledger schema
 adds does not quietly change what an older verifier has to reproduce.
 
+**Record schema 2 (0.18)** seals one more column, `redacted` (`SEALED_V2`), so that a
+personal call the proxy sent as placeholders is in the chain as redacted and not only in the
+ledger. Nothing already in a chain is rewritten: a schema 1 record keeps verifying against
+the fields it sealed, read from the record itself. A row sealed under schema 1 is sealed
+again only if it now carries a `redacted` value schema 1 had no place for, and `verify`
+counts such a row as `resealable`, not as a break. A verifier older than 0.18 still checks
+every link and hash of a schema 2 record, but when it compares a schema 2 record with the
+ledger it will report `redacted` as a changed column, because it does not know the column.
+The real audit log on the development laptop, 2,811 schema 1 records, verified intact
+against its ledger on the day schema 2 shipped.
+
 A body that parses but is not in canonical form is a break of its own. The hash would still
 check, but this library could not have written it.
 
@@ -152,10 +163,13 @@ is the current figure), so checking a year of the portfolio's calls is seconds.
   deployed, and today each environment's ledger is sealed after the fact on the machine
   that holds it. An anchor file
   in the repository pointing at a laptop's log would be a claim nobody else could check.
-- **The seal runs after the call, not during it.** The gateway is untouched, so the
-  pass-through path and the overhead figure are exactly what they were, and a call is on the
-  record from its ledger row onwards. The price is a window between a call and its seal in
-  which only the ledger holds it. Part B's proxy appends as it answers and closes that.
+- **For a library caller, the seal runs after the call, not during it.** The gateway is
+  untouched, so the pass-through path and the overhead figure are exactly what they were, and
+  a call is on the record from its ledger row onwards. The price is a window between a call
+  and its seal in which only the ledger holds it. **The proxy closes that window (0.18)**:
+  `boundary serve` appends each call to the chain as soon as its row completes
+  (`boundary.audit.appender`), without rereading the log, holding a row that is still in
+  flight until it finishes. A policy refusal and a redaction refusal are sealed the same way.
 - **It proves the record was not changed, not that it was complete.** A call the ledger never
   recorded is not in the chain either. That is what the ledger's own completeness figure
   (600/600 under fault injection, in the README) is for.
@@ -163,7 +177,5 @@ is the current figure), so checking a year of the portfolio's calls is seconds.
   the application role. The chain and the verifier are storage-independent pure functions
   (`boundary/audit/chain.py`), so the Part B store is a different place to keep the same
   records rather than a different design.
-- **The `redacted` column (0.15) is not sealed.** `SEALED` is fixed so that an older verifier
-  can still reproduce a record, so a column added since is outside the record until the
-  record schema moves to 2. The row's `data_class` is sealed, so a redacted personal call is
-  in the chain as personal; that it was redacted is only in the ledger.
+- **Nothing is anchored yet, still.** The proxy appends as it answers, but it runs on a
+  laptop, so its chain is not yet the always-on log a daily anchor needs.

@@ -727,15 +727,22 @@ def cmd_serve(args: argparse.Namespace) -> int:
     # A ledger of its own by default, beside the library's: the gateway's monthly ceiling is
     # the spend of every row in the file, and the library's own calls are not the teams'.
     ledger = Path(args.ledger) if args.ledger else cfg.ledger.path.with_name(PROXY_LEDGER)
+    # The audit chain beside the ledger, where `boundary audit verify` looks by default.
+    audit = (
+        None
+        if args.no_audit
+        else (Path(args.audit) if args.audit else ledger.with_name(ledger.stem + ".audit.sqlite"))
+    )
     app = create_app(
         cfg,
         load_teams(teams_path),
         ledger_path=ledger,
         policy=load_policy(policy_path),
+        audit_path=audit,
     )
     print(
         f"boundary {__version__} proxy on http://{args.host}:{args.port}/v1 "
-        f"(teams {teams_path}, policy {policy_path}, ledger {ledger})",
+        f"(teams {teams_path}, policy {policy_path}, ledger {ledger}, audit {audit})",
         file=sys.stderr,
     )
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")
@@ -1115,6 +1122,14 @@ def main(argv: list[str] | None = None) -> int:
         "--ledger",
         help=f"the ledger file (default: {PROXY_LEDGER} beside the config's ledger, so the "
         "proxy's teams and the library's own calls are counted apart)",
+    )
+    serve.add_argument(
+        "--audit",
+        help="the audit chain the proxy appends to as it answers (default: beside the ledger, "
+        "<ledger>.audit.sqlite, where `boundary audit verify` looks)",
+    )
+    serve.add_argument(
+        "--no-audit", dest="no_audit", action="store_true", help="keep no audit chain"
     )
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", type=int, default=8080)

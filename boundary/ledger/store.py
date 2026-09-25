@@ -358,6 +358,13 @@ class LedgerStore:
             cur = self._conn.execute(f"SELECT COUNT(*) FROM ledger WHERE {where}", args)
             return int(cur.fetchone()[0])
 
+    def rows_after(self, row_id: int) -> list[dict[str, Any]]:
+        """Every row with an id above `row_id`, in id order (0.18). What an appender needs to
+        seal a ledger as it grows without rereading the whole file on every call."""
+        with self._lock:
+            cur = self._conn.execute("SELECT * FROM ledger WHERE id > ? ORDER BY id", (row_id,))
+            return [dict(r) for r in cur.fetchall()]
+
     def rows(self, *, project: str | None = None) -> list[dict[str, Any]]:
         with self._lock:
             if project is None:

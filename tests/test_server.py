@@ -813,3 +813,67 @@ def test_the_suite_catches_a_proxy_that_lets_an_absent_header_through(
     monkeypatch.setattr(server_app, "ABSENT_CLASS", DataClass.PUBLIC)
     results = enforce_eval.run_proxy(repo_config, CONFIG_DIR / "policy.yaml", models=SMOKE_MODELS)
     assert results.violations.hits > 0
+
+
+# -- the audit chain, appended as the proxy answers (0.18) ---------------------------------
+
+
+async def test_the_proxy_seals_every_call_as_it_answers(
+    repo_config: BoundaryConfig, tmp_path: Path, keys: None, upstream: respx.MockRouter
+) -> None:
+    from boundary.audit import AuditLog, verify
+
+    upstream.post(OPENWEIGHTS_URL).mock(return_value=completion())
+    audit = tmp_path / "proxy.audit.sqlite"
+    p = Proxy(repo_config, tmp_path, teams())
+    await p.http.aclose()
+    await p.app.state.boundary.close()
+    p.app = create_app(
+        repo_config,
+        teams(),
+        ledger_path=p.ledger_path,
+        policy=load_policy(CONFIG_DIR / "policy.yaml"),
+        audit_path=audit,
+        asleep=_no_sleep,
+        wall=lambda: NOW,
+    )
+    p.http = httpx.AsyncClient(transport=httpx.ASGITransport(app=p.app), base_url="http://proxy")
+    try:
+        assert (await p.post(body(), headers=PUBLIC)).status_code == 200
+        assert (await p.post(body())).status_code == 403  # personal, redacted, no residency
+        streamed_ok = await p.post(body(stream=True), headers=PUBLIC)
+        assert streamed_ok.status_code in (200, 502)
+        rows = p.rows()
+        with AuditLog(audit) as log:
+            records = log.records()
+            v = verify(records, ledger_rows=rows)
+        assert v.ok and v.unsealed == 0, v.summary()
+        assert len(records) == len(rows) == 3
+    finally:
+        await p.close()
+
+
+def test_the_appender_holds_a_row_in_flight_until_it_completes(tmp_path: Path) -> None:
+    from boundary.audit.appender import AuditAppender
+    from boundary.ledger.store import LedgerRow, utc_now
+
+    ledger = LedgerStore(tmp_path / "l.sqlite")
+    try:
+        app = AuditAppender(tmp_path / "a.sqlite", ledger)
+        row = LedgerRow(
+            ts_utc=utc_now(),
+            boundary_version="x",
+            project="p",
+            purpose="t",
+            mode="standard",
+            provider="local",
+            model_requested="local/m",
+        )
+        ledger.begin(row)
+        assert app.after_call() == 0, "in flight: held"
+        ledger.complete(row)
+        assert app.after_call() == 1
+        assert app.after_call() == 0, "sealed once"
+        app.close()
+    finally:
+        ledger.close()
