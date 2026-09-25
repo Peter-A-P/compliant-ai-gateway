@@ -40,6 +40,7 @@ listed here; nothing any earlier version offered has changed shape.
 | 0.11.0 | 2026-09-23 | `Policy.released` and `RELEASABLE`: a caller's `allow` terms also release a detector's LOCATION or ORGANISATION span that is one of them. A caller who passes no `allow` sees no change |
 | 0.12.0 | 2026-09-23 | The data policy (section 14): `Gateway(..., policy=)`, the `policy` configuration key, `PolicyRefused`, `boundary.enforce` and `boundary policy eval`. Opt-in: a gateway with no policy behaves as before |
 | 0.13.0 | 2026-09-25 | The OpenAI-compatible proxy (section 15): `boundary.server`, the `server` extra, `boundary serve` and `boundary teams key`. `on_text` on `chat_stream` and `achat_stream`. Nothing a library caller already uses changed |
+| 0.14.0 | 2026-09-25 | `boundary redact mutation` and `boundary.redact.mutation` (`collect`, `score`, `classify`, `newcombe`, `PRESERVE`, `ASKED`): placeholder mutation under a model, from a stored run. Not re-exported from `boundary.redact` |
 | 0.13.1 | 2026-09-25 | `boundary policy eval --proxy` and `enforce_eval.run_proxy`, `door`, `PROXY_CLASSES`, `PROXY_ENTRY_POINTS`: the adversarial suite through the proxy over HTTP |
 
 ## 1. Importing
@@ -307,6 +308,7 @@ every row as a failure at no cost rather than leaving it in flight at an estimat
 | `boundary audit anchor --anchors FILE` | 0.7 | Appends the current head to an anchor file, one canonical JSON line; never rewrites the lines before it. Refuses an empty log |
 | `boundary audit verify` | 0.7 | Recomputes the chain, checks every anchor in `--anchors`, and checks the ledger against the latest record for each call unless `--no-ledger`. Exits 1 on any break, and reports every break rather than the first |
 | `boundary audit tamper-test` | 0.7 | The README's audit row: twelve kinds of corruption before and after the last anchor, with a control. In memory, from a seed |
+| `boundary redact mutation` | 0.14 | Placeholder mutation under real models: `--models` (default Haiku 4.5, Llama 3.3 70B on Together, Gemini 3.5 Flash-Lite), `--pages` (default 20), `--max-usd` (default 0.35, after which no call is sent), `--out`. **Calls vendors and costs money.** `--score FILE` re-reads a stored run and makes no call; `--write-readme` fills the README rows from it |
 | `boundary serve` | 0.13 | The OpenAI-compatible proxy (section 15). Needs the `server` extra. `--teams`, `--policy`, `--ledger`, `--host` (default `127.0.0.1`), `--port` (default 8080). Refuses to start without a data policy |
 | `boundary teams key --team NAME` | 0.13 | Mints a proxy key, prints it once, and prints the SHA-256 line for `teams.yaml`. The key is stored nowhere |
 | `boundary policy eval` | 0.12 | The adversarial suite for the data policy over this configuration's providers and aliases; exits 1 on any violation or false refusal. `--policy` names a file other than `policy.yaml` beside the configuration. `--proxy` (0.13.1) runs it through the proxy over HTTP instead, with the header's rules at the door; needs the `server` extra |

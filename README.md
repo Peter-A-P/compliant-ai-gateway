@@ -18,8 +18,9 @@ the Canadian identifier set and rehydration fidelity (`v0.6.0` to `v0.6.4`), a h
 audit log over the ledger (`v0.7.0`), redaction measured on real court judgments and the
 fixes that measurement led to (`v0.8.0` to `v0.11.0`), opt-in enforcement of the data
 policy (`v0.12.0`), and the first stage of the OpenAI-compatible proxy, with team keys and
-budgets and the data policy always on (`v0.13.0`, [docs/server.md](docs/server.md)). The
-last five are pieces of Part B pulled forward because none of them needed the VPS or any
+budgets and the data policy always on (`v0.13.0`, [docs/server.md](docs/server.md)), and
+placeholder mutation measured under three models (`v0.14.0`). The last six are pieces of
+Part B pulled forward because none of them needed the VPS or any
 spend. Release by release, with the evidence for each: [CHANGELOG.md](CHANGELOG.md).
 Part B, the full gateway, is planned for May 2027 in [PLAN.md](PLAN.md).
 
@@ -225,9 +226,31 @@ stream. The oracle models the door's rules on its own: absent or blank is `perso
 and space are forgiven, any other word is a 400. Against a counting mock upstream, like the
 row above; the proxy's live calls are in [docs/server.md](docs/server.md).
 
-| Rehydration mutation rate under a model | Quality effect of redaction (two-sided delta) | Cache hit rate / false-hit rate / saved, redacted and raw | Audit tamper detection with daily anchors |
-|---|---|---|---|
-| _not yet_ | _not yet_ | _not yet_ | _not yet_; the chain is measured above, the published anchors are Part B |
+**Placeholder mutation under a model** (`v0.14.0`)
+
+| Model | Mutated, task alone | Mutated, with the preserve line | Effect of the line | Unrecoverable, alone / with | Lost from a list, alone / with |
+|---|---|---|---|---|---|
+<!-- mutation:start -->
+| anthropic/claude-haiku-4-5-20251001 | 6.8% (5.1% to 8.9%) of 695 | 0.0% (0.0% to 0.5%) of 715 | -6.8 points (-8.9 to -5.0) | 0.6% (0.2% to 1.5%) / 0.0% (0.0% to 0.5%) | 0.3% (0.1% to 1.9%) / 0.0% (0.0% to 1.3%) |
+| google/gemini-3.5-flash-lite | 0.0% (0.0% to 0.6%) of 673 | 0.0% (0.0% to 0.6%) of 685 | +0.0 points (-0.6 to +0.6) | 0.0% (0.0% to 0.6%) / 0.0% (0.0% to 0.6%) | 1.0% (0.3% to 3.0%) / 0.0% (0.0% to 1.3%) |
+| openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo | 37.0% (33.3% to 40.9%) of 605 | 0.6% (0.2% to 1.6%) of 629 | -36.4 points (-40.3 to -32.5) | 0.0% (0.0% to 0.6%) / 0.6% (0.2% to 1.6%) | 0.0% (0.0% to 1.3%) / 0.3% (0.1% to 1.9%) |
+<!-- mutation:end -->
+
+Filled by `boundary redact mutation --score bench/mutation.json --write-readme`, from a stored
+run of 480 calls (US$0.24): 40 redacted pages from the generated corpus, each sent twice,
+once to list every person and identifier and once to draft a reply, with and without one
+system line asking for placeholders to be copied exactly. **Mutated** is any placeholder not
+written as minted; **unrecoverable** is the part the library cannot put back (an invented or
+renumbered placeholder, or one respelled as words). Most mutation is recoverable, because the
+forms models chose (brackets dropped, square brackets) are forms the 0.6.4 matcher already
+reads. The line cuts mutation sharply for the two models that mutate and does not raise how
+many placeholders go missing, which stays at 1% or under. The only unrecoverable tokens under the preserve line are the example placeholder
+Llama copied out of the instruction itself. Detail, and what this cannot see, in
+[docs/redact.md](docs/redact.md).
+
+| Quality effect of redaction (two-sided delta) | Cache hit rate / false-hit rate / saved, redacted and raw | Audit tamper detection with daily anchors |
+|---|---|---|
+| _not yet_ | _not yet_ | _not yet_; the chain is measured above, the published anchors are Part B |
 
 ## What this does not do
 

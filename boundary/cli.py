@@ -607,6 +607,49 @@ def _redact_eval_tab(args: argparse.Namespace) -> int:
     return 0
 
 
+MUTATION_MODELS = (
+    "anthropic/claude-haiku-4-5-20251001",
+    "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+    "google/gemini-3.5-flash-lite",
+)
+
+
+def cmd_redact_mutation(args: argparse.Namespace) -> int:
+    """The rehydration mutation rate under real models (0.14). Collecting calls vendors and
+    costs money, capped by --max-usd; --score re-reads a stored run with no call at all."""
+    import asyncio
+
+    from boundary.redact import mutation
+
+    if args.score is not None:
+        run = mutation.read(args.score)
+    else:
+        models = [m.strip() for m in args.models.split(",") if m.strip()]
+        gw = Gateway.from_config(args.config, project=args.project)
+        try:
+            run = asyncio.run(
+                mutation.collect(
+                    gw,
+                    models,
+                    pages=args.pages,
+                    run_id=args.run_id,
+                    max_usd=args.max_usd,
+                )
+            )
+        finally:
+            gw.close()
+        mutation.write(args.out, run)
+        spent = sum(c.cost_usd or 0.0 for c in run.calls)
+        print(f"{len(run.calls)} calls, US${spent:.4f}, written to {args.out}", file=sys.stderr)
+    scored = mutation.score(run)
+    print(scored.table())
+    if args.write_readme:
+        readme = args.config.resolve().parent.parent / "README.md"
+        mutation.write_readme(readme, scored.readme_rows())
+        print(f"README rows written to {readme}")
+    return 0
+
+
 def cmd_policy_eval(args: argparse.Namespace) -> int:
     """The adversarial suite for the data policy, over this configuration's own providers
     and aliases. In process, against a mock upstream: no network, no keys, no money."""
@@ -924,6 +967,22 @@ def main(argv: list[str] | None = None) -> int:
     rev.add_argument("--out", type=Path, default=Path("bench/redact.json"))
     rev.add_argument("--write-readme", dest="write_readme", action="store_true")
     rev.set_defaults(func=cmd_redact_eval)
+
+    mut = redact.add_parser(
+        "mutation",
+        help="what models do to placeholders in flight, with and without a line asking them "
+        "to preserve them; calls vendors (capped by --max-usd) unless --score is given",
+    )
+    mut.add_argument("--models", default=",".join(MUTATION_MODELS))
+    mut.add_argument("--pages", type=int, default=20)
+    mut.add_argument("--max-usd", dest="max_usd", type=float, default=0.35)
+    mut.add_argument("--run-id", dest="run_id", default="mutation-rate")
+    mut.add_argument("--out", type=Path, default=Path("bench/mutation.json"))
+    mut.add_argument(
+        "--score", type=Path, default=None, help="re-score a stored run; no call is made"
+    )
+    mut.add_argument("--write-readme", dest="write_readme", action="store_true")
+    mut.set_defaults(func=cmd_redact_mutation)
 
     ledger = sub.add_parser("ledger", help="ledger commands").add_subparsers(
         dest="sub", required=True

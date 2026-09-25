@@ -5,6 +5,26 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.14.0 (2026-09-25)
+
+**What models do to placeholders in flight, and what one system line does about it.**
+`boundary redact mutation`, PLAN.md B1's mutation rate and B8's intervention. 480 calls,
+US$0.24, stored in `bench/mutation.json` and scored from it by `--score`. docs/redact.md.
+
+- **Without the line**, Llama 3.3 70B mutated 37.0% (33.3 to 40.9) of its placeholders and
+  Haiku 4.5 6.8% (5.1 to 8.9); Gemini 3.5 Flash-Lite 0.0%. Nearly all of it is recoverable,
+  because models chose forms the 0.6.4 matcher reads (brackets dropped 233, square brackets
+  30). Unrecoverable: 0.6% of Haiku's, file numbers respelled as words.
+- **With the line**, 0.6% and 0.0%, effects of -36.4 points (-40.3 to -32.5) and -6.8 (-8.9
+  to -5.0), with loss at 1% or under in both arms for every model.
+- **The line's example was copied**: Llama's only unrecoverable tokens under it are the
+  `<PERSON_1>` written into the instruction. The proxy's line must carry no example that
+  could be a real placeholder.
+- **Titles added**: Llama wrote "Mr." before a redacted name three times without the line.
+- **Two scoring errors found by reading the answers and corrected before publishing**: loss
+  counted types the prompt never asked for, and a bare `SIN` label counted as a mutation.
+  Neither needed a new call.
+
 ## 0.13.1 (2026-09-25)
 
 **The adversarial suite through the proxy: 0 of 262 forbidden cases sent.**

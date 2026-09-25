@@ -489,8 +489,8 @@ contain no personal values, which is what makes a precision figure possible at a
 what bounds it: a false positive here is a span over text this corpus knows to be nothing,
 not over the messy near-values a real record holds. The `file_number` rows are honest
 misses, and both are covered by the second pass rather than leaked, which is why the leak
-rate does not move. There is still no measurement of what a model does to a placeholder in
-flight; that is Part B's rehydration mutation rate and it needs the proxy.
+rate does not move. What a model does to a placeholder in flight is measured separately,
+from 0.14.0, below.
 
 ### Rehydration fidelity, from 0.6.4
 
@@ -522,6 +522,95 @@ Four of those forms resolved to nothing before 0.6.4, and the measurement is wha
 them. The tolerance was widened **inside the brackets only**: any run of separators there is
 one underscore, and a zero-padded index is the index. Outside the brackets the exact
 `TYPE_n` spelling is still required, because widening there would resolve ordinary text.
+
+### Placeholder mutation under a model, from 0.14.0
+
+    boundary redact mutation                           # calls vendors; capped by --max-usd
+    boundary redact mutation --score bench/mutation.json   # re-reads the stored run, no call
+
+The measurement above asks whether the library survives each way of rewriting a
+placeholder. This one asks which ways models actually choose, and how much of it the
+library gets back. It is PLAN.md B1's "rate at which models mutate placeholders", and B8's
+intervention: a system line asking the model to copy placeholders exactly, tested against
+the task alone.
+
+**Method.** 40 pages of the generated corpus (seed 20260920), redacted by the rules-only
+engine, so the placeholders are the ones it mints without a model: `<NAME_LIKE_n>`,
+`<EMAIL_n>`, `<PHONE_n>`, `<FILE_NUMBER_n>`, `<SIN_n>` and the rest. Each page is sent under
+two tasks, **extract** (list every person, organisation, place, email, phone and file number,
+as written) and **reply** (a reply under 120 words), and two arms, the task alone and the
+task with the preserve line (`boundary.redact.mutation.PRESERVE`). Three models, one call
+each per page, task and arm, at each vendor's default temperature: 480 calls, 0 failed,
+US$0.24, run 2026-09-25 through the library with `data_class="public"`, since the corpus
+holds nobody real and what is sent is already redacted. Every answer is stored in
+`bench/mutation.json`, and the table is computed from that file by `score`, so it can be
+re-read and re-scored without calling anything.
+
+Every placeholder-shaped token in an answer is **exact** (as minted), **tolerated** (changed,
+and `rehydrate` restores it), **unresolvable** (placeholder-shaped, and the vault holds
+nothing for it) or **degraded** (a type word the matcher cannot read, such as `File Number 9`
+or `<EMAIL>`). Mutated is everything but exact; unrecoverable is the last two. Loss, on the
+extract task, is a placeholder the prompt asked for that did not come back in any form.
+
+| Model | Mutated, alone | Mutated, with the line | Effect (95% CI) | Unrecoverable, alone / with | Lost, alone / with |
+|---|---|---|---|---|---|
+| Claude Haiku 4.5 | 6.8% (5.1 to 8.9) of 695 | 0.0% (0.0 to 0.5) of 715 | -6.8 points (-8.9 to -5.0) | 0.6% / 0.0% | 0.3% / 0.0% |
+| Gemini 3.5 Flash-Lite | 0.0% (0.0 to 0.6) of 673 | 0.0% (0.0 to 0.6) of 685 | +0.0 points (-0.6 to +0.6) | 0.0% / 0.0% | 1.0% / 0.0% |
+| Llama 3.3 70B (Together) | 37.0% (33.3 to 40.9) of 605 | 0.6% (0.2 to 1.6) of 629 | -36.4 points (-40.3 to -32.5) | 0.0% / 0.6% | 0.0% / 0.3% |
+
+Intervals are Wilson for each rate and Newcombe's hybrid Wilson for the difference, which is
+checked against Newcombe's own worked example in the tests.
+
+**What it says.**
+
+- **Mutation is common and mostly harmless.** Without the line, Llama rewrote more than a
+  third of its placeholders and Haiku one in fifteen, and almost all of it was recoverable:
+  233 had their angle brackets dropped (216 of them by Llama writing replies, 15 by Haiku
+  writing lists), 30 were put in square brackets (24 of them Haiku's replies), 4 in round
+  ones. All of those are forms the 0.6.4 matcher already
+  reads, which is the reason that measurement came first. What a reader actually loses
+  without the line is 0.6% of Haiku's tokens, where it respelled a file number as words
+  (`File Number 9`, `FILE NUMBER 7`), and nothing of Llama's or Gemini's.
+- **The preserve line works, and costs nothing measurable.** It takes Haiku from 6.8% to
+  0.0% and Llama from 37.0% to 0.6%, and leaves Gemini, which did not mutate, where it was.
+  Loss stays at 1% or under in both arms for every model: Haiku's went from 1 of 294 to 0,
+  Gemini's from 3 to 0, and Llama's from 0 to 1. Part B's proxy should send it.
+- **The line's own example was copied.** Llama's only unrecoverable tokens under the line
+  are four `<PERSON_1>`, the example placeholder written into the instruction itself, on
+  pages whose placeholders are `NAME_LIKE`. A model given an example of the format treated
+  it as content. Here it is harmless, because the vault holds no `<PERSON_1>` and
+  `unresolved` reports it. In a document whose policy did mint `<PERSON_1>`, the same copy
+  would rehydrate to a real person who was never in the answer. **The line the proxy sends
+  should carry no example that could be a real placeholder**, and that is a change to
+  `PRESERVE` to make and measure before the proxy uses it.
+- **A model puts back what redaction took out.** Llama wrote "Dear Mr. <NAME_LIKE_1>" three
+  times without the line, on pages that give no title: a guess at a gender the redaction had
+  removed. Counted as `titles added`, zero under the line, and not a placeholder mutation at
+  all, which is why it has a column of its own.
+
+**Corrected before publishing, on reading the answers.** Two things in the first scoring
+were wrong, and both were found by reading what the models wrote rather than trusting the
+table. The loss column counted every placeholder on the page, and nearly all the "loss" it
+reported (8 to 9% for every model) was dates of birth, health numbers, SINs and postal codes,
+which the extract prompt does not ask for and the models were right to leave out; loss now
+counts only the types the prompt names (`ASKED`, read off its wording). And a bare `SIN` was
+counted as a degraded placeholder, when the models were writing "SIN: <SIN_1>" with the
+abbreviation as a label; a bare type name now counts only in its underscore form. Neither
+correction needed a new call. The run file is unchanged, and `--score` gives both versions'
+inputs to anyone who wants to check the correction.
+
+**What this cannot see, and what it is not.**
+
+- **A real placeholder in the wrong place.** `<NAME_LIKE_2>` where the page meant
+  `<NAME_LIKE_1>` is counted exact and rehydrates to the wrong person. Only reading the answer
+  catches it, and nothing here reads for meaning.
+- **One run, one wording, three models.** Each model answered each prompt once, at its
+  default temperature, so the intervals cover sampling across pages and tokens, not the
+  variation between two runs of the same model. The prompts and the line are fixed and
+  hashed in the run file (`prompts_sha256`); another wording could do better or worse.
+- **Synthetic pages, rules-only placeholders.** With a detector the placeholders would be
+  typed (`<PERSON_n>`, `<LOCATION_n>`), and a model may treat a typed placeholder differently
+  from `NAME_LIKE`. The corpus holds nobody real, which is what made it safe to send.
 
 ### The Canadian identifier set, from 0.6.1
 
