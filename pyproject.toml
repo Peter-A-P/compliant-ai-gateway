@@ -1,6 +1,6 @@
 [project]
 name = "boundary"
-version = "0.12.0"
+version = "0.13.0"
 description = "One library every model call in the portfolio goes through: raw-HTTP adapters, routing by configuration, a cost ledger row and a telemetry span per call, spend caps, and an inviolable pass-through mode."
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
@@ -38,6 +38,16 @@ vertex = ["google-auth>=2,<3"]
 # recognisers, the analyzer's guarantees and the whole policy, works without it. Below 3
 # because 2.x is the line whose analyzer result shape the adapter reads.
 redact = ["presidio-analyzer>=2,<3"]
+# The OpenAI-compatible proxy (0.13, PLAN.md B2.1): `boundary serve`. Optional because a
+# library caller never runs a server, and 02, 03 and 07 install none of it. FastAPI because
+# PLAN.md B4 names it and its request models are the pydantic the library already uses;
+# below 1.0 because FastAPI is still pre-1.0 and has changed defaults between minors, so a
+# bump is reviewed rather than taken. Uvicorn is the ASGI server `boundary serve` starts;
+# below 1.0 for the same reason.
+server = [
+  "fastapi>=0.141,<1",
+  "uvicorn>=0.54,<1",
+]
 
 [dependency-groups]
 dev = [
@@ -53,6 +63,11 @@ dev = [
   # deliberately not a runtime dependency: needing a tokenizer to state a cost is the design
   # that experiment rejects. Below 1.0 because the encoding registry is still settling.
   "tiktoken>=0.8,<1",
+  # OpenAI's own client, in tests only, as the conformance check for the proxy: B10 asks that
+  # a real client library works by changing only the base URL and key, and the only honest
+  # test of that is the real client. Never imported by the library, which builds every
+  # request body itself (CLAUDE.md, no vendor SDKs). Below 4 because 3.x is the line tested.
+  "openai>=3,<4",
 ]
 
 [project.scripts]

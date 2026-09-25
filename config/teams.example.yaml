@@ -1,0 +1,29 @@
+# Teams for the OpenAI-compatible proxy (boundary serve, 0.13). PLAN.md B2.7.
+#
+# Copy to teams.yaml beside boundary.yaml and replace the hashes. A team is a ledger
+# `project`: its monthly budget is a spend cap on that project over the proxy's ledger, the
+# same check caps.yaml applies to a library caller, and `ledger report` shows its spend.
+#
+# Keys are never written here. `boundary teams key --team NAME` mints one, prints it once,
+# and prints the SHA-256 line to paste below. A list, so a key can be rotated with no
+# outage: add the new hash, move the callers, remove the old one.
+#
+# The hashes below are 64 zeros and 64 ones, which no key hashes to, so this file as it
+# stands admits nobody.
+
+version: 1
+# The ceiling over every team together. Must be at least the sum of the budgets below.
+gateway_monthly_usd: 20
+
+teams:
+  demo:
+    key_sha256:
+      - "0000000000000000000000000000000000000000000000000000000000000000"
+    monthly_usd: 10
+    per_run_usd: 2
+    requests_per_minute: 60
+  analytics:
+    key_sha256:
+      - "1111111111111111111111111111111111111111111111111111111111111111"
+    monthly_usd: 5
+    requests_per_minute: 30

@@ -1,7 +1,7 @@
 """Command line: boundary smoke <provider> | routes show | prices check |
 ledger report | ledger residency | ledger merge | batch status | batch collect | bench |
 redact eval | audit seal | audit verify | audit anchor | audit tamper-test | policy eval |
-experiment remote-ledger.
+serve | teams key | experiment remote-ledger.
 
 Every command takes --config (default: config/boundary.yaml next to the current directory
 or the installed package's config) and --project.
@@ -623,6 +623,65 @@ def cmd_policy_eval(args: argparse.Namespace) -> int:
     return 0 if results.violations.hits == 0 and results.false_refusals.hits == 0 else 1
 
 
+PROXY_LEDGER = "boundary.proxy.sqlite"
+
+
+def cmd_serve(args: argparse.Namespace) -> int:
+    """The OpenAI-compatible proxy (0.13). Needs the `server` extra. Binds to loopback
+    unless told otherwise: a proxy holding vendor keys is not put on a network by default."""
+    try:
+        import uvicorn
+
+        from boundary.server import create_app, load_teams
+    except ImportError:
+        print(
+            "error: the proxy needs the server extra: uv sync --extra server "
+            "(or pip install 'boundary[server]')",
+            file=sys.stderr,
+        )
+        return 2
+    from boundary.enforce import load_policy
+    from boundary.env import find_dotenv, load_dotenv
+
+    env_file = find_dotenv(Path.cwd(), args.config.resolve().parent.parent, args.config.parent)
+    if env_file is not None:
+        load_dotenv(env_file)
+    cfg = load_config(args.config)
+    teams_path = Path(args.teams) if args.teams else args.config.resolve().parent / "teams.yaml"
+    policy_path = Path(args.policy) if args.policy else cfg.policy
+    if policy_path is None:
+        policy_path = args.config.resolve().parent / "policy.yaml"
+    # A ledger of its own by default, beside the library's: the gateway's monthly ceiling is
+    # the spend of every row in the file, and the library's own calls are not the teams'.
+    ledger = Path(args.ledger) if args.ledger else cfg.ledger.path.with_name(PROXY_LEDGER)
+    app = create_app(
+        cfg,
+        load_teams(teams_path),
+        ledger_path=ledger,
+        policy=load_policy(policy_path),
+    )
+    print(
+        f"boundary {__version__} proxy on http://{args.host}:{args.port}/v1 "
+        f"(teams {teams_path}, policy {policy_path}, ledger {ledger})",
+        file=sys.stderr,
+    )
+    uvicorn.run(app, host=args.host, port=args.port, log_level="info")
+    return 0
+
+
+def cmd_teams_key(args: argparse.Namespace) -> int:
+    """Mint a key for a team. The key is printed once and stored nowhere; the hash is what
+    goes into teams.yaml."""
+    from boundary.server.teams import hash_key, new_key
+
+    key = new_key()
+    print(f"key for team {args.team} (shown once, give it to the team and keep no copy):")
+    print(f"  {key}")
+    print("add this line under the team's key_sha256 in teams.yaml:")
+    print(f"  - {hash_key(key)}")
+    return 0
+
+
 def _audit_paths(args: argparse.Namespace) -> tuple[Path, Path]:
     """The ledger and the audit log beside it. The log defaults to `<ledger>.audit.sqlite`,
     so one ledger has one chain and a merge destination gets its own."""
@@ -921,6 +980,29 @@ def main(argv: list[str] | None = None) -> int:
     pe.add_argument("--policy", help="the policy file (default: policy.yaml beside the config)")
     pe.add_argument("--write-readme", dest="write_readme", action="store_true")
     pe.set_defaults(func=cmd_policy_eval)
+
+    serve = sub.add_parser("serve", help="run the OpenAI-compatible proxy (server extra)")
+    serve.add_argument("--teams", help="the teams file (default: teams.yaml beside the config)")
+    serve.add_argument(
+        "--policy",
+        help="the data policy (default: the config's policy, else policy.yaml beside it); "
+        "the proxy will not start without one",
+    )
+    serve.add_argument(
+        "--ledger",
+        help=f"the ledger file (default: {PROXY_LEDGER} beside the config's ledger, so the "
+        "proxy's teams and the library's own calls are counted apart)",
+    )
+    serve.add_argument("--host", default="127.0.0.1")
+    serve.add_argument("--port", type=int, default=8080)
+    serve.set_defaults(func=cmd_serve)
+
+    teams = sub.add_parser("teams", help="proxy team commands").add_subparsers(
+        dest="sub", required=True
+    )
+    tk = teams.add_parser("key", help="mint a team key and print the hash for teams.yaml")
+    tk.add_argument("--team", required=True)
+    tk.set_defaults(func=cmd_teams_key)
 
     audit = sub.add_parser(
         "audit", help="the hash-chained audit log over a ledger (docs/audit.md)"

@@ -528,3 +528,73 @@ def test_the_role_only_event_is_not_a_token() -> None:
     assert parser.feed(json.dumps(_chunk({"role": "assistant", "content": ""}))) is False
     assert parser.feed(json.dumps(_chunk({"content": "H"}))) is True
     assert parser.feed("[DONE]") is False
+
+
+# -- on_text (0.13): the text as it arrives, for the proxy ---------------------------------
+
+
+def _unterminated() -> list[bytes]:
+    """A host that closes the connection straight after its last content event, with no
+    blank line and no sentinel. That event is only fed when the stream settles, so a hook
+    that forgot the settle would lose the last piece of the answer."""
+    last = _event(_chunk({"content": "lo"}, finish="stop", usage=USAGE))[:-2]
+    return [_event(_chunk({"content": "Hel"})), last]
+
+
+def test_on_text_pieces_join_to_the_text(gw: Gateway) -> None:
+    pieces: list[str] = []
+    with respx.mock(assert_all_called=True) as mock:
+        mock.post(OPENWEIGHTS_URL).mock(
+            return_value=_stream_response(_SSE(_unterminated(), delay_s=0))
+        )
+        resp = gw.chat_stream(_req(), purpose="t", on_text=pieces.append)
+    assert resp.text == "Hello"
+    assert pieces == ["Hel", "lo"]
+
+
+async def test_the_async_on_text_pieces_join_to_the_text(gw: Gateway) -> None:
+    pieces: list[str] = []
+
+    async def on_text(piece: str) -> None:
+        pieces.append(piece)
+
+    with respx.mock(assert_all_called=True) as mock:
+        mock.post(OPENWEIGHTS_URL).mock(
+            return_value=_stream_response(_SSE(_unterminated(), delay_s=0))
+        )
+        resp = await gw.achat_stream(_req(), purpose="t", on_text=on_text)
+    assert resp.text == "Hello" and "".join(pieces) == "Hello"
+
+
+def test_a_retried_stream_hands_over_no_piece_twice(gw: Gateway) -> None:
+    pieces: list[str] = []
+    with respx.mock(assert_all_called=True) as mock:
+        mock.post(OPENWEIGHTS_URL).mock(
+            side_effect=[
+                httpx.Response(429, json={"error": {"message": "slow down"}}),
+                _stream_response(_SSE(openai_shaped_events(), delay_s=0)),
+            ]
+        )
+        resp = gw.chat_stream(_req(), purpose="t", on_text=pieces.append)
+    assert resp.retries == 1 and "".join(pieces) == "Hello"
+
+
+def test_an_on_text_that_raises_still_leaves_a_completed_row(gw: Gateway) -> None:
+    """A callback's failure must not leave a row in flight. The stream is read to its end,
+    the row is written with the usage the host reported, and then the error is raised."""
+    calls: list[str] = []
+
+    def on_text(piece: str) -> None:
+        calls.append(piece)
+        raise RuntimeError("the client went away")
+
+    with respx.mock(assert_all_called=True) as mock:
+        mock.post(OPENWEIGHTS_URL).mock(
+            return_value=_stream_response(_SSE(openai_shaped_events(), delay_s=0))
+        )
+        with pytest.raises(RuntimeError, match="went away"):
+            gw.chat_stream(_req(), purpose="t", on_text=on_text)
+    assert calls == ["Hel"], "not called again once it has raised"
+    (row,) = gw.ledger.rows()
+    assert row["http_status"] == 200 and row["error_type"] is None
+    assert (row["input_tokens"], row["output_tokens"]) == (100, 20) and row["costed"] == 1

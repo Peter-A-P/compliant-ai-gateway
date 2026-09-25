@@ -218,6 +218,7 @@ class OpenAIStreamParser:
         self._events = 0
         self._error: str | None = None
         self.usage_seen = False
+        self._drained = 0
 
     def feed(self, data: str) -> bool:
         if data.strip() == "[DONE]":
@@ -263,6 +264,11 @@ class OpenAIStreamParser:
             if fr is not None:
                 self._finish = str(fr).lower()
         return content
+
+    def drain(self) -> str:
+        piece = "".join(self._text[self._drained :])
+        self._drained = len(self._text)
+        return piece
 
     def result(self) -> ParsedResponse:
         if self._error is not None:

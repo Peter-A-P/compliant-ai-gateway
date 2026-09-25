@@ -147,8 +147,10 @@ is the current figure), so checking a year of the portfolio's calls is seconds.
 ## What this does not do, yet
 
 - **Nothing is anchored in this repository yet.** The daily Action that commits an anchor is
-  Part B, because there is no always-on log to anchor until the proxy exists: today each
-  environment's ledger is sealed after the fact on the machine that holds it. An anchor file
+  Part B, because there is no always-on log to anchor until the proxy runs somewhere that is
+  always on. The proxy exists since 0.13 (docs/server.md) but runs on a laptop until it is
+  deployed, and today each environment's ledger is sealed after the fact on the machine
+  that holds it. An anchor file
   in the repository pointing at a laptop's log would be a claim nobody else could check.
 - **The seal runs after the call, not during it.** The gateway is untouched, so the
   pass-through path and the overhead figure are exactly what they were, and a call is on the

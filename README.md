@@ -16,9 +16,11 @@ overlays for self-hosted GPU servers (`v0.3.0`), a data class declared on every 
 (`v0.5.0` to `v0.5.8`), this repository's own redaction measurements: the labelled corpus,
 the Canadian identifier set and rehydration fidelity (`v0.6.0` to `v0.6.4`), a hash-chained
 audit log over the ledger (`v0.7.0`), redaction measured on real court judgments and the
-fixes that measurement led to (`v0.8.0` to `v0.11.0`), and opt-in enforcement of the data
-policy (`v0.12.0`). The last four are pieces of Part B pulled forward because none of them
-needed the proxy. Release by release, with the evidence for each: [CHANGELOG.md](CHANGELOG.md).
+fixes that measurement led to (`v0.8.0` to `v0.11.0`), opt-in enforcement of the data
+policy (`v0.12.0`), and the first stage of the OpenAI-compatible proxy, with team keys and
+budgets and the data policy always on (`v0.13.0`, [docs/server.md](docs/server.md)). The
+last five are pieces of Part B pulled forward because none of them needed the VPS or any
+spend. Release by release, with the evidence for each: [CHANGELOG.md](CHANGELOG.md).
 Part B, the full gateway, is planned for May 2027 in [PLAN.md](PLAN.md).
 
 Four things worth knowing before the tables.
@@ -219,7 +221,12 @@ declaration, not a vendor's conduct, and the command says so. Detail in
   `v0.12.0` a gateway given a data policy refuses a call whose class its provider's declared
   residency does not fit (below). It never infers a class from content: a gateway that
   guessed classifications would be making a compliance decision nobody reviewed. Enforcement
-  is opt-in until Part B's proxy, where an absent class becomes `personal` at the door.
+  is opt-in for a library caller; through the proxy (`v0.13.0`) it is always on, and an
+  absent class becomes `personal` at the door.
+- **The proxy does not redact yet, and its overhead is not measured yet.** A `personal`
+  request through it goes only where the policy lets personal data go, which on the
+  checked-in policy is the local model; redacting it so that it may go further is Part B's
+  next stage. No latency figure for the proxy is claimed until the load test on the VPS.
 - It does not run in more than one region. Residency here means controlling where requests
   are allowed to go, not where the proxy runs.
 - **It cannot verify residency, and no tool can.** It records what the operator declared and

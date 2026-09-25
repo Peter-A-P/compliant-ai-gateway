@@ -5,6 +5,46 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.13.0 (2026-09-25)
+
+**The OpenAI-compatible proxy, stage 1 of Part B: a real OpenAI client works by changing its
+base URL and its key, streaming included.** `boundary serve`, PLAN.md B2.1, B2.2's header and
+B2.7, pulled forward. docs/server.md.
+
+- **On the same `Gateway`**, one per team, so a proxy call writes exactly the row a library
+  call would. `POST /v1/chat/completions`, `GET /v1/models`, `GET /healthz`. Optional
+  `server` extra (FastAPI, uvicorn); `import boundary` never imports it, so 02, 03 and 07
+  install nothing new.
+
+- **A team is a ledger `project`**, keyed by a bearer key whose SHA-256 is all `teams.yaml`
+  holds. Its monthly and per-run budgets are Part A spend caps over the proxy's ledger, plus
+  a gateway-wide ceiling and a per-minute request quota. Each limit is a 429 whose body names
+  it and when it resets.
+
+- **`X-Data-Class`, absent means `personal`**, passed to the library as a declaration so the
+  row says what the boundary decided. **The data policy is always on**: the proxy refuses to
+  start without one, and a refusal is a 403 with the `policy_refused` row's id. On the
+  checked-in Canadian policy a request with no header reaches only the local model.
+
+- **Nothing a client sent is dropped silently**: `tools`, `seed`, `response_format`, `n` > 1
+  and any other field not carried to every vendor is a 400 naming it. Images are refused.
+
+- **Streaming is native for `openai_compat` and whole elsewhere**, labelled by
+  `x-boundary-stream`. A refusal before the first token is still a status, not an event in a
+  200. Checked with OpenAI's own client in process, and over a real socket against uvicorn,
+  where the first piece has to arrive while the upstream is paused. A test proves that check
+  fails for a proxy that buffers.
+
+- **`on_text` on `chat_stream` and `achat_stream`**, additive: the text as it arrives, the
+  pieces joined exactly equal to `text`. A callback that raises cannot leave a row in
+  flight: the stream is read to its end, the row written, then the error raised. A stream
+  whose host closes on its last event without a blank line loses no text, and a test fails
+  if it does.
+
+- **Not yet**: redaction before a `personal` call leaves, the load test and its overhead
+  budget, the audit chain appended as the proxy answers, the cache. docs/server.md says
+  where each lands.
+
 ## 0.12.0 (2026-09-23)
 
 **The data policy: a personal-data call to a provider that could process it anywhere is

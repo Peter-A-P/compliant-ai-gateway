@@ -417,6 +417,7 @@ from October the ledger-against-invoice difference is recorded there too (sectio
 | v0.10.0 | 2026-09-23 | A jurisdiction's allow list, derived from TAB's train split and chosen on dev: safe spans touched on test 78.4% to 41.7%, precision 32.2% to 45.4%, direct identifiers unmoved. It does not reach a detector's own spans; that is the next change |
 | v0.11.0 | 2026-09-23 | A caller's allow list releases a detector's own place and organisation spans, never a person: with Presidio on TAB's test split, safe spans touched 78.9% to 51.4% and precision 29.5% to 37.6%, direct identifiers unmoved. A behaviour change for 07 when it moves its pin |
 | v0.12.0 | 2026-09-23 | The data policy, opt-in: `Gateway(policy=)`, `PolicyRefused`, `boundary.enforce`, `boundary policy eval`. 0 of 550 forbidden cases sent on the adversarial suite. Nothing downstream changes unless it opts in |
+| v0.13.0 | 2026-09-25 | The OpenAI-compatible proxy, stage 1 of Part B pulled forward: `boundary.server` behind the `server` extra, `boundary serve`, `boundary teams key`, and `on_text` on the stream methods. Nothing downstream imports it and no pin needs to move |
 | v1.0.0 | May 23 2027 | Everything in Part B; `boundary.redact` for 07; the proxy for 13 and 14 |
 
 03 pins `boundary>=0.1,<0.3` for Part A and moves to `>=1.0` when its Part B is built
@@ -533,6 +534,20 @@ The numbers a stranger can check:
 real client works by changing only the base URL and the key. The proxy calls the same
 `Gateway` as Part A; every feature below is a layer inside that call path and can be
 switched off per route, which is what makes the layered load test possible.
+
+**Amended 2026-09-25: the proxy is built, in 0.13.0** (`boundary.server`, docs/server.md),
+pulled forward from May 2027 because nothing in it needed the VPS or any spend: it is
+built and measured against mocked vendors, like the 0.1 overhead benchmark. Three things
+were settled in building it. **A team is a ledger `project`**, one `Gateway` per team over
+one ledger file, so the proxy adds no second place where spend is counted. **A field the
+proxy cannot carry to every vendor is refused with a 400 naming it**, rather than dropped:
+`tools`, `seed`, `response_format` and the rest, because a gateway that measures things
+cannot let a caller believe a seed was honoured. **Streaming is native where the adapter
+streams and whole where it does not**, labelled in a header, so a client that asks for a
+stream always gets one and the row never claims a first token nobody timed. The library
+gained one additive keyword for it, `on_text` on the two stream methods. There are no
+layers to switch off yet, because redaction, the cache and the audit append are not in the
+call path; the per-route switches arrive with the first of them.
 
 ### B2.2 Data classification is an input, not an inference
 
@@ -763,6 +778,18 @@ API keys map to teams; each team has a monthly budget and a rate quota; budgets 
 Part A's caps and use the same ledger. At the limit the proxy returns 429 with a body that
 says which limit and when it resets.
 
+**Amended 2026-09-25: built in 0.13.0.** `teams.yaml` maps key hashes (never keys) to teams,
+each with `monthly_usd`, an optional `per_run_usd` and `requests_per_minute`, under a
+`gateway_monthly_usd` ceiling. The budgets are exactly Part A's caps, built from the file and
+checked by the same code over the proxy's own ledger, which is kept apart from the library's
+so the ceiling counts only the teams. The quota is a sliding sixty-second window held in
+memory, and resets on restart, which is stated rather than hidden: the budget protects money
+and lives in the ledger, the quota protects the upstream from a runaway loop. Two gaps that
+remain and are written down in docs/server.md: a refused request writes no row, as the
+library's caps never have (a policy refusal is the exception, because it is a compliance
+decision); and a budget is only as good as the price file, since a call to a model with no
+price is costed at nothing and so never binds it.
+
 ### B2.8 Measured by 03
 
 The gate from project 03 answers the question a buyer will ask: does redaction hurt the
@@ -823,8 +850,10 @@ Additions to the Part A package:
 
 ```
 boundary/
-  server/          FastAPI: /v1/chat/completions (SSE streaming), /v1/models, /healthz;
-                   team key auth; X-Data-Class handling; layered call path
+  server/          BUILT 2026-09-25 (0.13.0): app.py (FastAPI, /v1/chat/completions with SSE
+                   streaming, /v1/models, /healthz), teams.py (team keys, budgets, quota),
+                   wire.py (the OpenAI shapes, in and out). Still to come: the layered
+                   call path, once there are layers in it
   policy.py        class -> allowed providers and regions -> required layers; fail closed
   redact/          BUILT 2026-09-19 (0.5.0), shape differs from this sketch: types.py (Span,
                    EntityType, Recogniser protocol), recognisers.py (the built-in patterns),
@@ -935,15 +964,15 @@ the ledger and the spans as its production signal.
 ## B10. Definition of done, Part B
 
 - [ ] Everything in Part A's definition of done
-- [ ] OpenAI-compatible: a real client library works by changing only the base URL and key, streaming included
-- [ ] Data classification header enforced, absent means `personal`; residency violations zero on the adversarial suite, with correct refusals. **Engine and adversarial suite done 2026-09-23 (0.12.0)**: 0 of 550 forbidden cases sent, 0 false refusals, every refusal audited, absent judged as `personal`. The header itself is the proxy's
+- [x] OpenAI-compatible: a real client library works by changing only the base URL and key, streaming included. **Done 2026-09-25 (0.13.0)** with OpenAI's own Python client against mocked vendors, in process and over a real socket to uvicorn, streamed and not; the socket test fails for a proxy that buffers. A live vendor call through the proxy has not been made yet
+- [ ] Data classification header enforced, absent means `personal`; residency violations zero on the adversarial suite, with correct refusals. **Engine and adversarial suite done 2026-09-23 (0.12.0)**: 0 of 550 forbidden cases sent, 0 false refusals, every refusal audited, absent judged as `personal`. The header itself is the proxy's. **Header done 2026-09-25 (0.13.0)**: absent becomes `personal` at the door and is written as a declaration, an unknown word is a 400, and the proxy refuses to start without a policy. What remains is running the adversarial suite through the proxy rather than the library
 - [ ] Reversible redaction round-trips under property tests; rehydration fidelity and mutation rate reported. **Property tests and fidelity done 2026-09-21 (0.6.4)**: the round trip is a property test over generated documents, and `boundary redact eval --rehydration` reports resolution per mutation form with intervals, 14 of 15 at 100% and 0 fabrications. The **mutation rate** is what remains, and it needs the proxy: which of those forms a model actually produces, sampled from real answers
 - [x] Redaction precision and recall per entity type on public corpora and the Canadian set, with CIs. **Done 2026-09-23 (0.8.0)**; detail on the annotated line below
 - [ ] Quality effect of redaction measured through the 03 gate, two-sided, with interval
 - [ ] Semantic cache hit rate, dollars saved and false-hit rate on replayed traffic
 - [ ] Injection screen detection and false-positive rates reported (unless dropped, and then said so)
 - [ ] Audit log chain verification tool included; daily anchors in the public repository; tamper test detects every injected corruption. **Tool and tamper test done 2026-09-22 (0.7.0)**: `boundary audit verify`, and `boundary audit tamper-test` detecting 2,400 of 2,400 corruptions across twelve kinds before the last anchor with 0 false alarms, the six kinds a chain cannot see after it reported beside them (B2.4, amended). **Daily anchors in the public repository** are what remain, and they need the proxy's always-on log to anchor
-- [ ] Per-team budgets and quotas enforced; 429 body names the limit
+- [x] Per-team budgets and quotas enforced; 429 body names the limit. **Done 2026-09-25 (0.13.0)**: team monthly and per-run budgets, the gateway ceiling and the per-minute quota each refuse with zero upstream calls and a body naming the limit, its reset and a `Retry-After`. The in-memory quota and the unpriced-model gap are in B2.7
 - [ ] Load test published: p50, p95, p99 overhead by layer and load level, with CIs and the VPS size stated
 - [ ] Observability dashboard shows every project's calls and costs live; completeness panel against local ledgers
 - [ ] Hosted demo live at gateway.peterparker.ca
