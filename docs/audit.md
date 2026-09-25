@@ -163,3 +163,7 @@ is the current figure), so checking a year of the portfolio's calls is seconds.
   the application role. The chain and the verifier are storage-independent pure functions
   (`boundary/audit/chain.py`), so the Part B store is a different place to keep the same
   records rather than a different design.
+- **The `redacted` column (0.15) is not sealed.** `SEALED` is fixed so that an older verifier
+  can still reproduce a record, so a column added since is outside the record until the
+  record schema moves to 2. The row's `data_class` is sealed, so a redacted personal call is
+  in the chain as personal; that it was redacted is only in the ledger.

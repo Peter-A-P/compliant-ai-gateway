@@ -40,6 +40,7 @@ listed here; nothing any earlier version offered has changed shape.
 | 0.11.0 | 2026-09-23 | `Policy.released` and `RELEASABLE`: a caller's `allow` terms also release a detector's LOCATION or ORGANISATION span that is one of them. A caller who passes no `allow` sees no change |
 | 0.12.0 | 2026-09-23 | The data policy (section 14): `Gateway(..., policy=)`, the `policy` configuration key, `PolicyRefused`, `boundary.enforce` and `boundary policy eval`. Opt-in: a gateway with no policy behaves as before |
 | 0.13.0 | 2026-09-25 | The OpenAI-compatible proxy (section 15): `boundary.server`, the `server` extra, `boundary serve` and `boundary teams key`. `on_text` on `chat_stream` and `achat_stream`. Nothing a library caller already uses changed |
+| 0.15.0 | 2026-09-25 | Redaction in the proxy (section 15). `redacted=` on `chat`, `achat`, `chat_stream` and `achat_stream`, `redacted` on `ChatResponse`, schema v8's `redacted` column; `ClassRule.redacted_as`, `decide(..., redacted=)` and `Decision.judged_as` (section 14). A caller that passes nothing new sees no change |
 | 0.14.0 | 2026-09-25 | `boundary redact mutation` and `boundary.redact.mutation` (`collect`, `score`, `classify`, `newcombe`, `PRESERVE`, `ASKED`): placeholder mutation under a model, from a stored run. Not re-exported from `boundary.redact` |
 | 0.13.1 | 2026-09-25 | `boundary policy eval --proxy` and `enforce_eval.run_proxy`, `door`, `PROXY_CLASSES`, `PROXY_ENTRY_POINTS`: the adversarial suite through the proxy over HTTP |
 
@@ -65,10 +66,10 @@ from boundary import (
 | Item | Signature | Since | Notes |
 |---|---|---|---|
 | Construct from a file | `Gateway.from_config(path, *, project, ledger_path=None, raw_store=None, strict_cost=False, env=None)` | 0.1, `env` 0.2 | `project` is the ledger's project column and the key into `caps.yaml`. `ledger_path` overrides the config's ledger path (the Actions runner passes a path inside the checkout). `raw_store` is a directory the caller owns; required for any pass-through call. `strict_cost=True` raises `UnknownPrice` instead of writing an uncosted row. `env` labels the rows this gateway writes, so a merged ledger says where a call was made; it defaults to `BOUNDARY_ENV`, then `ledger.env` in the configuration |
-| Synchronous call | `gw.chat(request, *, purpose, run_id=None, mode=Mode.STANDARD, data_class=None) -> ChatResponse` | 0.1, `data_class` 0.4 | `purpose` is a short free-text label for the ledger ("drift-run", "grader-dev"). `run_id` groups rows and is what the per-run cap is measured against. `data_class` is what kind of data the request carries, from the closed vocabulary in section 5a; it is written to the row and the span, and in 0.x enforced by nothing. None means no claim was made; a word outside the vocabulary raises `ValueError` before the model is resolved, and no row is written |
-| Asynchronous call | `await gw.achat(request, *, purpose, run_id=None, mode=Mode.STANDARD, data_class=None) -> ChatResponse` | 0.1, `data_class` 0.4 | Same adapter code path as `chat`; concurrency is the caller's business |
-| Streamed call | `gw.chat_stream(request, *, purpose, run_id=None, mode=Mode.STANDARD, data_class=None, on_text=None) -> ChatResponse` | 0.3, `data_class` 0.4, `on_text` 0.13 | Sends `stream: true` with `stream_options: {include_usage: true}`, reads the events as they arrive and returns the whole answer: full text, the usage from the final event, and `ttft_ms`. One ledger row per call. **Standard mode only**: `Mode.PASSTHROUGH` is refused with `PassthroughViolation` before anything is built, and the development cache is never consulted. `openai_compat` only; every other kind raises `NotImplementedError` naming the kind. A stream that fails after it began is not retried, because the host may bill for tokens the library cannot count. `on_text(piece)`, when given, is handed the text as it arrives; on a successful call the pieces joined are exactly `text`, none repeated, because a stream is only retried before its first byte. If `on_text` raises it is not called again, the stream is read to its end and the row written, and then its exception is raised, so a callback cannot leave a row in flight |
-| Streamed call, async | `await gw.achat_stream(request, *, purpose, run_id=None, mode=Mode.STANDARD, data_class=None, on_text=None) -> ChatResponse` | 0.3, `data_class` 0.4, `on_text` 0.13 | The async twin, with an awaited `on_text`. The transport's connection pool admits at least 64 streams at once against one host, and a test holds 64 open |
+| Synchronous call | `gw.chat(request, *, purpose, run_id=None, mode=Mode.STANDARD, data_class=None, redacted=False) -> ChatResponse` | 0.1, `data_class` 0.4, `redacted` 0.15 | `purpose` is a short free-text label for the ledger ("drift-run", "grader-dev"). `run_id` groups rows and is what the per-run cap is measured against. `data_class` is what kind of data the request carries, from the closed vocabulary in section 5a; it is written to the row and the span, and in 0.x enforced by nothing. None means no claim was made; a word outside the vocabulary raises `ValueError` before the model is resolved, and no row is written. `redacted=True` says the caller redacted the payload before handing it over: it is written to the row, and where the policy's rule for the class names a `redacted_as` the call is judged by that class (section 14). The library cannot check it, exactly as it cannot check `data_class` |
+| Asynchronous call | `await gw.achat(request, *, purpose, run_id=None, mode=Mode.STANDARD, data_class=None, redacted=False) -> ChatResponse` | 0.1, `data_class` 0.4, `redacted` 0.15 | Same adapter code path as `chat`; concurrency is the caller's business |
+| Streamed call | `gw.chat_stream(request, *, purpose, run_id=None, mode=Mode.STANDARD, data_class=None, on_text=None, redacted=False) -> ChatResponse` | 0.3, `data_class` 0.4, `on_text` 0.13, `redacted` 0.15 | Sends `stream: true` with `stream_options: {include_usage: true}`, reads the events as they arrive and returns the whole answer: full text, the usage from the final event, and `ttft_ms`. One ledger row per call. **Standard mode only**: `Mode.PASSTHROUGH` is refused with `PassthroughViolation` before anything is built, and the development cache is never consulted. `openai_compat` only; every other kind raises `NotImplementedError` naming the kind. A stream that fails after it began is not retried, because the host may bill for tokens the library cannot count. `on_text(piece)`, when given, is handed the text as it arrives; on a successful call the pieces joined are exactly `text`, none repeated, because a stream is only retried before its first byte. If `on_text` raises it is not called again, the stream is read to its end and the row written, and then its exception is raised, so a callback cannot leave a row in flight |
+| Streamed call, async | `await gw.achat_stream(request, *, purpose, run_id=None, mode=Mode.STANDARD, data_class=None, on_text=None, redacted=False) -> ChatResponse` | 0.3, `data_class` 0.4, `on_text` 0.13, `redacted` 0.15 | The async twin, with an awaited `on_text`. The transport's connection pool admits at least 64 streams at once against one host, and a test holds 64 open |
 | Escape hatch | `gw.raw(provider, method, path, json, *, purpose, run_id=None, mode=Mode.STANDARD, data_class=None) -> RawResponse` | 0.1, `data_class` 0.4 | For a vendor feature the library does not model. Traced and ledgered; costed when the body carries usage in a shape the adapter knows, otherwise written uncosted |
 | Resolve without calling | `gw.resolve(model, mode=Mode.STANDARD) -> ModelRef` | 0.1 | What an alias points at right now. Lets a runner print the identifiers it is about to use |
 | Close | `gw.close()`, and `with Gateway.from_config(...) as gw:` | 0.1 | Flushes the ledger and telemetry, closes the HTTP client |
@@ -124,6 +125,7 @@ errors in pass-through mode (where an error is a result).
 | `ttft_ms` | `float \| None` | 0.3 | Streamed calls only: wall time from sending the request to the first content delta arriving. None when the call was not streamed, or when no content arrived. `latency_ms` on a streamed call runs to the last byte. On a streamed call `raw` is the completion assembled from the events in the non-streaming shape, marked `assembled_from_stream_events`, and `response_sha256` on the row hashes the event bytes as received |
 | `data_class` | `str \| None` | 0.4 | The class the caller declared on this call, as written to the row; None when none was declared |
 | `call_uid` | `str \| None` | 0.4 | The row's `call_uid`. `ledger_id` is local to one file and reassigned by `ledger merge`; this is the identifier that survives it. A caller keeping its own records of a call (which document, which page, which decision) joins them to the ledger on this, which is the answer to "can I attach my own metadata to a call" (section 11, item 6) |
+| `redacted` | `bool` | 0.15 | Whether the caller said the request was sent redacted, as written to the row. The library cannot check it |
 | `ok` | property `bool` | 0.1 | 2xx status |
 
 ## 4a. `BatchHandle`
@@ -208,11 +210,11 @@ All subclass `BoundaryError`.
 | `PolicyRefused` | The data policy forbids this class of data from reaching this provider (0.12). **No request was made**, and a ledger row with `error_type = 'policy_refused'` was written | `data_class`, `provider`, `reason`, `ledger_id` | 0.12 |
 | `ProviderError` | Non-2xx after retries (standard) or transport failure. In pass-through the same information is returned as a `ChatResponse` instead | `provider`, `status`, `body`, `retries`, `headers` | 0.1 |
 
-## 7. The ledger row (schema v7)
+## 7. The ledger row (schema v8)
 
 One row per call, written before the response is returned, including failures. Columns
 are additive only; never renamed or removed. Field-by-field notes in `docs/ledger.md`
-(Sep 8, v2 Sep 10, v4 Sep 15, v7 Sep 19).
+(Sep 8, v2 Sep 10, v4 Sep 15, v7 Sep 19, v8 Sep 25).
 
 ```
 id, ts_utc, boundary_version, project, purpose, run_id, mode, provider, alias,
@@ -225,6 +227,7 @@ residency                                                                 -- add
 price_sha256                                                              -- added in 0.2.2
 ttft_ms                                                                   -- added in 0.3.0
 data_class                                                                -- added in 0.4.0
+redacted                                                                  -- added in 0.15.0
 ```
 
 `call_uid` identifies the call across files and `env` says which environment made it;
@@ -235,7 +238,8 @@ copied from the provider entry's declaration, and is null when the entry declare
 `ttft_ms` (v6) is the time to first content delta on a streamed call and null on every
 other row; `latency_ms` on a streamed row runs to the last byte. `data_class` (v7) is the
 class the caller declared on the call (section 5a), null when it declared none, and never
-backfilled: nobody declared a class on a call made before there was a way to.
+backfilled: nobody declared a class on a call made before there was a way to. `redacted`
+(v8) is 1 when the caller said the request was sent redacted and null otherwise, never 0.
 
 It is worth being exact about why `residency` is configuration rather than something parsed
 from a response, because the distinction is the whole value of the column. No vendor reports
@@ -393,8 +397,8 @@ from boundary.enforce import DataPolicy, ClassRule, load_policy, decide
 | Item | Signature | Since | Notes |
 |---|---|---|---|
 | Turn it on | `Gateway(..., policy=load_policy(path))`, or `policy: policy.yaml` in `boundary.yaml` | 0.12 | Absent, nothing is enforced |
-| The policy | `DataPolicy(version=1, undeclared=DataClass.PERSONAL, classes={DataClass: ClassRule})`, `ClassRule(max_residency=None, regions=None, providers=None, cache=False)` | 0.12 | Frozen. `load_policy(path)` raises `ConfigError` on a malformed file |
-| Decide | `decide(policy, data_class, *, provider, provider_config, region) -> Decision` | 0.12 | `Decision(allowed, data_class, reason, cache)`. Pure; the gateway calls it straight after resolving the model |
+| The policy | `DataPolicy(version=1, undeclared=DataClass.PERSONAL, classes={DataClass: ClassRule})`, `ClassRule(max_residency=None, regions=None, providers=None, cache=False, redacted_as=None)` | 0.12, `redacted_as` 0.15 | Frozen. `load_policy(path)` raises `ConfigError` on a malformed file |
+| Decide | `decide(policy, data_class, *, provider, provider_config, region, redacted=False) -> Decision` | 0.12, `redacted` 0.15 | `Decision(allowed, data_class, reason, cache, judged_as=None)`. Pure; the gateway calls it straight after resolving the model. With `redacted=True` and a rule naming `redacted_as`, the call is judged by that class's rule, `judged_as` names it, and the cache needs both rules to allow it. A `redacted_as` must name a listed class that has none of its own, checked at load |
 | Refusal | `PolicyRefused` | 0.12 | Section 6. The row's `data_class` is what the caller declared; the error's is what the policy judged it as |
 
 ## 15. The proxy (0.13)
@@ -422,7 +426,8 @@ The HTTP surface, which is the interface a proxy client is written against:
 | `GET /healthz` | 0.13 | `{"status": "ok", "version": ...}`, without a key |
 | Request headers | 0.13 | `Authorization: Bearer <key>` (required), `X-Data-Class` (absent is `personal`), `X-Boundary-Purpose`, `X-Boundary-Run-Id` |
 | Response headers | 0.13 | `x-boundary-data-class`, `x-boundary-data-class-source` (`header` or `absent`), `x-boundary-version`, `x-boundary-call-uid` (not on a native stream, whose uid rides on its last choice event), `x-boundary-stream` (`native` or `whole`) on a stream |
-| Errors | 0.13 | OpenAI's `{"error": {"message", "type", "code", "param"}}`, with extra keys inside `error`. 401 `missing_api_key` or `invalid_api_key`; 400 `invalid_request`, `unsupported_parameter`, `unsupported_content` or `invalid_data_class`; 403 `policy_refused` with `ledger_id`; 404 `model_not_found`; 429 `team_monthly_budget`, `team_run_budget`, `gateway_monthly_budget` (with `resets_at`) or `team_requests_per_minute` (with `retry_after_s`), each with `Retry-After` where there is a reset; 4xx, 429 or 502 `upstream_error` |
+| Redaction | 0.15 | A request whose class's policy rule names a `redacted_as` is redacted as one document (`boundary.server.redaction.redact_request`) behind the refusing guard, sent with `PRESERVE_LINE` added to its system prompt and `redacted=True`, and its answer rehydrated, streamed or not (`StreamRehydrator`). Response headers `x-boundary-redacted` (`true` or `false`), `x-boundary-placeholders` (how many values were replaced) and, on a non-streamed answer, `x-boundary-unresolved` (placeholders in the answer the vault does not hold) |
+| Errors | 0.13 | OpenAI's `{"error": {"message", "type", "code", "param"}}`, with extra keys inside `error`. 401 `missing_api_key` or `invalid_api_key`; 400 `invalid_request`, `unsupported_parameter`, `unsupported_content` or `invalid_data_class`; 403 `policy_refused` with `ledger_id`; 422 `redaction_refused` (0.15) with `findings`, counts by kind and type and never a value; 404 `model_not_found`; 429 `team_monthly_budget`, `team_run_budget`, `gateway_monthly_budget` (with `resets_at`) or `team_requests_per_minute` (with `retry_after_s`), each with `Retry-After` where there is a reset; 4xx, 429 or 502 `upstream_error` |
 
 ## 11. Choices the plan left open
 

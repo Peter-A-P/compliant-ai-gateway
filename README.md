@@ -19,8 +19,9 @@ audit log over the ledger (`v0.7.0`), redaction measured on real court judgments
 fixes that measurement led to (`v0.8.0` to `v0.11.0`), opt-in enforcement of the data
 policy (`v0.12.0`), and the first stage of the OpenAI-compatible proxy, with team keys and
 budgets and the data policy always on (`v0.13.0`, [docs/server.md](docs/server.md)), and
-placeholder mutation measured under three models (`v0.14.0`). The last six are pieces of
-Part B pulled forward because none of them needed the VPS or any
+placeholder mutation measured under three models (`v0.14.0`), and redaction inside the
+proxy, where personal data leaves as placeholders and comes back restored (`v0.15.0`). The
+last seven are pieces of Part B pulled forward because none of them needed the VPS or any
 spend. Release by release, with the evidence for each: [CHANGELOG.md](CHANGELOG.md).
 Part B, the full gateway, is planned for May 2027 in [PLAN.md](PLAN.md).
 
@@ -215,7 +216,7 @@ declaration, not a vendor's conduct, and the command says so. Detail in
 | Residency violations through the proxy | False refusals | Refusals audited on the ledger |
 |---|---|---|
 <!-- policy-proxy:start -->
-| 0 of 262 forbidden cases sent, 0.0% (0.0% to 1.4%) | 0 of 76 allowed cases refused | 210 of 210 refusals on the ledger |
+| 0 of 220 forbidden cases sent, 0.0% (0.0% to 1.7%) | 0 of 118 allowed cases refused | 168 of 168 refusals on the ledger |
 <!-- policy-proxy:end -->
 
 Filled by `boundary policy eval --proxy --write-readme` (`v0.13.1`): the same suite over
@@ -223,7 +224,8 @@ HTTP through `boundary serve`, where the class arrives as an `X-Data-Class` head
 provider entry and alias, thirteen header values (absent, blank, the four classes, forms the
 proxy forgives such as `Personal`, and words it refuses such as `secret`), a plain call and a
 stream. The oracle models the door's rules on its own: absent or blank is `personal`, case
-and space are forgiven, any other word is a 400. Against a counting mock upstream, like the
+and space are forgiven, any other word is a 400, and since `v0.15.0` a `personal` request is
+redacted and routed as `internal`, as the policy's `redacted_as` says. Against a counting mock upstream, like the
 row above; the proxy's live calls are in [docs/server.md](docs/server.md).
 
 **Placeholder mutation under a model** (`v0.14.0`)
@@ -260,10 +262,14 @@ Llama copied out of the instruction itself. Detail, and what this cannot see, in
   guessed classifications would be making a compliance decision nobody reviewed. Enforcement
   is opt-in for a library caller; through the proxy (`v0.13.0`) it is always on, and an
   absent class becomes `personal` at the door.
-- **The proxy does not redact yet, and its overhead is not measured yet.** A `personal`
-  request through it goes only where the policy lets personal data go, which on the
-  checked-in policy is the local model; redacting it so that it may go further is Part B's
-  next stage. No latency figure for the proxy is claimed until the load test on the VPS.
+- **The proxy's redaction is rules only, and neither its effect on answer quality nor the
+  proxy's overhead is measured yet.** Since `v0.15.0` a personal request through the proxy is
+  redacted before it leaves and routed as internal data, so it can reach Claude on Bedrock in
+  `ca-central-1` but not the direct Anthropic API, which declares no residency here. With no
+  detector configured, names become `<NAME_LIKE_n>` and anything capitalised the vocabulary
+  does not know is masked, which fails closed and over-masks. Whether that costs answer
+  quality is Part B's measurement through project 03, not yet run. No latency figure for the
+  proxy is claimed until the load test on the VPS.
 - It does not run in more than one region. Residency here means controlling where requests
   are allowed to go, not where the proxy runs.
 - **It cannot verify residency, and no tool can.** It records what the operator declared and

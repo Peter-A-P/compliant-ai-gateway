@@ -258,12 +258,20 @@ class Gateway:
         run_id: str | None = None,
         mode: Mode = Mode.STANDARD,
         data_class: DataClass | str | None = None,
+        redacted: bool = False,
     ) -> ChatResponse:
-        """One call. `data_class` (0.4) is what kind of data the request carries, from the
+        """One call. `redacted` (0.15) says the caller redacted the payload before handing it
+        over; it is written to the row and, where the policy's rule names a `redacted_as`,
+        the call is judged by that class. The library cannot check it. `data_class` (0.4) is what kind of data the request carries, from the
         closed vocabulary in `DataClass`; it is written to the row and the span and enforced
         by nothing yet. None means no claim, and an unknown word is refused before the row."""
         call = self._prepare(
-            request, purpose=purpose, run_id=run_id, mode=mode, data_class=data_class
+            request,
+            purpose=purpose,
+            run_id=run_id,
+            mode=mode,
+            data_class=data_class,
+            redacted=redacted,
         )
         if call.cached is not None:
             return self._finish(call, call.cached, None, 0, cached=True)
@@ -278,9 +286,15 @@ class Gateway:
         run_id: str | None = None,
         mode: Mode = Mode.STANDARD,
         data_class: DataClass | str | None = None,
+        redacted: bool = False,
     ) -> ChatResponse:
         call = self._prepare(
-            request, purpose=purpose, run_id=run_id, mode=mode, data_class=data_class
+            request,
+            purpose=purpose,
+            run_id=run_id,
+            mode=mode,
+            data_class=data_class,
+            redacted=redacted,
         )
         if call.cached is not None:
             return self._finish(call, call.cached, None, 0, cached=True)
@@ -296,6 +310,7 @@ class Gateway:
         mode: Mode = Mode.STANDARD,
         data_class: DataClass | str | None = None,
         on_text: Callable[[str], None] | None = None,
+        redacted: bool = False,
     ) -> ChatResponse:
         """One call, streamed, returned whole: the full text, the usage from the final event,
         and `ttft_ms`, the wall time from sending the request to the first content delta.
@@ -324,6 +339,7 @@ class Gateway:
             mode=mode,
             stream=True,
             data_class=data_class,
+            redacted=redacted,
         )
         result, error_type, retries = self._stream_sync(call, on_text)
         response = self._finish(call, result, error_type, retries, cached=False)
@@ -340,6 +356,7 @@ class Gateway:
         mode: Mode = Mode.STANDARD,
         data_class: DataClass | str | None = None,
         on_text: Callable[[str], Awaitable[None]] | None = None,
+        redacted: bool = False,
     ) -> ChatResponse:
         """The async twin of `chat_stream`, with an awaited `on_text`. Sixty-four of these
         may be in flight at once against one host; the transport's pool is sized for it
@@ -351,6 +368,7 @@ class Gateway:
             mode=mode,
             stream=True,
             data_class=data_class,
+            redacted=redacted,
         )
         result, error_type, retries = await self._stream_async(call, on_text)
         response = self._finish(call, result, error_type, retries, cached=False)
@@ -1055,6 +1073,7 @@ class Gateway:
         mode: Mode,
         stream: bool = False,
         data_class: DataClass | str | None = None,
+        redacted: bool = False,
     ) -> _Call:
         # Validated first, before the model is resolved and long before a row exists: an
         # unknown class is a caller's mistake, and the place to learn of it is the call site.
@@ -1081,6 +1100,7 @@ class Gateway:
             mode=mode,
             model_requested=ref.explicit,
             alias=ref.alias,
+            redacted=redacted,
         )
         if mode is Mode.PASSTHROUGH:
             if request.max_tokens is None:
@@ -1129,6 +1149,7 @@ class Gateway:
             request_sha256=sha256_hex(built.body),
             env=self.env,
             data_class=declared,
+            redacted=True if redacted else None,
         )
         span = self.telemetry.start("boundary.chat_stream" if stream else "boundary.chat")
         ids = Telemetry.ids(span)
@@ -1167,6 +1188,7 @@ class Gateway:
         model_requested: str,
         alias: str | None,
         batch: Sequence[ModelRef] | None = None,
+        redacted: bool = False,
     ) -> bool:
         """Apply the data policy (0.12). Returns whether the cache may hold the call.
 
@@ -1178,7 +1200,12 @@ class Gateway:
         if self.policy is None:
             return True
         decision = decide(
-            self.policy, declared, provider=provider, provider_config=pc, region=region
+            self.policy,
+            declared,
+            provider=provider,
+            provider_config=pc,
+            region=region,
+            redacted=redacted,
         )
         if decision.allowed:
             return decision.cache
@@ -1201,6 +1228,7 @@ class Gateway:
                 costed=True,
                 env=self.env,
                 data_class=declared,
+                redacted=True if redacted else None,
             )
             ids.append(self.ledger.begin(row))
             row.error_type = POLICY_REFUSED
@@ -1554,6 +1582,7 @@ class Gateway:
             ttft_ms=call.ttft_ms,
             data_class=call.row.data_class,
             call_uid=call.row.call_uid,
+            redacted=bool(call.row.redacted),
         )
 
     def _record(
@@ -1627,6 +1656,7 @@ class Gateway:
                 "boundary.latency_ms": row.latency_ms,
                 "boundary.ttft_ms": row.ttft_ms,
                 "boundary.data_class": row.data_class,
+                "boundary.redacted": row.redacted,
                 "boundary.ledger_id": row.id,
                 "boundary.version": row.boundary_version,
             },

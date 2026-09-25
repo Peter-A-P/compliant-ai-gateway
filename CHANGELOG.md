@@ -5,6 +5,38 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.15.0 (2026-09-25)
+
+**Personal data leaves the proxy as placeholders and comes back restored.** Redaction in
+`boundary serve`, PLAN.md B2.3's proxy half, and the policy rule that says what redaction
+permits (B2.2, decided by Peter). docs/server.md.
+
+- **`redacted_as` in the policy.** A class rule may name the class a redacted call is judged
+  as. The checked-in Canadian policy sets `personal: redacted_as: internal`: raw, personal
+  data reaches only the local model; redacted, also the Canada Central Foundry deployment,
+  Bedrock in `ca-central-1` and Vertex, and still not the direct vendor APIs, which declare
+  no residency. `sensitive` has none, and stays local.
+- **The proxy redacts every request of such a class**: one policy over the system prompt and
+  every message, so one person is one placeholder across turns; `outbound` as the guard,
+  which refuses with a 422 carrying counts, never values; a preserve line with no example
+  placeholder, after 0.14.0 found a model copying the example (this wording is unmeasured).
+- **Answers are rehydrated**, and streamed ones through `StreamRehydrator`, which never
+  releases half a placeholder: over random texts and random cuts, what it releases joined is
+  exactly the whole answer rehydrated. Tested with an upstream that echoes what it was sent,
+  so the client gets back its own text and anything personal on the wire is visible.
+- **The library records it**: `redacted=` on `chat`, `achat`, `chat_stream` and
+  `achat_stream`, `redacted` on `ChatResponse`, ledger schema v8's `redacted` column (1 or
+  null, never 0), `decide(..., redacted=)` and `Decision.judged_as`. The library cannot check
+  the claim; the proxy makes it only after its guard passed.
+- **The adversarial suite through the proxy** now models redaction's routing: 0 of 220
+  forbidden cases sent, 0 of 118 allowed refused.
+- **Live, and checked on the wire**: personal requests to Claude on Bedrock and to the Canada
+  Central Foundry deployment answered with the person's details restored; the body sent to
+  Bedrock, rebuilt offline, matched the live row's `request_sha256` and held none of the four
+  values. The same request to the direct Anthropic entry was refused, judged as internal.
+- **Not yet**: a detector or allow list for the proxy, the quality cost of redaction (B2.8),
+  a ledger row for a redaction refusal, and the audit chain sealing `redacted`.
+
 ## 0.14.0 (2026-09-25)
 
 **What models do to placeholders in flight, and what one system line does about it.**

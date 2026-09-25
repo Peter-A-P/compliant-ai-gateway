@@ -24,7 +24,7 @@ from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 from typing import Any
 
-SCHEMA_VERSION = 7
+SCHEMA_VERSION = 8
 _SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 
 IN_FLIGHT = "in_flight"
@@ -63,7 +63,7 @@ def utc_now() -> str:
 
 @dataclass(slots=True)
 class LedgerRow:
-    """One row, schema v7. Field names are the column names."""
+    """One row, schema v8. Field names are the column names."""
 
     ts_utc: str
     boundary_version: str
@@ -131,6 +131,11 @@ class LedgerRow:
     # library never fills this in from the content; a gateway that guessed a classification
     # would be making a compliance decision nobody reviewed.
     data_class: str | None = None
+    # Whether the request was sent redacted (v8): True when the caller says so, which the
+    # proxy does when it redacted the payload itself, and null otherwise. Never False: a
+    # caller that says nothing has made no claim, and the library cannot look. Null on every
+    # row written before the column existed.
+    redacted: bool | None = None
     id: int | None = field(default=None)
 
     def as_columns(self) -> dict[str, Any]:
@@ -259,6 +264,9 @@ class LedgerStore:
                 # there was a way to, and a value here would be a claim the caller never
                 # made about data the library never looked at.
                 self._add_columns(("data_class", "TEXT"))
+            if current < 8:
+                # Null for every existing row: no call before 0.15 said it was redacted.
+                self._add_columns(("redacted", "INTEGER"))
             self._conn.execute(
                 "INSERT INTO schema_version (version, applied_utc) VALUES (?, ?)",
                 (SCHEMA_VERSION, utc_now()),

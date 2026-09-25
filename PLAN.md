@@ -420,6 +420,7 @@ from October the ledger-against-invoice difference is recorded there too (sectio
 | v0.13.0 | 2026-09-25 | The OpenAI-compatible proxy, stage 1 of Part B pulled forward: `boundary.server` behind the `server` extra, `boundary serve`, `boundary teams key`, and `on_text` on the stream methods. Nothing downstream imports it and no pin needs to move |
 | v0.13.1 | 2026-09-25 | `boundary policy eval --proxy`: the adversarial suite through the proxy, 0 of 262 forbidden cases sent |
 | v0.14.0 | 2026-09-25 | `boundary redact mutation` and `boundary.redact.mutation`: placeholder mutation under three models with and without a preserve line, from a stored run. Nothing downstream imports it |
+| v0.15.0 | 2026-09-25 | Redaction in the proxy, and what it permits: `ClassRule.redacted_as`, `redacted=` on the chat methods, `ChatResponse.redacted`, ledger schema v8's `redacted` column. A caller that passes nothing new sees no change; 02, 03 and 07 need not move |
 | v1.0.0 | May 23 2027 | Everything in Part B; `boundary.redact` for 07; the proxy for 13 and 14 |
 
 03 pins `boundary>=0.1,<0.3` for Part A and moves to `>=1.0` when its Part B is built
@@ -627,6 +628,19 @@ of 550 forbidden cases sent, 0 false refusals. What stays in Part B is the `X-Da
 header and the proxy turning the policy on for every request; the redaction requirement is
 also the proxy's, because the library does not read content.
 
+**Amended 2026-09-25 (0.15.0): what redaction permits, decided by Peter.** The paragraph
+above says `personal` requires redaction but not what redaction allows, and on the Canadian
+policy that mattered: raw personal data may reach only the local model, so redaction that
+unlocked nothing would add little. The decision: a class rule may name `redacted_as`, and a
+call of that class whose payload was redacted is judged by that class's rule. The checked-in
+policy sets `personal: redacted_as: internal` and gives `sensitive` none. The proxy redacts
+every request of a class with a `redacted_as`, so "requires redaction" holds through the
+proxy by construction; a library caller gets the wider route only by passing `redacted=True`,
+which the library records and cannot check. The ledger keeps the declared class and adds a
+`redacted` column (schema v8), so a row reads `personal` and `redacted = 1`. On this
+configuration, redacted personal data reaches the Canadian Foundry deployment, Bedrock in
+`ca-central-1` and Vertex, and not the direct vendor APIs, which declare no residency.
+
 ### B2.3 Reversible redaction
 
 Detection is Presidio's analyzer plus custom recognisers for Canadian identifiers: Social
@@ -714,6 +728,18 @@ unlisted place name is masked by the second pass, which is the fail-closed direc
 gazetteer would make the mask typed as `LOCATION` rather than `NAME_LIKE`). The
 precision-and-recall table and the mutation rate are still B1's deliverables and are not
 claimed. See docs/redact.md.
+
+**The proxy half built 2026-09-25, in 0.15.0** (`boundary.server.redaction`, docs/server.md):
+one policy over the whole request, `outbound` as the refusing guard with a 422 carrying counts
+and never values, a preserve line added to the system prompt, rehydration of plain and
+streamed answers through a buffer that never releases half a placeholder (a property test
+checks it against rehydrating the whole), and `redacted=True` on the call. Four things differ
+from the first paragraph of this section, each stated. The vault is the request's `Policy`
+in memory rather than Redis under a per-team key, because the proxy is one process; Redis
+comes with more than one. Detection is rules only, with no Presidio and no gazetteer, so names
+are `NAME_LIKE`. The preserve line carries no example placeholder, because 0.14.0 found a
+model copying the example into its answers, and its wording is not yet measured. And a
+redaction refusal writes no ledger row, because the guard runs before the library is called.
 
 ### B2.4 A hash-chained, anchored audit log
 

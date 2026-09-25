@@ -1,4 +1,4 @@
-# The ledger, schema v7
+# The ledger, schema v8
 
 One SQLite file per environment (`ledger.path` in `boundary.yaml`, or `ledger_path` on the
 gateway), combined by `boundary ledger merge`. Writing locally rather than to one central
@@ -26,7 +26,8 @@ collected in another, often hours later, so the rows written at submit have to b
 again by something the vendor also knows.
 
 **v4 (0.2.1)** adds `residency`, **v5 (0.2.2)** adds `price_sha256`, **v6 (0.3)** adds
-`ttft_ms`, and **v7 (0.4)** adds `data_class`, each one nullable column and nothing else. No
+`ttft_ms`, **v7 (0.4)** adds `data_class`, and **v8 (0.15)** adds `redacted`, each one
+nullable column and nothing else. No
 existing row is backfilled by any of them: a value invented after the fact would be a claim
 the call never made.
 
@@ -54,6 +55,7 @@ hand, and inventing one would let the same call merge twice.
 | `region` | text or null | From the route or provider entry. Where the request was **sent**, never where it was processed |
 | `residency` | text or null | `single-region`, `geo` or `global`, as declared on the provider entry (v4). Null when none was declared, which is not the same as `global` |
 | `data_class` | text or null | `public`, `internal`, `personal` or `sensitive`, as the **caller** declared on the call (v7). Null when it declared none, which is not the same as `public`. A declaration and never an inference: the library does not read content to guess one. Validated before the row is written, so the column never holds a word outside the vocabulary |
+| `redacted` | integer or null | 1 when the caller said the request was sent redacted (v8), which the proxy says when it redacted the payload itself and the guard passed. Null otherwise, and on every row written before the column existed. Never 0: a caller that says nothing has made no claim, and the library cannot look. A redacted row keeps its declared `data_class`, so `personal` with `redacted = 1` is personal data that left the boundary as placeholders |
 | `input_tokens` | integer | As returned. For OpenAI-compatible hosts this is `prompt_tokens` minus cached tokens |
 | `output_tokens` | integer | As returned |
 | `cache_read_tokens` | integer | As returned (Anthropic `cache_read_input_tokens`; OpenAI `cached_tokens`) |

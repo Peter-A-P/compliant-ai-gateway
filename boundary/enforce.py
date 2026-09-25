@@ -31,9 +31,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Self
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from boundary.config import ProviderConfig, Residency
 from boundary.errors import ConfigError
@@ -52,6 +53,11 @@ class ClassRule(BaseModel):
     providers: frozenset[str] | None = None
     # Whether the development cache may store and serve these calls.
     cache: bool = False
+    # The class a call of this class is judged as once it has been redacted (0.15). None:
+    # redaction changes nothing, and the call is judged as itself. The library never
+    # redacts and cannot tell a redacted body from a raw one; the caller states it, and the
+    # proxy states it only when it redacted the payload itself and the guard passed.
+    redacted_as: DataClass | None = None
 
 
 class DataPolicy(BaseModel):
@@ -62,6 +68,24 @@ class DataPolicy(BaseModel):
     undeclared: DataClass = DataClass.PERSONAL
     classes: dict[DataClass, ClassRule]
 
+    @model_validator(mode="after")
+    def _redacted_as(self) -> Self:
+        for cls, rule in self.classes.items():
+            target = rule.redacted_as
+            if target is None:
+                continue
+            if target not in self.classes:
+                raise ValueError(
+                    f"{cls.value}.redacted_as names {target.value}, which the policy does not "
+                    "list; a redacted call would be judged by a rule that does not exist"
+                )
+            if self.classes[target].redacted_as is not None:
+                raise ValueError(
+                    f"{cls.value}.redacted_as names {target.value}, which has a redacted_as of "
+                    "its own; one step only, so the rule a redacted call meets is one read away"
+                )
+        return self
+
 
 @dataclass(frozen=True, slots=True)
 class Decision:
@@ -70,6 +94,8 @@ class Decision:
     data_class: str
     reason: str
     cache: bool = False
+    # The class whose rule was applied, when a redacted call was judged as another (0.15).
+    judged_as: str | None = None
 
 
 def load_policy(path: Path) -> DataPolicy:
@@ -87,13 +113,40 @@ def decide(
     provider: str,
     provider_config: ProviderConfig,
     region: str | None,
+    redacted: bool = False,
 ) -> Decision:
-    """Whether a call carrying `data_class` may go to this provider entry and region."""
+    """Whether a call carrying `data_class` may go to this provider entry and region.
+
+    `redacted` (0.15) says the payload was redacted before it was handed over. When the
+    class's rule names a `redacted_as`, the call is then judged by that class's rule, and
+    may use the cache only if both rules allow it. Otherwise it changes nothing."""
     effective = data_class if data_class is not None else policy.undeclared.value
     try:
         rule = policy.classes[DataClass(effective)]
     except (ValueError, KeyError):
         return Decision(False, effective, f"class {effective!r} is not in the data policy")
+    if redacted and rule.redacted_as is not None:
+        judged = policy.classes[rule.redacted_as]
+        inner = _judge(judged, rule.redacted_as.value, provider, provider_config, region)
+        why = f"redacted {effective} data, judged as {rule.redacted_as.value}: {inner.reason}"
+        return Decision(
+            inner.allowed,
+            effective,
+            why,
+            inner.cache and rule.cache,
+            judged_as=rule.redacted_as.value,
+        )
+    return _judge(rule, effective, provider, provider_config, region)
+
+
+def _judge(
+    rule: ClassRule,
+    effective: str,
+    provider: str,
+    provider_config: ProviderConfig,
+    region: str | None,
+) -> Decision:
+    """One rule against one provider entry and region."""
 
     residency = provider_config.residency.value if provider_config.residency else None
     if rule.max_residency is not None:

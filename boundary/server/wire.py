@@ -228,7 +228,9 @@ def completion_id(call_uid: str | None) -> str:
     return f"chatcmpl-{call_uid or 'unrecorded'}"
 
 
-def completion_body(resp: ChatResponse, *, created: int) -> dict[str, Any]:
+def completion_body(resp: ChatResponse, *, created: int, text: str | None = None) -> dict[str, Any]:
+    """`text`, when given, replaces the response's own: the rehydrated answer, for a
+    request the proxy redacted."""
     return {
         "id": completion_id(resp.call_uid),
         "object": "chat.completion",
@@ -237,7 +239,7 @@ def completion_body(resp: ChatResponse, *, created: int) -> dict[str, Any]:
         "choices": [
             {
                 "index": 0,
-                "message": {"role": "assistant", "content": resp.text or ""},
+                "message": {"role": "assistant", "content": (text or resp.text) or ""},
                 "finish_reason": finish_reason(resp.finish_reason),
             }
         ],

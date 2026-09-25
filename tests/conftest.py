@@ -24,7 +24,9 @@ HAIKU = "anthropic/claude-haiku-4-5-20251001"
 # The proxy's tests need the `server` extra. Left uncollected without it, so a checkout
 # that only wants the library can run the suite; CI installs the extra and checks that the
 # import works, so the proxy is never skipped there.
-collect_ignore = [] if importlib.util.find_spec("fastapi") else ["test_server.py"]
+collect_ignore = (
+    [] if importlib.util.find_spec("fastapi") else ["test_server.py", "test_server_redaction.py"]
+)
 
 
 @pytest.fixture(scope="session")
