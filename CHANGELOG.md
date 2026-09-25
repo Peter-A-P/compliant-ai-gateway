@@ -5,6 +5,20 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.13.1 (2026-09-25)
+
+**The adversarial suite through the proxy: 0 of 262 forbidden cases sent.**
+`boundary policy eval --proxy` drives every provider entry and alias over HTTP through
+`boundary serve`, with thirteen `X-Data-Class` values (absent, blank, the four classes,
+forgiven spellings, refused words) and two entry points, a plain call and a stream. Its
+oracle models the door's rules separately from `boundary.server`. docs/policy.md.
+
+- **338 cases, 262 forbidden, none sent** (0.0%, 0.0 to 1.4); 0 of 76 allowed refused, and
+  every allowed case reached the upstream; 210 of 210 policy refusals on the ledger; the
+  other 52 forbidden cases are refused words, a 400 before the policy is asked.
+- **The suite is shown to notice**: a test makes the proxy treat an absent header as
+  `public` and asserts violations appear.
+- **Both suites run in CI** on every push, library and proxy, and exit 1 on a violation.
 - **The first live calls through the proxy** (2026-09-25): OpenAI's own client through
   `boundary serve` to Anthropic and Together, native stream, whole stream and plain, all 200
   and all costed, and a request with no data class refused as `personal` with nothing sent.

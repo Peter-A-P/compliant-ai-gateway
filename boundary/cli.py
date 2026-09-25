@@ -614,11 +614,14 @@ def cmd_policy_eval(args: argparse.Namespace) -> int:
 
     cfg = load_config(args.config)
     policy = Path(args.policy) if args.policy else args.config.resolve().parent / "policy.yaml"
-    results = enforce_eval.run(cfg, policy, models=SMOKE_MODELS)
+    if args.proxy:
+        results = enforce_eval.run_proxy(cfg, policy, models=SMOKE_MODELS)
+    else:
+        results = enforce_eval.run(cfg, policy, models=SMOKE_MODELS)
     print(results.table())
     if args.write_readme:
         readme = args.config.resolve().parent.parent / "README.md"
-        enforce_eval.write_readme(readme, results.readme_row())
+        enforce_eval.write_readme(readme, results.readme_row(), proxy=args.proxy)
         print(f"README row written to {readme}")
     return 0 if results.violations.hits == 0 and results.false_refusals.hits == 0 else 1
 
@@ -978,6 +981,11 @@ def main(argv: list[str] | None = None) -> int:
         "violations; exits 1 on any violation or false refusal",
     )
     pe.add_argument("--policy", help="the policy file (default: policy.yaml beside the config)")
+    pe.add_argument(
+        "--proxy",
+        action="store_true",
+        help="run the suite through the OpenAI-compatible proxy over HTTP (server extra)",
+    )
     pe.add_argument("--write-readme", dest="write_readme", action="store_true")
     pe.set_defaults(func=cmd_policy_eval)
 

@@ -20,6 +20,13 @@ honest limit of an independent check inside one repository.
 A **violation** is a case the oracle refuses that put even one request on the wire. A
 **false refusal** is a case the oracle allows that the policy refused. An **unaudited
 refusal** is a policy refusal with no `policy_refused` ledger row for it.
+
+`run_proxy` (0.13) is the same suite through the proxy, over HTTP, which is where Part B's
+B10 asks for it: the class arrives as an `X-Data-Class` header rather than an argument, and
+the proxy has rules of its own at the door (absent or blank means `personal`, case and
+surrounding space are forgiven, any other word is a 400). The oracle models those rules in
+`door`, again sharing no code with `boundary.server`, and the two proxy entry points are a
+plain call and a stream. Pass-through, batches and `raw` are not proxy entry points.
 """
 
 from __future__ import annotations
@@ -49,6 +56,30 @@ MALFORMED = ("PERSONAL", " personal", "Personal", "secret", "")
 CLASSES: tuple[str | None, ...] = (None, *(c.value for c in DataClass), *MALFORMED)
 ENTRY_POINTS = ("chat", "chat-passthrough", "chat_stream", "batch_submit", "raw")
 _RANK = {"single-region": 0, "geo": 1, "global": 2}
+
+
+PROXY_ENTRY_POINTS = ("proxy-chat", "proxy-stream")
+# Header values: absent, blank, the vocabulary, and forms the proxy forgives or refuses.
+PROXY_CLASSES: tuple[str | None, ...] = (
+    None,
+    "",
+    "   ",
+    *(c.value for c in DataClass),
+    *MALFORMED[:4],
+    "PUBLIC",
+    "pii",
+)
+_INVALID = "<invalid>"
+
+
+def door(header: str | None) -> str | None:
+    """What the proxy's documented rules make of an `X-Data-Class` header: None stands for
+    the class the proxy substitutes for no claim, which is `personal`, and `_INVALID` for a
+    word it refuses with a 400."""
+    if header is None or not header.strip():
+        return "personal"
+    word = header.strip().lower()
+    return word if word in {c.value for c in DataClass} else _INVALID
 
 
 def oracle(
@@ -284,16 +315,122 @@ def run(config: BoundaryConfig, policy_path: Path, *, models: dict[str, str]) ->
     return results
 
 
+def run_proxy(
+    config: BoundaryConfig, policy_path: Path, *, models: dict[str, str]
+) -> PolicyEvalResults:
+    """The suite through `boundary.server` over HTTP, against a counting mock upstream.
+    Needs the `server` extra."""
+    import asyncio
+
+    import httpx
+
+    from boundary import __version__
+    from boundary.server import create_app
+    from boundary.server.teams import Team, TeamsConfig, hash_key
+
+    policy = load_policy(policy_path)
+    raw_policy = yaml.safe_load(policy_path.read_text(encoding="utf-8"))
+    results = PolicyEvalResults(
+        boundary_version=__version__,
+        ran_utc=dt.datetime.now(dt.UTC).isoformat(timespec="seconds"),
+        policy=f"{policy_path.name} through the proxy",
+    )
+    key = "bnd_policy-eval-key"
+    team = TeamsConfig(
+        version=1,
+        gateway_monthly_usd=1000.0,
+        teams={
+            "policy-eval": Team(
+                key_sha256=[hash_key(key)], monthly_usd=1000.0, requests_per_minute=10**9
+            )
+        },
+    )
+
+    async def drive(work: Path) -> None:
+        upstream = MockUpstream()
+        app = create_app(
+            config,
+            team,
+            ledger_path=work / "proxy.sqlite",
+            env="policy-eval",
+            policy=policy,
+            transport=Transport(
+                config.defaults.timeouts,
+                async_client=httpx.AsyncClient(transport=httpx.MockTransport(upstream.handler)),
+            ),
+            sleep=lambda _s: None,
+        )
+        state = app.state.boundary
+        ledger = state.gateways["policy-eval"].ledger
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://policy-eval"
+        ) as client:
+            for target in targets(config, models):
+                for header in PROXY_CLASSES:
+                    for entry in PROXY_ENTRY_POINTS:
+                        before_calls = upstream.calls
+                        before_rows = len(ledger.rows())
+                        headers = {"authorization": f"Bearer {key}"}
+                        if header is not None:
+                            headers["x-data-class"] = header
+                        body: dict[str, Any] = {
+                            "model": target.model,
+                            "messages": [{"role": "user", "content": "policy eval"}],
+                            "max_tokens": 8,
+                            "stream": entry == "proxy-stream",
+                        }
+                        r = await client.post("/v1/chat/completions", json=body, headers=headers)
+                        error = r.json().get("error", {}) if r.status_code != 200 else {}
+                        refused = r.status_code == 403 and error.get("type") == POLICY_REFUSED
+                        new_rows = ledger.rows()[before_rows:]
+                        judged = door(header)
+                        results.outcomes.append(
+                            Outcome(
+                                target=target,
+                                data_class=header,
+                                entry=entry,
+                                expected_allowed=judged != _INVALID
+                                and oracle(
+                                    raw_policy,
+                                    judged,
+                                    target.residency,
+                                    target.region,
+                                    target.provider,
+                                ),
+                                sent=upstream.calls > before_calls,
+                                refused_by_policy=refused,
+                                refused_otherwise=""
+                                if refused or r.status_code == 200
+                                else f"http_{r.status_code}",
+                                audited_rows=sum(
+                                    1 for row in new_rows if row["error_type"] == POLICY_REFUSED
+                                ),
+                            )
+                        )
+        await state.close()
+
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp, _dummy_credentials(config):
+        asyncio.run(drive(Path(tmp)))
+    return results
+
+
 README_START = "<!-- policy:start -->"
 README_END = "<!-- policy:end -->"
 
 
-def write_readme(readme: Path, row: str) -> None:
+PROXY_README_START = "<!-- policy-proxy:start -->"
+PROXY_README_END = "<!-- policy-proxy:end -->"
+
+
+def write_readme(readme: Path, row: str, *, proxy: bool = False) -> None:
+    start_mark, end_mark = (
+        (PROXY_README_START, PROXY_README_END) if proxy else (README_START, README_END)
+    )
     text = readme.read_text(encoding="utf-8")
-    start = text.index(README_START)
-    end = text.index(README_END)
+    start = text.index(start_mark)
+    end = text.index(end_mark)
     readme.write_text(
-        text[: start + len(README_START)] + "\n" + row + "\n" + text[end:], encoding="utf-8"
+        text[: start + len(start_mark)] + "\n" + row + "\n" + text[end:], encoding="utf-8"
     )
 
 
@@ -301,11 +438,15 @@ __all__ = [
     "CLASSES",
     "ENTRY_POINTS",
     "MALFORMED",
+    "PROXY_CLASSES",
+    "PROXY_ENTRY_POINTS",
     "Outcome",
     "PolicyEvalResults",
     "Target",
+    "door",
     "oracle",
     "run",
+    "run_proxy",
     "targets",
     "write_readme",
 ]

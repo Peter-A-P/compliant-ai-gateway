@@ -89,6 +89,8 @@ decided, and two response headers say how: `x-boundary-data-class` (the class us
 `x-boundary-data-class-source` (`header` or `absent`).
 
 Case and surrounding space are forgiven; the vocabulary is not. Any other word is a 400.
+`boundary policy eval --proxy` drives every provider and alias through these rules and the
+policy over HTTP: 338 cases, none of the 262 forbidden sent (docs/policy.md).
 
 ## Whether it may go: the data policy, always on
 

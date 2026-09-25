@@ -774,3 +774,40 @@ def test_serve_keeps_its_own_ledger_and_refuses_without_teams(
     assert f"ledger {gw.ledger.path}" in capsys.readouterr().err
 
     assert main(["--config", config, "serve", "--teams", str(tmp_path / "missing.yaml")]) == 2
+
+
+# -- the adversarial suite through the proxy -----------------------------------------------
+
+
+def test_the_adversarial_suite_through_the_proxy_sends_nothing_forbidden(
+    repo_config: BoundaryConfig,
+) -> None:
+    from boundary import enforce_eval
+    from boundary.cli import SMOKE_MODELS
+
+    results = enforce_eval.run_proxy(repo_config, CONFIG_DIR / "policy.yaml", models=SMOKE_MODELS)
+    assert results.violations.hits == 0 and results.violations.total > 200
+    assert results.false_refusals.hits == 0
+    assert results.audited.hits == results.audited.total > 0
+    allowed = [o for o in results.outcomes if o.expected_allowed]
+    assert allowed and all(o.sent for o in allowed), "an allowed case never reached the upstream"
+    # Absent and blank headers are judged personal, so on this policy they reach only the
+    # local model.
+    for o in results.outcomes:
+        if o.data_class is None or not o.data_class.strip():
+            assert o.expected_allowed == (o.target.provider == "local")
+
+
+def test_the_suite_catches_a_proxy_that_lets_an_absent_header_through(
+    repo_config: BoundaryConfig, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The suite's oracle knows the door's rule independently; a proxy that stopped failing
+    closed has to show up as violations, not pass quietly."""
+    from boundary import enforce_eval
+    from boundary.cli import SMOKE_MODELS
+    from boundary.server import app as server_app
+    from boundary.types import DataClass
+
+    monkeypatch.setattr(server_app, "ABSENT_CLASS", DataClass.PUBLIC)
+    results = enforce_eval.run_proxy(repo_config, CONFIG_DIR / "policy.yaml", models=SMOKE_MODELS)
+    assert results.violations.hits > 0
