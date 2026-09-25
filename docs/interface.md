@@ -40,6 +40,7 @@ listed here; nothing any earlier version offered has changed shape.
 | 0.11.0 | 2026-09-23 | `Policy.released` and `RELEASABLE`: a caller's `allow` terms also release a detector's LOCATION or ORGANISATION span that is one of them. A caller who passes no `allow` sees no change |
 | 0.12.0 | 2026-09-23 | The data policy (section 14): `Gateway(..., policy=)`, the `policy` configuration key, `PolicyRefused`, `boundary.enforce` and `boundary policy eval`. Opt-in: a gateway with no policy behaves as before |
 | 0.13.0 | 2026-09-25 | The OpenAI-compatible proxy (section 15): `boundary.server`, the `server` extra, `boundary serve` and `boundary teams key`. `on_text` on `chat_stream` and `achat_stream`. Nothing a library caller already uses changed |
+| 0.13.1 | 2026-09-25 | `boundary policy eval --proxy` and `enforce_eval.run_proxy`, `door`, `PROXY_CLASSES`, `PROXY_ENTRY_POINTS`: the adversarial suite through the proxy over HTTP |
 
 ## 1. Importing
 
@@ -308,7 +309,7 @@ every row as a failure at no cost rather than leaving it in flight at an estimat
 | `boundary audit tamper-test` | 0.7 | The README's audit row: twelve kinds of corruption before and after the last anchor, with a control. In memory, from a seed |
 | `boundary serve` | 0.13 | The OpenAI-compatible proxy (section 15). Needs the `server` extra. `--teams`, `--policy`, `--ledger`, `--host` (default `127.0.0.1`), `--port` (default 8080). Refuses to start without a data policy |
 | `boundary teams key --team NAME` | 0.13 | Mints a proxy key, prints it once, and prints the SHA-256 line for `teams.yaml`. The key is stored nowhere |
-| `boundary policy eval` | 0.12 | The adversarial suite for the data policy over this configuration's providers and aliases; exits 1 on any violation or false refusal. `--policy` names a file other than `policy.yaml` beside the configuration |
+| `boundary policy eval` | 0.12 | The adversarial suite for the data policy over this configuration's providers and aliases; exits 1 on any violation or false refusal. `--policy` names a file other than `policy.yaml` beside the configuration. `--proxy` (0.13.1) runs it through the proxy over HTTP instead, with the header's rules at the door; needs the `server` extra |
 | `boundary experiment remote-ledger` | 0.2 | The Rule C measurement behind `docs/rejected.md` |
 | `boundary experiment token-estimates <run-dir>` | 0.2.1 | The second Rule C measurement: local token estimates against returned usage, over a drift run's raw store and ledgers. Reads only; no network |
 

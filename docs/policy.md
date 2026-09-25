@@ -70,7 +70,18 @@ At 0.12.0: **650 cases, 550 forbidden, none sent** (0.0%, 0.0 to 0.7), **no fals
 among the 100 allowed, and every policy refusal on the ledger. Of the 550 forbidden, 325
 were stopped by the closed vocabulary (the malformed classes), 209 by the policy, and 16 by
 pass-through refusing an alias before the policy was asked. The suite exits 1 on any
-violation or false refusal, so it can run in CI.
+violation or false refusal, and it runs in CI on every push.
+
+**Through the proxy, since 0.13.1: `boundary policy eval --proxy`.** The same targets over
+HTTP through `boundary serve` (docs/server.md), where the class is an `X-Data-Class` header
+and the door has rules of its own: absent or blank is `personal`, case and surrounding space
+are forgiven, any other word is a 400. The oracle models those rules separately (`door` in
+`boundary.enforce_eval`), so a proxy that stopped failing closed would show up as
+violations, and a test makes it do exactly that to prove the suite notices. Thirteen header
+values and two entry points, a plain call and a stream: **338 cases, 262 forbidden, none
+sent** (0.0%, 0.0 to 1.4), **no false refusal** among the 76 allowed, every allowed case
+reached the upstream, and all 210 policy refusals are on the ledger. The other 52 forbidden
+cases are the two refused words, stopped with a 400 before the policy was asked.
 
 ## What it does not do
 

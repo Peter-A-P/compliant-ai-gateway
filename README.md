@@ -211,9 +211,23 @@ declaration, not a vendor's conduct, and the command says so. Detail in
 |---|---|---|
 | _not yet_ | | |
 
-| Rehydration mutation rate under a model | Quality effect of redaction (two-sided delta) | Residency violations | Cache hit rate / false-hit rate / saved, redacted and raw | Audit tamper detection with daily anchors |
-|---|---|---|---|---|
-| _not yet_ | _not yet_ | _not yet_ | _not yet_ | _not yet_; the chain is measured above, the published anchors are Part B |
+| Residency violations through the proxy | False refusals | Refusals audited on the ledger |
+|---|---|---|
+<!-- policy-proxy:start -->
+| 0 of 262 forbidden cases sent, 0.0% (0.0% to 1.4%) | 0 of 76 allowed cases refused | 210 of 210 refusals on the ledger |
+<!-- policy-proxy:end -->
+
+Filled by `boundary policy eval --proxy --write-readme` (`v0.13.1`): the same suite over
+HTTP through `boundary serve`, where the class arrives as an `X-Data-Class` header. Every
+provider entry and alias, thirteen header values (absent, blank, the four classes, forms the
+proxy forgives such as `Personal`, and words it refuses such as `secret`), a plain call and a
+stream. The oracle models the door's rules on its own: absent or blank is `personal`, case
+and space are forgiven, any other word is a 400. Against a counting mock upstream, like the
+row above; the proxy's live calls are in [docs/server.md](docs/server.md).
+
+| Rehydration mutation rate under a model | Quality effect of redaction (two-sided delta) | Cache hit rate / false-hit rate / saved, redacted and raw | Audit tamper detection with daily anchors |
+|---|---|---|---|
+| _not yet_ | _not yet_ | _not yet_ | _not yet_; the chain is measured above, the published anchors are Part B |
 
 ## What this does not do
 

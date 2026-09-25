@@ -26,6 +26,12 @@ jobs:
       - run: uv run ruff check .
       - run: uv run mypy
       - run: uv run pytest
+      # The data policy's adversarial suite, through the library and through the proxy.
+      # Both exit 1 on any forbidden case sent or any allowed case refused, and neither
+      # needs a key or the network. Run here, before the vertex sync below would remove the
+      # server extra the proxy suite needs.
+      - run: uv run boundary policy eval
+      - run: uv run boundary policy eval --proxy
       # The `vertex` extra is deliberately absent above, so the suite runs with google-auth
       # missing and exercises the import guard that tells a user which extra to install.
       # This step installs it and re-runs the credential tests, which is the only place the
