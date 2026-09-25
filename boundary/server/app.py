@@ -56,6 +56,13 @@ from boundary.gateway import Gateway
 from boundary.providers import STREAM_ADAPTERS
 from boundary.routes import ModelRef
 from boundary.server import wire
+from boundary.server.redaction import (
+    Redacted,
+    RedactionRefused,
+    StreamRehydrator,
+    leak_counts,
+    redact_request,
+)
 from boundary.server.teams import RequestQuota, TeamsConfig, hash_key
 from boundary.transport import Transport
 from boundary.types import ChatResponse, DataClass, Mode
@@ -88,6 +95,7 @@ class ServerState:
     by_hash: dict[str, str]
     quota: RequestQuota
     wall: Callable[[], float]
+    policy: DataPolicy
     tasks: set[asyncio.Task[ChatResponse]] = field(default_factory=set)
 
     async def close(self) -> None:
@@ -141,6 +149,7 @@ def create_app(
         by_hash=teams.by_hash(),
         quota=RequestQuota(clock),
         wall=wall,
+        policy=policy,
     )
 
     @asynccontextmanager
@@ -221,12 +230,21 @@ def create_app(
             "x-boundary-data-class-source": source,
             "x-boundary-version": __version__,
         }
-        call = _Call(state, gw, parsed, purpose, run_id, data_class, ref, headers)
+        redaction = _redact(state.policy, data_class, parsed)
+        headers["x-boundary-redacted"] = "true" if redaction is not None else "false"
+        if redaction is not None:
+            headers["x-boundary-placeholders"] = str(redaction.placeholders)
+        call = _Call(state, gw, parsed, purpose, run_id, data_class, ref, headers, redaction)
         if not parsed.stream:
             resp = await call.run(call.plain())
             headers["x-boundary-call-uid"] = resp.call_uid or ""
+            if redaction is not None:
+                headers["x-boundary-unresolved"] = str(
+                    len(redaction.policy.unresolved(resp.text or ""))
+                )
             return JSONResponse(
-                wire.completion_body(resp, created=int(state.wall())), headers=headers
+                wire.completion_body(resp, created=int(state.wall()), text=call.restore(resp.text)),
+                headers=headers,
             )
         if ref.provider_config.kind in STREAM_ADAPTERS:
             return await call.stream_native()
@@ -311,6 +329,29 @@ def _resolve(gw: Gateway, model: str) -> ModelRef:
                 type_="invalid_request_error",
                 code="model_not_found",
                 param="model",
+            ),
+        ) from None
+
+
+def _redact(policy: DataPolicy, data_class: DataClass, parsed: wire.Parsed) -> Redacted | None:
+    """Redact the request when its class's rule names a `redacted_as`, or refuse it with a
+    422 when the guard will not vouch for the result. The refusal carries counts by kind and
+    type, never a value."""
+    rule = policy.classes.get(data_class)
+    if rule is None or rule.redacted_as is None:
+        return None
+    try:
+        return redact_request(parsed.request)
+    except RedactionRefused as e:
+        counts = leak_counts(e)
+        raise Refusal(
+            422,
+            wire.error_body(
+                f"the redaction guard would not vouch for this {data_class.value} request "
+                f"({sum(counts.values())} finding(s) after redaction), so nothing was sent",
+                type_="redaction_refused",
+                code="leak_after_redaction",
+                findings=counts,
             ),
         ) from None
 
@@ -411,8 +452,12 @@ class _Call:
         data_class: DataClass,
         ref: ModelRef,
         headers: dict[str, str],
+        redaction: Redacted | None = None,
     ) -> None:
         self.state = state
+        self.redaction = redaction
+        # What is sent: the redacted request when the class calls for it.
+        self.request = redaction.request if redaction is not None else parsed.request
         self.gw = gw
         self.parsed = parsed
         self.purpose = purpose
@@ -430,13 +475,20 @@ class _Call:
         task.add_done_callback(self.state.tasks.discard)
         return task
 
+    def restore(self, text: str | None) -> str | None:
+        """The answer as the client sees it: rehydrated when the request was redacted."""
+        if text is None or self.redaction is None:
+            return text
+        return self.redaction.policy.rehydrate(text)
+
     def plain(self) -> asyncio.Task[ChatResponse]:
         return self._task(
             self.gw.achat(
-                self.parsed.request,
+                self.request,
                 purpose=self.purpose,
                 run_id=self.run_id,
                 data_class=self.data_class,
+                redacted=self.redaction is not None,
             )
         )
 
@@ -463,13 +515,14 @@ class _Call:
         model = resp.model_returned or self.ref.model
         cid = wire.completion_id(resp.call_uid)
         include_usage = self.parsed.include_usage
+        text = self.restore(resp.text)
 
         async def events() -> AsyncIterator[bytes]:
             yield wire.chunk(
                 cid, created=created, model=model, delta={"role": "assistant", "content": ""}
             )
-            if resp.text:
-                yield wire.chunk(cid, created=created, model=model, delta={"content": resp.text})
+            if text:
+                yield wire.chunk(cid, created=created, model=model, delta={"content": text})
             yield wire.chunk(
                 cid, created=created, model=model, finish=wire.finish_reason(resp.finish_reason)
             )
@@ -493,11 +546,12 @@ class _Call:
 
         task = self._task(
             self.gw.achat_stream(
-                self.parsed.request,
+                self.request,
                 purpose=self.purpose,
                 run_id=self.run_id,
                 data_class=self.data_class,
                 on_text=on_text,
+                redacted=self.redaction is not None,
             )
         )
         task.add_done_callback(lambda _t: queue.put_nowait(None))
@@ -515,6 +569,12 @@ class _Call:
         include_usage = self.parsed.include_usage
         team = self.gw.project
         wall = self.state.wall
+        # A placeholder can arrive split across pieces, so a redacted answer is rehydrated
+        # through a buffer that never releases half of one.
+        rehydrator = StreamRehydrator(self.redaction.policy) if self.redaction is not None else None
+
+        def out(piece: str) -> str:
+            return rehydrator.feed(piece) if rehydrator is not None else piece
 
         async def events() -> AsyncIterator[bytes]:
             yield wire.chunk(
@@ -522,8 +582,13 @@ class _Call:
             )
             piece = first
             while piece is not None:
-                yield wire.chunk(cid, created=created, model=model, delta={"content": piece})
+                text = out(piece)
+                if text:
+                    yield wire.chunk(cid, created=created, model=model, delta={"content": text})
                 piece = await queue.get()
+            tail = rehydrator.flush() if rehydrator is not None else ""
+            if tail:
+                yield wire.chunk(cid, created=created, model=model, delta={"content": tail})
             exc = task.exception()
             if exc is not None:
                 refusal = refusal_for(exc, team=team, wall=wall)

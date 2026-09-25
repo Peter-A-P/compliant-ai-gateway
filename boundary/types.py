@@ -194,6 +194,8 @@ class ChatResponse:
     call_uid: the row's `call_uid` (0.4). `ledger_id` is local to one file and is
         reassigned by `ledger merge`; this is the identifier that survives it, so a
         caller keeping its own records (which document, which page) joins on this one.
+    redacted: whether the caller said the request was sent redacted (0.15), as written to
+        the row. The library cannot check it.
     """
 
     text: str | None
@@ -218,6 +220,7 @@ class ChatResponse:
     ttft_ms: float | None = None
     data_class: str | None = None
     call_uid: str | None = None
+    redacted: bool = False
 
     @property
     def ok(self) -> bool:

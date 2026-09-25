@@ -1,4 +1,4 @@
--- Ledger schema v7. Columns are additive only: never renamed, never removed.
+-- Ledger schema v8. Columns are additive only: never renamed, never removed.
 -- One row per call. A row is inserted before the request leaves the process
 -- (error_type = 'in_flight', cost_usd = the pre-call estimate) and completed after,
 -- so a process killed mid-call still leaves its row.
@@ -72,12 +72,18 @@ CREATE TABLE IF NOT EXISTS ledger (
     raw_path            TEXT,
     batch_id            TEXT,
     ttft_ms             REAL,
-    data_class          TEXT
+    data_class          TEXT,
+    redacted            INTEGER
 );
 
 -- Indexes over columns that every schema version has. The indexes over call_uid and
 -- batch_id are built by the migration instead, because this script also runs against a
 -- file written by an older version, where those columns do not exist yet.
+-- v8 (0.15, September 2026) adds one column for the proxy's redaction:
+--   redacted  1 when the caller says the request was sent redacted (the proxy says so when
+--             it redacted the payload itself), null otherwise. Like data_class it is the
+--             caller's statement: the library cannot tell a redacted body from a raw one
+--             without reading content, which it does not do.
 CREATE INDEX IF NOT EXISTS ledger_project_ts ON ledger (project, ts_utc);
 CREATE INDEX IF NOT EXISTS ledger_project_run ON ledger (project, run_id);
 

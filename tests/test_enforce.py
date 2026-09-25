@@ -116,6 +116,101 @@ def test_the_oracle_agrees_with_decide_on_the_checked_in_policy(
             assert d.allowed == oracle(raw, cls, residency, pc.region, name), (name, cls)
 
 
+# -- redacted_as (0.15) ------------------------------------------------------------------
+
+
+def test_redacted_personal_data_is_judged_as_internal_and_raw_is_not(
+    repo_config: BoundaryConfig,
+) -> None:
+    """The Canadian policy, decided 2026-09-25: redacted personal data goes where internal
+    data may. Raw, it still reaches only the local model; redacted, every provider entry that
+    declares a residency, which is local, the Canadian Foundry, Bedrock and Vertex. The
+    direct Anthropic, OpenAI, Google and Together entries declare none and stay refused."""
+    policy = load_policy(POLICY)
+
+    def allowed(redacted: bool) -> list[str]:
+        return sorted(
+            name
+            for name, pc in repo_config.providers.items()
+            if decide(
+                policy,
+                "personal",
+                provider=name,
+                provider_config=pc,
+                region=pc.region,
+                redacted=redacted,
+            ).allowed
+        )
+
+    assert allowed(False) == ["local"]
+    assert allowed(True) == ["bedrock", "foundry-canada", "local", "vertex"]
+
+
+def test_a_redacted_decision_says_what_it_was_judged_as() -> None:
+    policy = _policy(
+        personal=ClassRule(max_residency=Residency.SINGLE_REGION, redacted_as=DataClass.INTERNAL),
+        internal=ClassRule(max_residency=Residency.GLOBAL, cache=True),
+    )
+    d = decide(
+        policy,
+        "personal",
+        provider="p",
+        provider_config=_pc(Residency.GLOBAL),
+        region=None,
+        redacted=True,
+    )
+    assert d.allowed and d.judged_as == "internal" and d.data_class == "personal"
+    assert "judged as internal" in d.reason
+    assert d.cache is False, "the cache needs both rules to allow it; personal's does not"
+
+
+def test_redaction_unlocks_nothing_without_a_redacted_as() -> None:
+    policy = _policy(sensitive=ClassRule(regions=frozenset({"localhost"})))
+    d = decide(
+        policy,
+        "sensitive",
+        provider="p",
+        provider_config=_pc(None, "us-east-1"),
+        region="us-east-1",
+        redacted=True,
+    )
+    assert not d.allowed and d.judged_as is None
+
+
+def test_redacted_as_must_name_a_listed_class_with_no_redacted_as_of_its_own() -> None:
+    with pytest.raises(ValueError, match="does not list"):
+        _policy(personal=ClassRule(redacted_as=DataClass.INTERNAL))
+    with pytest.raises(ValueError, match="one step only"):
+        _policy(
+            personal=ClassRule(redacted_as=DataClass.INTERNAL),
+            internal=ClassRule(redacted_as=DataClass.PUBLIC),
+            public=ClassRule(),
+        )
+
+
+def test_the_gateway_writes_redacted_on_the_row_and_routes_by_it(
+    repo_config: BoundaryConfig, tmp_path: Path, keys: None
+) -> None:
+    from boundary.errors import PolicyRefused as Refused
+
+    gw = make_gateway(repo_config, tmp_path, policy=load_policy(POLICY))
+    try:
+        with respx.mock(assert_all_called=False) as mock:
+            route = mock.post(ANTHROPIC_URL).mock(return_value=anthropic_ok())
+            # Direct Anthropic declares no residency: refused raw and redacted alike.
+            with pytest.raises(Refused, match="judged as internal"):
+                gw.chat(_req(), purpose="t", data_class="personal", redacted=True)
+            assert route.call_count == 0
+        rows = gw.ledger.rows()
+        assert rows[-1]["redacted"] == 1 and rows[-1]["data_class"] == "personal"
+        with respx.mock(assert_all_called=False) as mock:
+            mock.post(ANTHROPIC_URL).mock(return_value=anthropic_ok())
+            resp = gw.chat(_req(), purpose="t", data_class="public")
+        assert resp.redacted is False and gw.ledger.rows()[-1]["redacted"] is None
+    finally:
+        gw.close()
+
+
 # -- the gateway -------------------------------------------------------------------------
 
 

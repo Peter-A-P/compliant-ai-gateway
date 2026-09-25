@@ -29,12 +29,23 @@ classes:
     max_residency: global
     cache: true
 
-  # Anything about an identifiable person. Single-region processing in a Canadian region.
+  # Anything about an identifiable person. Unredacted: single-region processing in a
+  # Canadian region, which on this configuration is the local model only.
+  #
+  # Redacted (0.15): judged as `internal`. The proxy redacts every personal request before
+  # it leaves, and sends it only if the redaction guard vouches for the result; the call is
+  # then routed as internal data, since the personal details are no longer in it. Decided by
+  # Peter on 2026-09-25: this is what lets a frontier model be used without personal data
+  # leaving the boundary. A library caller gets the same only by passing `redacted=True`,
+  # which the library cannot check. The development cache stays closed to it either way,
+  # because this rule's `cache` is false.
   personal:
     max_residency: single-region
     regions: [localhost, ca-central-1, canadacentral, canadaeast, northamerica-northeast1, northamerica-northeast2]
+    redacted_as: internal
 
-  # Health, criminal, financial and the like. The local model only.
+  # Health, criminal, financial and the like. The local model only, redacted or not: no
+  # `redacted_as`, so the proxy does not redact it and redaction would unlock nothing.
   sensitive:
     max_residency: single-region
     regions: [localhost]

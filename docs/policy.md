@@ -22,6 +22,7 @@ without one, and substitutes `personal` for an absent `X-Data-Class` header at t
 | `regions` | The regions a call may be **sent** to. Compared without regard to case |
 | `providers` | The provider entries the class may use |
 | `cache` | Whether the development cache may store and serve these calls. Off unless said |
+| `redacted_as` | The class a call of this class is judged as once redacted (0.15). Must name a listed class that has none of its own. The proxy redacts every request of such a class; a library caller gets it only by passing `redacted=True` |
 
 ## Every rule fails closed
 
@@ -56,6 +57,21 @@ something narrower is a failing test rather than an unnoticed change. PLAN.md B2
 the refusal to be shown rather than designed around, and this is it enforced rather than
 described.
 
+**Redacted, personal data is judged as internal (0.15, decided by Peter on 2026-09-25).**
+The personal rule names `redacted_as: internal`, so a personal call whose payload was
+redacted is judged by the internal rule instead: any declared residency. On this
+configuration that opens the Canada Central Foundry deployment, Bedrock in `ca-central-1`
+and Vertex beside the local model, and still refuses the direct Anthropic, OpenAI, Google and
+Together entries, because they declare no residency and null is no claim. A test asserts
+both sets, raw and redacted. `sensitive` names no `redacted_as`, so redaction unlocks nothing
+for it. The cache stays closed to a redacted personal call because it needs both rules to
+allow it, and the personal rule does not.
+
+The library cannot tell a redacted body from a raw one, so for a library caller `redacted`
+is a statement, like `data_class`, and is recorded as one: a row carries `data_class =
+personal` and `redacted = 1`. The proxy makes the statement only when it redacted the
+payload itself and the guard vouched for it (docs/server.md).
+
 ## Measured: the adversarial suite
 
 `boundary policy eval` builds its cases from the configuration: every provider entry by its
@@ -83,13 +99,21 @@ sent** (0.0%, 0.0 to 1.4), **no false refusal** among the 76 allowed, every allo
 reached the upstream, and all 210 policy refusals are on the ledger. The other 52 forbidden
 cases are the two refused words, stopped with a 400 before the policy was asked.
 
+At 0.15, with redaction, the proxy's oracle also routes a class naming a `redacted_as` as
+that class, which is what the proxy does: **338 cases, 220 forbidden, none sent** (0.0 to
+1.7), no false refusal among the 118 allowed, every refusal on the ledger. The 42 cases that
+moved from forbidden to allowed are the seven header values judged `personal`, on the three
+hosted entries that declare a residency, through both entry points.
+
 ## What it does not do
 
 - **It enforces the declaration, not the vendor.** A clean run means every call went to an
   endpoint whose declared residency fits its class. No vendor reports where a request was
   processed, so nothing here can say the vendor kept to it.
-- **It does not check redaction.** B2.2 has `personal` require redaction. The library cannot
-  tell a redacted body from a raw one without reading content, which it does not do; Part B's
-  proxy redacts as the policy requires and then passes the call on.
+- **It does not check redaction.** The library cannot tell a redacted body from a raw one
+  without reading content, which it does not do, so `redacted=True` is taken on the caller's
+  word and recorded as such. The proxy (0.15) redacts every request of a class naming a
+  `redacted_as` itself, and passes `redacted=True` only after its guard vouched for the
+  result.
 - **It is opt-in for a library caller**, because turning it on for the pinned downstream
   runs would change what those runs measure. Through the proxy (0.13) it is always on.

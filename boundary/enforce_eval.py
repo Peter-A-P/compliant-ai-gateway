@@ -24,9 +24,10 @@ refusal** is a policy refusal with no `policy_refused` ledger row for it.
 `run_proxy` (0.13) is the same suite through the proxy, over HTTP, which is where Part B's
 B10 asks for it: the class arrives as an `X-Data-Class` header rather than an argument, and
 the proxy has rules of its own at the door (absent or blank means `personal`, case and
-surrounding space are forgiven, any other word is a 400). The oracle models those rules in
-`door`, again sharing no code with `boundary.server`, and the two proxy entry points are a
-plain call and a stream. Pass-through, batches and `raw` are not proxy entry points.
+surrounding space are forgiven, any other word is a 400), and since 0.15 it redacts a class
+whose rule names a `redacted_as` and routes it as that class. The oracle models those rules
+in `door` and beside it, again sharing no code with `boundary.server`, and the two proxy
+entry points are a plain call and a stream. Pass-through, batches and `raw` are not proxy entry points.
 """
 
 from __future__ import annotations
@@ -384,6 +385,11 @@ def run_proxy(
                         refused = r.status_code == 403 and error.get("type") == POLICY_REFUSED
                         new_rows = ledger.rows()[before_rows:]
                         judged = door(header)
+                        # The proxy redacts a class whose rule names a `redacted_as`, and
+                        # the redacted call is judged as that class.
+                        rule = (raw_policy.get("classes") or {}).get(judged) or {}
+                        if rule.get("redacted_as"):
+                            judged = str(rule["redacted_as"])
                         results.outcomes.append(
                             Outcome(
                                 target=target,

@@ -8,7 +8,9 @@ library call would: the same columns, costed the same way, capped the same way, 
 the same data policy.
 
 What the proxy adds is the boundary's half of three things the library records but cannot
-decide on its own: who is calling, what the data is, and whether it may go.
+decide on its own: who is calling, what the data is, and whether it may go. Since 0.15 it
+adds a fourth, which the library cannot do because it never reads content: personal data
+is redacted before it leaves and restored in the answer.
 
 ## Running it
 
@@ -90,7 +92,8 @@ decided, and two response headers say how: `x-boundary-data-class` (the class us
 
 Case and surrounding space are forgiven; the vocabulary is not. Any other word is a 400.
 `boundary policy eval --proxy` drives every provider and alias through these rules and the
-policy over HTTP: 338 cases, none of the 262 forbidden sent (docs/policy.md).
+policy over HTTP, redaction's routing included: 338 cases, none of the 220 forbidden sent
+(docs/policy.md).
 
 ## Whether it may go: the data policy, always on
 
@@ -98,8 +101,77 @@ The library's data policy (docs/policy.md) is opt-in, because turning it on for 
 02 and 03 runs would change what they measure. Through the proxy it is not optional: the
 proxy refuses to start without a policy, so every request is judged. A refusal is a **403**
 with `type: policy_refused`, the reason, and the ledger id of the `policy_refused` row that
-records it. Nothing was sent. On the checked-in Canadian policy, a request with no header
-reaches exactly one provider, the local model, and is refused everywhere else.
+records it. Nothing was sent. On the checked-in Canadian policy, a request with no header is
+`personal`, so it is redacted (below) and then routed as `internal`: it may reach the local
+model, the Canada Central Foundry deployment, Bedrock in `ca-central-1` and Vertex, the
+entries that declare a residency, and is refused by the direct Anthropic, OpenAI, Google and
+Together entries, which declare none. `sensitive` is never redacted and reaches only the
+local model.
+
+## Redaction (0.15)
+
+A request whose class's policy rule names a `redacted_as` is redacted before it leaves.
+On the checked-in policy that is `personal`, and so every request that arrives without a
+header. What happens, in order:
+
+1. **One policy per request, over all of it.** The system prompt and every message are
+   analysed together and one `boundary.redact.Policy` is built from every span, so a person
+   named in the first turn and again in the fourth is one placeholder. This is 07's first
+   finding (PLAN.md B2.3), and the reason the proxy does not redact message by message.
+2. **The guard refuses rather than warns.** Each text goes through `Policy.outbound`, which
+   masks what the recognisers found, masks anything name- or identifier-shaped they did not
+   (the second pass), and then refuses if it still cannot vouch for the result. A refusal
+   is a **422** with `type: redaction_refused` and `findings`, counts by kind and type
+   (`{"placeholder:EMAIL": 1}`), never a value. Nothing is sent.
+3. **The preserve line.** The system prompt gains `PRESERVE_LINE`, asking the model to copy
+   placeholders exactly. 0.14.0 measured a line like it cutting placeholder mutation from
+   37.0% to 0.6% for Llama 3.3 70B and from 6.8% to 0.0% for Haiku, and found Llama copying
+   that line's example placeholder into its answers, so this one carries no example. **This
+   wording has not been measured yet.**
+4. **Routed as the `redacted_as` class**, with `redacted=True` on the gateway call. The row
+   keeps the declared class and records the redaction: `data_class = personal`,
+   `redacted = 1`.
+5. **The answer is rehydrated.** Placeholders in the model's text are replaced with the
+   values they stand for, tolerating the forms models write (docs/redact.md). A streamed
+   answer goes through `StreamRehydrator`, which never releases half a placeholder: a test
+   over random texts and random cuts checks that what it releases, joined, is exactly the
+   whole answer rehydrated.
+
+Response headers say what happened: `x-boundary-redacted` (`true` or `false`),
+`x-boundary-placeholders` (how many values the request's vault holds) and, on a non-streamed
+answer, `x-boundary-unresolved` (placeholders in the answer that the vault does not hold,
+such as one a model invented, which are left as written).
+
+**Live, 2026-09-25.** Two requests with no header, so judged `personal`, each naming an
+invented person with an email address, a phone number and a file number: one to Claude Haiku
+4.5 on Bedrock (`bedrock`, plain) and one to the Canada Central Foundry deployment
+(`foundry-canada`, streamed natively). Both answered 200, each answer named the person and
+quoted her details, restored by the proxy, and both rows read `data_class = personal`,
+`redacted = 1`. The same request to the direct Anthropic entry was refused with a 403, judged
+as internal and refused for declaring no residency. **What reached Bedrock was checked, not
+assumed**: the request was rebuilt offline and its body captured without sending, and its
+SHA-256 matched the live row's `request_sha256`, so the captured body is the body that left.
+None of the four values was in it; the user message read "Draft a two-sentence
+acknowledgement to <NAME_LIKE_1> (<EMAIL_1>, <PHONE_1>) for access request <FILE_NUMBER_1>,
+addressed to her by name". Both rows are uncosted, because AWS's and Azure's rates are not
+in the price files and an unknown price is never estimated (117 in and 69 out on Bedrock,
+113 in and 263 out on Foundry).
+
+Note the word "her" in that message. Redaction removes identifiers, not the pronouns and
+roles around them, so a gender, a job title or a relationship still travels. On its own it
+identifies nobody; with enough of it, a person may be recognisable, which is the
+quasi-identifier problem docs/redact.md measures on real text.
+
+**The vault is the request's policy, in memory for the life of the request**, and is written
+nowhere: not the ledger, not a span, not a log, not the response headers. The Redis vault
+under a per-team key that B2.3 describes is for a proxy with more than one process.
+
+**What it costs in accuracy.** Detection here is the built-in recognisers and the second
+pass, with no model, so a name becomes `<NAME_LIKE_n>` rather than `<PERSON_n>`, and
+anything capitalised that the vocabulary does not know is masked. That fails closed and
+over-masks: on real court judgments it touched about four in five of the spans annotators
+marked safe (docs/redact.md). Whether that over-masking makes answers worse is B2.8's
+quality measurement through the 03 gate, which has not been run.
 
 ## Limits: 429 names the limit and when it resets
 
@@ -187,10 +259,15 @@ row records the failure as every failed call's row does.
 
 Each of these is in PLAN.md Part B and lands in the stage it names:
 
-- **It does not redact.** A `personal` request is sent only where the policy allows
-  `personal` data, which on the checked-in policy is the local model. Redacting it so that
-  it may go further is B2.3, in stage 2, and the policy's "requires redaction" rule arrives
-  with it.
+- **Redaction is rules-only and unmeasured for quality.** No detector or allow list is
+  configured for the proxy, and the effect of redaction on answer quality (B2.8) has not
+  been measured. The preserve line's wording is unmeasured too.
+- **A redaction refusal writes no ledger row.** A policy refusal does, because the library
+  writes it; the redaction guard runs in the proxy before the library is called, and the
+  library has no way yet to record a refusal it did not make. The 422 is in the proxy's log.
+- **The audit chain does not seal `redacted`.** Its sealed column list is fixed so that an
+  older verifier still reproduces a record (docs/audit.md); adding the column is a new
+  record schema, not an edit.
 - **It has not been load-tested.** The overhead budget in PLAN.md B4 is published from the
   first measurement, on the VPS, and nothing about the proxy's overhead is claimed until
   then. The ledger writes are synchronous SQLite inside the event loop, which is the first

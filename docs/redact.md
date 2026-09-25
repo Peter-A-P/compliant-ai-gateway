@@ -612,6 +612,15 @@ inputs to anyone who wants to check the correction.
   typed (`<PERSON_n>`, `<LOCATION_n>`), and a model may treat a typed placeholder differently
   from `NAME_LIKE`. The corpus holds nobody real, which is what made it safe to send.
 
+### In the proxy, from 0.15.0
+
+`boundary serve` redacts every request whose class's policy rule names a `redacted_as`
+(`personal`, on the checked-in policy): one `Policy` over the system prompt and all the
+messages together, `outbound` as the refusing guard, a preserve line with no example
+placeholder added to the system prompt, and the answer rehydrated, streamed or not. The
+mechanics and what they cost are in docs/server.md. Detection there is rules only, so the
+figures in the first column of the tables above are the ones that apply to the proxy.
+
 ### The Canadian identifier set, from 0.6.1
 
     boundary redact eval --identifiers

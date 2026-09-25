@@ -58,6 +58,8 @@ ALLOWED_ATTRIBUTES: frozenset[str] = frozenset(
         # Data class (0.4). One of four words from a closed vocabulary, validated before the
         # call; it says what kind of data the request carried and cannot carry any of it.
         "boundary.data_class",
+        # Redaction (0.15). A boolean the caller states; it cannot carry content.
+        "boundary.redacted",
     }
 )
 

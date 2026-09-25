@@ -791,11 +791,13 @@ def test_the_adversarial_suite_through_the_proxy_sends_nothing_forbidden(
     assert results.audited.hits == results.audited.total > 0
     allowed = [o for o in results.outcomes if o.expected_allowed]
     assert allowed and all(o.sent for o in allowed), "an allowed case never reached the upstream"
-    # Absent and blank headers are judged personal, so on this policy they reach only the
-    # local model.
+    # Absent and blank headers are judged personal, which the proxy redacts and routes as
+    # internal (0.15): on this policy, every provider entry that declares a residency, and
+    # none of the direct vendor entries or the aliases that route to them.
+    declares = {"local", "foundry-canada", "bedrock", "vertex"}
     for o in results.outcomes:
         if o.data_class is None or not o.data_class.strip():
-            assert o.expected_allowed == (o.target.provider == "local")
+            assert o.expected_allowed == (o.target.provider in declares)
 
 
 def test_the_suite_catches_a_proxy_that_lets_an_absent_header_through(
