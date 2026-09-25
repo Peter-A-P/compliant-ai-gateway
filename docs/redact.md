@@ -637,6 +637,27 @@ placeholder added to the system prompt, and the answer rehydrated, streamed or n
 mechanics and what they cost are in docs/server.md. Detection there is rules only, so the
 figures in the first column of the tables above are the ones that apply to the proxy.
 
+### Through the proxy, end to end, from 0.17.0
+
+    boundary redact eval --proxy
+
+The 200 generated pages, each sent to `boundary serve` over HTTP as a `personal` request and
+answered by a mock upstream that parses the body and echoes the user message, so the count is
+of what the upstream actually received and the round trip includes rehydration:
+
+| | Plain | Streamed |
+|---|---|---|
+| Personal values that reached the wire | 0 of 1,450, 0.0% (0.0 to 0.3) | 0 of 1,450, 0.0% (0.0 to 0.3) |
+| Pages that came back exactly as sent | 200 of 200, 100.0% (98.1 to 100) | 200 of 200, 100.0% (98.1 to 100) |
+| Refused by the guard | 0 | 0 |
+
+A value counts as reaching the wire if it is there whole, or if any run of three or more of
+its digits is, unless the page's public text contains the same run. That exception is there
+because the first run, using the identifier set's test unchanged, reported ten leaks that
+were all the year inside a masked file number matching "the 2024 budget" on the same page;
+its cost is that an area code shared with a public number on the same page would be excused.
+A test switches the proxy's redaction off and requires every value to be counted as leaked.
+
 ### Over-masking the context an answer needs, from 0.16.0
 
     boundary redact overmask --gold ../03-ai-release-gate/gate/gold

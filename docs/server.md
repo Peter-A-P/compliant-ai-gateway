@@ -169,6 +169,16 @@ quasi-identifier problem docs/redact.md measures on real text.
 nowhere: not the ledger, not a span, not a log, not the response headers. The Redis vault
 under a per-team key that B2.3 describes is for a proxy with more than one process.
 
+**Measured end to end, 0.17.** `boundary redact eval --proxy` sends all 200 pages of the
+generated corpus through the proxy over HTTP as personal requests, plain and streamed, to an
+upstream that parses what it received and echoes it: **0 of 1,450 planted personal values
+reached the wire, 0.0% (0.0 to 0.3), and 200 of 200 pages came back as sent** in each mode.
+Building it found two faults in the measurement itself and none in the proxy: the labels
+number pages from 1 and the first version counted from 0, so every value was looked for on
+the wrong page (it now fails if a label does not select its own text); and the identifier
+set's survival test, applied to whole pages, called the "2024" of a masked file number a
+leak because the page also said "the 2024 budget".
+
 **What it costs in accuracy.** Detection here is the built-in recognisers and the second
 pass, with no model, so a name becomes `<NAME_LIKE_n>` rather than `<PERSON_n>`, and
 anything capitalised that the vocabulary does not know is masked. That fails closed and

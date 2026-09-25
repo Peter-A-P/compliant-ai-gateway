@@ -5,6 +5,24 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.17.0 (2026-09-25)
+
+**Redaction measured end to end through the proxy: 0 of 1,450 personal values reached the
+wire, and every page came back as sent.** `boundary redact eval --proxy` sends the 200
+generated pages to `boundary serve` over HTTP as personal requests, plain and streamed, to a
+mock upstream that parses what it received and echoes it. docs/redact.md.
+
+- **0 of 1,450 planted personal values on the wire in each mode, 0.0% (0.0 to 0.3); 200 of
+  200 pages back exactly as sent, 100.0% (98.1 to 100), streamed and not; 0 refused.**
+- **The measurement is shown to see a leak**: with the proxy's redaction switched off, a
+  test requires every value to be counted.
+- **Two faults found in the measurement, none in the proxy.** Labels number pages from 1 and
+  the first version counted from 0, looking for every value on the wrong page; it now fails
+  if a label does not select its own text. And the identifier set's survival test called
+  the "2024" inside a masked file number a leak because the page also said "the 2024
+  budget"; a digit run the page's own public text contains no longer counts.
+- Runs in CI on every push, 40 pages.
+
 ## 0.16.0 (2026-09-25)
 
 **A redaction refusal is on the record, the proxy's preserve line is measured, and the plan
