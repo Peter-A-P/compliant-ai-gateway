@@ -43,6 +43,25 @@ client.chat.completions.create(model="fast", messages=[{"role": "user", "content
 `model` is a route from `boundary.yaml` (`fast`, `balanced`, ...) or the explicit
 `provider/model-id` form. `GET /v1/models` lists the routes.
 
+## Live, 2026-09-25
+
+The first calls through the proxy to real vendors, from a laptop on a network that does not
+inspect TLS: `boundary serve` on loopback, OpenAI's own Python client (3.x) as the caller,
+one team capped at US$0.10 for the run, `max_tokens` 16, `X-Data-Class: public`.
+
+| Call | Route | Stream | Result | Tokens in/out | Cost (US$) |
+|---|---|---|---|---|---|
+| 1 | `fast`, Claude Haiku 4.5 | no | 200, `claude-haiku-4-5-20251001` | 22 / 10 | 0.000072 |
+| 2 | `fast` | `whole`, one content event | 200, `ttft_ms` null | 22 / 10 | 0.000072 |
+| 3 | Together, `Llama-3.3-70B-Instruct-Turbo` | no | 200 | 47 / 4 | 0.000053 |
+| 4 | Together, the same model | `native`, two content events | 200, `ttft_ms` 835 | 47 / 4 | 0.000053 |
+| 5 | `fast`, no `X-Data-Class` header | no | 403 `policy_refused`, judged `personal`, nothing sent | 0 / 0 | 0 |
+
+Five rows in the proxy's ledger, all under the team's project, 0 uncosted, US$0.00025 in
+all. Each streamed call's `call_uid` as the client read it matched its row. The system
+message reached both vendors as a system prompt. One call per route is a smoke test, not a
+measurement: the latencies above are single observations and are not reported as overhead.
+
 ## Who is calling: team keys
 
 A bearer key maps to a team, and **a team is a ledger `project`**. That is the whole

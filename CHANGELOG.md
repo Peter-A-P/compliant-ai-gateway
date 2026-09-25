@@ -5,6 +5,11 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+- **The first live calls through the proxy** (2026-09-25): OpenAI's own client through
+  `boundary serve` to Anthropic and Together, native stream, whole stream and plain, all 200
+  and all costed, and a request with no data class refused as `personal` with nothing sent.
+  Five rows, US$0.00025. docs/server.md.
+
 ## 0.13.0 (2026-09-25)
 
 **The OpenAI-compatible proxy, stage 1 of Part B: a real OpenAI client works by changing its
