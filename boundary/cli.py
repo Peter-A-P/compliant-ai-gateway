@@ -528,6 +528,23 @@ def cmd_redact_eval(args: argparse.Namespace) -> int:
         detector = "built-in recognisers and Presidio"
     if args.tab:
         return _redact_eval_tab(args)
+    if args.proxy:
+        from boundary.server import redaction_eval
+
+        proxied = redaction_eval.run(
+            load_config(args.config),
+            args.config.resolve().parent / "policy.yaml",
+            pages=args.pages,
+            seed=args.seed,
+        )
+        print(proxied.table())
+        if args.write_readme:
+            readme = args.config.resolve().parent.parent / "README.md"
+            redaction_eval.write_readme(readme, proxied.readme_row())
+            print(f"README row written to {readme}")
+        leaked = sum(r.leaked for r in proxied.rows)
+        whole = all(r.round_trips == r.requests - r.refused for r in proxied.rows)
+        return 0 if leaked == 0 and whole else 1
     if args.rehydration:
         rehy = evaluate.rehydration(pages=args.pages, seed=args.seed)
         print(rehy.table())
@@ -967,6 +984,12 @@ def main(argv: list[str] | None = None) -> int:
         default="",
         help="with --tab, also run with an allow list: 'train' derives one from TAB's train "
         "split (docs/redact.md), anything else is a file of one term per line",
+    )
+    rev.add_argument(
+        "--proxy",
+        action="store_true",
+        help="send every page through the proxy over HTTP as a personal request and count "
+        "what reaches the wire and what comes back (server extra); exits 1 on any leak",
     )
     rev.add_argument("--seed", type=int, default=20260920)
     rev.add_argument(

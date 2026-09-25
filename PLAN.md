@@ -422,6 +422,7 @@ from October the ledger-against-invoice difference is recorded there too (sectio
 | v0.14.0 | 2026-09-25 | `boundary redact mutation` and `boundary.redact.mutation`: placeholder mutation under three models with and without a preserve line, from a stored run. Nothing downstream imports it |
 | v0.15.0 | 2026-09-25 | Redaction in the proxy, and what it permits: `ClassRule.redacted_as`, `redacted=` on the chat methods, `ChatResponse.redacted`, ledger schema v8's `redacted` column. A caller that passes nothing new sees no change; 02, 03 and 07 need not move |
 | v0.16.0 | 2026-09-25 | `Gateway.record_refusal` and a ledger row for every redaction refusal; the proxy's preserve line measured (0.0% mutation on all three models); `boundary redact overmask` and the B2.8 plan it changed; `boundary.redact.request` and `boundary.redact.preserve` so both run without the server extra |
+| v0.17.0 | 2026-09-25 | `boundary redact eval --proxy`: 0 of 1,450 personal values reached the wire through the proxy, every page came back as sent |
 | v1.0.0 | May 23 2027 | Everything in Part B; `boundary.redact` for 07; the proxy for 13 and 14 |
 
 03 pins `boundary>=0.1,<0.3` for Part A and moves to `>=1.0` when its Part B is built

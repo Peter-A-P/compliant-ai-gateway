@@ -109,6 +109,20 @@ so anyone can reproduce it with a checkout and no key, no account and no network
 Presidio (`--presidio`) takes detection recall to **94.6% (93.5% to 95.6%)** and precision
 to 93.2% (91.9% to 94.3%) for 18.4 ms a page instead of 0.2.
 
+**The same corpus through the proxy** (`v0.17.0`): every page sent to `boundary serve` over
+HTTP as a `personal` request, the upstream a mock that parses what it received and echoes it.
+
+| Personal values that reached the wire | Came back as sent, plain | Came back as sent, streamed | Refused by the guard |
+|---|---|---|---|
+<!-- redact-proxy:start -->
+| 0 of 1450 plain, 0.0% (0.0% to 0.3%); 0 of 1450 streamed, 0.0% (0.0% to 0.3%) | 100.0% (98.1% to 100.0%) | 100.0% (98.1% to 100.0%) | 0 of 400 |
+<!-- redact-proxy:end -->
+
+Filled by `boundary redact eval --proxy --write-readme`. A value counts as reaching the wire
+if it is there whole or any run of three of its digits is, unless the page's own public text
+has that run too. The test also runs with redaction switched off in the proxy and requires
+every value to show up, so the zero is a measurement that could have said otherwise.
+
 Read the first column against the fourth. Detection recall is 35.3% because there is no
 `PERSON` recogniser without a model, and **nothing leaks anyway**, because the policy's
 second pass masks what no detector claimed and refuses to send what it cannot vouch for.

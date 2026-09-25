@@ -252,3 +252,43 @@ def test_an_unclosed_bracket_is_not_held_forever() -> None:
     rh = StreamRehydrator(policy)
     released = rh.feed("if a < b then" + " x" * 50)
     assert released.startswith("if a < b then"), "a long-open < is ordinary text"
+
+
+# -- the corpus through the proxy ----------------------------------------------------------
+
+
+def test_the_corpus_through_the_proxy_leaks_nothing_and_comes_back_whole(
+    repo_config: BoundaryConfig,
+) -> None:
+    from boundary.server import redaction_eval
+
+    from .conftest import CONFIG_DIR
+
+    res = redaction_eval.run(repo_config, CONFIG_DIR / "policy.yaml", pages=40)
+    for row in res.rows:
+        assert row.planted > 250 and row.leaked == 0
+        assert row.round_trips == row.requests == 40
+
+
+def test_the_measurement_sees_a_leak_when_the_proxy_does_not_redact(
+    repo_config: BoundaryConfig, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A zero is only worth something from a measurement that can say anything else."""
+    from boundary.server import app as server_app
+    from boundary.server import redaction_eval
+
+    from .conftest import CONFIG_DIR
+
+    monkeypatch.setattr(server_app, "_redact", lambda *a, **k: None)
+    res = redaction_eval.run(repo_config, CONFIG_DIR / "policy.yaml", pages=10)
+    for row in res.rows:
+        assert row.leaked == row.planted > 0
+
+
+def test_a_digit_run_the_page_already_has_proves_nothing() -> None:
+    from boundary.server.redaction_eval import survives
+
+    wire = "File <FILE_NUMBER_1>, from the 2024 budget."
+    assert not survives("ATIPP-2024-2176", wire, "from the 2024 budget")
+    assert survives("ATIPP-2024-2176", "File ATIPP-2024-<ID_LIKE_1>", "no year here")
+    assert survives("(709) 555-0199", "(709) <ID_LIKE_1>", "")
