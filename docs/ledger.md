@@ -1,4 +1,4 @@
-# The ledger, schema v8
+# The ledger, schema v9
 
 One SQLite file per environment (`ledger.path` in `boundary.yaml`, or `ledger_path` on the
 gateway), combined by `boundary ledger merge`. Writing locally rather than to one central
@@ -27,7 +27,8 @@ again by something the vendor also knows.
 
 **v4 (0.2.1)** adds `residency`, **v5 (0.2.2)** adds `price_sha256`, **v6 (0.3)** adds
 `ttft_ms`, **v7 (0.4)** adds `data_class`, and **v8 (0.15)** adds `redacted`, each one
-nullable column and nothing else. No
+nullable column and nothing else. **v9 (0.19)** adds no column: it adds a derived table,
+`ledger_spend`, described below. No
 existing row is backfilled by any of them: a value invented after the fact would be a claim
 the call never made.
 
@@ -279,3 +280,34 @@ the batch, so the rows exist even if the process dies before the answer comes ba
   describes a call is the one that knows how it turned out.
 - A request the results file never mentions is completed as `batch_missing`. A batch that
   has ended will not mention it later either.
+
+## `ledger_spend`: what the caps read (v9)
+
+The spend caps are checked before every call, and until 0.19 each check summed the ledger:
+the project's month and, for the portfolio or gateway ceiling, every project's month. The
+month was matched with `substr(ts_utc, 1, 7)`, which no index can serve, so every call read
+every row written before it, and the cost grew with the file. `boundary bench --spend`
+measures it on generated ledgers:
+
+| Rows in the ledger | The caps' two sums per call, before v9 | After v9 |
+|---|---|---|
+| 10,000 | 1.46 ms | 0.005 ms |
+| 100,000 | 18.6 ms | 0.005 ms |
+| 1,000,000 | 202 ms | 0.005 ms |
+
+Project 03's drift ledgers hold about 2,100 rows an arm a month and never felt it. A proxy
+answering ten requests a second writes about 26 million rows a month, and would have.
+Found while building the load test (docs/loadtest.md), by asking why overhead rose from run
+to run in one cell; that rise itself turned out to be mostly the laptop, and the scan was
+found by reading the query rather than by the measurement.
+
+v9 adds `ledger_spend (project, month, cost)` and two triggers that keep it equal to the sum
+of `cost_usd` over the rows: one on insert, one on a change of `cost_usd`, which is how an
+in-flight estimate becomes the real cost or none. Triggers rather than a running total in
+the process, because a ledger file has several writers: each team's gateway in the proxy
+holds its own connection, and the gateway ceiling is over all of them. `spend_usd` reads the
+table for a month's spend and sums rows for every other scope, as before. The table is
+derived and never a source: opening a v8 file builds it from the rows, and it can always be
+rebuilt. A test drives random begins, completions at different costs, uncosted outcomes and a
+repeated merge, and checks the table against the plain sum for every project and month.
+

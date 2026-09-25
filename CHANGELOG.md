@@ -5,6 +5,29 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.19.0 (2026-09-25)
+
+**The layered load test exists, and building it removed a per-call scan of the whole ledger
+from the spend caps.** PLAN.md B4. docs/loadtest.md, docs/ledger.md.
+
+- **`boundary loadtest`**: `boundary serve` against a 50 ms mock upstream, each in its own
+  process, open loop, latency from each request's scheduled time, per layer (routing; plus the
+  audit append; plus redaction) and rate, overhead per run as the proxy's percentile minus the
+  mock's, bootstrapped over runs. It measures its own lag: a run whose client fell behind is
+  dropped, a cell with fewer than three clean runs is reported as generator-bound, and a
+  cell a second behind is abandoned.
+- **Development figures, not the budget**: on the laptop, median overhead 2.1 to 2.6 ms at
+  50 rps and 0.3 to 1.0 ms at 200 rps across the three layers, 0 errors in 37,500 requests;
+  500 rps is beyond a Python client (k6 on the VPS). The README's budget table stays empty
+  until the VPS run.
+- **Ledger schema v9: `ledger_spend`**, a table of spend per project and month kept by
+  triggers, which `spend_usd` reads for a month. The caps' two sums per call cost 1.5 ms at
+  10,000 rows, 19 ms at 100,000 and 202 ms at a million, and now 0.005 ms at any size
+  (`boundary bench --spend`); the totals equal the plain sum through begins, completions,
+  uncosted outcomes and repeated merges, and an older file gets the table built on open.
+  No column added, renamed or removed.
+- Three harness faults found by runs that produced nothing, each now under a test or guard.
+
 ## 0.18.0 (2026-09-25)
 
 **The proxy writes every call to the audit chain as it answers, and the chain now records

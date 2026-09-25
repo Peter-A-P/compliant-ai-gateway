@@ -23,7 +23,7 @@ import json
 import random
 import statistics
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -302,6 +302,71 @@ def run(
         caps=measure_caps(config, work, attempts=cap_attempts, seed=seed),
         fidelity=measure_fidelity(config, work, requests=fidelity_requests, seed=seed),
     )
+
+
+def spend_query_scaling(
+    work: Path, sizes: Sequence[int] = (10_000, 100_000, 1_000_000), *, seed: int = 1
+) -> list[tuple[int, float, float, bool]]:
+    """What the spend-cap check costs per call as a ledger grows, before and after v9 (0.19).
+
+    Before: the two sums the caps made on every call, the project's month and the whole
+    month for the ceiling, filtered on substr(ts_utc, 1, 7), which no index serves. After:
+    `spend_usd`, reading `ledger_spend`. Rows `(size, before_ms, after_ms, totals_agree)`.
+    """
+    from boundary.ledger.store import LedgerStore, new_call_uid
+
+    out: list[tuple[int, float, float, bool]] = []
+    for n in sizes:
+        path = work / f"spend-{n}.sqlite"
+        store = LedgerStore(path)
+        rng = random.Random(seed)
+        conn = store._conn
+        conn.execute("BEGIN")
+        conn.executemany(
+            "INSERT INTO ledger (ts_utc, boundary_version, project, purpose, mode, provider, "
+            "model_requested, cost_usd, costed, call_uid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)",
+            (
+                (
+                    f"2026-09-{rng.randint(10, 28)}T00:00:00.000Z", "x",
+                    rng.choice(["alpha", "beta", "gamma"]), "t", "standard", "p", "p/m",
+                    rng.random() / 1000, new_call_uid(),
+                )
+                for _ in range(n)
+            ),
+        )  # fmt: skip
+        conn.execute("COMMIT")
+
+        before, after = _spend_timings(store, conn)
+        total = conn.execute("SELECT SUM(cost_usd) FROM ledger").fetchone()[0]
+        agree = abs(store.spend_usd(project=None, year_month="2026-09") - total) < 1e-6
+        out.append((n, before, after, agree))
+        store.close()
+        path.unlink()
+    return out
+
+
+def _timed(fn: Callable[[], object], k: int) -> float:
+    t0 = time.perf_counter()
+    for _ in range(k):
+        fn()
+    return (time.perf_counter() - t0) / k * 1000.0
+
+
+def _spend_timings(store: Any, conn: Any) -> tuple[float, float]:
+    """Milliseconds per call for the caps' two sums, the old way and through `spend_usd`."""
+    old = "SELECT COALESCE(SUM(cost_usd), 0) FROM ledger WHERE cost_usd IS NOT NULL"
+    before = _timed(
+        lambda: conn.execute(
+            old + " AND project = ? AND substr(ts_utc, 1, 7) = ?", ("alpha", "2026-09")
+        ).fetchone(),
+        10,
+    ) + _timed(
+        lambda: conn.execute(old + " AND substr(ts_utc, 1, 7) = ?", ("2026-09",)).fetchone(), 10
+    )
+    after = _timed(lambda: store.spend_usd(project="alpha", year_month="2026-09"), 200) + _timed(
+        lambda: store.spend_usd(project=None, year_month="2026-09"), 200
+    )
+    return before, after
 
 
 def write_readme(readme: Path, row: str) -> None:

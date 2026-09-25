@@ -492,6 +492,14 @@ def cmd_bench(args: argparse.Namespace) -> int:
 
     from boundary import bench
 
+    if args.spend:
+        with tempfile.TemporaryDirectory(prefix="boundary-bench-") as tmp:
+            rows = bench.spend_query_scaling(Path(tmp))
+        print("the spend-cap check per call, as the ledger grows (both sums the caps make)")
+        print(f"{'rows':>10}  {'before v9':>12}  {'after v9':>10}  totals agree")
+        for n, before, after, agree in rows:
+            print(f"{n:>10,}  {before:>9.2f} ms  {after:>7.3f} ms  {agree}")
+        return 0 if all(a for *_, a in rows) else 1
     with tempfile.TemporaryDirectory(prefix="boundary-bench-") as tmp:
         results = bench.run(
             args.config,
@@ -674,6 +682,27 @@ def cmd_redact_overmask(args: argparse.Namespace) -> int:
     from boundary.redact import overmask
 
     print(overmask.run(Path(args.gold)).table())
+    return 0
+
+
+def cmd_loadtest(args: argparse.Namespace) -> int:
+    """The layered load test (0.19, PLAN.md B4): the proxy against a 50 ms mock upstream, by
+    layer and load level. Local processes only; no vendor is called and nothing is spent."""
+    from boundary import loadtest
+
+    results = loadtest.run(
+        args.config.resolve(),
+        levels=[int(x) for x in args.levels.split(",")],
+        runs=args.runs,
+        duration_s=args.duration,
+        layers=[x.strip() for x in args.layers.split(",")],
+        machine=args.machine,
+        published=args.published,
+    )
+    print(results.table())
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    args.out.write_text(results.to_json(), encoding="utf-8")
+    print(f"written to {args.out}", file=sys.stderr)
     return 0
 
 
@@ -952,6 +981,12 @@ def main(argv: list[str] | None = None) -> int:
     bench = sub.add_parser(
         "bench", help="measure overhead, completeness, caps and fidelity against a mock"
     )
+    bench.add_argument(
+        "--spend",
+        action="store_true",
+        help="instead: what the spend-cap check costs per call as the ledger grows, before "
+        "and after the v9 spend table",
+    )
     bench.add_argument("--calls", type=int, default=1000)
     bench.add_argument("--per-fault", dest="per_fault", type=int, default=50)
     bench.add_argument("--fidelity", type=int, default=500)
@@ -1134,6 +1169,27 @@ def main(argv: list[str] | None = None) -> int:
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", type=int, default=8080)
     serve.set_defaults(func=cmd_serve)
+
+    lt = sub.add_parser(
+        "loadtest", help="the layered load test against a mock upstream (server extra)"
+    )
+    lt.add_argument(
+        "--levels",
+        default="50,200",
+        help="requests per second, comma-separated; 500 is B4's third level and needs a "
+        "generator this Python client is not (k6 on the VPS)",
+    )
+    lt.add_argument("--runs", type=int, default=5)
+    lt.add_argument("--duration", type=float, default=10.0, help="seconds per run")
+    lt.add_argument("--layers", default=",".join(("routing", "audit", "redaction")))
+    lt.add_argument("--machine", default=None, help="what to call the machine in the output")
+    lt.add_argument(
+        "--published",
+        action="store_true",
+        help="the run the README's overhead budget is taken from (the VPS, PLAN.md B4)",
+    )
+    lt.add_argument("--out", type=Path, default=Path("bench/loadtest-dev.json"))
+    lt.set_defaults(func=cmd_loadtest)
 
     teams = sub.add_parser("teams", help="proxy team commands").add_subparsers(
         dest="sub", required=True

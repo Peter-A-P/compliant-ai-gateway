@@ -1,4 +1,4 @@
--- Ledger schema v8. Columns are additive only: never renamed, never removed.
+-- Ledger schema v9. Columns are additive only: never renamed, never removed.
 -- One row per call. A row is inserted before the request leaves the process
 -- (error_type = 'in_flight', cost_usd = the pre-call estimate) and completed after,
 -- so a process killed mid-call still leaves its row.
@@ -86,6 +86,35 @@ CREATE TABLE IF NOT EXISTS ledger (
 --             without reading content, which it does not do.
 CREATE INDEX IF NOT EXISTS ledger_project_ts ON ledger (project, ts_utc);
 CREATE INDEX IF NOT EXISTS ledger_project_run ON ledger (project, run_id);
+
+-- v9 (0.19, September 2026) adds no column. It adds a table of spend per project and month,
+-- kept by triggers, so that the spend caps checked before every call read one row instead
+-- of summing the whole ledger. The load test found the cost: `spend_usd` filtered on
+-- substr(ts_utc, 1, 7), which no index serves, and the gateway-wide ceiling summed every
+-- project, so every call scanned every row written before it. Triggers rather than a
+-- running total in the process, because a ledger file has more than one writer: every team's
+-- gateway in the proxy holds its own connection, and the ceiling is over all of them. The
+-- table is derived, never a source: `ledger_spend` can always be rebuilt from `ledger`.
+CREATE TABLE IF NOT EXISTS ledger_spend (
+    project TEXT NOT NULL,
+    month   TEXT NOT NULL,
+    cost    REAL NOT NULL,
+    PRIMARY KEY (project, month)
+);
+CREATE TRIGGER IF NOT EXISTS ledger_spend_insert AFTER INSERT ON ledger
+WHEN NEW.cost_usd IS NOT NULL
+BEGIN
+    INSERT INTO ledger_spend (project, month, cost)
+    VALUES (NEW.project, substr(NEW.ts_utc, 1, 7), NEW.cost_usd)
+    ON CONFLICT (project, month) DO UPDATE SET cost = cost + excluded.cost;
+END;
+CREATE TRIGGER IF NOT EXISTS ledger_spend_update AFTER UPDATE OF cost_usd ON ledger
+WHEN COALESCE(NEW.cost_usd, 0) != COALESCE(OLD.cost_usd, 0)
+BEGIN
+    INSERT INTO ledger_spend (project, month, cost)
+    VALUES (NEW.project, substr(NEW.ts_utc, 1, 7), COALESCE(NEW.cost_usd, 0) - COALESCE(OLD.cost_usd, 0))
+    ON CONFLICT (project, month) DO UPDATE SET cost = cost + excluded.cost;
+END;
 
 CREATE TABLE IF NOT EXISTS schema_version (
     version     INTEGER NOT NULL,

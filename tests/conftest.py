@@ -25,7 +25,9 @@ HAIKU = "anthropic/claude-haiku-4-5-20251001"
 # that only wants the library can run the suite; CI installs the extra and checks that the
 # import works, so the proxy is never skipped there.
 collect_ignore = (
-    [] if importlib.util.find_spec("fastapi") else ["test_server.py", "test_server_redaction.py"]
+    []
+    if importlib.util.find_spec("fastapi")
+    else ["test_server.py", "test_server_redaction.py", "test_loadtest.py"]
 )
 
 
