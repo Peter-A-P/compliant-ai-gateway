@@ -99,13 +99,25 @@ happen. That engine has been through nine releases in two days, almost all of th
 something the other project found by using it, and the reasoning behind each is in
 [redact.md](redact.md).
 
-What is still ahead: the network proxy itself, routing by data class rather than merely
-recording it, the tamper-evident audit trail, the cache, per-team budgets and the published
-latency budget. Nothing built now is thrown away then.
+A tamper-evident record came in 0.7: every ledger row is chained to the one before it by a
+hash, so a row changed afterwards, even by whoever runs the gateway, shows up
+([audit.md](audit.md)). A **data policy** came in 0.12: given one, the library refuses to
+send a call whose declared class the provider's declared location does not allow, and
+records the refusal ([policy.md](policy.md)).
+
+The network proxy came in 0.13 ([server.md](server.md)): a program that speaks the same
+language as OpenAI's service, so a team's existing code can be pointed at it by changing one
+address and one key. Each team has its own key and its own spending limit, every request
+says what kind of data it carries (one that says nothing is treated as personal), and the
+data policy is always on. What is still ahead: redacting personal data inside the proxy
+before it leaves, the tamper-evident record written as each call is answered rather than
+afterwards, the cache, and the published latency budget. Nothing built now is thrown away
+then.
 
 ## What it deliberately does not do
 
-It does not serve as a network proxy, does not type tool calls, and does not decide what
+The library on its own does not serve as a network proxy (that is `boundary serve`, a
+separate part installed only when wanted), does not type tool calls, and does not decide what
 kind of data a request carries: the caller declares that, because a library that guessed
 would be making a compliance decision nobody reviewed. It reads content only where a caller
 hands it text to redact, and it never puts content in the record: spans and ledger rows

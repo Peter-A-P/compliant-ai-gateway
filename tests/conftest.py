@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -19,6 +20,11 @@ OPENWEIGHTS_URL = "https://api.together.xyz/v1/chat/completions"
 BEDROCK_URL = "https://bedrock-runtime.ca-central-1.amazonaws.com/anthropic/v1/messages"
 
 HAIKU = "anthropic/claude-haiku-4-5-20251001"
+
+# The proxy's tests need the `server` extra. Left uncollected without it, so a checkout
+# that only wants the library can run the suite; CI installs the extra and checks that the
+# import works, so the proxy is never skipped there.
+collect_ignore = [] if importlib.util.find_spec("fastapi") else ["test_server.py"]
 
 
 @pytest.fixture(scope="session")

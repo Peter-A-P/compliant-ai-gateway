@@ -39,6 +39,7 @@ listed here; nothing any earlier version offered has changed shape.
 | 0.10.0 | 2026-09-23 | `tab.derive_allow`, `tab.read_allow`, `allow=` on `tab.run`, and `boundary redact eval --tab-allow`: a jurisdiction's allow list derived from labelled data and measured. No change to the policy |
 | 0.11.0 | 2026-09-23 | `Policy.released` and `RELEASABLE`: a caller's `allow` terms also release a detector's LOCATION or ORGANISATION span that is one of them. A caller who passes no `allow` sees no change |
 | 0.12.0 | 2026-09-23 | The data policy (section 14): `Gateway(..., policy=)`, the `policy` configuration key, `PolicyRefused`, `boundary.enforce` and `boundary policy eval`. Opt-in: a gateway with no policy behaves as before |
+| 0.13.0 | 2026-09-25 | The OpenAI-compatible proxy (section 15): `boundary.server`, the `server` extra, `boundary serve` and `boundary teams key`. `on_text` on `chat_stream` and `achat_stream`. Nothing a library caller already uses changed |
 
 ## 1. Importing
 
@@ -64,8 +65,8 @@ from boundary import (
 | Construct from a file | `Gateway.from_config(path, *, project, ledger_path=None, raw_store=None, strict_cost=False, env=None)` | 0.1, `env` 0.2 | `project` is the ledger's project column and the key into `caps.yaml`. `ledger_path` overrides the config's ledger path (the Actions runner passes a path inside the checkout). `raw_store` is a directory the caller owns; required for any pass-through call. `strict_cost=True` raises `UnknownPrice` instead of writing an uncosted row. `env` labels the rows this gateway writes, so a merged ledger says where a call was made; it defaults to `BOUNDARY_ENV`, then `ledger.env` in the configuration |
 | Synchronous call | `gw.chat(request, *, purpose, run_id=None, mode=Mode.STANDARD, data_class=None) -> ChatResponse` | 0.1, `data_class` 0.4 | `purpose` is a short free-text label for the ledger ("drift-run", "grader-dev"). `run_id` groups rows and is what the per-run cap is measured against. `data_class` is what kind of data the request carries, from the closed vocabulary in section 5a; it is written to the row and the span, and in 0.x enforced by nothing. None means no claim was made; a word outside the vocabulary raises `ValueError` before the model is resolved, and no row is written |
 | Asynchronous call | `await gw.achat(request, *, purpose, run_id=None, mode=Mode.STANDARD, data_class=None) -> ChatResponse` | 0.1, `data_class` 0.4 | Same adapter code path as `chat`; concurrency is the caller's business |
-| Streamed call | `gw.chat_stream(request, *, purpose, run_id=None, mode=Mode.STANDARD, data_class=None) -> ChatResponse` | 0.3, `data_class` 0.4 | Sends `stream: true` with `stream_options: {include_usage: true}`, reads the events as they arrive and returns the whole answer: full text, the usage from the final event, and `ttft_ms`. One ledger row per call. **Standard mode only**: `Mode.PASSTHROUGH` is refused with `PassthroughViolation` before anything is built, and the development cache is never consulted. `openai_compat` only; every other kind raises `NotImplementedError` naming the kind. A stream that fails after it began is not retried, because the host may bill for tokens the library cannot count |
-| Streamed call, async | `await gw.achat_stream(request, *, purpose, run_id=None, mode=Mode.STANDARD, data_class=None) -> ChatResponse` | 0.3, `data_class` 0.4 | The async twin. The transport's connection pool admits at least 64 streams at once against one host, and a test holds 64 open |
+| Streamed call | `gw.chat_stream(request, *, purpose, run_id=None, mode=Mode.STANDARD, data_class=None, on_text=None) -> ChatResponse` | 0.3, `data_class` 0.4, `on_text` 0.13 | Sends `stream: true` with `stream_options: {include_usage: true}`, reads the events as they arrive and returns the whole answer: full text, the usage from the final event, and `ttft_ms`. One ledger row per call. **Standard mode only**: `Mode.PASSTHROUGH` is refused with `PassthroughViolation` before anything is built, and the development cache is never consulted. `openai_compat` only; every other kind raises `NotImplementedError` naming the kind. A stream that fails after it began is not retried, because the host may bill for tokens the library cannot count. `on_text(piece)`, when given, is handed the text as it arrives; on a successful call the pieces joined are exactly `text`, none repeated, because a stream is only retried before its first byte. If `on_text` raises it is not called again, the stream is read to its end and the row written, and then its exception is raised, so a callback cannot leave a row in flight |
+| Streamed call, async | `await gw.achat_stream(request, *, purpose, run_id=None, mode=Mode.STANDARD, data_class=None, on_text=None) -> ChatResponse` | 0.3, `data_class` 0.4, `on_text` 0.13 | The async twin, with an awaited `on_text`. The transport's connection pool admits at least 64 streams at once against one host, and a test holds 64 open |
 | Escape hatch | `gw.raw(provider, method, path, json, *, purpose, run_id=None, mode=Mode.STANDARD, data_class=None) -> RawResponse` | 0.1, `data_class` 0.4 | For a vendor feature the library does not model. Traced and ledgered; costed when the body carries usage in a shape the adapter knows, otherwise written uncosted |
 | Resolve without calling | `gw.resolve(model, mode=Mode.STANDARD) -> ModelRef` | 0.1 | What an alias points at right now. Lets a runner print the identifiers it is about to use |
 | Close | `gw.close()`, and `with Gateway.from_config(...) as gw:` | 0.1 | Flushes the ledger and telemetry, closes the HTTP client |
@@ -305,14 +306,18 @@ every row as a failure at no cost rather than leaving it in flight at an estimat
 | `boundary audit anchor --anchors FILE` | 0.7 | Appends the current head to an anchor file, one canonical JSON line; never rewrites the lines before it. Refuses an empty log |
 | `boundary audit verify` | 0.7 | Recomputes the chain, checks every anchor in `--anchors`, and checks the ledger against the latest record for each call unless `--no-ledger`. Exits 1 on any break, and reports every break rather than the first |
 | `boundary audit tamper-test` | 0.7 | The README's audit row: twelve kinds of corruption before and after the last anchor, with a control. In memory, from a seed |
+| `boundary serve` | 0.13 | The OpenAI-compatible proxy (section 15). Needs the `server` extra. `--teams`, `--policy`, `--ledger`, `--host` (default `127.0.0.1`), `--port` (default 8080). Refuses to start without a data policy |
+| `boundary teams key --team NAME` | 0.13 | Mints a proxy key, prints it once, and prints the SHA-256 line for `teams.yaml`. The key is stored nowhere |
 | `boundary policy eval` | 0.12 | The adversarial suite for the data policy over this configuration's providers and aliases; exits 1 on any violation or false refusal. `--policy` names a file other than `policy.yaml` beside the configuration |
 | `boundary experiment remote-ledger` | 0.2 | The Rule C measurement behind `docs/rejected.md` |
 | `boundary experiment token-estimates <run-dir>` | 0.2.1 | The second Rule C measurement: local token estimates against returned usage, over a drift run's raw store and ledgers. Reads only; no network |
 
 ## 10. What is deliberately not here in 0.x
 
-Streaming for any kind but `openai_compat`, typed tool calls, embeddings, any server, any
-content inspection **inside a call**. See PLAN.md section 2.8, which 0.3 amends: streaming
+Streaming for any kind but `openai_compat`, typed tool calls, embeddings, any
+content inspection **inside a call**. A server arrived in 0.13 (section 15), as Part B's
+first stage pulled forward; it is a separate package behind an optional extra, and nothing
+in `boundary` imports it. See PLAN.md section 2.8, which 0.3 amends: streaming
 was out of scope until project 06 needed time to first token against self-hosted hosts,
 and it arrived for the one kind those hosts speak. Tool-use fields pass through inside
 `messages` and `extra` untouched. `boundary.redact` (0.5) inspects content, but only when
@@ -388,6 +393,33 @@ from boundary.enforce import DataPolicy, ClassRule, load_policy, decide
 | The policy | `DataPolicy(version=1, undeclared=DataClass.PERSONAL, classes={DataClass: ClassRule})`, `ClassRule(max_residency=None, regions=None, providers=None, cache=False)` | 0.12 | Frozen. `load_policy(path)` raises `ConfigError` on a malformed file |
 | Decide | `decide(policy, data_class, *, provider, provider_config, region) -> Decision` | 0.12 | `Decision(allowed, data_class, reason, cache)`. Pure; the gateway calls it straight after resolving the model |
 | Refusal | `PolicyRefused` | 0.12 | Section 6. The row's `data_class` is what the caller declared; the error's is what the policy judged it as |
+
+## 15. The proxy (0.13)
+
+An OpenAI-compatible HTTP proxy on the library, stage 1 of Part B. The full page is
+`docs/server.md`. Needs the `server` extra (`uv sync --extra server`, or
+`pip install 'boundary[server]'`); `import boundary` never imports it.
+
+```python
+from boundary.server import create_app, load_teams, TeamsConfig, hash_key, new_key
+```
+
+| Item | Signature | Since | Notes |
+|---|---|---|---|
+| The app | `create_app(config, teams, *, ledger_path=None, env=None, policy=None, transport=None) -> FastAPI` | 0.13 | One `Gateway` per team, sharing one transport and one ledger file. Raises `ConfigError` when neither `policy` nor the configuration names a data policy. Test seams `clock`, `wall`, `sleep` and `asleep` are keyword arguments too |
+| Teams | `load_teams(path) -> TeamsConfig`; `TeamsConfig(version=1, gateway_monthly_usd, teams={name: Team(key_sha256=[...], monthly_usd, per_run_usd=None, requests_per_minute)})` | 0.13 | Frozen. `.caps()` is the teams as a `CapsConfig`, one project per team and no default. `load_teams` raises `ConfigError` on a malformed file |
+| Keys | `new_key() -> str`, `hash_key(key) -> str` | 0.13 | A key is `bnd_` and 256 random bits; the file holds its SHA-256 in hex |
+
+The HTTP surface, which is the interface a proxy client is written against:
+
+| Item | Since | Notes |
+|---|---|---|
+| `POST /v1/chat/completions` | 0.13 | OpenAI's request and response shapes, streamed or not. Accepts `model`, `messages`, `max_tokens` or `max_completion_tokens`, `temperature`, `stop`, `stream`, `stream_options`, `n` of 1; any other field is a 400 naming it |
+| `GET /v1/models` | 0.13 | The configuration's routes |
+| `GET /healthz` | 0.13 | `{"status": "ok", "version": ...}`, without a key |
+| Request headers | 0.13 | `Authorization: Bearer <key>` (required), `X-Data-Class` (absent is `personal`), `X-Boundary-Purpose`, `X-Boundary-Run-Id` |
+| Response headers | 0.13 | `x-boundary-data-class`, `x-boundary-data-class-source` (`header` or `absent`), `x-boundary-version`, `x-boundary-call-uid` (not on a native stream, whose uid rides on its last choice event), `x-boundary-stream` (`native` or `whole`) on a stream |
+| Errors | 0.13 | OpenAI's `{"error": {"message", "type", "code", "param"}}`, with extra keys inside `error`. 401 `missing_api_key` or `invalid_api_key`; 400 `invalid_request`, `unsupported_parameter`, `unsupported_content` or `invalid_data_class`; 403 `policy_refused` with `ledger_id`; 404 `model_not_found`; 429 `team_monthly_budget`, `team_run_budget`, `gateway_monthly_budget` (with `resets_at`) or `team_requests_per_minute` (with `retry_after_s`), each with `Retry-After` where there is a reset; 4xx, 429 or 502 `upstream_error` |
 
 ## 11. Choices the plan left open
 

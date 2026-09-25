@@ -8,8 +8,8 @@ residency (0.2.1). Until 0.12 both were recorded and nothing acted on them.
 **Opt-in.** A gateway enforces only when it is given a policy, by `policy: policy.yaml` in
 `boundary.yaml` or `Gateway(..., policy=load_policy(path))`. The checked-in `boundary.yaml`
 names none, so the pinned 02 and 03 runs, the smoke workflow and pass-through behave exactly
-as before. In Part B the proxy turns it on for every request, and substitutes `personal` for
-an absent `X-Data-Class` header at the door.
+as before. The proxy (0.13, docs/server.md) turns it on for every request, refuses to start
+without one, and substitutes `personal` for an absent `X-Data-Class` header at the door.
 
 ## The file
 
@@ -80,5 +80,5 @@ violation or false refusal, so it can run in CI.
 - **It does not check redaction.** B2.2 has `personal` require redaction. The library cannot
   tell a redacted body from a raw one without reading content, which it does not do; Part B's
   proxy redacts as the policy requires and then passes the call on.
-- **It is opt-in** until the proxy exists, because turning it on for the pinned downstream
-  runs would change what those runs measure.
+- **It is opt-in for a library caller**, because turning it on for the pinned downstream
+  runs would change what those runs measure. Through the proxy (0.13) it is always on.

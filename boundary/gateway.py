@@ -141,6 +141,10 @@ class _Call:
     # request for usage, and the row is written uncosted rather than costed from zero
     # tokens, which would be a cost of zero wearing a real number's clothes.
     usage_seen: bool = True
+    # A caller's `on_text` that raised (0.13). Held rather than let through, because an
+    # exception escaping the transport would leave the row in flight: the stream is read to
+    # its end, the row is written, and then this is raised to the caller.
+    on_text_error: Exception | None = None
 
 
 @dataclass(slots=True)
@@ -291,9 +295,18 @@ class Gateway:
         run_id: str | None = None,
         mode: Mode = Mode.STANDARD,
         data_class: DataClass | str | None = None,
+        on_text: Callable[[str], None] | None = None,
     ) -> ChatResponse:
         """One call, streamed, returned whole: the full text, the usage from the final event,
         and `ttft_ms`, the wall time from sending the request to the first content delta.
+
+        `on_text` (0.13), when given, is handed the text as it arrives, one piece per chunk
+        that carried any. On a successful call the pieces joined are exactly `text`; a
+        piece is never repeated and never withdrawn, because a stream is only retried
+        before its first byte. On a failed call the pieces are what arrived before the
+        failure and the call still raises. If `on_text` raises it is not called again, the
+        stream is read to its end, the row is written, and then its exception is raised:
+        a callback's failure must not leave a row in flight. It is how the proxy streams.
 
         For measuring time to first token, which a non-streamed call cannot see. Standard
         mode only: pass-through is refused with `PassthroughViolation` before anything is
@@ -312,8 +325,11 @@ class Gateway:
             stream=True,
             data_class=data_class,
         )
-        result, error_type, retries = self._stream_sync(call)
-        return self._finish(call, result, error_type, retries, cached=False)
+        result, error_type, retries = self._stream_sync(call, on_text)
+        response = self._finish(call, result, error_type, retries, cached=False)
+        if call.on_text_error is not None:
+            raise call.on_text_error
+        return response
 
     async def achat_stream(
         self,
@@ -323,9 +339,11 @@ class Gateway:
         run_id: str | None = None,
         mode: Mode = Mode.STANDARD,
         data_class: DataClass | str | None = None,
+        on_text: Callable[[str], Awaitable[None]] | None = None,
     ) -> ChatResponse:
-        """The async twin of `chat_stream`. Sixty-four of these may be in flight at once
-        against one host; the transport's pool is sized for it (boundary/transport.py)."""
+        """The async twin of `chat_stream`, with an awaited `on_text`. Sixty-four of these
+        may be in flight at once against one host; the transport's pool is sized for it
+        (boundary/transport.py)."""
         call = self._prepare(
             request,
             purpose=purpose,
@@ -334,8 +352,11 @@ class Gateway:
             stream=True,
             data_class=data_class,
         )
-        result, error_type, retries = await self._stream_async(call)
-        return self._finish(call, result, error_type, retries, cached=False)
+        result, error_type, retries = await self._stream_async(call, on_text)
+        response = self._finish(call, result, error_type, retries, cached=False)
+        if call.on_text_error is not None:
+            raise call.on_text_error
+        return response
 
     def raw(
         self,
@@ -1294,6 +1315,34 @@ class Gateway:
             if parser.feed(data) and state.ttft_ms is None:
                 state.ttft_ms = ms
 
+    @staticmethod
+    def _hand_text(
+        call: _Call, parser: StreamParser, on_text: Callable[[str], None] | None
+    ) -> None:
+        """Give the caller the text fed since the last piece. Once `on_text` has raised it is
+        not called again; the stream is still read so the row can be written."""
+        if on_text is None or call.on_text_error is not None:
+            return
+        piece = parser.drain()
+        if piece:
+            try:
+                on_text(piece)
+            except Exception as e:  # held, and raised after the row is written
+                call.on_text_error = e
+
+    @staticmethod
+    async def _ahand_text(
+        call: _Call, parser: StreamParser, on_text: Callable[[str], Awaitable[None]] | None
+    ) -> None:
+        if on_text is None or call.on_text_error is not None:
+            return
+        piece = parser.drain()
+        if piece:
+            try:
+                await on_text(piece)
+            except Exception as e:  # held, and raised after the row is written
+                call.on_text_error = e
+
     def _stream_settle(
         self,
         call: _Call,
@@ -1316,7 +1365,9 @@ class Gateway:
         call.usage_seen = parser.usage_seen
         return result, error_type, retries
 
-    def _stream_sync(self, call: _Call) -> tuple[HttpResult | None, str | None, int]:
+    def _stream_sync(
+        self, call: _Call, on_text: Callable[[str], None] | None = None
+    ) -> tuple[HttpResult | None, str | None, int]:
         """The standard-mode retry loop for a streamed call.
 
         Retried on the same statuses as chat() and on a transport failure that happened
@@ -1337,6 +1388,7 @@ class Gateway:
                 state: _StreamState = state,
             ) -> None:
                 self._feed(parser, decoder, state, chunk, ms)
+                self._hand_text(call, parser, on_text)
 
             result: HttpResult | None
             error_type: str | None
@@ -1350,12 +1402,19 @@ class Gateway:
                         call, parser, decoder, state, None, error_type, attempt - 1
                     )
             if result is not None and result.status not in RETRY_STATUSES:
-                return self._stream_settle(call, parser, decoder, state, result, None, attempt - 1)
+                settled = self._stream_settle(
+                    call, parser, decoder, state, result, None, attempt - 1
+                )
+                # The event a host closed with the connection is fed at settle time.
+                self._hand_text(call, parser, on_text)
+                return settled
             if attempt < attempts:
                 self._sleep(self._backoff(attempt, result.headers if result else None))
         return self._stream_settle(call, parser, decoder, state, result, error_type, attempts - 1)
 
-    async def _stream_async(self, call: _Call) -> tuple[HttpResult | None, str | None, int]:
+    async def _stream_async(
+        self, call: _Call, on_text: Callable[[str], Awaitable[None]] | None = None
+    ) -> tuple[HttpResult | None, str | None, int]:
         attempts = self.config.retry.max_attempts
         for attempt in range(1, attempts + 1):
             parser, decoder, state = self._stream_attempt(call)
@@ -1368,6 +1427,7 @@ class Gateway:
                 state: _StreamState = state,
             ) -> None:
                 self._feed(parser, decoder, state, chunk, ms)
+                await self._ahand_text(call, parser, on_text)
 
             result: HttpResult | None
             error_type: str | None
@@ -1381,7 +1441,11 @@ class Gateway:
                         call, parser, decoder, state, None, error_type, attempt - 1
                     )
             if result is not None and result.status not in RETRY_STATUSES:
-                return self._stream_settle(call, parser, decoder, state, result, None, attempt - 1)
+                settled = self._stream_settle(
+                    call, parser, decoder, state, result, None, attempt - 1
+                )
+                await self._ahand_text(call, parser, on_text)
+                return settled
             if attempt < attempts:
                 await self._asleep(self._backoff(attempt, result.headers if result else None))
         return self._stream_settle(call, parser, decoder, state, result, error_type, attempts - 1)

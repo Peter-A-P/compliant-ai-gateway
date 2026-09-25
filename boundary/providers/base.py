@@ -115,11 +115,16 @@ class StreamParser(Protocol):
     result: the response assembled from every event fed so far, in the same shape a
         non-streamed call would have parsed. Raises ProviderError when nothing usable
         arrived, so an empty 2xx stream is a malformed response rather than a success.
+    drain: the content text fed since the last drain (0.13), so the gateway can hand a
+        caller the text as it arrives. Every piece drained, joined, is the text `result`
+        assembles: nothing is drained that the result leaves out, and nothing twice.
     """
 
     usage_seen: bool
 
     def feed(self, data: str) -> bool: ...
+
+    def drain(self) -> str: ...
 
     def result(self) -> ParsedResponse: ...
 

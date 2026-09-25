@@ -13,7 +13,15 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.13"
-      - run: uv sync --frozen
+      # The `server` extra is installed here, unlike `vertex` and `redact` below, because
+      # the proxy is typed against FastAPI's own classes rather than a protocol of its own,
+      # so mypy has to see the real ones. 02 and 03 install `boundary` without extras and
+      # are unaffected.
+      - run: uv sync --frozen --extra server
+      # Fail here rather than in the tests: tests/conftest.py leaves test_server.py
+      # uncollected when FastAPI is missing, so a quietly failed install would leave this
+      # job green while checking none of the proxy.
+      - run: uv run python -c "import fastapi, uvicorn, openai"
       - run: uv run ruff format --check .
       - run: uv run ruff check .
       - run: uv run mypy
