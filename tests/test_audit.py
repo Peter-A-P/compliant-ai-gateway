@@ -18,7 +18,6 @@ import respx
 
 from boundary.audit import (
     GENESIS,
-    SEALED,
     Anchor,
     AuditLog,
     Verification,
@@ -27,7 +26,15 @@ from boundary.audit import (
     tamper,
     verify,
 )
-from boundary.audit.chain import Record, build, canonical, ledger_body, link
+from boundary.audit.chain import (
+    SEALED_V2,
+    Record,
+    build,
+    canonical,
+    ledger_body,
+    link,
+    sealed_fields,
+)
 from boundary.cli import main
 from boundary.config import BoundaryConfig
 from boundary.types import ChatRequest
@@ -102,8 +109,49 @@ def test_a_record_carries_the_sealed_columns_and_nothing_else() -> None:
     row = {**_ledger(1)[0], "raw_path": "C:/Users/somebody/raw/1.json", "trace_id": "abc"}
     body = json.loads(ledger_body(row, sealed_utc="t"))
     assert set(body) == {"kind", "schema", "sealed_utc", "row"}
-    assert tuple(sorted(body["row"])) == tuple(sorted(SEALED))
+    assert tuple(sorted(body["row"])) == tuple(sorted(SEALED_V2))
+    assert body["schema"] == 2 and "redacted" in body["row"]
     assert "raw_path" not in body["row"] and "trace_id" not in body["row"]
+
+
+# -- record schema 2 (0.18): redacted is sealed --------------------------------------------
+
+
+def _v1_body(row: dict[str, object]) -> str:
+    """A record exactly as 0.7 to 0.17 wrote it."""
+    return canonical(
+        {"kind": "ledger_row", "schema": 1, "sealed_utc": "t", "row": sealed_fields(row, 1)}
+    )
+
+
+def test_a_chain_of_schema_1_records_still_verifies_against_the_ledger() -> None:
+    ledger = [{**r, "redacted": None} for r in _ledger(10)]
+    v = verify(build(_v1_body(r) for r in ledger), ledger_rows=ledger)
+    assert v.ok and v.resealable == 0
+
+
+def test_a_schema_1_row_that_was_redacted_is_resealed_once(tmp_path: Path) -> None:
+    ledger = [{**r, "redacted": None} for r in _ledger(4)]
+    with AuditLog(tmp_path / "a.sqlite") as log:
+        log.append_bodies([_v1_body(r) for r in ledger])
+        ledger[2]["redacted"] = 1
+        v = verify(log.records(), ledger_rows=ledger)
+        assert v.ok and v.resealable == 1, "new information, not a changed row"
+        stats = log.seal(ledger)
+        assert (stats.sealed, stats.resealed, stats.unchanged) == (0, 1, 3)
+        assert log.seal(ledger).resealed == 0, "idempotent"
+        last = json.loads(log.records()[-1].body)
+        assert last["schema"] == 2 and last["row"]["redacted"] == 1
+        assert verify(log.records(), ledger_rows=ledger).ok
+
+
+def test_editing_redacted_after_it_was_sealed_is_caught() -> None:
+    ledger = [{**r, "redacted": 1} for r in _ledger(3)]
+    records = build(ledger_body(r, sealed_utc="t") for r in ledger)
+    ledger[1] = {**ledger[1], "redacted": None}
+    v = verify(records, ledger_rows=ledger)
+    assert _kinds(v) == {"ledger_changed"}
+    assert "redacted" in v.breaks[0].detail
 
 
 # -- anchors -------------------------------------------------------------------------------

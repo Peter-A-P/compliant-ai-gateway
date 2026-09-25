@@ -43,6 +43,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 
 from boundary import __version__
+from boundary.audit.appender import AuditAppender
 from boundary.config import BoundaryConfig
 from boundary.enforce import DataPolicy, load_policy
 from boundary.errors import (
@@ -97,10 +98,20 @@ class ServerState:
     wall: Callable[[], float]
     policy: DataPolicy
     tasks: set[asyncio.Task[ChatResponse]] = field(default_factory=set)
+    # The audit chain, appended as the proxy answers (0.18). None: not kept.
+    audit: AuditAppender | None = None
+
+    def sealed(self) -> None:
+        """Append every row completed since the last call to the audit chain."""
+        if self.audit is not None:
+            self.audit.after_call()
 
     async def close(self) -> None:
         if self.tasks:
             await asyncio.gather(*self.tasks, return_exceptions=True)
+        if self.audit is not None:
+            self.audit.after_call()
+            self.audit.close()
         for gw in self.gateways.values():
             await gw.aclose()
 
@@ -113,6 +124,7 @@ def create_app(
     env: str | None = None,
     policy: DataPolicy | None = None,
     transport: Transport | None = None,
+    audit_path: Path | None = None,
     clock: Callable[[], float] = time.monotonic,
     wall: Callable[[], float] = time.time,
     sleep: Callable[[float], None] = time.sleep,
@@ -151,6 +163,9 @@ def create_app(
         wall=wall,
         policy=policy,
     )
+    if audit_path is not None:
+        # Every team's gateway writes the same ledger file, so any one of them reads it.
+        state.audit = AuditAppender(audit_path, next(iter(gateways.values())).ledger)
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
@@ -230,7 +245,11 @@ def create_app(
             "x-boundary-data-class-source": source,
             "x-boundary-version": __version__,
         }
-        redaction = _redact(state.policy, data_class, parsed, gw, purpose, run_id)
+        try:
+            redaction = _redact(state.policy, data_class, parsed, gw, purpose, run_id)
+        except Refusal:
+            state.sealed()
+            raise
         headers["x-boundary-redacted"] = "true" if redaction is not None else "false"
         if redaction is not None:
             headers["x-boundary-placeholders"] = str(redaction.placeholders)
@@ -488,6 +507,8 @@ class _Call:
         task = asyncio.create_task(wrapped())
         self.state.tasks.add(task)
         task.add_done_callback(self.state.tasks.discard)
+        # The row is complete before the task is, so it is sealed here, refused or not.
+        task.add_done_callback(lambda _t: self.state.sealed())
         return task
 
     def restore(self, text: str | None) -> str | None:

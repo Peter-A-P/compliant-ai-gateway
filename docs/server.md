@@ -275,15 +275,14 @@ Each of these is in PLAN.md Part B and lands in the stage it names:
 - **Redaction is rules-only and unmeasured for quality.** No detector or allow list is
   configured for the proxy, and the effect of redaction on answer quality (B2.8) has not
   been measured; PLAN.md B2.8 has the plan for it.
-- **The audit chain does not seal `redacted`.** Its sealed column list is fixed so that an
-  older verifier still reproduces a record (docs/audit.md); adding the column is a new
-  record schema, not an edit.
 - **It has not been load-tested.** The overhead budget in PLAN.md B4 is published from the
   first measurement, on the VPS, and nothing about the proxy's overhead is claimed until
   then. The ledger writes are synchronous SQLite inside the event loop, which is the first
   thing that measurement will look at.
-- **The audit chain is still sealed after the fact** (docs/audit.md). The proxy writing to
-  it as it answers, and the daily anchor that needs an always-on log, are B2.4.
+- **The audit chain is appended as the proxy answers (0.18), and not yet anchored.**
+  `boundary serve` seals every call into `<ledger>.audit.sqlite` as its row completes (turn
+  it off with `--no-audit`), and record schema 2 seals `redacted`. The daily anchor that
+  makes an operator's rewrite detectable needs the proxy on an always-on host (B2.4).
 - No semantic cache (B2.5), no injection screen (B2.6), no dashboard, SQLite rather than
   Postgres, and one process.
 - Typed tool calls are refused rather than carried (PLAN.md B11).

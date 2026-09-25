@@ -30,6 +30,7 @@ from boundary.audit.chain import (
     latest_sealed,
     ledger_body,
     link,
+    needs_seal,
     sealed_fields,
 )
 from boundary.ledger.store import IN_FLIGHT, utc_now
@@ -147,7 +148,7 @@ class AuditLog:
                 continue
             fields = sealed_fields(row)
             before = latest.get(str(uid))
-            if before == fields:
+            if not needs_seal(before, row):
                 unchanged += 1
                 continue
             if row.get("error_type") == IN_FLIGHT and _age_s(row, now) < settle_s:
