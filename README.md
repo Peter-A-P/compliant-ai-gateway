@@ -230,24 +230,26 @@ row above; the proxy's live calls are in [docs/server.md](docs/server.md).
 
 **Placeholder mutation under a model** (`v0.14.0`)
 
-| Model | Mutated, task alone | Mutated, with the preserve line | Effect of the line | Unrecoverable, alone / with | Lost from a list, alone / with |
-|---|---|---|---|---|---|
+| Model | Mutated, task alone | With the 0.14 line | With the proxy's line | Effect, 0.14 line | Effect, proxy's line | Unrecoverable, alone / 0.14 / proxy | Lost from a list, alone / 0.14 / proxy |
+|---|---|---|---|---|---|---|---|
 <!-- mutation:start -->
-| anthropic/claude-haiku-4-5-20251001 | 6.8% (5.1% to 8.9%) of 695 | 0.0% (0.0% to 0.5%) of 715 | -6.8 points (-8.9 to -5.0) | 0.6% (0.2% to 1.5%) / 0.0% (0.0% to 0.5%) | 0.3% (0.1% to 1.9%) / 0.0% (0.0% to 1.3%) |
-| google/gemini-3.5-flash-lite | 0.0% (0.0% to 0.6%) of 673 | 0.0% (0.0% to 0.6%) of 685 | +0.0 points (-0.6 to +0.6) | 0.0% (0.0% to 0.6%) / 0.0% (0.0% to 0.6%) | 1.0% (0.3% to 3.0%) / 0.0% (0.0% to 1.3%) |
-| openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo | 37.0% (33.3% to 40.9%) of 605 | 0.6% (0.2% to 1.6%) of 629 | -36.4 points (-40.3 to -32.5) | 0.0% (0.0% to 0.6%) / 0.6% (0.2% to 1.6%) | 0.0% (0.0% to 1.3%) / 0.3% (0.1% to 1.9%) |
+| anthropic/claude-haiku-4-5-20251001 | 6.8% (5.1% to 8.9%) of 695 | 0.0% (0.0% to 0.5%) of 715 | 0.0% (0.0% to 0.5%) of 725 | -6.8 points (-8.9 to -5.0) | -6.8 points (-8.9 to -5.0) | 0.6% (0.2% to 1.5%) / 0.0% (0.0% to 0.5%) / 0.0% (0.0% to 0.5%) | 0.3% (0.1% to 1.9%) / 0.0% (0.0% to 1.3%) / 0.0% (0.0% to 1.3%) |
+| google/gemini-3.5-flash-lite | 0.0% (0.0% to 0.6%) of 673 | 0.0% (0.0% to 0.6%) of 685 | 0.0% (0.0% to 0.5%) of 716 | +0.0 points (-0.6 to +0.6) | +0.0 points (-0.6 to +0.5) | 0.0% (0.0% to 0.6%) / 0.0% (0.0% to 0.6%) / 0.0% (0.0% to 0.5%) | 1.0% (0.3% to 3.0%) / 0.0% (0.0% to 1.3%) / 0.0% (0.0% to 1.3%) |
+| openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo | 37.0% (33.3% to 40.9%) of 605 | 0.6% (0.2% to 1.6%) of 629 | 0.0% (0.0% to 0.6%) of 619 | -36.4 points (-40.3 to -32.5) | -37.0 points (-40.9 to -33.2) | 0.0% (0.0% to 0.6%) / 0.6% (0.2% to 1.6%) / 0.0% (0.0% to 0.6%) | 0.0% (0.0% to 1.3%) / 0.3% (0.1% to 1.9%) / 0.3% (0.1% to 1.9%) |
 <!-- mutation:end -->
 
-Filled by `boundary redact mutation --score bench/mutation.json --write-readme`, from a stored
-run of 480 calls (US$0.24): 40 redacted pages from the generated corpus, each sent twice,
+Filled by `boundary redact mutation --score bench/mutation.json --score
+bench/mutation-proxy-line.json --write-readme`, from two stored runs over the same pages, 720
+calls in all (US$0.37): 40 redacted pages from the generated corpus, each sent twice,
 once to list every person and identifier and once to draft a reply, with and without one
 system line asking for placeholders to be copied exactly. **Mutated** is any placeholder not
 written as minted; **unrecoverable** is the part the library cannot put back (an invented or
 renumbered placeholder, or one respelled as words). Most mutation is recoverable, because the
 forms models chose (brackets dropped, square brackets) are forms the 0.6.4 matcher already
 reads. The line cuts mutation sharply for the two models that mutate and does not raise how
-many placeholders go missing, which stays at 1% or under. The only unrecoverable tokens under the preserve line are the example placeholder
-Llama copied out of the instruction itself. Detail, and what this cannot see, in
+many placeholders go missing, which stays at 1% or under. The only unrecoverable tokens under the 0.14 line are the example placeholder Llama
+copied out of the instruction itself; the proxy's line (`v0.16.0`) gives none and carries no
+example, and it is the one the proxy sends. Detail, and what this cannot see, in
 [docs/redact.md](docs/redact.md).
 
 | Quality effect of redaction (two-sided delta) | Cache hit rate / false-hit rate / saved, redacted and raw | Audit tamper detection with daily anchors |
@@ -267,8 +269,10 @@ Llama copied out of the instruction itself. Detail, and what this cannot see, in
   redacted before it leaves and routed as internal data, so it can reach Claude on Bedrock in
   `ca-central-1` but not the direct Anthropic API, which declares no residency here. With no
   detector configured, names become `<NAME_LIKE_n>` and anything capitalised the vocabulary
-  does not know is masked, which fails closed and over-masks. Whether that costs answer
-  quality is Part B's measurement through project 03, not yet run. No latency figure for the
+  does not know is masked, which fails closed and over-masks: on project 03's gold set, which
+  holds no personal data at all, it masks 14.0% (9.0 to 21.0) of the phrases the answers are
+  judged on (`boundary redact overmask`, `v0.16.0`). Whether that costs answer quality is
+  Part B's measurement through project 03, planned and not yet run. No latency figure for the
   proxy is claimed until the load test on the VPS.
 - It does not run in more than one region. Residency here means controlling where requests
   are allowed to go, not where the proxy runs.

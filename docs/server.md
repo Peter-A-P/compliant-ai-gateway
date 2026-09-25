@@ -122,12 +122,15 @@ header. What happens, in order:
    masks what the recognisers found, masks anything name- or identifier-shaped they did not
    (the second pass), and then refuses if it still cannot vouch for the result. A refusal
    is a **422** with `type: redaction_refused` and `findings`, counts by kind and type
-   (`{"placeholder:EMAIL": 1}`), never a value. Nothing is sent.
+   (`{"placeholder:EMAIL": 1}`), never a value. Nothing is sent. Since 0.16 the refusal is on
+   the ledger as a `redaction_refused` row, written through `Gateway.record_refusal` with no
+   request hash and no content, and the 422 carries its `ledger_id`.
 3. **The preserve line.** The system prompt gains `PRESERVE_LINE`, asking the model to copy
    placeholders exactly. 0.14.0 measured a line like it cutting placeholder mutation from
    37.0% to 0.6% for Llama 3.3 70B and from 6.8% to 0.0% for Haiku, and found Llama copying
-   that line's example placeholder into its answers, so this one carries no example. **This
-   wording has not been measured yet.**
+   that line's example placeholder into its answers, so this one carries no example.
+   **Measured in 0.16**: 0.0% mutation for Haiku, Llama and Gemini, nothing unrecoverable and
+   no copied example, against 6.8%, 37.0% and 0.0% for the task alone (docs/redact.md).
 4. **Routed as the `redacted_as` class**, with `redacted=True` on the gateway call. The row
    keeps the declared class and records the redaction: `data_class = personal`,
    `redacted = 1`.
@@ -261,10 +264,7 @@ Each of these is in PLAN.md Part B and lands in the stage it names:
 
 - **Redaction is rules-only and unmeasured for quality.** No detector or allow list is
   configured for the proxy, and the effect of redaction on answer quality (B2.8) has not
-  been measured. The preserve line's wording is unmeasured too.
-- **A redaction refusal writes no ledger row.** A policy refusal does, because the library
-  writes it; the redaction guard runs in the proxy before the library is called, and the
-  library has no way yet to record a refusal it did not make. The 422 is in the proxy's log.
+  been measured; PLAN.md B2.8 has the plan for it.
 - **The audit chain does not seal `redacted`.** Its sealed column list is fixed so that an
   older verifier still reproduces a record (docs/audit.md); adding the column is a new
   record schema, not an edit.

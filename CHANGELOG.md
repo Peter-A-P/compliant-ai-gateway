@@ -5,6 +5,29 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.16.0 (2026-09-25)
+
+**A redaction refusal is on the record, the proxy's preserve line is measured, and the plan
+for redaction's quality cost is rewritten around what 03's gold set actually holds.**
+
+- **`Gateway.record_refusal`**: the row for a call the caller refused before handing it over,
+  with no body, no hash and no content. The proxy writes one for every 422, and the 422
+  carries its `ledger_id`.
+- **The proxy's line, measured**: 240 calls, US$0.127, as a third arm over the same pages.
+  0.0% mutation for Haiku, Llama and Gemini, nothing unrecoverable, no copied example;
+  -37.0 points (-40.9 to -33.2) against the task alone for Llama. `--arms` and a repeatable
+  `--score` on `boundary redact mutation`.
+- **`boundary redact overmask`**, offline: 03's gold set holds no personal data, yet the
+  proxy's rules-only redaction masks a median of 15 terms per request and **14.0% (9.0 to
+  21.0) of the phrases the judge requires** out of the source page. PLAN.md B2.8 now plans two
+  measurements, over-masking of public context and the cost of removing personal data, and
+  waits on a go for about US$5.
+- **`boundary.redact.request` and `boundary.redact.preserve`**: the proxy's redaction and its
+  line moved into the library so the harnesses run without the server extra;
+  `boundary.server.redaction` re-exports them. `redact_request(..., allow=)`.
+- A README cell that had lost its confidence interval when the table grew a third arm was
+  put back: every rate in it carries one.
+
 ## 0.15.0 (2026-09-25)
 
 **Personal data leaves the proxy as placeholders and comes back restored.** Redaction in

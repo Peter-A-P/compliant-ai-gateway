@@ -1,0 +1,2409 @@
+{
+ "boundary_version": "0.15.0",
+ "ran_utc": "2026-09-25T20:25:09+00:00",
+ "pages": 40,
+ "seed": 20260920,
+ "prompts_sha256": "f9b3a7c2f4a8f361fff3850cd3e9ebe4b1059020a99f8cca24bce0c8611adc53",
+ "calls": [
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 0,
+   "status": 200,
+   "text": "<FILE_NUMBER_1>\n<NAME_LIKE_1>\n<NAME_LIKE_2>\n<NAME_LIKE_3>\n<NAME_LIKE_1>\n<EMAIL_1>\n<PHONE_1>\n<NAME_LIKE_4>\n<NAME_LIKE_5>\nDepartment of <NAME_LIKE_2> and <NAME_LIKE_3>",
+   "cost_usd": 0.000769,
+   "call_uid": "ac274a76680149e1a45fb761abe605a8"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 1,
+   "status": 200,
+   "text": "<NAME_LIKE_6>\n<NAME_LIKE_7>\n<NAME_LIKE_8>\n<NAME_LIKE_9>\n<FILE_NUMBER_2>\n<NAME_LIKE_10>\n<DATE_OF_BIRTH_1>\n<HEALTH_NUMBER_1>\n<SIN_1>\n<NAME_LIKE_11>\n<POSTAL_CODE_1>\n<NAME_LIKE_12>",
+   "cost_usd": 0.000846,
+   "call_uid": "01f5a64f6fa840e3a986634f4d1add3f"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 2,
+   "status": 200,
+   "text": "<NAME_LIKE_13>\n<NAME_LIKE_14>\n<EMPLOYEE_ID_1>\n<NAME_LIKE_15>\n<EMAIL_2>\n<PHONE_2>\n<NAME_LIKE_16>\n<NAME_LIKE_2>\n<NAME_LIKE_3>",
+   "cost_usd": 0.000645,
+   "call_uid": "c331ca42429c4f2b9657a0796be58429"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 3,
+   "status": 200,
+   "text": "<NAME_LIKE_17>\n<NAME_LIKE_18>\n<NAME_LIKE_19>\n<NAME_LIKE_20>\n<ID_LIKE_1>\n<NAME_LIKE_21>\n<NAME_LIKE_22>\n<EMAIL_3>",
+   "cost_usd": 0.000627,
+   "call_uid": "09bb6dc8bba744e69400b32a48731305"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 4,
+   "status": 200,
+   "text": "<FILE_NUMBER_3>\n<NAME_LIKE_23>\n<NAME_LIKE_2>\n<NAME_LIKE_3>\n<EMAIL_4>\n<PHONE_3>\n<NAME_LIKE_24>\n<NAME_LIKE_25>\n<ID_LIKE_2>",
+   "cost_usd": 0.000666,
+   "call_uid": "696d3c35aa5d42eab4201b75bca9cb6b"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 5,
+   "status": 200,
+   "text": "<NAME_LIKE_26>\n<NAME_LIKE_27>\n<NAME_LIKE_2>\n<NAME_LIKE_3>\n<FILE_NUMBER_4>\n<NAME_LIKE_28>\n<DATE_OF_BIRTH_2>\n<HEALTH_NUMBER_2>\n<SIN_2>\n<NAME_LIKE_11>\n<POSTAL_CODE_2>\n<NAME_LIKE_12>",
+   "cost_usd": 0.00085,
+   "call_uid": "543a25aee6a54055825c4f56df6f7e43"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 6,
+   "status": 200,
+   "text": "<NAME_LIKE_29>\n<NAME_LIKE_30>\n<EMPLOYEE_ID_2>\n<NAME_LIKE_15>\n<EMAIL_5>\n<PHONE_4>\n<NAME_LIKE_31>\n<NAME_LIKE_8>\n<NAME_LIKE_9>",
+   "cost_usd": 0.000651,
+   "call_uid": "dbd14a94cb64490c9b4e75b873abe32f"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 7,
+   "status": 200,
+   "text": "<NAME_LIKE_17>\n<NAME_LIKE_32>\n<NAME_LIKE_33>\n<NAME_LIKE_34>\n<ID_LIKE_3>\n<NAME_LIKE_35>\n<NAME_LIKE_22>\n<EMAIL_6>",
+   "cost_usd": 0.000625,
+   "call_uid": "d858243a3b3d4e67aeec83f22dd07e26"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 8,
+   "status": 200,
+   "text": "<FILE_NUMBER_5>\n<NAME_LIKE_36>\n<NAME_LIKE_8>\n<NAME_LIKE_9>\n<EMAIL_7>\n<PHONE_5>\n<NAME_LIKE_37>\n<NAME_LIKE_38>",
+   "cost_usd": 0.000624,
+   "call_uid": "93c17ffa13cb4bbb9d92897bd3d8d67f"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 9,
+   "status": 200,
+   "text": "<NAME_LIKE_39>\n<NAME_LIKE_40>\n<NAME_LIKE_8>\n<NAME_LIKE_9>\n<FILE_NUMBER_6>\n<NAME_LIKE_41>\n<DATE_OF_BIRTH_3>\n<HEALTH_NUMBER_3>\n<SIN_3>\n<NAME_LIKE_21>\n<POSTAL_CODE_3>\n<NAME_LIKE_12>\n<ID_LIKE_2>",
+   "cost_usd": 0.000894,
+   "call_uid": "abca863a56b945ca9cff58ff1bf0114c"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 10,
+   "status": 200,
+   "text": "<NAME_LIKE_42>\n<ID_LIKE_2>\n<NAME_LIKE_34>\n<EMPLOYEE_ID_3>\n<NAME_LIKE_15>\n<EMAIL_8>\n<PHONE_6>\n<NAME_LIKE_40>\nOffice of the Information and Privacy Commissioner",
+   "cost_usd": 0.000634,
+   "call_uid": "fa904264237048a5973549fae3f4bdc6"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 11,
+   "status": 200,
+   "text": "<NAME_LIKE_17>\n<NAME_LIKE_43>\n<NAME_LIKE_44>\n<NAME_LIKE_45>\n<ID_LIKE_4>\n<NAME_LIKE_35>\n<NAME_LIKE_22>\n<EMAIL_9>",
+   "cost_usd": 0.000627,
+   "call_uid": "d195b054afa347feb826b14ac7e95a83"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 12,
+   "status": 200,
+   "text": "<FILE_NUMBER_7>\n<NAME_LIKE_46>\n<NAME_LIKE_2>\n<NAME_LIKE_3>\n<EMAIL_10>\n<PHONE_7>\n<NAME_LIKE_24>\n<NAME_LIKE_47>",
+   "cost_usd": 0.000622,
+   "call_uid": "a9cc93d87ce042838cb392d1fd4102a3"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 13,
+   "status": 200,
+   "text": "<NAME_LIKE_48>\n<NAME_LIKE_49>\n<NAME_LIKE_2>\n<NAME_LIKE_3>\n<FILE_NUMBER_8>\n<NAME_LIKE_23>\n<DATE_OF_BIRTH_4>\n<HEALTH_NUMBER_4>\n<SIN_4>\n<NAME_LIKE_21>\n<POSTAL_CODE_4>\n<NAME_LIKE_12>",
+   "cost_usd": 0.000849,
+   "call_uid": "96cb227d1f0a4628b7b0fa0103a8f4f3"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 14,
+   "status": 200,
+   "text": "<NAME_LIKE_50>\n<ID_LIKE_2>\n<NAME_LIKE_51>\n<EMPLOYEE_ID_4>\n<NAME_LIKE_15>\n<EMAIL_11>\n<PHONE_8>\n<NAME_LIKE_52>\n<NAME_LIKE_2>\n<NAME_LIKE_3>",
+   "cost_usd": 0.000693,
+   "call_uid": "6c5252486b42452fbc6a7c2472a1f3e6"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 15,
+   "status": 200,
+   "text": "<NAME_LIKE_17>\n<NAME_LIKE_53>\n<NAME_LIKE_54>\n<NAME_LIKE_55>\n<ID_LIKE_5>\n<NAME_LIKE_11>\n<NAME_LIKE_22>\n<EMAIL_12>",
+   "cost_usd": 0.000625,
+   "call_uid": "ae6eb995446147abba46ed4e2349712f"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 16,
+   "status": 200,
+   "text": "<FILE_NUMBER_9>\n<NAME_LIKE_56>\nOffice of the Information and Privacy Commissioner\n<NAME_LIKE_56>\n<EMAIL_13>\n<PHONE_9>\n<NAME_LIKE_57>\n<NAME_LIKE_58>",
+   "cost_usd": 0.000607,
+   "call_uid": "ff79ea2c47d64fa3a0e082ef647a1093"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 17,
+   "status": 200,
+   "text": "<NAME_LIKE_59>\n<NAME_LIKE_60>\n<NAME_LIKE_8>\n<NAME_LIKE_9>\n<FILE_NUMBER_10>\n<NAME_LIKE_61>\n<DATE_OF_BIRTH_5>\n<HEALTH_NUMBER_5>\n<SIN_5>\n<NAME_LIKE_11>\n<POSTAL_CODE_5>\n<NAME_LIKE_12>",
+   "cost_usd": 0.000844,
+   "call_uid": "f957c25dbfc643a39aaaff48007000a3"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 18,
+   "status": 200,
+   "text": "<NAME_LIKE_62>\n<NAME_LIKE_63>\n<EMPLOYEE_ID_5>\n<NAME_LIKE_15>\n<EMAIL_14>\n<PHONE_10>\n<NAME_LIKE_64>",
+   "cost_usd": 0.000548,
+   "call_uid": "df9d567d4dd34732a42a51ce6a753a1e"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 19,
+   "status": 200,
+   "text": "<NAME_LIKE_17>\n<NAME_LIKE_65>\n<NAME_LIKE_66>\n<NAME_LIKE_44>\n<ID_LIKE_6>\n<NAME_LIKE_35>\n<NAME_LIKE_22>\n<EMAIL_15>\n<ID_LIKE_2>",
+   "cost_usd": 0.000672,
+   "call_uid": "0ac32dbeb748488abbe331187e3f2df8"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 20,
+   "status": 200,
+   "text": "<FILE_NUMBER_11>\n<NAME_LIKE_67>\n<NAME_LIKE_2>\n<NAME_LIKE_3>\n<NAME_LIKE_67>\n<EMAIL_16>\n<PHONE_11>\n<NAME_LIKE_68>\n<NAME_LIKE_28>",
+   "cost_usd": 0.000665,
+   "call_uid": "5644662f0a7c41799a12e760c5058837"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 21,
+   "status": 200,
+   "text": "<NAME_LIKE_69>\n<NAME_LIKE_70>\n<NAME_LIKE_8>\n<NAME_LIKE_9>\n<FILE_NUMBER_12>\n<NAME_LIKE_71>\n<DATE_OF_BIRTH_5>\n<HEALTH_NUMBER_6>\n<SIN_6>\n<NAME_LIKE_11>\n<POSTAL_CODE_6>\n<NAME_LIKE_12>",
+   "cost_usd": 0.000849,
+   "call_uid": "c74682481f0d4e9b9c733d7f139649d0"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 22,
+   "status": 200,
+   "text": "<NAME_LIKE_23>\n<NAME_LIKE_45>\n<EMPLOYEE_ID_6>\n<NAME_LIKE_15>\n<EMAIL_4>\n<PHONE_12>\n<NAME_LIKE_72>\n<NAME_LIKE_2>\n<NAME_LIKE_3>",
+   "cost_usd": 0.000647,
+   "call_uid": "677c61c45d534b91b3ad0da8c7ee037f"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 23,
+   "status": 200,
+   "text": "<NAME_LIKE_17>\n<NAME_LIKE_73>\n<NAME_LIKE_74>\n<NAME_LIKE_75>\n<NAME_LIKE_73>\n<NAME_LIKE_74>\n<ID_LIKE_7>\n<NAME_LIKE_75>\n<NAME_LIKE_11>\n<NAME_LIKE_22>\n<EMAIL_17>",
+   "cost_usd": 0.000758,
+   "call_uid": "0fa73437f01b4376ba7931d03b87ce14"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 24,
+   "status": 200,
+   "text": "<FILE_NUMBER_13>\n<NAME_LIKE_76>\n<NAME_LIKE_8>\n<NAME_LIKE_9>\n<NAME_LIKE_76>\n<EMAIL_18>\n<PHONE_13>\n<NAME_LIKE_77>\n<NAME_LIKE_78>\n<ID_LIKE_2>",
+   "cost_usd": 0.000714,
+   "call_uid": "2b8d75be309f472281e867c42a6c571d"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 25,
+   "status": 200,
+   "text": "<NAME_LIKE_79>\n<NAME_LIKE_80>\n<NAME_LIKE_8>\n<NAME_LIKE_9>\n<FILE_NUMBER_14>\n<NAME_LIKE_81>\n<DATE_OF_BIRTH_6>\n<HEALTH_NUMBER_7>\n<SIN_7>\n<NAME_LIKE_11>\n<POSTAL_CODE_7>\n<NAME_LIKE_12>\n<ID_LIKE_2>",
+   "cost_usd": 0.00089,
+   "call_uid": "008e528b4f244ddd8fa5c660736f5e45"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 26,
+   "status": 200,
+   "text": "<NAME_LIKE_82>\n<NAME_LIKE_18>\n<EMPLOYEE_ID_7>\n<NAME_LIKE_15>\n<EMAIL_19>\n<PHONE_14>\n<NAME_LIKE_83>\nOffice of the Information and Privacy Commissioner",
+   "cost_usd": 0.000589,
+   "call_uid": "87f5dd40d0894096b1b8793b06169ade"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 27,
+   "status": 200,
+   "text": "<NAME_LIKE_17>\n<NAME_LIKE_19>\n<NAME_LIKE_84>\n<NAME_LIKE_85>\n<ID_LIKE_2>\n<ID_LIKE_8>\n<NAME_LIKE_35>\n<NAME_LIKE_22>\n<EMAIL_20>",
+   "cost_usd": 0.000674,
+   "call_uid": "a572b15a48f54083b7988b95b7da061d"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 28,
+   "status": 200,
+   "text": "<FILE_NUMBER_15>\n<NAME_LIKE_86>\nOffice of the Information and Privacy Commissioner\n<EMAIL_21>\n<PHONE_15>\n<NAME_LIKE_87>\n<NAME_LIKE_78>\n<ID_LIKE_2>",
+   "cost_usd": 0.000606,
+   "call_uid": "174ab00c487a4d969116df0fc7af743b"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 29,
+   "status": 200,
+   "text": "<NAME_LIKE_88>\n<NAME_LIKE_52>\n<NAME_LIKE_2>\n<NAME_LIKE_3>\n<FILE_NUMBER_16>\n<NAME_LIKE_89>\n<DATE_OF_BIRTH_7>\n<HEALTH_NUMBER_8>\n<SIN_8>\n<NAME_LIKE_11>\n<POSTAL_CODE_8>\n<NAME_LIKE_12>",
+   "cost_usd": 0.000846,
+   "call_uid": "1771a334813b46c2af7809bffdec750e"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 30,
+   "status": 200,
+   "text": "<NAME_LIKE_90>\n<NAME_LIKE_57>\n<EMPLOYEE_ID_8>\n<NAME_LIKE_15>\n<EMAIL_22>\n<PHONE_16>\n<NAME_LIKE_61>\n<NAME_LIKE_8>\n<NAME_LIKE_9>",
+   "cost_usd": 0.000646,
+   "call_uid": "ebcaf7a8f4094ed29c4cec17e6069235"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 31,
+   "status": 200,
+   "text": "<NAME_LIKE_17>\n<NAME_LIKE_64>\n<NAME_LIKE_45>\n<NAME_LIKE_66>\n<ID_LIKE_9>\nLabrador\n<NAME_LIKE_91>\n<NAME_LIKE_22>\n<EMAIL_23>",
+   "cost_usd": 0.00065,
+   "call_uid": "012d5cc5a54947c3932a25c64fa920ad"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 32,
+   "status": 200,
+   "text": "<FILE_NUMBER_17>\n<NAME_LIKE_80>\n<NAME_LIKE_8>\n<NAME_LIKE_9>\n<NAME_LIKE_80>\n<EMAIL_24>\n<PHONE_17>\n<NAME_LIKE_92>\n<NAME_LIKE_93>",
+   "cost_usd": 0.000668,
+   "call_uid": "123e7af7ed884049b0ed657735d412ef"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 33,
+   "status": 200,
+   "text": "<NAME_LIKE_94>\n<NAME_LIKE_95>\nOffice of the Information and Privacy Commissioner\n<FILE_NUMBER_18>\n<NAME_LIKE_96>\n<DATE_OF_BIRTH_8>\n<HEALTH_NUMBER_9>\n<SIN_9>\nLabrador\n<NAME_LIKE_91>\n<POSTAL_CODE_9>\n<NAME_LIKE_12>",
+   "cost_usd": 0.000802,
+   "call_uid": "3ab300a8fbfa49048a777f99ffa518e4"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 34,
+   "status": 200,
+   "text": "<NAME_LIKE_97>\n<NAME_LIKE_46>\n<EMPLOYEE_ID_9>\n<NAME_LIKE_15>\n<EMAIL_25>\n<PHONE_18>\n<NAME_LIKE_98>\n<NAME_LIKE_2>\n<NAME_LIKE_3>",
+   "cost_usd": 0.000651,
+   "call_uid": "46488a8eef8a4744be750dfa4ca04776"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 35,
+   "status": 200,
+   "text": "<NAME_LIKE_17>\n<NAME_LIKE_99>\n<NAME_LIKE_100>\n<NAME_LIKE_101>\n<ID_LIKE_2>\n<ID_LIKE_10>\nLabrador\n<NAME_LIKE_91>\n<NAME_LIKE_22>\n<EMAIL_26>",
+   "cost_usd": 0.000693,
+   "call_uid": "7222a474a62e4d989127bb800c0b0412"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 36,
+   "status": 200,
+   "text": "<FILE_NUMBER_19>\n<NAME_LIKE_96>\n<ID_LIKE_2>\n<NAME_LIKE_96>\n<EMAIL_27>\n<PHONE_19>\n<NAME_LIKE_102>\n<NAME_LIKE_103>",
+   "cost_usd": 0.000608,
+   "call_uid": "f49ae546421c4467bfcb0fcc4858ca16"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 37,
+   "status": 200,
+   "text": "<NAME_LIKE_104>\n<NAME_LIKE_59>\nOffice of the Information and Privacy Commissioner\n<FILE_NUMBER_20>\n<NAME_LIKE_105>\n<DATE_OF_BIRTH_9>\n<HEALTH_NUMBER_10>\n<SIN_10>\nLabrador\n<NAME_LIKE_91>\n<POSTAL_CODE_10>\n<NAME_LIKE_12>",
+   "cost_usd": 0.000807,
+   "call_uid": "893f16da86824195b38e791492281f24"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 38,
+   "status": 200,
+   "text": "<NAME_LIKE_70>\n<NAME_LIKE_106>\n<EMPLOYEE_ID_10>\n<NAME_LIKE_15>\n<EMAIL_28>\n<PHONE_20>\n<NAME_LIKE_83>\n<NAME_LIKE_2>\n<NAME_LIKE_3>",
+   "cost_usd": 0.000651,
+   "call_uid": "b7410001d4e542aa9bed70934c8568c4"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 39,
+   "status": 200,
+   "text": "<NAME_LIKE_17>\n<NAME_LIKE_107>\n<NAME_LIKE_16>\n<NAME_LIKE_108>\n<ID_LIKE_11>\n<NAME_LIKE_35>\n<NAME_LIKE_22>\n<EMAIL_29>\n<ID_LIKE_2>",
+   "cost_usd": 0.000675,
+   "call_uid": "004b5020ba814e729ad22fbec2468b57"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 0,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_1>,\n\nThank you for your request <FILE_NUMBER_1> regarding records held by the Department of <NAME_LIKE_2> and <NAME_LIKE_3> concerning the $1,250.00 decision. We have received and acknowledged your inquiry.\n\nYour file has been assigned to <NAME_LIKE_4>, our analyst, as of Q1 2024. Please note that a third party, <NAME_LIKE_5>, has been notified under the Act and granted twenty days to respond (see page 12 of 40).\n\nWe will contact you at <EMAIL_1> or <PHONE_1> with updates.\n\nRegards",
+   "cost_usd": 0.001058,
+   "call_uid": "ef22d215b18a4d6f8427604c6543c523"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 1,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_6>,\n\nWe write regarding file <FILE_NUMBER_2>, which concerns a claim form completed by <NAME_LIKE_10>, born <DATE_OF_BIRTH_1>. The record includes MCP number <HEALTH_NUMBER_1>, social insurance number <SIN_1>, and an address in <NAME_LIKE_11> with postal code <POSTAL_CODE_1>.\n\nFollowing <NAME_LIKE_12> in the 2024 budget, we are releasing this information. The applicable exception does not apply to this request.\n\nYours truly,\n\n<NAME_LIKE_7>\nDepartment of <NAME_LIKE_8> and <NAME_LIKE_9>",
+   "cost_usd": 0.00112,
+   "call_uid": "7172a1fa7a5f49ff89139e27d9eb85f1"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 2,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_13>,\n\nThank you for your request regarding Schedule A. We are pleased to inform you that your request has been granted in part. The severed record is attached as section 31(1).\n\n<NAME_LIKE_14> (employee number <EMPLOYEE_ID_1>), who prepared the original record, has confirmed that no other copy exists. Should you require further clarification, <NAME_LIKE_15> may be contacted at <EMAIL_2> or <PHONE_2>.\n\nYours sincerely,\n\nRecords Office",
+   "cost_usd": 0.000879,
+   "call_uid": "f47aefbaaaf84a9fbfaada79bd64b6c7"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 3,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_21>,\n\nFollowing the meeting attended by <NAME_LIKE_17>, <NAME_LIKE_18>, <NAME_LIKE_19>, and <NAME_LIKE_20>, we are writing regarding your file <ID_LIKE_1>.\n\nAs noted, this constitutes your third request this year. We will be contacting you at <EMAIL_3> with further details. Please note that a review of the $1,250.00 amount will be conducted before any release is processed.\n\nWe appreciate your patience and will be in touch shortly.\n\nYours sincerely,\nRecords Office",
+   "cost_usd": 0.000966,
+   "call_uid": "652af30b18ff4b71bc3154c31fda94f9"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 4,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_23>,\n\nWe acknowledge receipt of your records request <FILE_NUMBER_3> concerning Department of <NAME_LIKE_2> and <NAME_LIKE_3> decisions on PDF file format. Your request has been assigned to analyst <NAME_LIKE_24> for processing.\n\nAs third-party <NAME_LIKE_25> is named in relevant records (reference <ID_LIKE_2>), we have notified them under the Act with a twenty-day response period, as required.\n\nWe will contact you at <EMAIL_4> or <PHONE_3> with further updates.\n\nBest regards,\nRecords Office",
+   "cost_usd": 0.001015,
+   "call_uid": "6c5b5e522c2e42d28cf8ba4ceea5288d"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 5,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_26>,\n\nWe are writing regarding your request concerning File <FILE_NUMBER_4>. The record in question is a claim form completed by <NAME_LIKE_28>, born <DATE_OF_BIRTH_2>, with MCP number <HEALTH_NUMBER_2> and social insurance number <SIN_2>. The form contains an address in <NAME_LIKE_11>, postal code <POSTAL_CODE_2>.\n\nFollowing review of <NAME_LIKE_12> on page 12 of 40, we have determined that the requested information must be released. The exception valued at $1,250.00 does not apply to this case.\n\nYours sincerely,\n<NAME_LIKE_27>\nDepartment of <NAME_LIKE_2> and <NAME_LIKE_3>",
+   "cost_usd": 0.001254,
+   "call_uid": "73281d86c3e446c9b8fd477dc8ca0cef"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 6,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_29>,\n\nYour request of $1,250.00 has been approved in part. The severed record, identified as the 2024 budget, is attached herewith.\n\n<NAME_LIKE_30>, employee number <EMPLOYEE_ID_2>, who prepared this record, confirms that no other copy is available. Should you require further assistance, please contact <NAME_LIKE_15> at <EMAIL_5> or <PHONE_4>.\n\nYours sincerely,\n\nRecords Office",
+   "cost_usd": 0.000855,
+   "call_uid": "39dc81a98e8243edb1d597a89ac3f747"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 7,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_32>,\n\nFollowing the meeting notes dated <NAME_LIKE_17>, we confirm that your request, covering 40 percent of the materials, has been reviewed with <NAME_LIKE_33> and <NAME_LIKE_34>.\n\nYour file reference is <ID_LIKE_3>. We note that contact has been made with <NAME_LIKE_35>. Further correspondence will be sent to <EMAIL_6>.\n\nPlease be advised that section 31(1) will be reviewed before any release of information.\n\nYours sincerely,\nRecords Office",
+   "cost_usd": 0.000934,
+   "call_uid": "f86f5672ddcc48e5aef2d6909b97e08d"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 8,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_36>,\n\nThank you for your records request <FILE_NUMBER_5>. We acknowledge your application for all documents held by the Department of <NAME_LIKE_8> and <NAME_LIKE_9> regarding the decision on page 12 of 40.\n\nYour request has been assigned to <NAME_LIKE_37>, our analyst. Please note that <NAME_LIKE_38>, a third party referenced in the materials, has been notified under the Act and granted twenty days to respond.\n\nWe will contact you at <EMAIL_7> or <PHONE_5> with further updates.\n\nRegards,\nRecords Office",
+   "cost_usd": 0.001018,
+   "call_uid": "7f79f8cdb4c542aca860f1d84d1a3f83"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 9,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_39>,\n\nThis responds to your request regarding File <FILE_NUMBER_6>. The records office has reviewed the claim form submitted by <NAME_LIKE_41>, dated <DATE_OF_BIRTH_3>, with MCP number <HEALTH_NUMBER_3> and social insurance number <SIN_3>. The form lists an address in <NAME_LIKE_21>, postal code <POSTAL_CODE_3>.\n\nFollowing the requirements outlined in <NAME_LIKE_12> under <ID_LIKE_2>, we are releasing this information. The 2024 budget exception does not apply to this case.\n\nRegards,\n<NAME_LIKE_40>\nDepartment of <NAME_LIKE_8> and <NAME_LIKE_9>",
+   "cost_usd": 0.001198,
+   "call_uid": "7de7f573956e43fd827153789cc185a1"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 10,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_42>,\n\nThank you for your request regarding the 2024 budget. We are pleased to confirm that your request has been granted in part. The severed record is available as <ID_LIKE_2>.\n\n<NAME_LIKE_34> (employee number <EMPLOYEE_ID_3>) has verified that no additional copies exist. Should you require further assistance, please contact <NAME_LIKE_15> at <EMAIL_8> or <PHONE_6>.\n\nYours sincerely,\n\nOffice of the Information and Privacy Commissioner",
+   "cost_usd": 0.000878,
+   "call_uid": "43d2120c25d94cda9e656d042500cdda"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 11,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_43>,\n\nThank you for your attendance at the meeting with <NAME_LIKE_44> and <NAME_LIKE_45>. We acknowledge that the request concerns page 12 of 40 only. Regarding file <ID_LIKE_4>, we confirm that <NAME_LIKE_45> has already sent correspondence to <NAME_LIKE_35>.\n\nAs noted, we will contact the claimant at <EMAIL_9>. Before proceeding with release, we will review 40 percent of the materials as specified.\n\nYours sincerely,\nRecords Office",
+   "cost_usd": 0.000956,
+   "call_uid": "cfdb89dc8a8a447db16836f648446b3c"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 12,
+   "status": 200,
+   "text": "**RE: File <FILE_NUMBER_7>**\n\nDear <NAME_LIKE_46>,\n\nThank you for your records request regarding section 31(1) decisions held by the Department of <NAME_LIKE_2> and <NAME_LIKE_3>. Your request has been received and acknowledged.\n\nYour file has been assigned to <NAME_LIKE_24>, our analyst. Please note that <NAME_LIKE_47>, identified as a third party in these records, has been notified under the Act and given twenty days to respond before we can proceed.\n\nWe will contact you at <EMAIL_10> or <PHONE_7> with further updates.\n\nYours sincerely,\nRecords Office",
+   "cost_usd": 0.001071,
+   "call_uid": "4f9dc9e01da348598b44a89795be6a35"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 13,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_48>,\n\nWe acknowledge receipt of your request regarding File <FILE_NUMBER_8>. This concerns a claim form completed by <NAME_LIKE_23>, born <DATE_OF_BIRTH_4>, with MCP number <HEALTH_NUMBER_4> and social insurance number <SIN_4>. The individual's address is listed in <NAME_LIKE_21>, postal code <POSTAL_CODE_4>.\n\nFollowing <NAME_LIKE_12>'s Q1 2024 directive, we have reviewed the applicable exception at page 12 of 40 and determined it does not apply. The requested information will be released accordingly.\n\nRegards,\n<NAME_LIKE_49>\nDepartment of <NAME_LIKE_2> and <NAME_LIKE_3>",
+   "cost_usd": 0.001223,
+   "call_uid": "7289b6d4324c49d282e4d95d25c6f4f4"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 14,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_50>,\n\nThank you for your request of <ID_LIKE_2>. We are pleased to inform you that your request has been granted in part, with the severed record provided as Schedule A.\n\n<NAME_LIKE_51>, employee number <EMPLOYEE_ID_4>, has confirmed that no other copy of this record exists. Should you require further assistance, <NAME_LIKE_15> can be contacted at <EMAIL_11> or <PHONE_8>.\n\nIf you have any additional questions, please do not hesitate to contact us.\n\nYours sincerely,\n<NAME_LIKE_52>\nDepartment of <NAME_LIKE_2> and <NAME_LIKE_3>",
+   "cost_usd": 0.001082,
+   "call_uid": "9a47899f66234536a3c7318234ed4c87"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 15,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_17>,\n\nThank you for the meeting notes involving <NAME_LIKE_53>, <NAME_LIKE_54>, and <NAME_LIKE_55>. We acknowledge that the request covers 40 percent of the material. We confirm that contact was made with the claimant on file <ID_LIKE_5>, with correspondence sent to <NAME_LIKE_11>.\n\nAs requested, we will contact the claimant at <EMAIL_12> and will review section 31(1) before any release of information.\n\nRegards,\nRecords Office",
+   "cost_usd": 0.000924,
+   "call_uid": "972c6c1915c24baeb62d39b242ba4421"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 16,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_56>,\n\nThank you for your request under <FILE_NUMBER_9> concerning records related to section 31(1) decision.\n\nYour request has been received and assigned to <NAME_LIKE_57>, our analyst. As your records involve a third party, <NAME_LIKE_58> has been notified per the Act and given twenty days to respond (see page 12 of 40).\n\nWe will contact you at <EMAIL_13> or <PHONE_9> with further updates.\n\nYours sincerely,\nRecords Office",
+   "cost_usd": 0.000911,
+   "call_uid": "7112aa2d740f440a8668d79c734b5fb9"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 17,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_59>,\n\nRe: File <FILE_NUMBER_10>\n\nYour request regarding the claim form submitted by <NAME_LIKE_61> (born <DATE_OF_BIRTH_5>, MCP number <HEALTH_NUMBER_5>, SIN <SIN_5>) has been processed.\n\nThe information you requested, including the address in <NAME_LIKE_11> with postal code <POSTAL_CODE_5>, will be released. <NAME_LIKE_12> has determined that the exemption under section 31(1) does not apply to this record in PDF format.\n\nYours sincerely,\n\n<NAME_LIKE_60>\nDepartment of <NAME_LIKE_8> and <NAME_LIKE_9>",
+   "cost_usd": 0.001168,
+   "call_uid": "a635afcd3258452cbbe2b1a5fcee6638"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 18,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_62>,\n\nYour request of $1,250.00 has been approved in part. The requested severed record is enclosed\u2014this marks your third request this year.\n\n<NAME_LIKE_63>, employee number <EMPLOYEE_ID_5>, has verified that no additional copies are available. Should you need further assistance, <NAME_LIKE_15> can be reached at <EMAIL_14> or <PHONE_10>.\n\nYours sincerely,\n\n<NAME_LIKE_64>\nOffice of the Information and Privacy Commissioner",
+   "cost_usd": 0.000877,
+   "call_uid": "80218587b9704baab023d04403fb4d67"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 19,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_17>,\n\nFurther to the meeting notes, we confirm the following action items:\n\nA letter will be sent to <NAME_LIKE_35> regarding file <ID_LIKE_6>. <NAME_LIKE_65> has advised the request covers 40 percent only. <NAME_LIKE_66> and <NAME_LIKE_44> attended the meeting to discuss contact with the claimant.\n\nPlease note that correspondence should be directed to <EMAIL_15>, and file <ID_LIKE_2> must be reviewed before any release of information.\n\nWe will proceed accordingly.",
+   "cost_usd": 0.000961,
+   "call_uid": "9580faafceeb4e78b40e4da00988b353"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 20,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_67>,\n\nRe: <FILE_NUMBER_11>\n\nThank you for your records request concerning the Department of <NAME_LIKE_2> and <NAME_LIKE_3> regarding Schedule A decision files. Your request has been received and logged.\n\nYour file has been assigned to <NAME_LIKE_68>, our analyst. As third-party records are involved, <NAME_LIKE_28> has been notified under the Act with twenty days to respond.\n\nWe will contact you at <EMAIL_16> or <PHONE_11> with further updates.\n\nRegards,\nRecords Office",
+   "cost_usd": 0.000974,
+   "call_uid": "acde7ac028314178b18211142b14d6a3"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 21,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_69>,\n\nThis letter concerns your request regarding File <FILE_NUMBER_12>. We have reviewed the claim form completed by <NAME_LIKE_71>, born <DATE_OF_BIRTH_5>, with MCP number <HEALTH_NUMBER_6> and social insurance number <SIN_6>. The form lists an address in <NAME_LIKE_11>, postal code <POSTAL_CODE_6>.\n\nFollowing <NAME_LIKE_12>'s request in Q1 2024, we have determined that the requested information should be released. The exception noted on page 12 of 40 does not apply in this case.\n\nYours truly,\n<NAME_LIKE_70>\nDepartment of <NAME_LIKE_8> and <NAME_LIKE_9>",
+   "cost_usd": 0.001223,
+   "call_uid": "0046f355f21c4aa797b41572ad0ff304"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 22,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_23>,\n\nThank you for your request submitted in Q1 2024. We are pleased to inform you that your request has been granted in part, and the severed record has been prepared and is attached in PDF format.\n\n<NAME_LIKE_45> (employee number <EMPLOYEE_ID_6>) has confirmed that no additional copies of this record exist. Should you require further assistance, please contact <NAME_LIKE_15> at <EMAIL_4> or <PHONE_12>.\n\nYours sincerely,\nRecords Office",
+   "cost_usd": 0.000881,
+   "call_uid": "db7db8332bd8425abb98ab0a2803bf19"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 23,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_17>,\n\nFollowing the meeting with <NAME_LIKE_73>, <NAME_LIKE_74>, and <NAME_LIKE_75>, we confirm the following action items:\n\nThis constitutes your third request this year. Regarding file <ID_LIKE_7>, we confirm that <NAME_LIKE_11> has already been contacted by letter.\n\nWe will be writing to you at <EMAIL_17> with further details. Please note that file format PDF will be reviewed before any release is made.\n\nShould you have any questions, please contact us.\n\nYours sincerely,\nRecords Office",
+   "cost_usd": 0.000967,
+   "call_uid": "8daca32eed8a4894b397f23368370e3e"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 24,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_76>,\n\nThank you for your records request <FILE_NUMBER_13> regarding the 40 percent decision from the Department of <NAME_LIKE_8> and <NAME_LIKE_9>. We have received and acknowledged your inquiry.\n\nYour file has been assigned to <NAME_LIKE_77>, our analyst. We have notified third party <NAME_LIKE_78> (reference <ID_LIKE_2>) under the Act, allowing twenty days to respond.\n\nWe will contact you at <EMAIL_18> or <PHONE_13> with further updates.\n\nRegards,\nRecords Office",
+   "cost_usd": 0.000998,
+   "call_uid": "5e25c1ef652d4b7a99ae40c3b1279f10"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 25,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_79>,\n\nWe have processed your request regarding file <FILE_NUMBER_14>. The record concerns a claim form completed by <NAME_LIKE_81>, born <DATE_OF_BIRTH_6>, with MCP number <HEALTH_NUMBER_7> and social insurance number <SIN_7>. The form lists an address in <NAME_LIKE_11> with postal code <POSTAL_CODE_7>.\n\nFollowing <NAME_LIKE_12> in <ID_LIKE_2>, this information is being released to you. The applicable exception under Schedule A does not prevent disclosure.\n\nRegards,\n<NAME_LIKE_80>\nDepartment of <NAME_LIKE_8> and <NAME_LIKE_9>",
+   "cost_usd": 0.001164,
+   "call_uid": "ac05a67fd7394bc4a8a97c7015169bda"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 26,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_82>,\n\nThank you for your request submitted in Q1 2024. We are pleased to inform you that your request has been granted in part. The severed record you requested is provided as page 12 of 40.\n\n<NAME_LIKE_18> (employee number <EMPLOYEE_ID_7>), who prepared the original record, has confirmed that no additional copies exist. Should you require further assistance, please contact <NAME_LIKE_15> via <EMAIL_19> or <PHONE_14>.\n\nYours sincerely,\n<NAME_LIKE_83>\nOffice of the Information and Privacy Commissioner",
+   "cost_usd": 0.000973,
+   "call_uid": "dcbb5d48ea4a41b6af7a44d47af386c3"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 27,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_19>,\n\nFollowing the meeting notes, we confirm that your request covers <ID_LIKE_2> only. We have verified that the claimant on file <ID_LIKE_8> has been contacted via letter to <NAME_LIKE_35>.\n\nAs agreed with <NAME_LIKE_84> and <NAME_LIKE_85>, we will write to you at <EMAIL_20> once we have reviewed the 2024 budget. This review must be completed before any information is released.\n\nWe will be in touch shortly.\n\nYours faithfully,\nRecords Office",
+   "cost_usd": 0.000953,
+   "call_uid": "63e1909561434d1998a11c5a8b368285"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 28,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_86>,\n\nThank you for your request <FILE_NUMBER_15> for records concerning the 2024 budget decision held by the Office of the Information and Privacy Commissioner.\n\nYour request has been received and assigned to <NAME_LIKE_87>, our analyst. A third party, <NAME_LIKE_78>, has been notified under the Act and given twenty days to respond (see <ID_LIKE_2>).\n\nWe will contact you at <EMAIL_21> or <PHONE_15> with further updates.\n\nRegards,\nRecords Office",
+   "cost_usd": 0.00092,
+   "call_uid": "ae99b4fcfaf246c891723174eca89eb3"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 29,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_88>,\n\nRe: File <FILE_NUMBER_16>\n\nThis confirms receipt of your request concerning the claim form submitted by <NAME_LIKE_89>, born <DATE_OF_BIRTH_7> (MCP: <HEALTH_NUMBER_8>, SIN: <SIN_8>). The records indicate an address in <NAME_LIKE_11>, postal code <POSTAL_CODE_8>.\n\nFollowing review by <NAME_LIKE_52> of the Department of <NAME_LIKE_2> and <NAME_LIKE_3>, the information referenced on page 12 of 40 under <NAME_LIKE_12> will be released. The applicable exemption at 40 percent does not apply to this disclosure.\n\nYours truly,\n\nRecords Office",
+   "cost_usd": 0.00121,
+   "call_uid": "b97e8ce91502498390ee8880a55085f1"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 30,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_90>,\n\nThank you for your request. We are pleased to confirm that your request has been granted in part. The requested record has been prepared by <NAME_LIKE_57> (employee number <EMPLOYEE_ID_8>) and is attached in PDF format.\n\nPlease note that <NAME_LIKE_57> has confirmed no other copies exist. Should you require further assistance, <NAME_LIKE_15> can be contacted at <EMAIL_22> or <PHONE_16>.\n\nYours sincerely,\n<NAME_LIKE_61>\nDepartment of <NAME_LIKE_8> and <NAME_LIKE_9>",
+   "cost_usd": 0.001005,
+   "call_uid": "07efe748570840c9a7154261c6819e04"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 31,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_17>,\n\nFollowing the meeting notes regarding file <ID_LIKE_9>, we confirm that <NAME_LIKE_64>, <NAME_LIKE_45>, and <NAME_LIKE_66> discussed your request. As noted, this represents your third request this year. <NAME_LIKE_66> has confirmed correspondence was sent to Labrador <NAME_LIKE_91>.\n\nWe will be writing to you at <EMAIL_23> regarding this matter. Please note that a review of $1,250.00 must be completed before any information is released.\n\nYours faithfully,\nRecords Office",
+   "cost_usd": 0.000984,
+   "call_uid": "94b074f883974c7c8524f5db5fd192d1"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 32,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_80>,\n\nThank you for your request <FILE_NUMBER_17> regarding 2024 budget records from the Department of <NAME_LIKE_8> and <NAME_LIKE_9>. We have received and acknowledged your submission.\n\nYour file has been assigned to <NAME_LIKE_92>, our analyst. Please note that third party <NAME_LIKE_93> has been notified per statutory requirements and has twenty days to respond.\n\nWe will contact you at <EMAIL_24> or <PHONE_17> with further updates.\n\nRegards,\nRecords Office",
+   "cost_usd": 0.000957,
+   "call_uid": "a4e1486adc3c46d781f3e0a633db1b93"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 33,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_94>,\n\nRe: File <FILE_NUMBER_18>\n\nFollowing your request, we have reviewed the claim form completed by <NAME_LIKE_96> (DOB: <DATE_OF_BIRTH_8>, MCP: <HEALTH_NUMBER_9>, SIN: <SIN_9>). The form lists a Labrador address at <NAME_LIKE_91>, postal code <POSTAL_CODE_9>.\n\nAs determined by <NAME_LIKE_12>, the requested information in PDF format will be released. The applicable exception at 40 percent does not apply to this record.\n\nPlease contact us if you require further assistance.\n\nYours truly,\n<NAME_LIKE_95>\nOffice of the Information and Privacy Commissioner",
+   "cost_usd": 0.001156,
+   "call_uid": "58ef8365ce284025a02d7a52ee51a3ae"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 34,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_97>,\n\nThank you for your request regarding page 12 of 40. We are pleased to inform you that your request has been granted in part. The severed record is attached as section 31(1).\n\n<NAME_LIKE_46> (employee number <EMPLOYEE_ID_9>) has confirmed that no other copy of this record exists. Should you require further assistance, please contact <NAME_LIKE_15> at <EMAIL_25> or <PHONE_18>.\n\nYours sincerely,\n<NAME_LIKE_98>\nDepartment of <NAME_LIKE_2> and <NAME_LIKE_3>",
+   "cost_usd": 0.00101,
+   "call_uid": "c98d4f07ba634700a3bca6d79c50e0b5"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 35,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_17>,\n\nFollowing the meeting notes, we confirm that <NAME_LIKE_99>, <NAME_LIKE_100>, and <NAME_LIKE_101> discussed your request covering <ID_LIKE_2>. <NAME_LIKE_100> enquired about contacting the claimant on file <ID_LIKE_10>, and <NAME_LIKE_101> confirmed correspondence was sent to Labrador <NAME_LIKE_91>.\n\nAs instructed by <NAME_LIKE_22>, we will contact the claimant at <EMAIL_26>. Schedule A will be reviewed prior to release of any information.\n\nWe will be in touch shortly.\n\nYours faithfully,\nRecords Office",
+   "cost_usd": 0.001102,
+   "call_uid": "4118cad53dc04e54983baf74b4bdbb5f"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 36,
+   "status": 200,
+   "text": "**RE: Request <FILE_NUMBER_19>**\n\nDear <NAME_LIKE_96>,\n\nThank you for your request for records concerning <ID_LIKE_2>. Your application has been received and logged under file reference <FILE_NUMBER_19>.\n\nYour case has been assigned to <NAME_LIKE_102>, one of our analysts, who will process your request. We have notified the third party, <NAME_LIKE_103>, as required under the Act, allowing twenty days for their response (see Schedule A).\n\nWe will contact you at <EMAIL_27> or <PHONE_19> with updates on your request's progress.\n\nYours sincerely,\nRecords Office",
+   "cost_usd": 0.001037,
+   "call_uid": "51af9437455246039ddcaaaeb61ef5db"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 37,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_104>,\n\nThank you for your inquiry regarding File <FILE_NUMBER_20>. We have reviewed the claim form submitted by <NAME_LIKE_105>, born <DATE_OF_BIRTH_9>, with MCP number <HEALTH_NUMBER_10> and social insurance number <SIN_10>. The form lists an address in Labrador at <NAME_LIKE_91>, postal code <POSTAL_CODE_10>.\n\nFollowing <NAME_LIKE_12> in the 2024 budget, this information must be released. The applicable exception has been reviewed and does not apply to this request.\n\nBest regards,\n<NAME_LIKE_59>\nOffice of the Information and Privacy Commissioner",
+   "cost_usd": 0.001111,
+   "call_uid": "34c77e5b02374201bb67df39dcee06f5"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 38,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_70>,\n\nThank you for your request regarding page 12 of 40. We are pleased to inform you that your request has been granted in part. The severed record is attached as section 31(1).\n\n<NAME_LIKE_106> (employee number <EMPLOYEE_ID_10>), who prepared the original record, has confirmed that no other copy exists. Should you require further assistance, <NAME_LIKE_15> can be contacted at <EMAIL_28> or <PHONE_20>.\n\nYours sincerely,\n<NAME_LIKE_83>\nDepartment of <NAME_LIKE_2> and <NAME_LIKE_3>",
+   "cost_usd": 0.001035,
+   "call_uid": "f9b288024bfe4f2e9191e125a1dc8ba7"
+  },
+  {
+   "model": "anthropic/claude-haiku-4-5-20251001",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 39,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_107>,\n\nFollowing the meeting notes, we confirm that the request for $1,250.00 has been reviewed. File <ID_LIKE_11> shows that <NAME_LIKE_35> was contacted by letter. As instructed, we will write to the claimant at <EMAIL_29> and will review <ID_LIKE_2> before releasing any information.\n\nPlease advise if you need further clarification.",
+   "cost_usd": 0.000789,
+   "call_uid": "5c38a9396bc14d21859cbd84fec6dbc1"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 0,
+   "status": 200,
+   "text": "<FILE_NUMBER_1>\n<NAME_LIKE_1>\nDepartment of <NAME_LIKE_2>\n<NAME_LIKE_3>\n<EMAIL_1>\n<PHONE_1>\n<NAME_LIKE_4>\n<NAME_LIKE_5>",
+   "cost_usd": 0.0002344,
+   "call_uid": "25d34103b09c44248cc8606a5b2a1ccc"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 1,
+   "status": 200,
+   "text": "<NAME_LIKE_6>\n<NAME_LIKE_7>\n<NAME_LIKE_8>\n<NAME_LIKE_9>\n<FILE_NUMBER_2>\n<NAME_LIKE_10>\n<NAME_LIKE_11>\n<NAME_LIKE_12>",
+   "cost_usd": 0.0002505,
+   "call_uid": "41630b59d7634ff0a11fe0e7fbf78bea"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 2,
+   "status": 200,
+   "text": "<NAME_LIKE_13>\nSchedule A\nsection 31(1)\n<NAME_LIKE_14>\n<EMPLOYEE_ID_1>\n<NAME_LIKE_15>\n<EMAIL_2>\n<PHONE_2>\n<NAME_LIKE_16>\n<NAME_LIKE_2>\n<NAME_LIKE_3>",
+   "cost_usd": 0.0002801,
+   "call_uid": "734ee6fabd5242268ec605f92ce603fa"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 3,
+   "status": 200,
+   "text": "<NAME_LIKE_17>\n<NAME_LIKE_18>\n<NAME_LIKE_19>\n<NAME_LIKE_20>\n<ID_LIKE_1>\n<NAME_LIKE_21>\n<NAME_LIKE_22>\n<EMAIL_3>",
+   "cost_usd": 0.0002452,
+   "call_uid": "a8312f3c2ccf41bbafaef4d32fcd1af1"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 4,
+   "status": 200,
+   "text": "<FILE_NUMBER_3>\n<NAME_LIKE_23>\n<NAME_LIKE_2>\n<NAME_LIKE_3>\n<EMAIL_4>\n<PHONE_3>\n<NAME_LIKE_24>\n<NAME_LIKE_25>\n<ID_LIKE_2>",
+   "cost_usd": 0.0002551,
+   "call_uid": "c55e73115ce74abb99eb79155db43aea"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 5,
+   "status": 200,
+   "text": "<NAME_LIKE_26>\n<NAME_LIKE_27>\n<NAME_LIKE_2>\n<NAME_LIKE_3>\n<FILE_NUMBER_4>\n<NAME_LIKE_28>\n<DATE_OF_BIRTH_2>\n<HEALTH_NUMBER_2>\n<SIN_2>\n<NAME_LIKE_11>\n<POSTAL_CODE_2>\n<NAME_LIKE_12>",
+   "cost_usd": 0.0003426,
+   "call_uid": "ac31256b8ed2489eaf1cef9f239e8cbe"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 6,
+   "status": 200,
+   "text": "<NAME_LIKE_29>\n2024 budget\n<NAME_LIKE_30>\n<EMPLOYEE_ID_2>\n<NAME_LIKE_15>\n<EMAIL_5>\n<PHONE_4>\n<NAME_LIKE_31>\n<NAME_LIKE_8>\n<NAME_LIKE_9>",
+   "cost_usd": 0.00027,
+   "call_uid": "c378bead2eae4f7280aea0e784e29160"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 7,
+   "status": 200,
+   "text": "<NAME_LIKE_17>\n<NAME_LIKE_32>\n<NAME_LIKE_33>\n<NAME_LIKE_34>\n<ID_LIKE_3>\n<NAME_LIKE_35>\n<NAME_LIKE_22>\n<EMAIL_6>",
+   "cost_usd": 0.0002443,
+   "call_uid": "33cc625e2f644639852c52abd2147f1a"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 8,
+   "status": 200,
+   "text": "<FILE_NUMBER_5>\n<NAME_LIKE_36>\n<NAME_LIKE_8>\n<NAME_LIKE_9>\n<EMAIL_7>\n<PHONE_5>\n<NAME_LIKE_37>\n<NAME_LIKE_38>",
+   "cost_usd": 0.0002375,
+   "call_uid": "82b0320247db4c83ad7c2a799a857fb6"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 9,
+   "status": 200,
+   "text": "<NAME_LIKE_39>\n<NAME_LIKE_40>\n<NAME_LIKE_8>\n<NAME_LIKE_9>\n<FILE_NUMBER_6>\n<NAME_LIKE_41>\n<NAME_LIKE_21>\n<NAME_LIKE_12>\n<ID_LIKE_2>",
+   "cost_usd": 0.0002767,
+   "call_uid": "c7fc1f8a6ee04aec980d7944ad5eb698"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 10,
+   "status": 200,
+   "text": "<NAME_LIKE_42>\n<ID_LIKE_2>\n<NAME_LIKE_34>\n<EMPLOYEE_ID_3>\n<NAME_LIKE_15>\n<EMAIL_8>\n<PHONE_6>\n<NAME_LIKE_40>\nOffice of the Information and Privacy Commissioner",
+   "cost_usd": 0.0002511,
+   "call_uid": "da03b98e0d3745749e3eff129bc4333a"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 11,
+   "status": 200,
+   "text": "<NAME_LIKE_17>\n<NAME_LIKE_43>\n<NAME_LIKE_44>\n<NAME_LIKE_45>\n<ID_LIKE_4>\n<NAME_LIKE_35>\n<NAME_LIKE_22>\n<EMAIL_9>",
+   "cost_usd": 0.0002446,
+   "call_uid": "95cd318893924935be4c74ca98cb9c85"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 12,
+   "status": 200,
+   "text": "<FILE_NUMBER_7>\n<NAME_LIKE_46>\nDepartment of <NAME_LIKE_2>\n<NAME_LIKE_3>\n<EMAIL_10>\n<PHONE_7>\n<NAME_LIKE_24>\n<NAME_LIKE_47>",
+   "cost_usd": 0.0002447,
+   "call_uid": "c0ea37f36fec4f5f810db49d29c30c8a"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 13,
+   "status": 200,
+   "text": "<NAME_LIKE_48>\n<NAME_LIKE_49>\n<NAME_LIKE_2>\n<NAME_LIKE_3>\n<FILE_NUMBER_8>\n<NAME_LIKE_23>\n<DATE_OF_BIRTH_4>\n<HEALTH_NUMBER_4>\n<SIN_4>\n<NAME_LIKE_21>\n<POSTAL_CODE_4>\n<NAME_LIKE_12>",
+   "cost_usd": 0.000342,
+   "call_uid": "8fb31dfe4fc64ef28c6679d13705c756"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 14,
+   "status": 200,
+   "text": "<NAME_LIKE_50>\n<ID_LIKE_2>\n<NAME_LIKE_51>\n<EMPLOYEE_ID_4>\n<NAME_LIKE_15>\n<EMAIL_11>\n<PHONE_8>\n<NAME_LIKE_52>\n<NAME_LIKE_2>\n<NAME_LIKE_3>",
+   "cost_usd": 0.0002757,
+   "call_uid": "96d6a5c18982496e8dcdaa9e3e0e7cce"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 15,
+   "status": 200,
+   "text": "<NAME_LIKE_17>\n<NAME_LIKE_53>\n<NAME_LIKE_54>\n<NAME_LIKE_55>\n<ID_LIKE_5>\n<NAME_LIKE_11>\n<NAME_LIKE_22>\n<EMAIL_12>",
+   "cost_usd": 0.0002471,
+   "call_uid": "981402569e76491583a786361720899b"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 16,
+   "status": 200,
+   "text": "<FILE_NUMBER_9>\n<NAME_LIKE_56>\nOffice of the Information and Privacy Commissioner\n<EMAIL_13>\n<PHONE_9>\n<NAME_LIKE_57>\n<NAME_LIKE_58>",
+   "cost_usd": 0.0002176,
+   "call_uid": "d963b7b1cd2b40a585b72ad5c8830a86"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 17,
+   "status": 200,
+   "text": "<NAME_LIKE_59>\n<NAME_LIKE_60>\n<NAME_LIKE_8>\n<NAME_LIKE_9>\n<FILE_NUMBER_10>\n<NAME_LIKE_61>\n<NAME_LIKE_11>\n<NAME_LIKE_12>",
+   "cost_usd": 0.0002583,
+   "call_uid": "2a103dc215f64bb7918ecbf0c6ffdefa"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 18,
+   "status": 200,
+   "text": "<NAME_LIKE_62>\n<NAME_LIKE_63>\n<EMPLOYEE_ID_5>\n<NAME_LIKE_15>\n<EMAIL_14>\n<PHONE_10>\n<NAME_LIKE_64>\nOffice of the Information and Privacy Commissioner",
+   "cost_usd": 0.000237,
+   "call_uid": "1aea5e43e019407abec8f146fca94df4"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 19,
+   "status": 200,
+   "text": "<NAME_LIKE_17>\n<NAME_LIKE_65>\n<NAME_LIKE_66>\n<NAME_LIKE_44>\n<ID_LIKE_6>\n<NAME_LIKE_35>\n<NAME_LIKE_22>\n<EMAIL_15>\n<ID_LIKE_2>",
+   "cost_usd": 0.0002671,
+   "call_uid": "6c71d25dcc2a4dd1ad9634c777addc5d"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 20,
+   "status": 200,
+   "text": "<FILE_NUMBER_11>\n<NAME_LIKE_67>\nDepartment of <NAME_LIKE_2>\n<NAME_LIKE_3>\n<EMAIL_16>\n<PHONE_11>\n<NAME_LIKE_68>\n<NAME_LIKE_28>",
+   "cost_usd": 0.0002488,
+   "call_uid": "4c3ba653a2464736934a11a43c239beb"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 21,
+   "status": 200,
+   "text": "<NAME_LIKE_69>\n<NAME_LIKE_70>\n<NAME_LIKE_8>\n<NAME_LIKE_9>\n<FILE_NUMBER_12>\n<NAME_LIKE_71>\n<DATE_OF_BIRTH_5>\n<HEALTH_NUMBER_6>\n<SIN_6>\n<NAME_LIKE_11>\n<POSTAL_CODE_6>\n<NAME_LIKE_12>",
+   "cost_usd": 0.0003448,
+   "call_uid": "04034f8f7c5c49e581d41a2dd61da77a"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 22,
+   "status": 200,
+   "text": "<NAME_LIKE_23>\n<NAME_LIKE_45>\n<EMPLOYEE_ID_6>\n<NAME_LIKE_15>\n<EMAIL_4>\n<PHONE_12>\n<NAME_LIKE_72>\n<NAME_LIKE_2>\n<NAME_LIKE_3>",
+   "cost_usd": 0.000256,
+   "call_uid": "c12a619060cc4ce6bb03cdb289961058"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 23,
+   "status": 200,
+   "text": "<NAME_LIKE_17>\n<NAME_LIKE_73>\n<NAME_LIKE_74>\n<NAME_LIKE_75>\n<ID_LIKE_7>\n<NAME_LIKE_11>\n<NAME_LIKE_22>\n<EMAIL_17>",
+   "cost_usd": 0.0002462,
+   "call_uid": "4383882c59de424c8e5150f7379f5696"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 24,
+   "status": 200,
+   "text": "<FILE_NUMBER_13>\n<NAME_LIKE_76>\nDepartment of <NAME_LIKE_8>\n<NAME_LIKE_9>\n<EMAIL_18>\n<PHONE_13>\n<NAME_LIKE_77>\n<NAME_LIKE_78>\n<ID_LIKE_2>",
+   "cost_usd": 0.0002697,
+   "call_uid": "3d5575c368a241ce893c7c45317c913f"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 25,
+   "status": 200,
+   "text": "<NAME_LIKE_79>\n<NAME_LIKE_80>\n<NAME_LIKE_8>\n<NAME_LIKE_9>\n<FILE_NUMBER_14>\n<NAME_LIKE_81>\n<DATE_OF_BIRTH_6>\n<HEALTH_NUMBER_7>\n<SIN_7>\n<NAME_LIKE_11>\n<POSTAL_CODE_7>\n<NAME_LIKE_12>\n<ID_LIKE_2>",
+   "cost_usd": 0.000363,
+   "call_uid": "e9ed17855f694c4ab6edb775e470b679"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 26,
+   "status": 200,
+   "text": "<NAME_LIKE_82>\n<NAME_LIKE_18>\n<EMPLOYEE_ID_7>\n<NAME_LIKE_15>\n<EMAIL_19>\n<PHONE_14>\n<NAME_LIKE_83>\nOffice of the Information and Privacy Commissioner",
+   "cost_usd": 0.0002373,
+   "call_uid": "83476ee4d016435ab8ffb38370cc5b28"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 27,
+   "status": 200,
+   "text": "<NAME_LIKE_17>\n<NAME_LIKE_19>\n<NAME_LIKE_84>\n<NAME_LIKE_85>\n<ID_LIKE_2>\n<ID_LIKE_8>\n<NAME_LIKE_35>\n<NAME_LIKE_22>\n<EMAIL_20>",
+   "cost_usd": 0.000268,
+   "call_uid": "b19915bb4120428b8969577e6450118c"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 28,
+   "status": 200,
+   "text": "<FILE_NUMBER_15>\n<NAME_LIKE_86>\nOffice of the Information and Privacy Commissioner\n<EMAIL_21>\n<PHONE_15>\n<NAME_LIKE_87>\n<NAME_LIKE_78>\n<ID_LIKE_2>",
+   "cost_usd": 0.0002414,
+   "call_uid": "cb66e29da8d14e60b7693b118cab5a79"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 29,
+   "status": 200,
+   "text": "<NAME_LIKE_88>\n<NAME_LIKE_52>\n<NAME_LIKE_2>\n<NAME_LIKE_3>\n<FILE_NUMBER_16>\n<NAME_LIKE_89>\n<DATE_OF_BIRTH_7>\n<HEALTH_NUMBER_8>\n<SIN_8>\n<NAME_LIKE_11>\n<POSTAL_CODE_8>\n<NAME_LIKE_12>",
+   "cost_usd": 0.0003436,
+   "call_uid": "d6cfab343bdc40ec843f65ab83ab6ce5"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 30,
+   "status": 200,
+   "text": "<NAME_LIKE_90>\n<NAME_LIKE_57>\n<EMPLOYEE_ID_8>\n<NAME_LIKE_15>\n<EMAIL_22>\n<PHONE_16>\n<NAME_LIKE_61>\n<NAME_LIKE_8>\n<NAME_LIKE_9>",
+   "cost_usd": 0.0002582,
+   "call_uid": "82db3df0188642babd026d9f4aead7b4"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 31,
+   "status": 200,
+   "text": "<NAME_LIKE_17>\n<NAME_LIKE_64>\n<NAME_LIKE_45>\n<NAME_LIKE_66>\n<ID_LIKE_9>\nLabrador\n<NAME_LIKE_91>\n<NAME_LIKE_22>\n<EMAIL_23>",
+   "cost_usd": 0.0002558,
+   "call_uid": "d5c1e338a6934811905417ef7c028f4d"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 32,
+   "status": 200,
+   "text": "<FILE_NUMBER_17>\n<NAME_LIKE_80>\n<NAME_LIKE_8>\n<NAME_LIKE_9>\n<EMAIL_24>\n<PHONE_17>\n<NAME_LIKE_92>\n<NAME_LIKE_93>",
+   "cost_usd": 0.000245,
+   "call_uid": "d297fed32137492ba91b37b2b758024d"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 33,
+   "status": 200,
+   "text": "<NAME_LIKE_94>\n<NAME_LIKE_95>\nOffice of the Information and Privacy Commissioner\n<FILE_NUMBER_18>\n<NAME_LIKE_96>\n<DATE_OF_BIRTH_8>\n<HEALTH_NUMBER_9>\n<SIN_9>\nLabrador <NAME_LIKE_91>\n<POSTAL_CODE_9>\n<NAME_LIKE_12>",
+   "cost_usd": 0.0003244,
+   "call_uid": "4ea0a6cba5224ad8ad1aed11221db23e"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 34,
+   "status": 200,
+   "text": "<NAME_LIKE_97>\n<NAME_LIKE_46>\n<EMPLOYEE_ID_9>\n<NAME_LIKE_15>\n<EMAIL_25>\n<PHONE_18>\n<NAME_LIKE_98>\n<NAME_LIKE_2>\n<NAME_LIKE_3>",
+   "cost_usd": 0.00026,
+   "call_uid": "2503b0d11d5f4bddb12b30ac6f6db67d"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 35,
+   "status": 200,
+   "text": "<NAME_LIKE_17>\n<NAME_LIKE_99>\n<NAME_LIKE_100>\n<NAME_LIKE_101>\n<ID_LIKE_2>\n<ID_LIKE_10>\nLabrador\n<NAME_LIKE_91>\n<NAME_LIKE_22>\n<EMAIL_26>",
+   "cost_usd": 0.0002833,
+   "call_uid": "96d8a9c7adef4f3a81662f35b1fa3029"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 36,
+   "status": 200,
+   "text": "<FILE_NUMBER_19>\n<NAME_LIKE_96>\nOffice of the Information and Privacy Commissioner\n<ID_LIKE_2>\n<EMAIL_27>\n<PHONE_19>\n<NAME_LIKE_102>\n<NAME_LIKE_103>\nSchedule A",
+   "cost_usd": 0.000253,
+   "call_uid": "eff1de8fd39b4755b1ee8ffb59782aaf"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 37,
+   "status": 200,
+   "text": "<NAME_LIKE_104>\n<NAME_LIKE_59>\nOffice of the Information and Privacy Commissioner\n<FILE_NUMBER_20>\n<NAME_LIKE_105>\n<DATE_OF_BIRTH_9>\n<HEALTH_NUMBER_10>\n<SIN_10>\nLabrador\n<NAME_LIKE_91>\n<POSTAL_CODE_10>\n<NAME_LIKE_12>",
+   "cost_usd": 0.0003427,
+   "call_uid": "e2b615ba3f42404d9203e65cb70cb8ac"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 38,
+   "status": 200,
+   "text": "<NAME_LIKE_70>\n<NAME_LIKE_106>\n<EMPLOYEE_ID_10>\n<NAME_LIKE_15>\n<EMAIL_28>\n<PHONE_20>\n<NAME_LIKE_83>\n<NAME_LIKE_2>\n<NAME_LIKE_3>",
+   "cost_usd": 0.0002656,
+   "call_uid": "20a376baf2e148bc90a2626371807af1"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 39,
+   "status": 200,
+   "text": "<NAME_LIKE_17>\n<NAME_LIKE_107>\n<NAME_LIKE_16>\n<NAME_LIKE_108>\n<ID_LIKE_11>\n<NAME_LIKE_35>\n<NAME_LIKE_22>\n<EMAIL_29>\n<ID_LIKE_2>",
+   "cost_usd": 0.0002776,
+   "call_uid": "9277a217fb74479ea7c85731ea8c7458"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 0,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_1>,\n\nThis is to acknowledge your records request regarding file reference <FILE_NUMBER_1>, concerning the $1,250.00 decision involving the Department of <NAME_LIKE_2> and <NAME_LIKE_3>. \n\nYour file was assigned to analyst <NAME_LIKE_4> in Q1 2024. Please note that a third party named in the records, <NAME_LIKE_5>, was notified under the Act and given twenty days to respond, as detailed on page 12 of 40. \n\nWe will contact you at <EMAIL_1> or <PHONE_1> as soon as there is an update on your request.\n\nSincerely,\n\nRecords Office",
+   "cost_usd": 0.0004751,
+   "call_uid": "501a711790364484b6a06b89e38238ad"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 1,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_6>,\n\nRegarding File <FILE_NUMBER_2>, we have processed the records concerning <NAME_LIKE_10> (DOB: <DATE_OF_BIRTH_1>, MCP: <HEALTH_NUMBER_1>, SIN: <SIN_1>, Address: <NAME_LIKE_11>, <POSTAL_CODE_1>), following the memorandum from <NAME_LIKE_7> in the Department of <NAME_LIKE_8> and <NAME_LIKE_9>. \n\nPlease be advised that <NAME_LIKE_12> in the 2024 budget requires the release of this information. The exception considered at the third request this year does not apply to this file. \n\nSincerely,\n\nRecords Office",
+   "cost_usd": 0.0004887,
+   "call_uid": "f5080227c20d469eb124c64799861c8d"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 2,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_13>,\n\nThis is in reference to your request for Schedule A. As confirmed by <NAME_LIKE_14>, employee number <EMPLOYEE_ID_1>, who prepared the record, no other copy exists. \n\nPlease note that <NAME_LIKE_15> may be directed to <EMAIL_2> or <PHONE_2> regarding this matter. \n\nYours sincerely,\n\n<NAME_LIKE_16>\nDepartment of <NAME_LIKE_2> and <NAME_LIKE_3>",
+   "cost_usd": 0.0003608,
+   "call_uid": "7899465bfe7c4afd811b4c59fb0b04cb"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 3,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_17>,\n\nRegarding the meeting with <NAME_LIKE_18>, <NAME_LIKE_19> and <NAME_LIKE_20> concerning file <ID_LIKE_1>: \n\n<NAME_LIKE_18> noted this is the third and final request this year. <NAME_LIKE_20> confirmed a letter was sent to <NAME_LIKE_21>. \n\nPer <NAME_LIKE_22>, please write to the claimant at <EMAIL_3> and review the amount of $1,250.00 prior to its release. \n\nRecords Office",
+   "cost_usd": 0.0004159,
+   "call_uid": "45abb7cccf52434ca20e70b7d93b7656"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 4,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_23>,\n\nWe acknowledge receipt of your request regarding the decision of file format PDF, processed under reference <FILE_NUMBER_3>. \n\nYour file has been assigned to <NAME_LIKE_24>, an analyst in the Department of <NAME_LIKE_2> and <NAME_LIKE_3>. For any correspondence, you may be reached at <EMAIL_4> or <PHONE_3>. \n\nPlease note that a third party named in the records, <NAME_LIKE_25>, has been notified pursuant to the Act and given twenty days to respond, as noted in <ID_LIKE_2>. \n\nRecords Office",
+   "cost_usd": 0.0004283,
+   "call_uid": "bfae43ddd8cc46f7a109d2144759b547"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 5,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_26>,\n\nThis is in reference to File <FILE_NUMBER_4> concerning the claim form completed by <NAME_LIKE_28> (DOB: <DATE_OF_BIRTH_2>, MCP: <HEALTH_NUMBER_2>, SIN: <SIN_2>), residing in <NAME_LIKE_11> (<POSTAL_CODE_2>). \n\n<NAME_LIKE_12> has requested the release of this information on page 12 of 40. Please be advised that the exception at $1,250.00 was considered and does not apply to this record. \n\nSincerely, \nRecords Office",
+   "cost_usd": 0.0004533,
+   "call_uid": "3ca45bc8497f4e04936e506d62e88f50"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 6,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_29>,\n\nRegarding your request for $1,250.00, your request is granted in part and the severed record is attached as the 2024 budget. \n\n<NAME_LIKE_30>, employee number <EMPLOYEE_ID_2>, confirmed no other copy exists. For further assistance, <NAME_LIKE_15> may be directed to <EMAIL_5> or <PHONE_4>.\n\nYours sincerely,\n<NAME_LIKE_31>\nDepartment of <NAME_LIKE_8> and <NAME_LIKE_9>",
+   "cost_usd": 0.0003957,
+   "call_uid": "56688d0ccd06497393e616b5b1d86377"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 7,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_32>, <NAME_LIKE_33>, and <NAME_LIKE_34>,\n\nRegarding the notes from <NAME_LIKE_17> concerning file <ID_LIKE_3> for <NAME_LIKE_35>, please note the instructions from <NAME_LIKE_22>. \n\nWe need to ensure that the request covers no more than 40 percent as discussed. Additionally, please proceed with writing to the claimant at <EMAIL_6>, keeping in mind the instruction to review section 31(1) prior to any release of information. \n\nPlease let me know if you need any further assistance with this file.\n\nRecords Office",
+   "cost_usd": 0.0004375,
+   "call_uid": "9b892aa3ae4245e493ca7ca200314d28"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 8,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_36>,\n\nRegarding your request <FILE_NUMBER_5> concerning the decision of page 12 of 40, your file has been assigned to analyst <NAME_LIKE_37>. \n\nPlease note that a third party named in the records, <NAME_LIKE_38>, was notified under the Act and given twenty days to respond. \n\nWe will continue to process your request through the Department of <NAME_LIKE_8> and <NAME_LIKE_9>. Should we need to reach you, we will use <EMAIL_7> or <PHONE_5>. \n\nSincerely,\n\nRecords Office",
+   "cost_usd": 0.0004232,
+   "call_uid": "a1dd5f971ad94d15a9ba884f85d758da"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 9,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_39>,\n\nThis is in reference to File <FILE_NUMBER_6> concerning the claim form completed by <NAME_LIKE_41> (born <DATE_OF_BIRTH_3>, MCP: <HEALTH_NUMBER_3>, SIN: <SIN_3>, address in <NAME_LIKE_21>, <POSTAL_CODE_3>). \n\nPlease be advised that <NAME_LIKE_12> in <ID_LIKE_2> requires the release of this information. Furthermore, the exception at the 2024 budget was considered and does not apply to this request. \n\nRecords Office",
+   "cost_usd": 0.0004324,
+   "call_uid": "60e4c67c417e4957a8db2f48eb4de455"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 10,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_42>,\n\nThis is in reference to your request for the 2024 budget. Your request has been granted in part, and the severed record is attached as <ID_LIKE_2>. \n\n<NAME_LIKE_34>, employee number <EMPLOYEE_ID_3>, who prepared the record, has confirmed that no other copy exists. Please note that <NAME_LIKE_15> may be directed to <EMAIL_8> or <PHONE_6> if you require further assistance.\n\nYours sincerely,\n\n<NAME_LIKE_40>  \nOffice of the Information and Privacy Commissioner",
+   "cost_usd": 0.0004068,
+   "call_uid": "290cb1f808ef47d9ad30e246576c5e73"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 11,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_35>,\n\nFollowing our recent meeting regarding file <ID_LIKE_4>, <NAME_LIKE_43>, <NAME_LIKE_44>, and <NAME_LIKE_45> discussed the status of your request, which currently covers page 12 of 40. <NAME_LIKE_45> confirmed that a letter has been sent to you. \n\nPer instructions from <NAME_LIKE_22>, please note that 40 percent of the material is under review before release. We will correspond with you further at <EMAIL_9>.\n\nRecords Office",
+   "cost_usd": 0.0003978,
+   "call_uid": "49dc82b867d94b01837d95ee9ee6cd51"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 12,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_46>,\n\nWe are writing regarding your request <FILE_NUMBER_7> concerning the decision of section 31(1), which is held by the Department of <NAME_LIKE_2> and <NAME_LIKE_3>. \n\nYour file has been assigned to <NAME_LIKE_24>. As part of our process, a third party named in the records, <NAME_LIKE_47>, has been notified under the Act and given twenty days to respond. \n\nWe will continue to process your request and may contact you at <EMAIL_10> or <PHONE_7> if further information is needed.\n\nSincerely,\n\nRecords Office",
+   "cost_usd": 0.0004429,
+   "call_uid": "74ea3d985a024a21be0ae305dcfa0a7c"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 13,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_48>,\n\nThis is in reference to File <FILE_NUMBER_8> concerning the claim form completed by <NAME_LIKE_23>, born <DATE_OF_BIRTH_4> (MCP: <HEALTH_NUMBER_4>, SIN: <SIN_4>, address in <NAME_LIKE_21>, <POSTAL_CODE_4>). \n\nPlease be advised that <NAME_LIKE_12> in Q1 2024 requires the release of that information. The exception at page 12 of 40 was reviewed and has been determined not to apply. \n\nSincerely,\n\nRecords Office",
+   "cost_usd": 0.0004377,
+   "call_uid": "72881b5ba7204873919fe827dce337f4"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 14,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_50>,\n\nRegarding your request <ID_LIKE_2>, please find Schedule A attached. \n\n<NAME_LIKE_51>, employee number <EMPLOYEE_ID_4>, confirmed that no other copy of the record exists. For any further assistance, <NAME_LIKE_15> can be reached at <EMAIL_11> or <PHONE_8>.\n\nSincerely,\n<NAME_LIKE_52>\nDepartment of <NAME_LIKE_2> and <NAME_LIKE_3>",
+   "cost_usd": 0.0003589,
+   "call_uid": "fe7626a40ca844b0a0eae77e84941407"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 15,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_17>,\n\nThis is to confirm receipt of the notes from your meeting with <NAME_LIKE_53>, <NAME_LIKE_54>, and <NAME_LIKE_55> regarding the request covering 40 percent. \n\nAs noted, the claimant for file reference <ID_LIKE_5> has been sent a letter, and <NAME_LIKE_11> has been included in communications. \n\nPer <NAME_LIKE_22>'s instructions, a message will be sent to the claimant at <EMAIL_12>, and section 31(1) will be reviewed prior to any release of information. \n\nRecords Office",
+   "cost_usd": 0.0004378,
+   "call_uid": "5f42bc5275b04bbb87ce10f4f5921985"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 16,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_56>,\n\nThis is to acknowledge your records request regarding file <FILE_NUMBER_9>. Your file is currently being handled by our analyst, <NAME_LIKE_57>. \n\nPlease note that a third party named in the records, <NAME_LIKE_58>, has been notified in accordance with the Act and given twenty days to respond. \n\nIf you need to update your contact information, we have your email on file as <EMAIL_13> and your phone number as <PHONE_9>. \n\nRecords Office",
+   "cost_usd": 0.0003733,
+   "call_uid": "c95783856e10493980ae77377c1337ed"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 17,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_59>,\n\nRegarding File <FILE_NUMBER_10>, we have received the request from <NAME_LIKE_12> for the claim form concerning <NAME_LIKE_61> (born <DATE_OF_BIRTH_5>, MCP: <HEALTH_NUMBER_5>, SIN: <SIN_5>, living in <NAME_LIKE_11> <POSTAL_CODE_5>). \n\nPlease be advised that <NAME_LIKE_60> from the Department of <NAME_LIKE_8> and <NAME_LIKE_9> has reviewed the record in PDF format. We confirmed that the exception at section 31(1) does not apply, and the requested information must therefore be released. \n\nSincerely,\n\nRecords Office",
+   "cost_usd": 0.000504,
+   "call_uid": "45791ee5438d4a9d94711ac42374bd17"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 18,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_62>,\n\nYour request regarding file <NAME_LIKE_15> has been processed. Your request of $1,250.00 is granted in part, and the severed record is attached as the third request this year. \n\n<NAME_LIKE_63>, employee number <EMPLOYEE_ID_5>, confirmed that no other copy exists. For further assistance, you may contact <NAME_LIKE_15> at <EMAIL_14> or <PHONE_10>.\n\nYours sincerely,\n\n<NAME_LIKE_64>\nOffice of the Information and Privacy Commissioner",
+   "cost_usd": 0.0004027,
+   "call_uid": "142887ffda3b4b8fb5fc2e13b1f52bcb"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 19,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_35>,\n\nFollowing our recent meeting with <NAME_LIKE_65>, <NAME_LIKE_66>, <NAME_LIKE_44>, and <NAME_LIKE_17>, regarding file <ID_LIKE_6>, we are writing to you at <EMAIL_15> as instructed by <NAME_LIKE_22>. \n\nPlease note that your request covers 40 percent and no more. We are currently reviewing file <ID_LIKE_2> prior to release, and we will update you once this process is complete. \n\nRecords Office",
+   "cost_usd": 0.0003928,
+   "call_uid": "87094cfbdf3b453aa4a0710bafea44ef"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 20,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_67>,\n\nThis is to confirm receipt of your request regarding the decision of Schedule A, logged under <FILE_NUMBER_11>. \n\nYour file is being handled by <NAME_LIKE_68> and is recorded on page 12 of 40 within the Department of <NAME_LIKE_2> and <NAME_LIKE_3>. As required by the Act, we have also notified the third party, <NAME_LIKE_28>, and allowed twenty days for a response. This marks our third request this year.\n\nShould we need to contact you at <EMAIL_16> or <PHONE_11>, we will be in touch.\n\nSincerely,\nRecords Office",
+   "cost_usd": 0.000462,
+   "call_uid": "24d1051a7327428094b64f3c9bf5fa2c"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 21,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_69>,\n\nThis is in reference to File <FILE_NUMBER_12> regarding the claim form completed by <NAME_LIKE_71> (born <DATE_OF_BIRTH_5>, MCP: <HEALTH_NUMBER_6>, SIN: <SIN_6>, living in <NAME_LIKE_11> with postal code <POSTAL_CODE_6>). \n\nAs noted by <NAME_LIKE_70> from the Department of <NAME_LIKE_8> and <NAME_LIKE_9>, <NAME_LIKE_12> in Q1 2024 requires the release of this information. Please be advised that the exception at page 12 of 40 was considered and does not apply. \n\nSincerely,\n\nRecords Office",
+   "cost_usd": 0.0005155,
+   "call_uid": "8e6216ab73ab4828a451805ae197700b"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 22,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_23>,\n\nThis is in response to your Q1 2024 request, which has been granted in part. Please find your severed record attached as a PDF. \n\nThe record was prepared by <NAME_LIKE_45>, employee number <EMPLOYEE_ID_6>, who confirmed no other copy exists. If needed, <NAME_LIKE_15> may be contacted via <EMAIL_4> or <PHONE_12>. \n\nSincerely,\n\n<NAME_LIKE_72>\nDepartment of <NAME_LIKE_2> and <NAME_LIKE_3>",
+   "cost_usd": 0.0004017,
+   "call_uid": "0ea35d6e6d7c41d1942b59fd04e2d3b7"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 23,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_17>,\n\nThis is in reference to the meeting concerning <NAME_LIKE_73>, <NAME_LIKE_74>, and <NAME_LIKE_75>. \n\nAs noted, this covers the third request this year and no more. <NAME_LIKE_75> confirmed that a letter regarding the claimant, whose file reference is <ID_LIKE_7>, has been sent to <NAME_LIKE_11>. \n\nPer <NAME_LIKE_22>, please write to the claimant at <EMAIL_17> and ensure you review the file format PDF before releasing the information.\n\nRecords Office",
+   "cost_usd": 0.0004169,
+   "call_uid": "47cfec30b3dd44a49c3c5dad80f2272d"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 24,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_76>,\n\nThis is to confirm that your records request, referenced as <FILE_NUMBER_13> concerning the decision of 40 percent, has been received by the Department of <NAME_LIKE_8> and <NAME_LIKE_9>. \n\nThe file has been assigned to analyst <NAME_LIKE_77>. We have also notified third party <NAME_LIKE_78> pursuant to <ID_LIKE_2>, and they have twenty days to respond. \n\nWe will continue to process your request using your contact details at <EMAIL_18> and <PHONE_13>. \n\nSincerely,  \nRecords Office",
+   "cost_usd": 0.0004379,
+   "call_uid": "d418ded19f3b4835b8c20c3274a8cf37"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 25,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_79>,\n\nRegarding File <FILE_NUMBER_14>, we have received a request from <NAME_LIKE_12> in <ID_LIKE_2> for the release of information concerning the claim form completed by <NAME_LIKE_81> (born <DATE_OF_BIRTH_6>, MCP: <HEALTH_NUMBER_7>, SIN: <SIN_7>, address in <NAME_LIKE_11>, <POSTAL_CODE_7>). \n\nAs noted by <NAME_LIKE_80> from the Department of <NAME_LIKE_8> and <NAME_LIKE_9>, the exception at Schedule A was considered and does not apply. We are proceeding with the request accordingly.\n\nSincerely,\n\nRecords Office",
+   "cost_usd": 0.0004987,
+   "call_uid": "77cd56108b5a41f782e30d7ba1553089"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 26,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_82>,\n\nRegarding your Q1 2024 request and the attached record (page 12 of 40), we note the information provided by employee <NAME_LIKE_18> (employee number <EMPLOYEE_ID_7>) confirming that no other copy exists. \n\nPlease note that <NAME_LIKE_15> may be directed to <EMAIL_19> or <PHONE_14> for any further inquiries related to this matter. \n\nYours sincerely,\n\n<NAME_LIKE_83>  \nOffice of the Information and Privacy Commissioner",
+   "cost_usd": 0.000393,
+   "call_uid": "67954d6724b3462da318910654b65b5b"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 27,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_17>,\n\nThis is to confirm receipt of the meeting notes regarding <ID_LIKE_2> and file <ID_LIKE_8>. \n\nAs discussed by <NAME_LIKE_19>, <NAME_LIKE_84>, and <NAME_LIKE_85>, please ensure that a message is sent to the claimant, <NAME_LIKE_35>, at <EMAIL_20>. \n\nAdditionally, please note <NAME_LIKE_22>'s instruction to review the 2024 budget prior to releasing any information. \n\nRecords Office",
+   "cost_usd": 0.0003937,
+   "call_uid": "3af4b59cb1da47ef8a5331e304dd0fc2"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 28,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_86>,\n\nThis is an update regarding your information request under file reference <FILE_NUMBER_15>. \n\nThe Office of the Information and Privacy Commissioner has acknowledged your request concerning the 2024 budget decision. Analyst <NAME_LIKE_87> is handling your file on a 40 percent allocation. \n\nPlease note that a third party, <NAME_LIKE_78>, has been notified pursuant to the Act (reference <ID_LIKE_2>) and is allowed twenty days to respond. \n\nYou may be reached at <EMAIL_21> or <PHONE_15> if we require further details. \n\nSincerely,\n\nRecords Office",
+   "cost_usd": 0.0004471,
+   "call_uid": "b5646998d48448cf8ec31f5b154180ba"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 29,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_88>,\n\nRegarding your inquiry concerning File <FILE_NUMBER_16>, please be advised that the record in question is a claim form completed by <NAME_LIKE_89> (born <DATE_OF_BIRTH_7>, MCP <HEALTH_NUMBER_8>, SIN <SIN_8>, residing in <NAME_LIKE_11> with postal code <POSTAL_CODE_8>). \n\n<NAME_LIKE_12> in page 12 of 40 requires the release of this information. Furthermore, the exception at 40 percent was considered and does not apply in this case. \n\nPlease contact our records office if you require any further assistance with this file. \n\nSincerely, \nRecords Office",
+   "cost_usd": 0.0004918,
+   "call_uid": "38f199301fdf4f9cafba627c4d974d42"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 30,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_90>,\n\nRegarding your third request this year, your application has been granted in part. Please find your severed record attached as a PDF file. \n\nThe record was prepared by <NAME_LIKE_57> (employee number <EMPLOYEE_ID_8>), who confirmed that no other copy exists. For any further questions, <NAME_LIKE_15> may be contacted via <EMAIL_22> or <PHONE_16>.\n\nYours sincerely,\n\n<NAME_LIKE_61>  \nDepartment of <NAME_LIKE_8> and <NAME_LIKE_9>",
+   "cost_usd": 0.0004014,
+   "call_uid": "ffaafd43b1c042dab0f54d8a8d97a3bc"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 31,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_17>,\n\nRegarding the meeting notes concerning file reference <ID_LIKE_9>, <NAME_LIKE_64>, <NAME_LIKE_45>, and <NAME_LIKE_66> discussed the claimant's request and confirmed that a letter was sent to Labrador <NAME_LIKE_91>. \n\nPer <NAME_LIKE_22>'s instructions, please write to the claimant at <EMAIL_23> and ensure the amount of $1,250.00 is reviewed before it is released.\n\nSincerely,\n\nRecords Office",
+   "cost_usd": 0.000389,
+   "call_uid": "73227d2d519d4eb3bd9206abc874ec0a"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 32,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_80>,\n\nWe are writing regarding your request <FILE_NUMBER_17> submitted to the Department of <NAME_LIKE_8> and <NAME_LIKE_9> concerning the 2024 budget decision. \n\nYour file has been assigned to <NAME_LIKE_92>, an analyst in the division. Please note that a third party named in the records, <NAME_LIKE_93>, has been notified under the Act and given twenty days to respond. \n\nWe will continue to process your request and may contact you at <EMAIL_24> or <PHONE_17> if further information is needed.\n\nSincerely,  \nRecords Office",
+   "cost_usd": 0.0004507,
+   "call_uid": "7afeb2f11df941818909fb6a857b692f"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 33,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_94>,\n\nRegarding File <FILE_NUMBER_18>, we have received a request from <NAME_LIKE_12> in file format PDF for the release of information concerning the claim form completed by <NAME_LIKE_96>, born <DATE_OF_BIRTH_8>, with MCP number <HEALTH_NUMBER_9>, social insurance number <SIN_9>, and an address in Labrador <NAME_LIKE_91> with postal code <POSTAL_CODE_9>. \n\nPlease be advised that the exception at 40 percent was considered by <NAME_LIKE_95>, Office of the Information and Privacy Commissioner, and it has been determined that this exception does not apply in this case. Therefore, the record is subject to release as requested.\n\nSincerely,\n\nRecords Office",
+   "cost_usd": 0.0005151,
+   "call_uid": "6a7ce38fab634974bd4affaba43f5c29"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 34,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_97>,\n\nRegarding your request for page 12 of 40, your request is granted in part, and the severed record is attached as section 31(1). \n\nAs noted by the employee who prepared the record, <NAME_LIKE_46>, employee number <EMPLOYEE_ID_9>, no other copy exists. Please direct any further inquiries to <NAME_LIKE_15> at <EMAIL_25> or <PHONE_18>. \n\nYours sincerely,\n\n<NAME_LIKE_98>\nDepartment of <NAME_LIKE_2> and <NAME_LIKE_3>",
+   "cost_usd": 0.0004207,
+   "call_uid": "f614169d08964a23a462ac0a39b2bad8"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 35,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_17>,\n\nRegarding the meeting notes concerning file reference <ID_LIKE_10> and request <ID_LIKE_2>, <NAME_LIKE_99>, <NAME_LIKE_100>, and <NAME_LIKE_101> discussed the ongoing case. As <NAME_LIKE_101> confirmed that a letter was sent to Labrador <NAME_LIKE_91>, <NAME_LIKE_22> has instructed that we now write to the claimant at <EMAIL_26>. Please ensure that Schedule A is reviewed prior to the release of any information. \n\nRecords Office",
+   "cost_usd": 0.000414,
+   "call_uid": "6d9be1977f614cafba5c69c7c7e5a631"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 36,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_96>,\n\nRegarding your request <FILE_NUMBER_19> concerning the decision of <ID_LIKE_2>, we are writing to provide an update. The file has been assigned to analyst <NAME_LIKE_102> on 40 percent time. \n\nPlease note that a third party named in the records, <NAME_LIKE_103>, has been notified under the Act and given twenty days to respond, as detailed in Schedule A. \n\nWe will continue to process your file and will contact you at <EMAIL_27> or <PHONE_19> if further information is required.\n\nSincerely,\nRecords Office",
+   "cost_usd": 0.0004337,
+   "call_uid": "2376633c1ea64cdb881cc4c46ec83bda"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 37,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_104>,\n\nRegarding File <FILE_NUMBER_20>, the Office of the Information and Privacy Commissioner has reviewed the claim form concerning <NAME_LIKE_105> (born <DATE_OF_BIRTH_9>, MCP: <HEALTH_NUMBER_10>, SIN: <SIN_10>, address: Labrador <NAME_LIKE_91>, <POSTAL_CODE_10>). \n\n<NAME_LIKE_59> notes that <NAME_LIKE_12> in the 2024 budget requires the release of this information. Furthermore, the exception considered at the third request this year does not apply and will not withhold disclosure. \n\nRecords Office",
+   "cost_usd": 0.0004684,
+   "call_uid": "6fe2f252559b46d9a7194603eb91bb41"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 38,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_70>,\n\nRegarding your request for page 12 of 40, your application is granted in part, and the severed record is attached as section 31(1). \n\n<NAME_LIKE_106>, employee number <EMPLOYEE_ID_10>, has confirmed no other copy exists. For further assistance, <NAME_LIKE_15> may be reached at <EMAIL_28> or <PHONE_20>.\n\nYours sincerely,\n\n<NAME_LIKE_83>\nDepartment of <NAME_LIKE_2> and <NAME_LIKE_3>",
+   "cost_usd": 0.0004063,
+   "call_uid": "a61f1a247998460385b141ed7e69a815"
+  },
+  {
+   "model": "google/gemini-3.5-flash-lite",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 39,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_35>,\n\nRegarding your claim under file reference <ID_LIKE_11> (and associated file <ID_LIKE_2>), a meeting was recently held between <NAME_LIKE_17>, <NAME_LIKE_107>, <NAME_LIKE_16>, and <NAME_LIKE_108>. \n\nIt was noted that your request covers $1,250.00 and no more. <NAME_LIKE_16> raised the matter of contacting you, and <NAME_LIKE_108> confirmed that correspondence has been sent. Per instructions from <NAME_LIKE_22>, please check for further communications at <EMAIL_29>. Note that file <ID_LIKE_2> must be reviewed before any funds are released. \n\nSincerely,\n\nRecords Office",
+   "cost_usd": 0.0005258,
+   "call_uid": "835375d3eaa443bbbc33dc41fcddd075"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 0,
+   "status": 200,
+   "text": "<NAME_LIKE_1>\nDepartment of <NAME_LIKE_2>\n<NAME_LIKE_3>\n<NAME_LIKE_4>\n<NAME_LIKE_5>\n<EMAIL_1>\n<PHONE_1>\n<FILE_NUMBER_1>",
+   "cost_usd": 0.0003588,
+   "call_uid": "9248dcf8ac794c1baff8cc59f49600bb"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 1,
+   "status": 200,
+   "text": "<NAME_LIKE_6>\n<NAME_LIKE_7>\nDepartment of <NAME_LIKE_8> and <NAME_LIKE_9>\nFile <FILE_NUMBER_2>\n<NAME_LIKE_10>\n<NAME_LIKE_11>\n<NAME_LIKE_12>",
+   "cost_usd": 0.00037856,
+   "call_uid": "458f8d75ab164c8ab12d362b39de7da2"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 2,
+   "status": 200,
+   "text": "<NAME_LIKE_13>\n<NAME_LIKE_14>\n<NAME_LIKE_15>\n<NAME_LIKE_16>\nDepartment of <NAME_LIKE_2> and <NAME_LIKE_3>\n<EMAIL_2>\n<PHONE_2>",
+   "cost_usd": 0.00033176,
+   "call_uid": "d0611eafeffd4cdd87a3cae549785d01"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 3,
+   "status": 200,
+   "text": "<NAME_LIKE_17>\n<NAME_LIKE_18>\n<NAME_LIKE_19>\n<NAME_LIKE_20>\n<ID_LIKE_1>\n<NAME_LIKE_21>\n<NAME_LIKE_22>\n<EMAIL_3>",
+   "cost_usd": 0.00034424,
+   "call_uid": "fb72b0896ddd41619de1739542e1f8c4"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 4,
+   "status": 200,
+   "text": "<FILE_NUMBER_3>\n<NAME_LIKE_23>\nDepartment of <NAME_LIKE_2>\n<NAME_LIKE_3>\n<EMAIL_4>\n<PHONE_3>\n<NAME_LIKE_24>\n<NAME_LIKE_25>\n<ID_LIKE_2>",
+   "cost_usd": 0.00036192,
+   "call_uid": "2f197b81d03d44c2aaf3413daf60d582"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 5,
+   "status": 200,
+   "text": "<NAME_LIKE_26>\n<NAME_LIKE_27>\nDepartment of <NAME_LIKE_2> and <NAME_LIKE_3>\n<NAME_LIKE_28>\n<NAME_LIKE_11>\n<NAME_LIKE_12>\nFile <FILE_NUMBER_4>",
+   "cost_usd": 0.00038064,
+   "call_uid": "6b813d9366da4774a88478c735fc0618"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 6,
+   "status": 200,
+   "text": "<NAME_LIKE_29>\n<NAME_LIKE_30>\n<NAME_LIKE_15>\n<NAME_LIKE_31>\nDepartment of <NAME_LIKE_8> and <NAME_LIKE_9>\n<EMAIL_5>\n<PHONE_4>",
+   "cost_usd": 0.00033592,
+   "call_uid": "4e135a0c7f7740dfa46dd5875519e63e"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 7,
+   "status": 200,
+   "text": "<NAME_LIKE_17>\n<NAME_LIKE_32>\n<NAME_LIKE_33>\n<NAME_LIKE_34>\n<ID_LIKE_3>\n<NAME_LIKE_35>\n<NAME_LIKE_22>\n<EMAIL_6>",
+   "cost_usd": 0.00034216,
+   "call_uid": "2b152078c71645858efff3196e9bf555"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 8,
+   "status": 200,
+   "text": "<FILE_NUMBER_5>\n<NAME_LIKE_36>\nDepartment of <NAME_LIKE_8>\n<NAME_LIKE_9>\n<EMAIL_7>\n<PHONE_5>\n<NAME_LIKE_37>\n<NAME_LIKE_38>",
+   "cost_usd": 0.0003588,
+   "call_uid": "dea69a6babf44069a62ca5a389343458"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 9,
+   "status": 200,
+   "text": "<NAME_LIKE_39>\n<NAME_LIKE_40>\nDepartment of <NAME_LIKE_8> \nDepartment of <NAME_LIKE_9>\nFile <FILE_NUMBER_6>\n<NAME_LIKE_41>\n<NAME_LIKE_21>\n<NAME_LIKE_12>\n<ID_LIKE_2>",
+   "cost_usd": 0.00038896,
+   "call_uid": "446c69f084fa44f1baaeb296859dfe26"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 10,
+   "status": 200,
+   "text": "<NAME_LIKE_42>\n<NAME_LIKE_34>\n<NAME_LIKE_15>\n<NAME_LIKE_40>\nOffice of the Information and Privacy Commissioner\n<ID_LIKE_2>\n<EMAIL_8>\n<PHONE_6>",
+   "cost_usd": 0.00032136,
+   "call_uid": "016378bbec1e41ba920f7432447bb194"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 11,
+   "status": 200,
+   "text": "<NAME_LIKE_17>\n<NAME_LIKE_43>\n<NAME_LIKE_44>\n<NAME_LIKE_45>\n<ID_LIKE_4>\n<NAME_LIKE_35>\n<NAME_LIKE_22>\n<EMAIL_9>",
+   "cost_usd": 0.00034216,
+   "call_uid": "cc7ef30b827b440385ab0d093a99bfc7"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 12,
+   "status": 200,
+   "text": "<FILE_NUMBER_7>\n<NAME_LIKE_46>\nDepartment of <NAME_LIKE_2>\n<NAME_LIKE_3>\n<EMAIL_10>\n<PHONE_7>\n<NAME_LIKE_24>\n<NAME_LIKE_47>",
+   "cost_usd": 0.00035776,
+   "call_uid": "18eb461295cc4a34b89cf6f7c97c4ced"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 13,
+   "status": 200,
+   "text": "<NAME_LIKE_48>\n<NAME_LIKE_49>\nDepartment of <NAME_LIKE_2> and <NAME_LIKE_3>\n<NAME_LIKE_23>\n<NAME_LIKE_21>\n<NAME_LIKE_12>\nFile <FILE_NUMBER_8>\nQ1 2024",
+   "cost_usd": 0.0003848,
+   "call_uid": "af977066ee5a4f01a3be8bedca57492e"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 14,
+   "status": 200,
+   "text": "<NAME_LIKE_50>\n<NAME_LIKE_51>\n<NAME_LIKE_15>\n<NAME_LIKE_52>\nDepartment of <NAME_LIKE_2> and <NAME_LIKE_3>\n<EMAIL_11>\n<PHONE_8> \n<ID_LIKE_2>",
+   "cost_usd": 0.00034112,
+   "call_uid": "ba3557c25bf847e7a43795bf7a537b65"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 15,
+   "status": 200,
+   "text": "<NAME_LIKE_17>\n<NAME_LIKE_53>\n<NAME_LIKE_54>\n<NAME_LIKE_55>\n<ID_LIKE_5>\n<NAME_LIKE_11>\n<NAME_LIKE_22>\n<EMAIL_12>",
+   "cost_usd": 0.00034216,
+   "call_uid": "64e32c357ade4946abef205820ba3415"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 16,
+   "status": 200,
+   "text": "<FILE_NUMBER_9>\n<NAME_LIKE_56>\nOffice of the Information and Privacy Commissioner\n<EMAIL_13>\n<PHONE_9>\n<NAME_LIKE_57> \n<NAME_LIKE_58>",
+   "cost_usd": 0.00034112,
+   "call_uid": "d23b8df547884da28483eb0bdbb2ac0c"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 17,
+   "status": 200,
+   "text": "<NAME_LIKE_59>\n<NAME_LIKE_60>\nDepartment of <NAME_LIKE_8> and <NAME_LIKE_9>\n<NAME_LIKE_61>\n<NAME_LIKE_11>\n<NAME_LIKE_12>\nFile <FILE_NUMBER_10>",
+   "cost_usd": 0.00037752,
+   "call_uid": "03b04ab605024054b15b2c780ce1c608"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 18,
+   "status": 200,
+   "text": "<NAME_LIKE_62>\n<NAME_LIKE_63>\n<NAME_LIKE_15>\n<EMAIL_14>\n<PHONE_10>\n<NAME_LIKE_64>\nOffice of the Information and Privacy Commissioner",
+   "cost_usd": 0.00031512,
+   "call_uid": "ce2320d5c8044ff985322754cde03793"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 19,
+   "status": 200,
+   "text": "<NAME_LIKE_17>\n<NAME_LIKE_65>\n<NAME_LIKE_66>\n<NAME_LIKE_44>\n<ID_LIKE_6>\n<NAME_LIKE_35>\n<NAME_LIKE_22>\n<EMAIL_15>\n<ID_LIKE_2>",
+   "cost_usd": 0.00034944,
+   "call_uid": "c2fcd4d3e09b47d3ae31f3cb9ae373cc"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 20,
+   "status": 200,
+   "text": "<FILE_NUMBER_11>\n<NAME_LIKE_67>\nDepartment of <NAME_LIKE_2>\n<NAME_LIKE_3>\n<EMAIL_16>\n<PHONE_11>\n<NAME_LIKE_68>\n<NAME_LIKE_28>",
+   "cost_usd": 0.00035464,
+   "call_uid": "29f72ab6994f44798885d91c1515fa81"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 21,
+   "status": 200,
+   "text": "<NAME_LIKE_69>\n<NAME_LIKE_70>\nDepartment of <NAME_LIKE_8> and <NAME_LIKE_9>\n<NAME_LIKE_71>\n<NAME_LIKE_11>\n<NAME_LIKE_12>\nFile <FILE_NUMBER_12>",
+   "cost_usd": 0.0003796,
+   "call_uid": "0ec166fb39114f83b0faa836845a106e"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 22,
+   "status": 200,
+   "text": "<NAME_LIKE_23>\n<NAME_LIKE_45>\n<NAME_LIKE_15>\n<NAME_LIKE_72>\nDepartment of <NAME_LIKE_2> and <NAME_LIKE_3>\n<EMAIL_4>\n<PHONE_12>",
+   "cost_usd": 0.0003328,
+   "call_uid": "1de7c826b2464fcfabf59c13f14a3c28"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 23,
+   "status": 200,
+   "text": "<NAME_LIKE_17>\n<NAME_LIKE_73>\n<NAME_LIKE_74>\n<NAME_LIKE_75>\n<ID_LIKE_7>\n<NAME_LIKE_11>\n<NAME_LIKE_22>\n<EMAIL_17>",
+   "cost_usd": 0.00034112,
+   "call_uid": "5946d473d13943639469f643b0e0b271"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 24,
+   "status": 200,
+   "text": "<FILE_NUMBER_13>\n<NAME_LIKE_76>\nDepartment of <NAME_LIKE_8>\n<NAME_LIKE_9>\n<EMAIL_18>\n<PHONE_13>\n<NAME_LIKE_77>\n<NAME_LIKE_78>\n<ID_LIKE_2>",
+   "cost_usd": 0.00036296,
+   "call_uid": "3dd6fb4e339e49cd9999297e8e59cd82"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 25,
+   "status": 200,
+   "text": "<NAME_LIKE_79>\n<NAME_LIKE_80>\nDepartment of <NAME_LIKE_8> and <NAME_LIKE_9>\n<NAME_LIKE_81>\n<NAME_LIKE_11>\n<NAME_LIKE_12>\n<ID_LIKE_2>\nFile <FILE_NUMBER_14>",
+   "cost_usd": 0.00038376,
+   "call_uid": "737a6be66a024788af003187d9c2d0a6"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 26,
+   "status": 200,
+   "text": "<NAME_LIKE_82>\n<NAME_LIKE_18>\n<EMPLOYEE_ID_7>\n<NAME_LIKE_15>\n<EMAIL_19>\n<PHONE_14>\n<NAME_LIKE_83>\nOffice of the Information and Privacy Commissioner",
+   "cost_usd": 0.0003224,
+   "call_uid": "9ede275a573448818c3d63b74924393d"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 27,
+   "status": 200,
+   "text": "<NAME_LIKE_17>\n<NAME_LIKE_19>\n<NAME_LIKE_84>\n<NAME_LIKE_85>\n<ID_LIKE_2>\n<ID_LIKE_8>\n<NAME_LIKE_35>\n<NAME_LIKE_22>\n<EMAIL_20>",
+   "cost_usd": 0.00035152,
+   "call_uid": "69677977d6d94774aaaedd4f30dfff5a"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 28,
+   "status": 200,
+   "text": "<FILE_NUMBER_15>\n<NAME_LIKE_86>\nOffice of the Information and Privacy Commissioner\n<EMAIL_21>\n<PHONE_15>\n<NAME_LIKE_87>\n<NAME_LIKE_78>\n<ID_LIKE_2>",
+   "cost_usd": 0.0003432,
+   "call_uid": "363806bc3e474cdfa911d794c1b1551e"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 29,
+   "status": 200,
+   "text": "<NAME_LIKE_88>\n<NAME_LIKE_52>\nDepartment of <NAME_LIKE_2> \nDepartment of <NAME_LIKE_3>\nFile <FILE_NUMBER_16>\n<NAME_LIKE_89>\n<NAME_LIKE_11>\n<NAME_LIKE_12>",
+   "cost_usd": 0.00037856,
+   "call_uid": "6758284a39e648a892a61e0de773a685"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 30,
+   "status": 200,
+   "text": "<NAME_LIKE_90>\n<NAME_LIKE_57>\n<EMPLOYEE_ID_8>\n<NAME_LIKE_15>\n<EMAIL_22>\n<PHONE_16>\n<NAME_LIKE_61>\nDepartment of <NAME_LIKE_8> and <NAME_LIKE_9>",
+   "cost_usd": 0.00034008,
+   "call_uid": "9d9adc1b878c40709ea9f46db13e8894"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 31,
+   "status": 200,
+   "text": "<NAME_LIKE_17>\n<NAME_LIKE_64>\n<NAME_LIKE_45>\n<NAME_LIKE_66>\n<ID_LIKE_9>\nLabrador\n<NAME_LIKE_91>\n<NAME_LIKE_22>\n<EMAIL_23>",
+   "cost_usd": 0.0003484,
+   "call_uid": "b22c9af0485d41ff9ba11573e73b5104"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 32,
+   "status": 200,
+   "text": "<NAME_LIKE_80>\nDepartment of <NAME_LIKE_8>\n<NAME_LIKE_9>\n<EMAIL_24>\n<PHONE_17>\n<NAME_LIKE_92>\n<NAME_LIKE_93>",
+   "cost_usd": 0.00034944,
+   "call_uid": "5db84a015bb84ff2b510857c65603e46"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 33,
+   "status": 200,
+   "text": "<NAME_LIKE_94>\n<NAME_LIKE_95>\nOffice of the Information and Privacy Commissioner\n<FILE_NUMBER_18>\n<NAME_LIKE_96>\n<DATE_OF_BIRTH_8>\n<HEALTH_NUMBER_9>\n<SIN_9>\nLabrador\n<NAME_LIKE_91>\n<POSTAL_CODE_9>\n<NAME_LIKE_12>",
+   "cost_usd": 0.00038584,
+   "call_uid": "67df85bba1924ac98392b713be7114dc"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 34,
+   "status": 200,
+   "text": "<NAME_LIKE_97>\n<NAME_LIKE_46>\n<EMPLOYEE_ID_9>\n<NAME_LIKE_15>\n<EMAIL_25>\n<PHONE_18>\n<NAME_LIKE_98>\nDepartment of <NAME_LIKE_2> and <NAME_LIKE_3>",
+   "cost_usd": 0.0003432,
+   "call_uid": "8085c855f387489786541ac49080f25e"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 35,
+   "status": 200,
+   "text": "<NAME_LIKE_17>\n<NAME_LIKE_99>\n<NAME_LIKE_100>\n<NAME_LIKE_101>\n<ID_LIKE_2>\n<ID_LIKE_10>\nLabrador <NAME_LIKE_91>\n<NAME_LIKE_22>\n<EMAIL_26>\nSchedule A",
+   "cost_usd": 0.0003536,
+   "call_uid": "2ac736264320437ea4a9ebac44526748"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 36,
+   "status": 200,
+   "text": "<NAME_LIKE_96>\nOffice of the Information and Privacy Commissioner\n<ID_LIKE_2>\n<EMAIL_27>\n<PHONE_19>\n<NAME_LIKE_102>\n<NAME_LIKE_103>\n<FILE_NUMBER_19>",
+   "cost_usd": 0.00034008,
+   "call_uid": "ae91ccf62e734e69914cd39626712fe5"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 37,
+   "status": 200,
+   "text": "<NAME_LIKE_104>\n<NAME_LIKE_59>\nOffice of the Information and Privacy Commissioner\nFile <FILE_NUMBER_20>\n<NAME_LIKE_105>\n<DATE_OF_BIRTH_9>\n<HEALTH_NUMBER_10>\n<SIN_10>\nLabrador \n<NAME_LIKE_91>\n<POSTAL_CODE_10>\n<NAME_LIKE_12>",
+   "cost_usd": 0.00039208,
+   "call_uid": "906c600ec98e43c789199c40a390423c"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 38,
+   "status": 200,
+   "text": "<NAME_LIKE_70>\n<NAME_LIKE_106>\n<EMPLOYEE_ID_10>\n<NAME_LIKE_15>\n<EMAIL_28>\n<PHONE_20>\n<NAME_LIKE_83>\nDepartment of <NAME_LIKE_2> and <NAME_LIKE_3>",
+   "cost_usd": 0.0003432,
+   "call_uid": "dd0e60796ebf4146a00eaa77bbb44057"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "extract",
+   "page": 39,
+   "status": 200,
+   "text": "<NAME_LIKE_17>\n<NAME_LIKE_107>\n<NAME_LIKE_16>\n<NAME_LIKE_108>\n<ID_LIKE_11>\n<NAME_LIKE_35>\n<NAME_LIKE_22>\n<EMAIL_29>\n<ID_LIKE_2>",
+   "cost_usd": 0.00035256,
+   "call_uid": "23f29547880b4f959ca6ce3d9ad7a188"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 0,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_1>, \n\nRe: Request <FILE_NUMBER_1>, we acknowledge your query regarding the decision of $1,250.00, which involves the Department of <NAME_LIKE_2> and <NAME_LIKE_3>. Our analyst, <NAME_LIKE_4>, is handling your file. Please note that <NAME_LIKE_5>, a third party mentioned in the records, was notified as per the Act. You can reach us at the contact information you provided, <EMAIL_1> or <PHONE_1>, for further updates.\n\nSincerely,\n[Your Name]",
+   "cost_usd": 0.0004264,
+   "call_uid": "b47fda3d947d4803812bfb5173d12614"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 1,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_6>, \n\nRe: File <FILE_NUMBER_2>, I am writing to inform you that the claim form completed by <NAME_LIKE_10> has been reviewed. As per the 2024 budget requirements outlined by <NAME_LIKE_12>, we are required to release the information. <NAME_LIKE_7> from the Department of <NAME_LIKE_8> and <NAME_LIKE_9> has considered the exception, but it does not apply in this case. \n\nSincerely, \n[Your Name]",
+   "cost_usd": 0.00042848,
+   "call_uid": "ec26e30f971049809d75808b8b3c65bb"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 2,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_13>, \n\nRe: Your request for Schedule A, we are writing to confirm that the decision letter has been processed. <NAME_LIKE_14>, employee number <EMPLOYEE_ID_1>, prepared the record and confirmed its status. For further information, please contact <NAME_LIKE_15> at <EMAIL_2> or <PHONE_2>. \n\nYours sincerely,\n[Your Name]",
+   "cost_usd": 0.00035776,
+   "call_uid": "18b3c75ca37d499a8192e1c5daedca91"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 3,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_21>, \n\nI am writing to inform you that your file, <ID_LIKE_1>, was discussed in a meeting attended by <NAME_LIKE_18>, <NAME_LIKE_19>, and <NAME_LIKE_20>. As per the discussion, a letter has been sent to you. We will be reviewing the amount of $1,250.00 before taking further action. You will be contacted at <EMAIL_3> with further updates.\n\nSincerely, \n[Your Name]",
+   "cost_usd": 0.00039312,
+   "call_uid": "0f0fd7ee50f342f49efa7cae228d040d"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 4,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_23>, \n\nRe: Request <FILE_NUMBER_3>. We acknowledge your request for records from the Department of <NAME_LIKE_2> and <NAME_LIKE_3> regarding the decision on file format PDF. Your request was assigned to <NAME_LIKE_24> for processing. Please note that <NAME_LIKE_25> was notified as per the Act, as referenced in <ID_LIKE_2>. You can reach us at the contact information you provided, <EMAIL_4> or <PHONE_3>, for any further updates.\n\nSincerely, \n[Your Name]",
+   "cost_usd": 0.00042536,
+   "call_uid": "311b91fa00214aa8ab00eec0ed84f5d3"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 5,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_26>, \n\nRe: File <FILE_NUMBER_4>, I am writing to inform you that we have reviewed the claim form completed by <NAME_LIKE_28>. As per the request by <NAME_LIKE_12> on page 12, we are considering the release of the information. The exception at $1,250.00 was considered but does not apply. \n\nSincerely,\n[Your Name]",
+   "cost_usd": 0.00040456,
+   "call_uid": "f2789971f53c4e28a6a18494afafaca8"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 6,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_29>, \n\nRe: Your request and the 2024 budget. We acknowledge the decision letter from <NAME_LIKE_31> of the Department of <NAME_LIKE_8> and <NAME_LIKE_9>. The record prepared by <NAME_LIKE_30> (employee number <EMPLOYEE_ID_2>) has been received. For further information, please contact <NAME_LIKE_15> at <EMAIL_5> or <PHONE_4>.\n\nSincerely, \n[Your Name]",
+   "cost_usd": 0.0003848,
+   "call_uid": "627b3b701d2e426aadd47a96b5c8af7b"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 7,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_17>, \n\nI am writing to confirm the actions discussed in the meeting with <NAME_LIKE_32>, <NAME_LIKE_33>, and <NAME_LIKE_34> regarding the claimant's file <ID_LIKE_3>. As per the notes, a letter has been sent to <NAME_LIKE_35>. I will proceed with writing to the claimant at <EMAIL_6> and review section 31(1) before releasing any information.\n\nBest regards, \n[Your Name]",
+   "cost_usd": 0.00039312,
+   "call_uid": "2597608a06d24b2081e2a4dd177d05cf"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 8,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_36>, \n\nRe: Request <FILE_NUMBER_5>\n\nWe acknowledge your request for records from the Department of <NAME_LIKE_8> and <NAME_LIKE_9>. Your file has been assigned to <NAME_LIKE_37> for review. A third party, <NAME_LIKE_38>, has been notified as per the Act. You can reach us at the contact information you provided, <EMAIL_7> or <PHONE_5>. We will be in touch with an update on your request.\n\nSincerely,\n[Your Name]",
+   "cost_usd": 0.00041912,
+   "call_uid": "bac8345bbfa541c882af44b87e59a905"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 9,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_39>, \n\nRe: File <FILE_NUMBER_6>, we have reviewed the claim form completed by <NAME_LIKE_41> and the request from <NAME_LIKE_12> in <ID_LIKE_2>. As per the memorandum from <NAME_LIKE_40> of the Department of <NAME_LIKE_8> and <NAME_LIKE_9>, we have considered the exception at the 2024 budget and found it does not apply. We will proceed accordingly.\n\nSincerely, \n[Your Name]",
+   "cost_usd": 0.00042952,
+   "call_uid": "7af36117fc7d40df8a57f9db9220d8d8"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 10,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_42>, \n\nRe: Your request for the 2024 budget, I am writing to confirm that the decision letter has been processed. The severed record, referenced as <ID_LIKE_2>, was prepared by <NAME_LIKE_34> (<EMPLOYEE_ID_3>). For further information, please contact <NAME_LIKE_15> at <EMAIL_8> or <PHONE_6>. \n\nYours sincerely,\n<NAME_LIKE_40>",
+   "cost_usd": 0.00036296,
+   "call_uid": "c51fbb2fadb744878b45cac2e5341173"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 11,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_17>, \n\nI am writing to confirm the actions discussed in the meeting with <NAME_LIKE_43>, <NAME_LIKE_44>, and <NAME_LIKE_45> regarding the file <ID_LIKE_4>. As per the discussion, a letter has been sent to <NAME_LIKE_35>. I will proceed with writing to the claimant at <EMAIL_9> and review 40 percent of the content before releasing, as instructed by <NAME_LIKE_22>. \n\nSincerely, \n[Your Name]",
+   "cost_usd": 0.00039936,
+   "call_uid": "daa2282bfaab43e885e9e78fb8ae3985"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 12,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_46>, \n\nRe: Request <FILE_NUMBER_7>, we acknowledge your application for records from the Department of <NAME_LIKE_2> and <NAME_LIKE_3> regarding the section 31(1) decision. Your file, assigned to <NAME_LIKE_24>, is being processed. We have also notified <NAME_LIKE_47> as per the Act. You can reach us at the contact information you provided, <EMAIL_10> or <PHONE_7>. \n\nSincerely, \n[Your Name]",
+   "cost_usd": 0.00041496,
+   "call_uid": "e90a81edd82e4ab7b3d06fa720f92338"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 13,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_48>, \n\nRe: File <FILE_NUMBER_8>, we acknowledge your inquiry regarding the claim form completed by <NAME_LIKE_23>. As per the request from <NAME_LIKE_12> in Q1 2024, we are processing the release of the required information. The matter has been reviewed, including the exception at page 12 of 40, which does not apply in this case. \n\nSincerely,\n[Your Name]",
+   "cost_usd": 0.0004108,
+   "call_uid": "04681da085aa4172baa69a4f9914b003"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 14,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_50>, \n\nRe: Your request <ID_LIKE_2>, we are writing to confirm that the decision has been made and the severed record is attached as Schedule A. <NAME_LIKE_51> has confirmed the record's status. For further information, please contact <NAME_LIKE_15> at <EMAIL_11> or <PHONE_8>. \n\nYours sincerely,\n<NAME_LIKE_52> \nDepartment of <NAME_LIKE_2> and <NAME_LIKE_3>",
+   "cost_usd": 0.00038272,
+   "call_uid": "479ff8dae1c5439998854abb465ad840"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 15,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_17>, \n\nI am writing to confirm the actions discussed in the meeting with <NAME_LIKE_53>, <NAME_LIKE_54>, and <NAME_LIKE_55> regarding the claimant's file <ID_LIKE_5>. As per the notes, a letter has been sent to <NAME_LIKE_11>. I will proceed with writing to the claimant at <EMAIL_12> and review section 31(1) before releasing any information.\n\nBest regards,\n[Your Name]",
+   "cost_usd": 0.00039208,
+   "call_uid": "f5bfeab556eb4ea99ea6638485e3f63f"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 16,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_56>, \n\nRe: Request <FILE_NUMBER_9>, we acknowledge your application for records concerning the decision of section 31(1). Our analyst, <NAME_LIKE_57>, is handling your request. We have also notified a third party, <NAME_LIKE_58>, as per the Act. You can reach us at your preferred contact method, either <EMAIL_13> or <PHONE_9>. \n\nSincerely, \n[Your Name]",
+   "cost_usd": 0.00038896,
+   "call_uid": "7e400ca65738457ba4e6c67205b31f75"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 17,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_59>, \n\nRe: File <FILE_NUMBER_10>, we acknowledge your inquiry regarding the claim form completed by <NAME_LIKE_61>. As per the memorandum from <NAME_LIKE_60> of the Department of <NAME_LIKE_8> and <NAME_LIKE_9>, the information requested by <NAME_LIKE_12> in PDF format has been considered. We will review the exception at section 31(1) as mentioned. \n\nSincerely, \n[Your Name]",
+   "cost_usd": 0.00042016,
+   "call_uid": "fcce8944ae5d4bfb8afe932d8fc35c97"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 18,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_62>, \n\nRe: Your request and the severed record prepared by <NAME_LIKE_63>, employee number <EMPLOYEE_ID_5>. For further information, you may contact <NAME_LIKE_15> at <EMAIL_14> or <PHONE_10>. \n\nYours sincerely,\n<NAME_LIKE_64>",
+   "cost_usd": 0.00033592,
+   "call_uid": "1e6fb2605d4849e485a3b67838f96598"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 19,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_17>, \n\nI am writing to confirm the actions discussed in the meeting with <NAME_LIKE_65>, <NAME_LIKE_66>, and <NAME_LIKE_44>. As per the discussion, a letter has been sent to <NAME_LIKE_35> regarding the claimant's file <ID_LIKE_6>. I will proceed with writing to the claimant at <EMAIL_15> and review <ID_LIKE_2> before releasing any information.\n\nBest regards,\n[Your Name]",
+   "cost_usd": 0.00039416,
+   "call_uid": "175eef1042c74f4ab754b814bbcdde4f"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 20,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_67>, \n\nRe: Request <FILE_NUMBER_11>, we acknowledge your query regarding records from the Department of <NAME_LIKE_2> and <NAME_LIKE_3> concerning Schedule A. Our analyst, <NAME_LIKE_68>, is handling your file. We have also notified <NAME_LIKE_28> as per the Act. You can reach us at the contact details provided, <EMAIL_16> or <PHONE_11>. We will keep you updated on the progress.\n\nBest regards, \n[Your Name]",
+   "cost_usd": 0.00041184,
+   "call_uid": "9f25494a8d0c44538a635009736d137d"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 21,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_69>, \n\nRe: File <FILE_NUMBER_12>, we acknowledge your request regarding the claim form completed by <NAME_LIKE_71>. As per the memorandum from <NAME_LIKE_70> of the Department of <NAME_LIKE_8> and <NAME_LIKE_9>, we are aware that <NAME_LIKE_12> has requested the release of this information in Q1 2024. We will review this matter further.\n\nSincerely, \n[Your Name]",
+   "cost_usd": 0.00042016,
+   "call_uid": "c6fb30c5fbf646ecb7a8b67e33cc5752"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 22,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_23>, \n\nRe: Your request of Q1 2024. We are writing to confirm that the decision letter has been processed. <NAME_LIKE_45>, employee number <EMPLOYEE_ID_6>, prepared the attached record. For further information, please contact <NAME_LIKE_15> at <EMAIL_4> or <PHONE_12>. \n\nYours sincerely,\n[Your Name]",
+   "cost_usd": 0.0003588,
+   "call_uid": "8ec827d9fd0f471ea0db23ec6f70871a"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 23,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_11>, \n\nI am writing to inform you that a meeting was held regarding your file, <ID_LIKE_7>. <NAME_LIKE_73>, <NAME_LIKE_74>, and <NAME_LIKE_75> were in attendance. As discussed, a letter was sent to you and we will be in touch with you at <EMAIL_17> shortly. \n\nSincerely, \n<NAME_LIKE_22>",
+   "cost_usd": 0.00037544,
+   "call_uid": "eb532090782d4e6b9f692bc8683922f9"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 24,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_76>, \n\nRe: Request <FILE_NUMBER_13>. We acknowledge your request for records from the Department of <NAME_LIKE_8> and <NAME_LIKE_9> regarding the 40 percent decision. Your file, assigned to <NAME_LIKE_77>, is being processed. We have also notified <NAME_LIKE_78> as per the Act, as referenced in <ID_LIKE_2>. You can reach us at the contact information you provided, <EMAIL_18> or <PHONE_13>. \n\nSincerely, \n[Your Name]",
+   "cost_usd": 0.0004212,
+   "call_uid": "7bbcfdfb6d16416fb89e71f40fe5f47f"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 25,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_79>, \n\nRe: File <FILE_NUMBER_14>, we have reviewed the claim form completed by <NAME_LIKE_81> and the request from <NAME_LIKE_12> in <ID_LIKE_2>. As per the memorandum from <NAME_LIKE_80> of the Department of <NAME_LIKE_8> and <NAME_LIKE_9>, we have considered the exception at Schedule A and determined it does not apply. We will proceed accordingly.\n\nSincerely, \n[Your Name]",
+   "cost_usd": 0.00042328,
+   "call_uid": "b3457d16ebba44da9e6f4d1ac581fd0f"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 26,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_82>, \n\nRe: Your request of Q1 2024. We acknowledge the decision letter from <NAME_LIKE_83> of the Office of the Information and Privacy Commissioner. The record prepared by <NAME_LIKE_18> (employee number <EMPLOYEE_ID_7>) has been granted in part. For further information, you may contact <NAME_LIKE_15> at <EMAIL_19> or <PHONE_14>.\n\nSincerely,\n[Your Name]",
+   "cost_usd": 0.00036712,
+   "call_uid": "d76ecd9b4e4740d584410fa0278aaa1c"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 27,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_22>, \n\nI am writing to confirm the actions discussed in the meeting with <NAME_LIKE_19>, <NAME_LIKE_84>, and <NAME_LIKE_85>. As per the discussion, we will review the 2024 budget before releasing information related to <ID_LIKE_2> and the claimant's file <ID_LIKE_8>. A letter has been sent to <NAME_LIKE_35>. We will proceed with writing to the claimant at <EMAIL_20> as instructed.\n\nSincerely, \n[Your Name]",
+   "cost_usd": 0.00040664,
+   "call_uid": "044c9632a37c4e2889f3f159464ca2f2"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 28,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_86>, \n\nRe: Request <FILE_NUMBER_15> \n\nWe acknowledge your request for records concerning the 2024 budget decision. Your file has been assigned to <NAME_LIKE_87> for review. Please note that <NAME_LIKE_78> has been notified and is responding under the Act, as referenced in <ID_LIKE_2>. You can reach us at your preferred contact method, either <EMAIL_21> or <PHONE_15>. \n\nSincerely, \n[Your Name]",
+   "cost_usd": 0.00039624,
+   "call_uid": "1f5fe665b21b42aeaaa5663fc811baf5"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 29,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_88>, \n\nRe: File <FILE_NUMBER_16>, we have reviewed the claim form completed by <NAME_LIKE_89>. As per the memorandum from <NAME_LIKE_52> of the Department of <NAME_LIKE_2> and <NAME_LIKE_3>, and the reference to <NAME_LIKE_12> on page 12, we will proceed accordingly. \n\nSincerely, \n[Your Name]",
+   "cost_usd": 0.00040456,
+   "call_uid": "b0aa1020a6fd40bb874a4c4d25b86b73"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 30,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_90>, \n\nRe: Your request and the attached severed record in PDF format. We confirm that <NAME_LIKE_57>, employee number <EMPLOYEE_ID_8>, has verified that no other copy exists. For further information, please contact <NAME_LIKE_15> at <EMAIL_22> or <PHONE_16>. \n\nYours sincerely,\n<NAME_LIKE_61> \nDepartment of <NAME_LIKE_8> and <NAME_LIKE_9>",
+   "cost_usd": 0.00037544,
+   "call_uid": "d5823f5f952349dc88f20e595a545360"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 31,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_17>, \n\nI am writing to confirm the actions discussed in the meeting with <NAME_LIKE_64>, <NAME_LIKE_45>, and <NAME_LIKE_66> regarding the request for file <ID_LIKE_9>. As per the meeting notes, a letter has been sent to Labrador <NAME_LIKE_91>. I will proceed with writing to the claimant at <EMAIL_23> and review the $1,250.00 before releasing it.\n\nSincerely, \n[Your Name]",
+   "cost_usd": 0.00039728,
+   "call_uid": "03221baf00244456876f54824820a432"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 32,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_80>, \n\nRe: Request <FILE_NUMBER_17> \n\nWe acknowledge your request for records concerning the 2024 budget decision from the Department of <NAME_LIKE_8> and <NAME_LIKE_9>. Your file, assigned to <NAME_LIKE_92>, is being processed. A third party, <NAME_LIKE_93>, has been notified as per the Act. You can reach us at the contact information provided, or through <EMAIL_24> or <PHONE_17>. \n\nSincerely, \n[Your Name]",
+   "cost_usd": 0.00041496,
+   "call_uid": "d40ab4ea99394c30b5a59cc67ae04142"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 33,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_94>, \n\nRe: File <FILE_NUMBER_18>, we have reviewed the claim form completed by <NAME_LIKE_96> and the request by <NAME_LIKE_12> for the release of information in file format PDF. The exception at 40 percent was considered and does not apply. We will be in touch with <NAME_LIKE_95> from the Office of the Information and Privacy Commissioner regarding this matter.\n\nSincerely, \n[Your Name]",
+   "cost_usd": 0.0004004,
+   "call_uid": "5d3d839c11354927ace946a1cc283f5a"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 34,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_97>, \n\nRe: Your request for page 12 of 40, we are writing to confirm that the severed record, as per section 31(1), has been granted in part. <NAME_LIKE_46>, employee number <EMPLOYEE_ID_9>, has verified that no other copy exists. For further information, please contact <NAME_LIKE_15> at <EMAIL_25> or <PHONE_18>. \n\nYours sincerely,\n<NAME_LIKE_98>\nDepartment of <NAME_LIKE_2> and <NAME_LIKE_3>",
+   "cost_usd": 0.00039832,
+   "call_uid": "064d703c436148dd9a213a98132111e9"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 35,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_17>, \n\nI am writing to confirm the actions discussed in the meeting with <NAME_LIKE_99>, <NAME_LIKE_100>, and <NAME_LIKE_101> regarding the request for <ID_LIKE_2> and the claimant's file <ID_LIKE_10>. As per the meeting notes, a letter was sent to Labrador <NAME_LIKE_91>. I will proceed with writing to the claimant at <EMAIL_26> and review Schedule A before releasing any information.\n\nBest regards,\n[Your Name]",
+   "cost_usd": 0.00040144,
+   "call_uid": "5b32bde3fbf3461e9d486e103bdc512d"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 36,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_96>, \n\nRe: Request <FILE_NUMBER_19> concerning the decision of <ID_LIKE_2>. We acknowledge your request for records held by our office. Your file has been assigned to <NAME_LIKE_102> for review. Please note that <NAME_LIKE_103>, a third party named in the records, has been notified under the Act. You can reach us at your preferred contact method, either <EMAIL_27> or <PHONE_19>. \n\nSincerely, \n[Your Name]",
+   "cost_usd": 0.0003952,
+   "call_uid": "e313c73256ed4e4e80e074ca28c23127"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 37,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_104>, \n\nRe: File <FILE_NUMBER_20>, I am writing to inform you that <NAME_LIKE_59> from the Office of the Information and Privacy Commissioner has reviewed the claim form completed by <NAME_LIKE_105>. As per the 2024 budget requirements stated by <NAME_LIKE_12>, the information will be released. If you have any questions, please do not hesitate to contact us.\n\nSincerely, \n[Your Name]",
+   "cost_usd": 0.00040456,
+   "call_uid": "f980ae84203b4aa3b7930b0d65590a5b"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 38,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_70>, \n\nRe: Your request for page 12 of 40, we are writing to confirm that the severed record, as per section 31(1), has been granted in part. <NAME_LIKE_106>, employee number <EMPLOYEE_ID_10>, has verified that no other copy exists. For further information, please contact <NAME_LIKE_15> at <EMAIL_28> or <PHONE_20>. \n\nYours sincerely,\n<NAME_LIKE_83>\nDepartment of <NAME_LIKE_2> and <NAME_LIKE_3>",
+   "cost_usd": 0.00039832,
+   "call_uid": "571562b6d6a3409e978c8223ff972726"
+  },
+  {
+   "model": "openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo",
+   "arm": "proxy",
+   "task": "reply",
+   "page": 39,
+   "status": 200,
+   "text": "Dear <NAME_LIKE_107>, \n\nI am writing to follow up on the meeting with <NAME_LIKE_16> and <NAME_LIKE_108> regarding the request for $1,250.00. As per the discussion, a letter has been sent to <NAME_LIKE_35>. I will now write to the claimant at <EMAIL_29> and review file <ID_LIKE_2> before releasing, as instructed, and also review their file <ID_LIKE_11>. \n\nSincerely, \n[Your Name]",
+   "cost_usd": 0.00040144,
+   "call_uid": "f3cb9cded2be41428fa8b20469fdb047"
+  }
+ ]
+}
