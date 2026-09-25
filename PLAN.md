@@ -424,6 +424,7 @@ from October the ledger-against-invoice difference is recorded there too (sectio
 | v0.16.0 | 2026-09-25 | `Gateway.record_refusal` and a ledger row for every redaction refusal; the proxy's preserve line measured (0.0% mutation on all three models); `boundary redact overmask` and the B2.8 plan it changed; `boundary.redact.request` and `boundary.redact.preserve` so both run without the server extra |
 | v0.17.0 | 2026-09-25 | `boundary redact eval --proxy`: 0 of 1,450 personal values reached the wire through the proxy, every page came back as sent |
 | v0.18.0 | 2026-09-25 | The proxy appends to the audit chain as it answers; record schema 2 seals `redacted` |
+| v0.19.0 | 2026-09-25 | `boundary loadtest`, the layered load test harness, with development figures; ledger v9's spend table, removing a per-call scan of the whole ledger from the caps |
 | v1.0.0 | May 23 2027 | Everything in Part B; `boundary.redact` for 07; the proxy for 13 and 14 |
 
 03 pins `boundary>=0.1,<0.3` for Part A and moves to `>=1.0` when its Part B is built
@@ -973,6 +974,17 @@ before the feature list grows, so the budget drives the architecture (provisiona
 p99 under 20 ms for routing plus audit, under 100 ms with redaction on 2,000-token
 prompts). Whatever the final numbers are, they are the numbers.
 
+**Amended 2026-09-25 (0.19.0): the harness exists, and a Python client is not k6.**
+`boundary loadtest` implements this method with one change and one addition. The change:
+the generator is an open-loop Python client, not k6, and latency counts from each request's
+scheduled time. The addition: it measures its own lag and reports a cell whose client fell
+behind as generator-bound instead of as a number, because on the development laptop the
+client cannot hold 500 requests a second (the first attempt spent 26 minutes of CPU at that
+level and never finished). So the VPS run needs k6 for the 500 rps level, or a generator on a
+second machine, as written above; the 50 and 200 rps levels are within this client. Building
+it found the per-call spend scan fixed in ledger v9 (docs/ledger.md), and development figures
+are in docs/loadtest.md, labelled as such. The budget is still set from the VPS run.
+
 ### Tests that matter
 
 Rehydration round-trip property test (any text, any spans, redact then rehydrate is the
@@ -1061,7 +1073,7 @@ the ledger and the spans as its production signal.
 - [ ] Injection screen detection and false-positive rates reported (unless dropped, and then said so)
 - [ ] Audit log chain verification tool included; daily anchors in the public repository; tamper test detects every injected corruption. **Tool and tamper test done 2026-09-22 (0.7.0)**: `boundary audit verify`, and `boundary audit tamper-test` detecting 2,400 of 2,400 corruptions across twelve kinds before the last anchor with 0 false alarms, the six kinds a chain cannot see after it reported beside them (B2.4, amended). **Daily anchors in the public repository** are what remain, and they need the proxy's always-on log to anchor
 - [x] Per-team budgets and quotas enforced; 429 body names the limit. **Done 2026-09-25 (0.13.0)**: team monthly and per-run budgets, the gateway ceiling and the per-minute quota each refuse with zero upstream calls and a body naming the limit, its reset and a `Retry-After`. The in-memory quota and the unpriced-model gap are in B2.7
-- [ ] Load test published: p50, p95, p99 overhead by layer and load level, with CIs and the VPS size stated
+- [ ] Load test published: p50, p95, p99 overhead by layer and load level, with CIs and the VPS size stated. **Harness built 2026-09-25 (0.19.0)** and run on the development laptop (docs/loadtest.md): median overhead 0.3 to 2.6 ms across the three layers at 50 and 200 rps; 500 rps is beyond the Python client and needs k6. Waits on the VPS
 - [ ] Observability dashboard shows every project's calls and costs live; completeness panel against local ledgers
 - [ ] Hosted demo live at gateway.peterparker.ca
 - [x] Foundry, Bedrock and Vertex adapters each exercised with calls recorded. **Foundry and Bedrock answered live; Vertex exercised to the vendor's refusal** (Part A section 10, closed 2026-09-23). If Google grants the quota later, one smoke run adds the 200

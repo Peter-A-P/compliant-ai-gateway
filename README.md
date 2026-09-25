@@ -227,6 +227,11 @@ declaration, not a vendor's conduct, and the command says so. Detail in
 |---|---|---|
 | _not yet_ | | |
 
+The harness exists (`boundary loadtest`, `v0.19.0`) and has been run on the development
+laptop, with median overheads of 0.3 to 2.6 ms across the three layers at 50 and 200 requests
+a second ([docs/loadtest.md](docs/loadtest.md)). This table stays empty until the VPS run,
+because the overhead budget is a number about the machine it runs on, and a laptop is not it.
+
 | Residency violations through the proxy | False refusals | Refusals audited on the ledger |
 |---|---|---|
 <!-- policy-proxy:start -->

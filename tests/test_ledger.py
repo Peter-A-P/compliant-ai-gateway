@@ -11,7 +11,7 @@ import respx
 from boundary.config import BoundaryConfig
 from boundary.errors import ProviderError, UnknownPrice
 from boundary.gateway import Gateway
-from boundary.ledger.store import IN_FLIGHT
+from boundary.ledger.store import IN_FLIGHT, LedgerStore
 from boundary.providers.base import BuiltRequest
 from boundary.transport import HttpResult, Transport
 from boundary.types import ChatRequest
@@ -269,3 +269,95 @@ def test_a_provider_error_message_reports_the_retries_the_gateway_assigned() -> 
     err.retries = 3
     assert "after 3 retries" in str(err)
     assert err.retries == 3
+
+
+# -- ledger_spend (v9): the caps read one row, and it always equals the sum -----------------
+
+
+def _sum(store: LedgerStore, project: str | None, month: str) -> float:
+    q = "SELECT COALESCE(SUM(cost_usd), 0) FROM ledger WHERE cost_usd IS NOT NULL"
+    q += " AND substr(ts_utc, 1, 7) = ?"
+    args: list[object] = [month]
+    if project is not None:
+        q += " AND project = ?"
+        args.append(project)
+    return float(store._conn.execute(q, args).fetchone()[0])
+
+
+def test_the_spend_table_equals_the_sum_through_begins_completes_and_merges(
+    tmp_path: Path,
+) -> None:
+    import random
+
+    from boundary.ledger.store import LedgerRow
+
+    rng = random.Random(9)
+    a = LedgerStore(tmp_path / "a.sqlite")
+    b = LedgerStore(tmp_path / "b.sqlite")
+    try:
+        for store in (a, b):
+            for i in range(300):
+                month = rng.choice(["2026-09", "2026-10"])
+                row = LedgerRow(
+                    ts_utc=f"{month}-0{rng.randint(1, 9)}T00:00:00.000Z",
+                    boundary_version="x",
+                    project=rng.choice(["alpha", "beta"]),
+                    purpose="t",
+                    mode="standard",
+                    provider="p",
+                    model_requested="p/m",
+                    cost_usd=rng.choice([None, round(rng.random(), 6)]),
+                )
+                store.begin(row)
+                if i % 3:
+                    # Completed at a different cost, or uncosted, as a real call is.
+                    row.cost_usd = rng.choice([None, round(rng.random(), 6)])
+                    store.complete(row)
+        a.merge_from(tmp_path / "b.sqlite")
+        a.merge_from(tmp_path / "b.sqlite")  # idempotent: counted once
+        for project in ("alpha", "beta", None):
+            for month in ("2026-09", "2026-10", "2026-11"):
+                assert a.spend_usd(project=project, year_month=month) == pytest.approx(
+                    _sum(a, project, month), abs=1e-9
+                ), (project, month)
+    finally:
+        a.close()
+        b.close()
+
+
+def test_an_older_ledger_gets_its_spend_table_built_on_open(tmp_path: Path) -> None:
+    import sqlite3
+
+    from boundary.ledger.store import LedgerRow
+
+    path = tmp_path / "old.sqlite"
+    store = LedgerStore(path)
+    for cost in (0.5, 0.25):
+        row = LedgerRow(
+            ts_utc="2026-09-01T00:00:00.000Z",
+            boundary_version="x",
+            project="alpha",
+            purpose="t",
+            mode="standard",
+            provider="p",
+            model_requested="p/m",
+            cost_usd=cost,
+        )
+        store.begin(row)
+    store.close()
+    # Make it look like a v8 file written before the table existed.
+    con = sqlite3.connect(path)
+    con.execute("DROP TRIGGER ledger_spend_insert")
+    con.execute("DROP TRIGGER ledger_spend_update")
+    con.execute("DROP TABLE ledger_spend")
+    con.execute("DELETE FROM schema_version WHERE version = 9")
+    con.execute("INSERT INTO schema_version (version, applied_utc) VALUES (8, 't')")
+    con.commit()
+    con.close()
+    store = LedgerStore(path)
+    try:
+        assert store.schema_version == 9
+        assert store.spend_usd(project="alpha", year_month="2026-09") == pytest.approx(0.75)
+        assert store.spend_usd(project=None, year_month="2026-09") == pytest.approx(0.75)
+    finally:
+        store.close()

@@ -40,6 +40,7 @@ listed here; nothing any earlier version offered has changed shape.
 | 0.11.0 | 2026-09-23 | `Policy.released` and `RELEASABLE`: a caller's `allow` terms also release a detector's LOCATION or ORGANISATION span that is one of them. A caller who passes no `allow` sees no change |
 | 0.12.0 | 2026-09-23 | The data policy (section 14): `Gateway(..., policy=)`, the `policy` configuration key, `PolicyRefused`, `boundary.enforce` and `boundary policy eval`. Opt-in: a gateway with no policy behaves as before |
 | 0.13.0 | 2026-09-25 | The OpenAI-compatible proxy (section 15): `boundary.server`, the `server` extra, `boundary serve` and `boundary teams key`. `on_text` on `chat_stream` and `achat_stream`. Nothing a library caller already uses changed |
+| 0.19.0 | 2026-09-25 | Ledger schema v9's `ledger_spend` table and triggers, which `spend_usd` reads for a month's spend (no column changes); `boundary loadtest` and `boundary.loadtest`; `boundary bench --spend` |
 | 0.18.0 | 2026-09-25 | Audit record schema 2 (`RECORD_SCHEMA = 2`, `SEALED_V2` with `redacted`, `fields_schema`, `needs_seal`, `sealed_fields(row, schema)`); `boundary.audit.appender.AuditAppender`; `LedgerStore.rows_after`; `create_app(..., audit_path=)` and `boundary serve --audit`, `--no-audit`. Schema 1 records verify as before |
 | 0.17.0 | 2026-09-25 | `boundary redact eval --proxy` and `boundary.server.redaction_eval`: the generated corpus through the proxy over HTTP, counting what reaches the wire and what comes back |
 | 0.16.0 | 2026-09-25 | `Gateway.record_refusal` and `CALLER_REFUSALS` (a redaction refusal is on the ledger); `boundary.redact.request` (`redact_request` with `allow=`, `StreamRehydrator`, moved from `boundary.server.redaction`, which re-exports them) and `boundary.redact.preserve`; `boundary redact overmask`; `boundary redact mutation --arms` and repeated `--score` |
@@ -214,7 +215,7 @@ All subclass `BoundaryError`.
 | `PolicyRefused` | The data policy forbids this class of data from reaching this provider (0.12). **No request was made**, and a ledger row with `error_type = 'policy_refused'` was written | `data_class`, `provider`, `reason`, `ledger_id` | 0.12 |
 | `ProviderError` | Non-2xx after retries (standard) or transport failure. In pass-through the same information is returned as a `ChatResponse` instead | `provider`, `status`, `body`, `retries`, `headers` | 0.1 |
 
-## 7. The ledger row (schema v8)
+## 7. The ledger row (schema v9)
 
 One row per call, written before the response is returned, including failures. Columns
 are additive only; never renamed or removed. Field-by-field notes in `docs/ledger.md`
@@ -244,6 +245,8 @@ other row; `latency_ms` on a streamed row runs to the last byte. `data_class` (v
 class the caller declared on the call (section 5a), null when it declared none, and never
 backfilled: nobody declared a class on a call made before there was a way to. `redacted`
 (v8) is 1 when the caller said the request was sent redacted and null otherwise, never 0.
+v9 adds no column: a derived table, `ledger_spend (project, month, cost)`, kept by triggers,
+which the caps read (docs/ledger.md).
 
 It is worth being exact about why `residency` is configuration rather than something parsed
 from a response, because the distinction is the whole value of the column. No vendor reports
@@ -308,7 +311,8 @@ every row as a failure at no cost rather than leaving it in flight at an estimat
 | `boundary prices check` | 0.1 | Validates every price file, warns when the newest is not this month, lists routes with no price |
 | `boundary ledger report` | 0.1 | Calls, tokens and cost by month, environment, project, declared data class (0.4) and model. `--data-class personal` (0.4) keeps only the rows whose caller declared that class; `--data-class undeclared` keeps the rows that declared none. A word that matches neither the vocabulary nor anything in the ledger exits 2 rather than printing an empty table, and since 0.5.4 a class this version does not know but the file holds is a valid filter, because an old reader must still be able to query its own data |
 | `boundary ledger residency` | 0.2.1 | Calls, tokens and models by provider, region and declared residency, widest reach first. `--require single-region|geo|global` exits 2 when any call went wider, and an undeclared row fails every limit. `--data-class personal` (0.4) is the audit question in one command: which calls carried personal data, and where did they go |
-| `boundary bench` | 0.1 | The README's measured row, against an in-process mock |
+| `boundary bench` | 0.1 | The README's measured row, against an in-process mock. `--spend` (0.19): what the spend-cap check costs per call as the ledger grows, before and after the v9 spend table |
+| `boundary loadtest` | 0.19 | PLAN.md B4's layered load test: `boundary serve` against a 50 ms mock upstream, open loop, per layer (`routing`, `audit`, `redaction`) and rate (`--levels`, default 50 and 200), `--runs`, `--duration`; overhead per run as the proxy's percentile minus the mock's, bootstrapped over runs. A cell whose client could not keep up is reported as generator-bound. `--machine` names the host; only a `--published` run on the VPS is the overhead budget. Needs the `server` extra |
 | `boundary ledger merge --into <dest> <sources...>` | 0.2 | Combines per-environment ledgers. Idempotent; `--dry-run` reports without writing |
 | `boundary batch status <id>` | 0.2 | Where the vendor has got to with a batch. Writes nothing; exits non-zero until it has ended, so a script can wait on it |
 | `boundary batch collect <id>` | 0.2 | Completes the ledger rows of a batch submitted earlier, possibly by another process. `--ledger` points at the ledger that submitted it |

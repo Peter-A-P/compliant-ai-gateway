@@ -24,7 +24,7 @@ from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 from typing import Any
 
-SCHEMA_VERSION = 8
+SCHEMA_VERSION = 9
 _SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 
 IN_FLIGHT = "in_flight"
@@ -63,7 +63,7 @@ def utc_now() -> str:
 
 @dataclass(slots=True)
 class LedgerRow:
-    """One row, schema v8. Field names are the column names."""
+    """One row, schema v9 (v9 added no column). Field names are the column names."""
 
     ts_utc: str
     boundary_version: str
@@ -267,6 +267,8 @@ class LedgerStore:
             if current < 8:
                 # Null for every existing row: no call before 0.15 said it was redacted.
                 self._add_columns(("redacted", "INTEGER"))
+            if current < 9:
+                self._rebuild_spend()
             self._conn.execute(
                 "INSERT INTO schema_version (version, applied_utc) VALUES (?, ?)",
                 (SCHEMA_VERSION, utc_now()),
@@ -274,6 +276,18 @@ class LedgerStore:
         self._conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS ledger_call_uid ON ledger (call_uid)")
         self._conn.execute("CREATE INDEX IF NOT EXISTS ledger_batch ON ledger (batch_id)")
         return SCHEMA_VERSION
+
+    def _rebuild_spend(self) -> None:
+        """Recompute `ledger_spend` from the rows (v9). The table and its triggers exist
+        already, from the schema script, so rows written from here on are counted by the
+        triggers; this counts the ones written before, from scratch, so nothing is counted
+        twice whatever state a killed earlier attempt left."""
+        self._conn.execute("DELETE FROM ledger_spend")
+        self._conn.execute(
+            "INSERT INTO ledger_spend (project, month, cost) "
+            "SELECT project, substr(ts_utc, 1, 7), SUM(cost_usd) FROM ledger "
+            "WHERE cost_usd IS NOT NULL GROUP BY project, substr(ts_utc, 1, 7)"
+        )
 
     def _add_columns(self, *columns: tuple[str, str]) -> None:
         have = self._columns()
@@ -330,7 +344,26 @@ class LedgerStore:
         run_id: str | None = None,
     ) -> float:
         """Sum of cost_usd for the scope. In-flight rows count at their estimate. Uncosted
-        rows have no cost and cannot count; the uncosted count is reported separately."""
+        rows have no cost and cannot count; the uncosted count is reported separately.
+
+        A month's spend, for a project or for all of them, is read from `ledger_spend` (v9),
+        which triggers keep equal to the sum over the rows; that is the query the caps make
+        before every call, and it no longer grows with the ledger. Any other scope sums the
+        rows, as it always did."""
+        if year_month is not None and run_id is None:
+            with self._lock:
+                if project is not None:
+                    cur = self._conn.execute(
+                        "SELECT COALESCE(SUM(cost), 0) FROM ledger_spend "
+                        "WHERE project = ? AND month = ?",
+                        (project, year_month),
+                    )
+                else:
+                    cur = self._conn.execute(
+                        "SELECT COALESCE(SUM(cost), 0) FROM ledger_spend WHERE month = ?",
+                        (year_month,),
+                    )
+                return float(cur.fetchone()[0])
         where = ["cost_usd IS NOT NULL"]
         args: list[Any] = []
         if project is not None:
