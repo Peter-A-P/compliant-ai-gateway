@@ -211,6 +211,30 @@ def test_the_gateway_writes_redacted_on_the_row_and_routes_by_it(
         gw.close()
 
 
+def test_record_refusal_writes_a_row_and_accepts_only_caller_refusals(
+    repo_config: BoundaryConfig, tmp_path: Path, keys: None
+) -> None:
+    gw = make_gateway(repo_config, tmp_path)
+    try:
+        with respx.mock(assert_all_called=False) as mock:
+            route = mock.post(ANTHROPIC_URL).mock(return_value=anthropic_ok())
+            row_id = gw.record_refusal(
+                _req(), purpose="t", error_type="redaction_refused", data_class="personal"
+            )
+            assert route.call_count == 0
+        (row,) = gw.ledger.rows()
+        assert row["id"] == row_id and row["error_type"] == "redaction_refused"
+        assert row["request_sha256"] is None and row["costed"] == 1 and row["cost_usd"] == 0.0
+        with pytest.raises(ValueError, match="not a caller refusal"):
+            gw.record_refusal(_req(), purpose="t", error_type="policy_refused")
+        with pytest.raises(ValueError, match="data_class"):
+            gw.record_refusal(
+                _req(), purpose="t", error_type="redaction_refused", data_class="secret"
+            )
+    finally:
+        gw.close()
+
+
 # -- the gateway -------------------------------------------------------------------------
 
 

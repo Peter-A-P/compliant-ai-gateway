@@ -145,3 +145,48 @@ def test_a_failed_call_is_counted_not_scored() -> None:
         [Call("m", "plain", "reply", 0, "ProviderError", None, None, None)],
     )
     assert score(run).failed == 1
+
+
+async def test_the_proxy_arm_sends_the_line_the_proxy_sends() -> None:
+    from boundary.redact.preserve import PRESERVE_LINE
+
+    seen: list[str] = []
+
+    class _Recorder(_EchoGateway):
+        async def achat(self, request: ChatRequest, **kw: Any) -> _Resp:
+            seen.append(request.system or "")
+            return await super().achat(request, **kw)
+
+    run = await collect(
+        _Recorder(0.0), ["fake/model"], pages=1, run_id="t", max_usd=1, arms=["proxy"]
+    )
+    assert {c.arm for c in run.calls} == {"proxy"}
+    assert seen and all(PRESERVE_LINE in s and "<PERSON_1>" not in s for s in seen)
+
+
+def test_runs_over_the_same_pages_score_together_and_others_are_refused() -> None:
+    from boundary.redact.mutation import merge
+
+    a = MutationRun(
+        "x", "t", 2, 20260920, "h", [Call("m", "plain", "reply", 0, 200, "hi", 0.0, "u")]
+    )
+    b = MutationRun(
+        "y", "t", 2, 20260920, "h", [Call("m", "proxy", "reply", 0, 200, "hi", 0.0, "v")]
+    )
+    assert {c.arm for c in merge([a, b]).calls} == {"plain", "proxy"}
+    with pytest.raises(ValueError, match="different pages"):
+        merge([a, MutationRun("z", "t", 3, 20260920, "h", [])])
+
+
+def test_overmask_counts_phrases_the_page_had_and_the_request_lost() -> None:
+    """Capitalised public terms the vocabulary does not know are masked by the second pass;
+    a phrase the page never had is not counted at all."""
+    from boundary.redact import overmask
+
+    res = overmask.run(Path(__file__).parent / "fixtures" / "gold")
+    assert res.questions == 2 and res.refused == 0
+    assert res.phrases == 4, "the phrase absent from its page is not counted"
+    assert ("q1", "Passive management") in res.examples
+    assert all(q != "q2" for q, _ in res.examples), "dollar amounts and ordinary words survive"
+    assert res.masked == len(res.examples) and res.questions_hit == 1
+    assert "must_mention phrases masked" in res.table()

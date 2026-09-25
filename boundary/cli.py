@@ -621,8 +621,8 @@ def cmd_redact_mutation(args: argparse.Namespace) -> int:
 
     from boundary.redact import mutation
 
-    if args.score is not None:
-        run = mutation.read(args.score)
+    if args.score:
+        run = mutation.merge([mutation.read(p) for p in args.score])
     else:
         models = [m.strip() for m in args.models.split(",") if m.strip()]
         gw = Gateway.from_config(args.config, project=args.project)
@@ -634,6 +634,7 @@ def cmd_redact_mutation(args: argparse.Namespace) -> int:
                     pages=args.pages,
                     run_id=args.run_id,
                     max_usd=args.max_usd,
+                    arms=[a.strip() for a in args.arms.split(",") if a.strip()],
                 )
             )
         finally:
@@ -647,6 +648,15 @@ def cmd_redact_mutation(args: argparse.Namespace) -> int:
         readme = args.config.resolve().parent.parent / "README.md"
         mutation.write_readme(readme, scored.readme_rows())
         print(f"README rows written to {readme}")
+    return 0
+
+
+def cmd_redact_overmask(args: argparse.Namespace) -> int:
+    """How much of the context an answer needs the proxy's redaction masks, on 03's gold set
+    (0.16). Offline: no key, no network, no model."""
+    from boundary.redact import overmask
+
+    print(overmask.run(Path(args.gold)).table())
     return 0
 
 
@@ -979,10 +989,33 @@ def main(argv: list[str] | None = None) -> int:
     mut.add_argument("--run-id", dest="run_id", default="mutation-rate")
     mut.add_argument("--out", type=Path, default=Path("bench/mutation.json"))
     mut.add_argument(
-        "--score", type=Path, default=None, help="re-score a stored run; no call is made"
+        "--arms",
+        default="plain,preserve",
+        help="which system prompts to run: plain, preserve (the 0.14.0 line), proxy (the "
+        "line the proxy sends)",
+    )
+    mut.add_argument(
+        "--score",
+        type=Path,
+        action="append",
+        default=[],
+        help="re-score a stored run, no call made; repeat to score runs over the same pages "
+        "together",
     )
     mut.add_argument("--write-readme", dest="write_readme", action="store_true")
     mut.set_defaults(func=cmd_redact_mutation)
+
+    om = redact.add_parser(
+        "overmask",
+        help="how much of a question's source document the proxy's redaction masks, and how "
+        "many of the phrases its answer must mention; offline, on project 03's gold set",
+    )
+    om.add_argument(
+        "--gold",
+        default="../03-ai-release-gate/gate/gold",
+        help="03's gate/gold directory (questions.jsonl and sources.jsonl)",
+    )
+    om.set_defaults(func=cmd_redact_overmask)
 
     ledger = sub.add_parser("ledger", help="ledger commands").add_subparsers(
         dest="sub", required=True

@@ -51,11 +51,15 @@ from boundary.redact.analyzer import Analyzer
 from boundary.redact.corpus import build
 from boundary.redact.evaluate import Rate, wilson
 from boundary.redact.policy import PLACEHOLDER, Policy, placeholder_kind
+from boundary.redact.preserve import PRESERVE_LINE
 from boundary.redact.sweep import sweep
 from boundary.redact.types import EntityType
 
 TASKS = ("extract", "reply")
-ARMS = ("plain", "preserve")
+# The arms, by the system prompt each sends. `preserve` is the line measured in 0.14.0, with
+# example placeholders; `proxy` (0.16) is the line the proxy sends, with none.
+ARMS = ("plain", "preserve", "proxy")
+DEFAULT_ARMS = ("plain", "preserve")
 SEED = 20260920
 
 SYSTEM = "You work in a records office and handle requests for information."
@@ -77,6 +81,17 @@ PROMPTS = {
     ),
 }
 MAX_TOKENS = {"extract": 500, "reply": 300}
+
+
+def arm_system(arm: str) -> str:
+    if arm == "plain":
+        return SYSTEM
+    if arm == "preserve":
+        return f"{SYSTEM}\n\n{PRESERVE}"
+    if arm == "proxy":
+        return f"{SYSTEM}\n\n{PRESERVE_LINE}"
+    raise ValueError(f"unknown arm {arm!r}; known: {', '.join(ARMS)}")
+
 
 # An entity type's name, however a model has respelled it: any case, any separator, with or
 # without an index, bracketed or not. Used only for what PLACEHOLDER did not match, so it
@@ -265,12 +280,36 @@ class MutationRun:
         return cls(**raw)
 
 
-def prompts_sha256() -> str:
-    blob = json.dumps(
-        {"system": SYSTEM, "preserve": PRESERVE, "prompts": PROMPTS, "max": MAX_TOKENS},
-        sort_keys=True,
-    )
+def prompts_sha256(arms: Sequence[str] = DEFAULT_ARMS) -> str:
+    """A fingerprint of everything a run sends besides the pages. The two original arms hash
+    exactly as they did in 0.14.0, so the stored run's fingerprint can be recomputed."""
+    doc: dict[str, Any] = {
+        "system": SYSTEM,
+        "preserve": PRESERVE,
+        "prompts": PROMPTS,
+        "max": MAX_TOKENS,
+    }
+    if "proxy" in arms:
+        doc["proxy"] = PRESERVE_LINE
+    blob = json.dumps(doc, sort_keys=True)
     return hashlib.sha256(blob.encode()).hexdigest()
+
+
+def merge(runs: Sequence[MutationRun]) -> MutationRun:
+    """Several stored runs as one, for scoring together: the same pages and seed, so an arm
+    run later is compared with the arms of an earlier run page for page. Refused otherwise."""
+    first = runs[0]
+    for r in runs[1:]:
+        if (r.pages, r.seed) != (first.pages, first.seed):
+            raise ValueError("runs over different pages or seeds cannot be scored together")
+    return MutationRun(
+        boundary_version=" + ".join(r.boundary_version for r in runs),
+        ran_utc=" + ".join(r.ran_utc for r in runs),
+        pages=first.pages,
+        seed=first.seed,
+        prompts_sha256=" + ".join(r.prompts_sha256[:12] for r in runs),
+        calls=[c for r in runs for c in r.calls],
+    )
 
 
 def newcombe(a: Rate, b: Rate, *, z: float = 1.96) -> tuple[float, float, float]:
@@ -296,21 +335,39 @@ class Scored:
     def models(self) -> list[str]:
         return sorted({m for m, _ in self.by_arm})
 
+    def effect(self, model: str, arm: str) -> str:
+        """The arm's effect on the mutation rate against the task alone, with its interval."""
+        a, b = self.by_arm.get((model, arm)), self.by_arm.get((model, "plain"))
+        if a is None or b is None or not a.tokens or not b.tokens:
+            return "not run"
+        d, lo, hi = newcombe(a.mutation, b.mutation)
+        return f"{d * 100:+.1f} points ({lo * 100:+.1f} to {hi * 100:+.1f})"
+
+    def _rate(self, model: str, arm: str, what: str) -> str:
+        c = self.by_arm.get((model, arm))
+        if c is None:
+            return "not run"
+        if what == "mutation":
+            return f"{c.mutation} of {c.tokens}"
+        rate = (
+            c.unrecoverable
+            if what == "unrecoverable"
+            else self.by_task.get((model, arm, "extract"), TokenCounts()).loss
+        )
+        # With its interval: a bare rate in a published table is a bug (CLAUDE.md).
+        return str(rate)
+
     def readme_rows(self) -> str:
-        """One README row per model: both arms' mutation and unrecoverable rates and the
-        extract task's loss, and the preserve line's effect with its interval."""
+        """One README row per model: each arm's mutation rate, both lines' effects, and the
+        unrecoverable rate and the extract task's loss for each arm in turn."""
         rows = []
-        for model in self.models():
-            plain, keep = self.by_arm.get((model, "plain")), self.by_arm.get((model, "preserve"))
-            if plain is None or keep is None:
-                continue
-            lost_p = self.by_task.get((model, "plain", "extract"), TokenCounts()).loss
-            lost_k = self.by_task.get((model, "preserve", "extract"), TokenCounts()).loss
-            d, lo, hi = newcombe(keep.mutation, plain.mutation)
+        for m in self.models():
+            unrec = " / ".join(self._rate(m, a, "unrecoverable") for a in ARMS)
+            loss = " / ".join(self._rate(m, a, "loss") for a in ARMS)
             rows.append(
-                f"| {model} | {plain.mutation} of {plain.tokens} | {keep.mutation} of "
-                f"{keep.tokens} | {d * 100:+.1f} points ({lo * 100:+.1f} to {hi * 100:+.1f}) | "
-                f"{plain.unrecoverable} / {keep.unrecoverable} | {lost_p} / {lost_k} |"
+                f"| {m} | {self._rate(m, 'plain', 'mutation')} | "
+                f"{self._rate(m, 'preserve', 'mutation')} | {self._rate(m, 'proxy', 'mutation')} | "
+                f"{self.effect(m, 'preserve')} | {self.effect(m, 'proxy')} | {unrec} | {loss} |"
             )
         return "\n".join(rows)
 
@@ -334,13 +391,10 @@ class Scored:
                     f"{model:<54}{arm:<10}{c.tokens:>7}  {c.mutation!s:<24}"
                     f"{c.unrecoverable!s:<24}{ex.loss!s:<24}{c.titled:>12}"
                 )
-        lines += ["", "the preserve line's effect on the mutation rate (preserve minus plain):"]
-        for model in self.models():
-            a, b = self.by_arm.get((model, "preserve")), self.by_arm.get((model, "plain"))
-            if a is None or b is None or not a.tokens or not b.tokens:
-                continue
-            d, lo, hi = newcombe(a.mutation, b.mutation)
-            lines.append(f"  {model:<52}{d * 100:+.1f} points ({lo * 100:+.1f} to {hi * 100:+.1f})")
+        for arm in ARMS[1:]:
+            lines += ["", f"the {arm} line's effect on the mutation rate ({arm} minus plain):"]
+            for model in self.models():
+                lines.append(f"  {model:<52}{self.effect(model, arm)}")
         forms: dict[str, int] = {}
         for c in self.by_arm.values():
             for k, v in c.forms.items():
@@ -396,6 +450,7 @@ async def collect(
     run_id: str,
     max_usd: float,
     concurrency: int = 6,
+    arms: Sequence[str] = DEFAULT_ARMS,
 ) -> MutationRun:
     """Every model, arm, task and page, through `gateway.achat`. Stops sending once the run's
     returned cost passes `max_usd`; the calls not made are absent from the run, not guessed."""
@@ -415,7 +470,7 @@ async def collect(
             async with lock:
                 if spent >= max_usd:
                     return
-            system = SYSTEM if arm == "plain" else f"{SYSTEM}\n\n{PRESERVE}"
+            system = arm_system(arm)
             request = ChatRequest(
                 model=model,
                 messages=[{"role": "user", "content": PROMPTS[task].format(page=redacted[i])}],
@@ -444,7 +499,7 @@ async def collect(
         *(
             one(model, arm, task, i)
             for model in models
-            for arm in ARMS
+            for arm in arms
             for task in TASKS
             for i in range(pages)
         )
@@ -455,7 +510,7 @@ async def collect(
         ran_utc=dt.datetime.now(dt.UTC).isoformat(timespec="seconds"),
         pages=pages,
         seed=seed,
-        prompts_sha256=prompts_sha256(),
+        prompts_sha256=prompts_sha256(arms),
         calls=calls,
     )
 
@@ -472,6 +527,7 @@ def read(path: Path) -> MutationRun:
 __all__ = [
     "ARMS",
     "ASKED",
+    "DEFAULT_ARMS",
     "PRESERVE",
     "PROMPTS",
     "SYSTEM",
@@ -480,9 +536,11 @@ __all__ = [
     "MutationRun",
     "Scored",
     "TokenCounts",
+    "arm_system",
     "classify",
     "collect",
     "corpus_policy",
+    "merge",
     "newcombe",
     "read",
     "score",

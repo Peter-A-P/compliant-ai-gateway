@@ -52,7 +52,7 @@ from boundary.errors import (
     SpendCapExceeded,
     UnknownAlias,
 )
-from boundary.gateway import Gateway
+from boundary.gateway import REDACTION_REFUSED, Gateway
 from boundary.providers import STREAM_ADAPTERS
 from boundary.routes import ModelRef
 from boundary.server import wire
@@ -230,7 +230,7 @@ def create_app(
             "x-boundary-data-class-source": source,
             "x-boundary-version": __version__,
         }
-        redaction = _redact(state.policy, data_class, parsed)
+        redaction = _redact(state.policy, data_class, parsed, gw, purpose, run_id)
         headers["x-boundary-redacted"] = "true" if redaction is not None else "false"
         if redaction is not None:
             headers["x-boundary-placeholders"] = str(redaction.placeholders)
@@ -333,10 +333,17 @@ def _resolve(gw: Gateway, model: str) -> ModelRef:
         ) from None
 
 
-def _redact(policy: DataPolicy, data_class: DataClass, parsed: wire.Parsed) -> Redacted | None:
+def _redact(
+    policy: DataPolicy,
+    data_class: DataClass,
+    parsed: wire.Parsed,
+    gw: Gateway,
+    purpose: str,
+    run_id: str | None,
+) -> Redacted | None:
     """Redact the request when its class's rule names a `redacted_as`, or refuse it with a
     422 when the guard will not vouch for the result. The refusal carries counts by kind and
-    type, never a value."""
+    type, never a value, and is on the ledger (0.16) as a `redaction_refused` row."""
     rule = policy.classes.get(data_class)
     if rule is None or rule.redacted_as is None:
         return None
@@ -344,6 +351,13 @@ def _redact(policy: DataPolicy, data_class: DataClass, parsed: wire.Parsed) -> R
         return redact_request(parsed.request)
     except RedactionRefused as e:
         counts = leak_counts(e)
+        ledger_id = gw.record_refusal(
+            parsed.request,
+            purpose=purpose,
+            run_id=run_id,
+            data_class=data_class,
+            error_type=REDACTION_REFUSED,
+        )
         raise Refusal(
             422,
             wire.error_body(
@@ -352,6 +366,7 @@ def _redact(policy: DataPolicy, data_class: DataClass, parsed: wire.Parsed) -> R
                 type_="redaction_refused",
                 code="leak_after_redaction",
                 findings=counts,
+                ledger_id=ledger_id,
             ),
         ) from None
 

@@ -166,6 +166,10 @@ def _residency(pc: ProviderConfig) -> str | None:
 
 # The error_type a policy refusal is written with (0.12). A row carrying it was never sent.
 POLICY_REFUSED = "policy_refused"
+# The error_type of a refusal a caller made before handing the call over (0.16): the proxy's
+# redaction guard. Recorded through `Gateway.record_refusal`; a row carrying it was never sent.
+REDACTION_REFUSED = "redaction_refused"
+CALLER_REFUSALS = frozenset({REDACTION_REFUSED})
 
 
 class Gateway:
@@ -1174,6 +1178,52 @@ class Gateway:
             streamed=stream,
             cache_ok=cache_ok,
         )
+
+    def record_refusal(
+        self,
+        request: ChatRequest,
+        *,
+        purpose: str,
+        error_type: str,
+        run_id: str | None = None,
+        mode: Mode = Mode.STANDARD,
+        data_class: DataClass | str | None = None,
+    ) -> int:
+        """Write the row for a call the caller refused before handing it over, and return
+        its id (0.16). Nothing is sent, no key is read and no body is built, so the row has
+        no request hash and a cost of zero; it records who was refused, for which model and
+        class, and why, from the closed set `CALLER_REFUSALS`.
+
+        It exists because every refusal that is a compliance decision belongs on the record,
+        and the proxy's redaction guard runs before the library is called, where only the
+        caller knows the call was stopped. A policy refusal needs no such call: the gateway
+        writes that row itself."""
+        if error_type not in CALLER_REFUSALS:
+            known = ", ".join(sorted(CALLER_REFUSALS))
+            raise ValueError(f"error_type {error_type!r} is not a caller refusal; known: {known}")
+        declared = data_class_value(data_class)
+        ref = resolve(request.model, self.config, mode)
+        row = LedgerRow(
+            ts_utc=utc_now(),
+            boundary_version=__version__,
+            project=self.project,
+            purpose=purpose,
+            mode=mode.value,
+            provider=ref.provider,
+            model_requested=ref.explicit,
+            run_id=run_id,
+            alias=ref.alias,
+            region=ref.region,
+            residency=_residency(ref.provider_config),
+            cost_usd=0.0,
+            costed=True,
+            env=self.env,
+            data_class=declared,
+        )
+        row_id = self.ledger.begin(row)
+        row.error_type = error_type
+        self.ledger.complete(row)
+        return row_id
 
     def _enforce(
         self,

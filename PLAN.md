@@ -421,6 +421,7 @@ from October the ledger-against-invoice difference is recorded there too (sectio
 | v0.13.1 | 2026-09-25 | `boundary policy eval --proxy`: the adversarial suite through the proxy, 0 of 262 forbidden cases sent |
 | v0.14.0 | 2026-09-25 | `boundary redact mutation` and `boundary.redact.mutation`: placeholder mutation under three models with and without a preserve line, from a stored run. Nothing downstream imports it |
 | v0.15.0 | 2026-09-25 | Redaction in the proxy, and what it permits: `ClassRule.redacted_as`, `redacted=` on the chat methods, `ChatResponse.redacted`, ledger schema v8's `redacted` column. A caller that passes nothing new sees no change; 02, 03 and 07 need not move |
+| v0.16.0 | 2026-09-25 | `Gateway.record_refusal` and a ledger row for every redaction refusal; the proxy's preserve line measured (0.0% mutation on all three models); `boundary redact overmask` and the B2.8 plan it changed; `boundary.redact.request` and `boundary.redact.preserve` so both run without the server extra |
 | v1.0.0 | May 23 2027 | Everything in Part B; `boundary.redact` for 07; the proxy for 13 and 14 |
 
 03 pins `boundary>=0.1,<0.3` for Part A and moves to `>=1.0` when its Part B is built
@@ -738,8 +739,9 @@ from the first paragraph of this section, each stated. The vault is the request'
 in memory rather than Redis under a per-team key, because the proxy is one process; Redis
 comes with more than one. Detection is rules only, with no Presidio and no gazetteer, so names
 are `NAME_LIKE`. The preserve line carries no example placeholder, because 0.14.0 found a
-model copying the example into its answers, and its wording is not yet measured. And a
-redaction refusal writes no ledger row, because the guard runs before the library is called.
+model copying the example into its answers; measured in 0.16, it gives 0.0% mutation on
+all three models tested. A redaction refusal is on the ledger since 0.16, through
+`Gateway.record_refusal`, because the guard runs before the library is called.
 
 ### B2.4 A hash-chained, anchored audit log
 
@@ -843,6 +845,56 @@ read a "no worse than" from this gate with the same suspicion the amendment abov
 to the plan, and it is right to: the reason the one-sided test was wrong here is that it
 could return a comfortable answer without the evidence for it, and a two-sided test with no
 power reported can do exactly the same thing.
+
+**Amended 2026-09-25: 03's gold set holds no personal data, so the measurement is two
+measurements.** Read before planning the run: 03's gate set is 100 consumer questions
+answered from 40 regulator pages (FCAC and investor.gov, Open Government Licence - Canada and
+US public domain), judged by an LLM on completeness against a `must_mention` list, and it
+contains no email address, no phone number and no named person. Redacting it would remove no
+personal data, so "redacted against unredacted over 03's gold set" cannot measure what
+removing personal data costs. It measures something else, and that turned out to be real:
+**the proxy redacts the whole request, source page included, and the rules-only second pass
+masks capitalised words it does not know.** `boundary redact overmask` (0.16, offline) puts
+each gold question and its page through the proxy's redaction: a median of 15 placeholders
+per request, and **18 of the 129 phrases the judge requires, 14.0% (9.0 to 21.0), masked out
+of the page** the model reads, on 15 of the 100 questions ("PINs", "ETF", "Passive
+management", "Increased Net Asset Value"). So the plan is:
+
+*Part 1, the cost of over-masking public context.* 03's 100 gold questions, three models
+(Haiku 4.5, Llama 3.3 70B on Together, Gemini 3.5 Flash-Lite, the panel the mutation rate was
+measured on), three arms: **raw**; **redacted** as the proxy does it today, rules only; and
+**redacted with an allow list** as the remedy. The list is written or derived **before** the
+run from pages that are not in the gold set (other FCAC and investor.gov pages), never tuned
+on the 40 sources, because tuning it on the test pages would measure the tuning. Each answer
+is judged by 03's completeness judge (kappa 0.914 in its calibration, the only criterion it
+is licensed for), paired per item, and reported as the difference against raw with 03's
+paired bootstrap interval, **two-sided**, with the effect the run could detect printed beside
+it. At 100 items that is about 10 points, which is why this is a check on a large cost and not
+a fine measurement, and the write-up says so. The overmask figure above is the prediction; the
+write-up says whether it held.
+
+*Part 2, the cost of removing personal data.* A **personalised** variant of the same 100
+questions, generated from a seed: each question rewritten in the voice of a customer who
+gives a synthetic name, email address, phone number and account number, none of which the
+answer needs. A perfect redactor costs nothing here, so any difference against raw is the
+price of the placeholders themselves, and a second check reads whether a rehydrated answer
+addresses the person correctly. Beside it, 03's red-team `pii_leakage` suite (200 synthetic
+records, graded by `withholds_pii`) through the proxy, raw against redacted: a redacted
+request cannot leak a value the model never received, and that is worth showing as a number
+rather than asserting.
+
+*Mechanics.* Answers are generated from this repository, through the proxy's code path
+(`redact_request`, the gateway with `redacted=True`, rehydration), and written in 03's
+instance format; **grading stays 03's**, unchanged, so the judge is the one 03 calibrated.
+Standard mode, not pass-through, because redaction rewrites the request by design; one sample
+per item per arm at each vendor's default temperature. 03 pins `boundary` 0.1.0 and its
+`gate check` has no base-URL setting, so it is not driven directly. Open before the run: that
+03 can judge stored instances as they are (if not, a `gate judge` over an instances file is a
+change to 03 and a note in its plan).
+
+*Cost.* Part 1 is 900 answers and 900 judgements; part 2 adds 600 and 600, and the red-team
+check 1,200 answers. At the per-call costs measured this month, about US$5 in all, inside
+04's monthly cap. Needs Peter's go for the spend.
 
 ### B2.9 Out of scope in Part B, on purpose
 
@@ -996,7 +1048,7 @@ the ledger and the spans as its production signal.
 - [x] Data classification header enforced, absent means `personal`; residency violations zero on the adversarial suite, with correct refusals. **Engine and adversarial suite done 2026-09-23 (0.12.0)**: 0 of 550 forbidden cases sent, 0 false refusals, every refusal audited, absent judged as `personal`. The header itself is the proxy's. **Header done 2026-09-25 (0.13.0)**: absent becomes `personal` at the door and is written as a declaration, an unknown word is a 400, and the proxy refuses to start without a policy. **Through the proxy 2026-09-25 (0.13.1)**: `boundary policy eval --proxy`, 338 cases over HTTP with thirteen header values, 0 of 262 forbidden sent, 0 of 76 allowed refused, 210 of 210 refusals on the ledger; run in CI on every push
 - [x] Reversible redaction round-trips under property tests; rehydration fidelity and mutation rate reported. **Mutation rate done 2026-09-25 (0.14.0)**: `boundary redact mutation`, 480 calls over three models, two tasks and two arms, US$0.24, stored and re-scored from `bench/mutation.json`. Without the preserve line Llama 3.3 70B mutates 37.0% of placeholders and Haiku 6.8%, nearly all recoverably; with it 0.6% and 0.0%; Gemini 0.0% either way (docs/redact.md). It did not need the proxy after all, only a model; the proxy is where the line will be sent. **Property tests and fidelity done 2026-09-21 (0.6.4)**: the round trip is a property test over generated documents, and `boundary redact eval --rehydration` reports resolution per mutation form with intervals, 14 of 15 at 100% and 0 fabrications. The **mutation rate** is what remains, and it needs the proxy: which of those forms a model actually produces, sampled from real answers
 - [x] Redaction precision and recall per entity type on public corpora and the Canadian set, with CIs. **Done 2026-09-23 (0.8.0)**; detail on the annotated line below
-- [ ] Quality effect of redaction measured through the 03 gate, two-sided, with interval
+- [ ] Quality effect of redaction measured through the 03 gate, two-sided, with interval. **Planned 2026-09-25 (B2.8 amended)**: 03's gold set holds no personal data, so the measurement is two, over-masking of public context (predicted by `boundary redact overmask`: 14.0% (9.0 to 21.0) of required phrases masked) and the cost of removing personal data on a personalised variant. Waits on Peter's go for about US$5
 - [ ] Semantic cache hit rate, dollars saved and false-hit rate on replayed traffic
 - [ ] Injection screen detection and false-positive rates reported (unless dropped, and then said so)
 - [ ] Audit log chain verification tool included; daily anchors in the public repository; tamper test detects every injected corruption. **Tool and tamper test done 2026-09-22 (0.7.0)**: `boundary audit verify`, and `boundary audit tamper-test` detecting 2,400 of 2,400 corruptions across twelve kinds before the last anchor with 0 false alarms, the six kinds a chain cannot see after it reported beside them (B2.4, amended). **Daily anchors in the public repository** are what remain, and they need the proxy's always-on log to anchor

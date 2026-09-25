@@ -207,7 +207,13 @@ async def test_the_guard_refuses_rather_than_sends(
     assert err["type"] == "redaction_refused"
     assert err["findings"] == {"placeholder:EMAIL": 1}
     assert "bob@example.com" not in r.text
-    assert route.call_count == 0 and proxy.rows() == []
+    assert route.call_count == 0
+    # On the record since 0.16: a compliance refusal belongs in the ledger, with no content.
+    (row,) = proxy.rows()
+    assert row["id"] == err["ledger_id"]
+    assert row["error_type"] == "redaction_refused" and row["data_class"] == "personal"
+    assert row["request_sha256"] is None and row["cost_usd"] == 0.0 and row["redacted"] is None
+    assert row["http_status"] is None and row["provider"] == "foundry-canada"
 
 
 # -- the stream rehydrator -----------------------------------------------------------------

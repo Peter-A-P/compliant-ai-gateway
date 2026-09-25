@@ -581,12 +581,28 @@ checked against Newcombe's own worked example in the tests.
   it as content. Here it is harmless, because the vault holds no `<PERSON_1>` and
   `unresolved` reports it. In a document whose policy did mint `<PERSON_1>`, the same copy
   would rehydrate to a real person who was never in the answer. **The line the proxy sends
-  should carry no example that could be a real placeholder**, and that is a change to
-  `PRESERVE` to make and measure before the proxy uses it.
+  should carry no example that could be a real placeholder.**
 - **A model puts back what redaction took out.** Llama wrote "Dear Mr. <NAME_LIKE_1>" three
   times without the line, on pages that give no title: a guess at a gender the redaction had
   removed. Counted as `titles added`, zero under the line, and not a placeholder mutation at
   all, which is why it has a column of its own.
+
+**The proxy's line, measured in 0.16.** `PRESERVE_LINE` (`boundary.redact.preserve`) says
+the same thing with no example placeholder, and is what the proxy sends. It was run as a
+third arm, `proxy`, over the same 40 pages, tasks and models: 240 calls, US$0.127, stored in
+`bench/mutation-proxy-line.json` and scored together with the first run (`--score` twice).
+
+| Model | Task alone | 0.14 line (with examples) | Proxy's line (no example) | Effect of the proxy's line |
+|---|---|---|---|---|
+| Claude Haiku 4.5 | 6.8% (5.1 to 8.9) | 0.0% (0.0 to 0.5) | 0.0% (0.0 to 0.5) of 725 | -6.8 points (-8.9 to -5.0) |
+| Gemini 3.5 Flash-Lite | 0.0% (0.0 to 0.6) | 0.0% (0.0 to 0.6) | 0.0% (0.0 to 0.5) of 716 | +0.0 points (-0.6 to +0.5) |
+| Llama 3.3 70B (Together) | 37.0% (33.3 to 40.9) | 0.6% (0.2 to 1.6) | 0.0% (0.0 to 0.6) of 619 | -37.0 points (-40.9 to -33.2) |
+
+No mutation on any model, nothing unrecoverable, no copied placeholder, and loss at 0.3%
+(0.1 to 1.9) or under. Dropping the example lost nothing measurable, and removed the one
+failure the first line had. Two limits on the comparison: the third arm ran some minutes
+after the first two rather than interleaved with them, and each call is still one sample at
+the vendor's default temperature.
 
 **Corrected before publishing, on reading the answers.** Two things in the first scoring
 were wrong, and both were found by reading what the models wrote rather than trusting the
@@ -620,6 +636,31 @@ messages together, `outbound` as the refusing guard, a preserve line with no exa
 placeholder added to the system prompt, and the answer rehydrated, streamed or not. The
 mechanics and what they cost are in docs/server.md. Detection there is rules only, so the
 figures in the first column of the tables above are the ones that apply to the proxy.
+
+### Over-masking the context an answer needs, from 0.16.0
+
+    boundary redact overmask --gold ../03-ai-release-gate/gate/gold
+
+The proxy redacts a whole request, and a question answered from a document carries the
+document. Project 03's gold set is 100 consumer questions answered from 40 regulator pages
+and judged on phrases the answer must mention, and it holds no personal data at all, so
+anything redaction masks in it is over-masking. Put through the proxy's redaction as a
+`personal` request, rules only:
+
+| | |
+|---|---|
+| Refused by the guard | 0 of 100 |
+| Placeholders per request | median 15, max 51 |
+| Required phrases masked out of the page | **14.0% (9.0 to 21.0)**, 18 of 129 |
+| Questions with at least one masked | 15.0% (9.3 to 23.3) |
+
+The masked phrases are the second pass doing what it is built to do with words it cannot
+vouch for: "PINs", "ETF", "Passive management", "Increased Net Asset Value", "THE EXCHANGE
+network", and the word "Question" itself when it heads a line. None of it identifies anybody.
+It is a prediction of a quality cost, not a measurement of one, since a model may answer from
+what survives; measuring it is PLAN.md B2.8, which this finding reshaped. Built the same day
+it found a flaw in its own first version, which counted a phrase as surviving when the
+question repeated it; the comparison now reads the page as sent and nothing else.
 
 ### The Canadian identifier set, from 0.6.1
 
