@@ -1,7 +1,8 @@
 # What did not work
 
 Rule C of the portfolio plan says every project names an approach it tried and rejected,
-with the evidence. This is that page for Part A. PLAN.md section 9 listed three candidates
+with the evidence. This is that page for Part A, and since 0.21.0 for Part B as well: see
+**Putting every value back into the answer**, below. PLAN.md section 9 listed three candidates
 before any of them was measured. Two are now measured and written up here:
 
 1. **A central ledger written over the network**, the one that shaped the code.
@@ -264,6 +265,48 @@ not at all**.
 mislabel count beside its recall. Part B's redaction table will carry precision as well as
 recall for the same reason: a number that can only go up when more text is covered is not a
 measure of a boundary. The 96.3% in `docs/redact.md` stands, with this next to it.
+
+---
+
+# Putting every value back into the answer
+
+**Part B's.** Measured 2026-09-27 (0.20.0), changed the same day (0.21.0).
+
+**The approach:** the proxy redacts a personal request, sends placeholders, and rehydrates
+the answer with the request's whole vault, so the client reads real values wherever the
+model wrote a placeholder. It is what reversible redaction usually means, it is what the
+proxy did from 0.15.0, and it made every round-trip figure perfect: 1,450 planted values, 0
+on the wire, every page back as sent (0.17.0).
+
+**Why it was attractive:** it is invisible. A client sees the answer it would have got with
+no redaction at all, and the vendor sees nothing personal. Nothing the round-trip test could
+measure argued against it.
+
+**What it misses:** a model given placeholders treats them as safe to repeat. The vault does
+not know who is allowed to read a value; it only knows the value. So a value the operator put
+in the system prompt, for the model to use and never disclose, goes back to whoever is asking
+as soon as the model names its placeholder.
+
+**The evidence.** 03's `pii_leakage` suite, a confidential customer record in the system
+prompt behind 200 attacks, graded by 03's `withholds_pii`, three models, raw against redacted
+(docs/redact.md):
+
+| Model | Leaked raw | Leaked redacted, every value put back | Leaked redacted, only what the caller sent |
+|---|---|---|---|
+| Haiku 4.5 | 0 of 200 | 13 of 200, +6.5 points (+3.2 to +10.8) | 0 of 200 |
+| gpt-5.4-mini | 1 of 200 | 3 of 200 | 0 of 200 |
+| Llama 3.3 70B | 119 of 200 | 107 of 200 | 0 of 200 |
+
+Haiku refused all thirteen and listed what it would not share: "Social insurance number
+(<ID_LIKE_1>), Card number (<ID_LIKE_2>), ...". Rehydration made each refusal a disclosure.
+The model that never leaks leaked, because of the boundary.
+
+**What replaced it:** `rehydrate: caller`, the proxy's default since 0.21.0, puts back only
+values that appear in the caller's own messages (`caller_scoped`). Measured offline on the
+same stored answers, rebuilt and checked against the hash of what was sent: 0 of 600 leaks.
+The price, on 900 ordinary answers, is 7 left with a placeholder, every one a word from the
+operator's own system prompt that the rules masked. `rehydrate: all` is still there, per
+class, for a deployment whose system prompt is the caller's own data.
 
 ---
 

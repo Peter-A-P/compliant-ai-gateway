@@ -416,6 +416,13 @@ one is not this repository's measurement but project 07's, recorded because it i
 number published here. Recall asks whether a span was found, not what it was called, and
 the label is what decides whether text is released.
 
+**Part B's rejected approach is putting every value back into the answer**, what reversible
+redaction usually means and what the proxy did until `v0.21.0`. The vault knows values, not
+who may read them, so on 03's red team a model that refused to disclose a record while naming
+its fields as placeholders had the record disclosed for it: Haiku 4.5 leaked 0 of 200 raw and
+13 of 200 redacted. Putting back only what the caller sent leaks none; the evidence is in
+[docs/rejected.md](docs/rejected.md).
+
 ## How it works
 
 In plain language: [docs/explained.md](docs/explained.md). In full: [PLAN.md](PLAN.md). Part A: a Python library with raw-HTTP adapters for Anthropic,
