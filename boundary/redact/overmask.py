@@ -21,6 +21,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from boundary.redact.analyzer import Analyzer
 from boundary.redact.evaluate import Rate
 from boundary.redact.policy import PLACEHOLDER
 from boundary.redact.request import redact_request
@@ -67,7 +68,9 @@ class OvermaskResults:
         return "\n".join(lines)
 
 
-def run(gold: Path, *, allow: Sequence[str] = ()) -> OvermaskResults:
+def run(
+    gold: Path, *, allow: Sequence[str] = (), analyzer: Analyzer | None = None
+) -> OvermaskResults:
     """`gold` is 03's `gate/gold` directory: `questions.jsonl` and `sources.jsonl`."""
     sources = {
         s["id"]: s["text"]
@@ -85,7 +88,11 @@ def run(gold: Path, *, allow: Sequence[str] = ()) -> OvermaskResults:
             system=SYSTEM,
         )
         try:
-            sent = str(redact_request(request, allow=allow).request.messages[0]["content"])
+            sent = str(
+                redact_request(request, allow=allow, analyzer=analyzer).request.messages[0][
+                    "content"
+                ]
+            )
         except Exception:
             res.refused += 1
             continue

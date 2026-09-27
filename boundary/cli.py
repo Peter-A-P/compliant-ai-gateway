@@ -802,6 +802,30 @@ def cmd_screen_eval(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_redact_detectors(args: argparse.Namespace) -> int:
+    """The proxy's four redaction configurations measured (0.23). Offline."""
+    from boundary.server import detector_eval
+
+    results = detector_eval.run(
+        load_config(args.config),
+        args.config.resolve().parent / "policy.yaml",
+        Path(args.gold),
+        args.allow,
+        pages=args.pages,
+    )
+    print(
+        "| Configuration | Personal values on the wire | Came back as sent | Refused | "
+        "Required phrases masked (03 gold) | Placeholders, median | Redaction ms p50 / p95 |"
+    )
+    for r in results:
+        print(r.row())
+    if args.write_readme:
+        readme = args.config.resolve().parent.parent / "README.md"
+        detector_eval.write_readme(readme, results)
+        print(f"README rows written to {readme}")
+    return 0
+
+
 def cmd_loadtest(args: argparse.Namespace) -> int:
     """The layered load test (0.19, PLAN.md B4): the proxy against a 50 ms mock upstream, by
     layer and load level. Local processes only; no vendor is called and nothing is spent."""
@@ -1201,6 +1225,18 @@ def main(argv: list[str] | None = None) -> int:
         "--allow", type=Path, help="an allow list, one term per line (bench/quality/allow.txt)"
     )
     om.set_defaults(func=cmd_redact_overmask)
+
+    det = redact.add_parser(
+        "detectors",
+        help="the proxy's redaction settings compared: rules or Presidio, with and without the "
+        "allow list; leaks, round trip, over-masking and time, offline (server and redact "
+        "extras)",
+    )
+    det.add_argument("--gold", default="../03-ai-release-gate/gate/gold")
+    det.add_argument("--allow", type=Path, default=Path("bench/quality/allow.txt"))
+    det.add_argument("--pages", type=int, default=200)
+    det.add_argument("--write-readme", dest="write_readme", action="store_true")
+    det.set_defaults(func=cmd_redact_detectors)
 
     qual = redact.add_parser(
         "quality",

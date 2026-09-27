@@ -102,6 +102,9 @@ def placeholder_kind(m: re.Match[str]) -> tuple[str, str]:
 # afterwards, in `_is_name_shaped`, where the judgement can be stated in one place.
 _WORD = re.compile(r"[^\W\d_]+(?:[-'" + _RSQUO + r"][^\W\d_]+)*")
 # Something an identifier is made of: letters, digits, slashes, hyphens, no spaces.
+# The rest of a value glued to a placeholder, after it or before it (0.23): see `_shapes`.
+_GLUED_TAIL = re.compile(r"[-/_]([A-Za-z0-9]+(?:[-/_][A-Za-z0-9]+)*)")
+_GLUED_HEAD = re.compile(r"(?<![A-Za-z0-9])([A-Za-z0-9]+(?:[-/_][A-Za-z0-9]+)*)[-/_]")
 _ID_TOKEN = re.compile(r"[A-Za-z0-9][A-Za-z0-9/-]*")
 # One piece of a code: letters, digits, slashes and hyphens, carrying at least one digit,
 # optionally wrapped in brackets.
@@ -514,13 +517,33 @@ class Policy:
             cursor = m.end()
         regions.append((cursor, len(text)))
 
-        for lo, hi in regions:
+        for n, (lo, hi) in enumerate(regions):
+            # A value one of this policy's own placeholders covers only part of: the rest is
+            # glued to it by a hyphen, slash or underscore and carries a digit. Masked as an
+            # identifier of its own, the separator kept. Found through the proxy (0.23):
+            # Presidio called the `ATIPP-2024` of `ATIPP-2024-1749` an organisation, the
+            # file-number recogniser lost the span to it, and `<ORGANISATION_1>-1749` went to
+            # the vendor with the file's own number in clear.
+            glued: list[tuple[int, int]] = []
+            if n > 0:
+                tail = _GLUED_TAIL.match(text, lo, hi)
+                if tail is not None and any(c.isdigit() for c in tail.group(1)):
+                    glued.append((tail.start(1), tail.end(1)))
+            if n < len(regions) - 1:
+                head = _GLUED_HEAD.search(text, max(lo, hi - 80), hi)
+                while head is not None and head.end() != hi:
+                    head = _GLUED_HEAD.search(text, head.end(), hi)
+                if head is not None and any(c.isdigit() for c in head.group(1)):
+                    glued.append((head.start(1), head.end(1)))
+            glued = [(s, e) for s, e in glued if not self._allowed(text[s:e], s, e, excused)]
+            found.extend((s, e, EntityType.ID_LIKE) for s, e in glued)
             # Placeholder-shaped text this policy did not write is masked whole, as one
             # opaque token. Masking only the word inside it would leave the brackets and the
             # number around a placeholder of ours, which reads as a nested placeholder and
             # is the sort of thing a model helpfully tidies up.
-            claimed: list[tuple[int, int]] = [(s, e) for s, e in foreign if lo <= s and e <= hi]
-            found.extend((s, e, EntityType.ID_LIKE) for s, e in claimed)
+            opaque = [(s, e) for s, e in foreign if lo <= s and e <= hi]
+            claimed: list[tuple[int, int]] = [*glued, *opaque]
+            found.extend((s, e, EntityType.ID_LIKE) for s, e in opaque)
             # Addresses next, whole, before anything can claim a piece of one.
             addresses = [
                 (m.start(), m.end())

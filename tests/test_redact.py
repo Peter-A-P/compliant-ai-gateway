@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import importlib.util
 import random
+import re
 from collections.abc import Sequence
 from typing import Any
 
@@ -950,3 +951,31 @@ def test_the_default_vocabulary_alone_releases_nothing() -> None:
     text = "The office in St. John's replied."
     policy = Policy([_span_of(text, "St. John's", EntityType.LOCATION)])
     assert policy.released == ()
+
+
+# -- a value a placeholder covers only part of (0.23) ----------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("text", "covered"),
+    [
+        ("The file is ATIPP-2024-1749, closed.", "ATIPP-2024"),
+        ("The file is 2024-ATIPP-1749, closed.", "ATIPP-1749"),
+        ("Case HCS/0881 was opened.", "HCS"),
+    ],
+)
+def test_the_rest_of_a_value_glued_to_a_placeholder_is_masked(text: str, covered: str) -> None:
+    """A detector that types part of an identifier as something else must not leave the rest
+    in clear: Presidio called `ATIPP-2024` an organisation and `-1749` went to the vendor."""
+    policy = Policy([_span_of(text, covered, EntityType.ORGANISATION)])
+    out = policy.outbound(text)
+    rest = text.replace(covered, "")
+    for run in re.findall(r"\d{3,}", rest):
+        assert run not in out, out
+    assert policy.rehydrate(out) == text
+
+
+def test_a_word_glued_to_a_placeholder_without_a_digit_is_left_alone() -> None:
+    text = "Marie Chaulk-based teams met."
+    policy = Policy([_span_of(text, "Marie Chaulk", EntityType.PERSON)])
+    assert "-based" in policy.outbound(text)

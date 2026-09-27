@@ -55,6 +55,7 @@ from boundary.errors import (
 )
 from boundary.gateway import INJECTION_BLOCKED, REDACTION_REFUSED, Gateway
 from boundary.providers import STREAM_ADAPTERS
+from boundary.redact.analyzer import Analyzer
 from boundary.redact.policy import Policy
 from boundary.routes import ModelRef
 from boundary.screen import rules_fired, screen_request
@@ -101,6 +102,8 @@ class ServerState:
     wall: Callable[[], float]
     policy: DataPolicy
     tasks: set[asyncio.Task[ChatResponse]] = field(default_factory=set)
+    # The recognisers redaction runs, built once from the policy's `redaction.detector`.
+    analyzer: Analyzer | None = None
     # The audit chain, appended as the proxy answers (0.18). None: not kept.
     audit: AuditAppender | None = None
 
@@ -165,6 +168,7 @@ def create_app(
         quota=RequestQuota(clock),
         wall=wall,
         policy=policy,
+        analyzer=_analyzer(policy),
     )
     if audit_path is not None:
         # Every team's gateway writes the same ledger file, so any one of them reads it.
@@ -253,7 +257,14 @@ def create_app(
         try:
             flagged = _screen(state.policy, data_class, parsed, gw, purpose, run_id, headers)
             redaction = _redact(
-                state.policy, data_class, parsed, gw, purpose, run_id, injection=flagged
+                state.policy,
+                data_class,
+                parsed,
+                gw,
+                purpose,
+                run_id,
+                injection=flagged,
+                analyzer=state.analyzer,
             )
         except Refusal:
             state.sealed()
@@ -381,6 +392,17 @@ def _resolve(gw: Gateway, model: str) -> ModelRef:
         ) from None
 
 
+def _analyzer(policy: DataPolicy) -> Analyzer | None:
+    """The recogniser set for `redaction.detector`, built once. Presidio loads a spaCy model,
+    which takes seconds, so it is loaded at start and never per request; a missing `redact`
+    extra fails the start, not the first personal request."""
+    if policy.redaction.detector == "rules":
+        return None
+    from boundary.redact.presidio import PresidioRecogniser
+
+    return Analyzer(extra=[PresidioRecogniser()])
+
+
 def _screen(
     policy: DataPolicy,
     data_class: DataClass,
@@ -431,6 +453,7 @@ def _redact(
     run_id: str | None,
     *,
     injection: bool = False,
+    analyzer: Analyzer | None = None,
 ) -> Redacted | None:
     """Redact the request when its class's rule names a `redacted_as`, or refuse it with a
     422 when the guard will not vouch for the result. The refusal carries counts by kind and
@@ -439,7 +462,7 @@ def _redact(
     if rule is None or rule.redacted_as is None:
         return None
     try:
-        return redact_request(parsed.request)
+        return redact_request(parsed.request, allow=policy.redaction.allow, analyzer=analyzer)
     except RedactionRefused as e:
         counts = leak_counts(e)
         ledger_id = gw.record_refusal(

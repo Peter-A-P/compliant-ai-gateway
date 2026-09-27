@@ -36,7 +36,7 @@ from typing import Any
 import httpx
 
 from boundary.config import BoundaryConfig
-from boundary.enforce import load_policy
+from boundary.enforce import DataPolicy, load_policy
 from boundary.redact.corpus import build
 from boundary.redact.evaluate import Rate
 from boundary.redact.request import survives
@@ -179,7 +179,12 @@ def _streamed_text(raw: str) -> str:
 
 
 def run(
-    config: BoundaryConfig, policy_path: Path, *, pages: int = 200, seed: int = 20260920
+    config: BoundaryConfig,
+    policy_path: Path,
+    *,
+    pages: int = 200,
+    seed: int = 20260920,
+    policy: DataPolicy | None = None,
 ) -> ProxyRedactionResults:
     from boundary import __version__
 
@@ -221,7 +226,7 @@ def run(
             teams,
             ledger_path=work / "proxy.sqlite",
             env="redaction-eval",
-            policy=load_policy(policy_path),
+            policy=policy or load_policy(policy_path),
             transport=Transport(
                 config.defaults.timeouts,
                 async_client=httpx.AsyncClient(transport=httpx.MockTransport(upstream.handler)),

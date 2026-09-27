@@ -50,13 +50,16 @@ class Redacted:
     placeholders: int
 
 
-def redact_request(request: ChatRequest, *, allow: Sequence[str] = ()) -> Redacted:
+def redact_request(
+    request: ChatRequest, *, allow: Sequence[str] = (), analyzer: Analyzer | None = None
+) -> Redacted:
     """The request with every message and the system prompt redacted by one policy, and the
     preserve line added. Raises `RedactionRefused` when the guard will not vouch for any part
     of it; the error carries counts by kind and type, never the values. `allow` (0.16) is the
-    policy's allow list: terms the second pass leaves alone."""
+    policy's allow list: terms the second pass leaves alone. `analyzer` (0.23) is the
+    recogniser set, the built-in one when None."""
     texts = [request.system or ""] + [str(m["content"]) for m in request.messages]
-    policy = Policy(sweep(texts, Analyzer().analyze(texts)), allow=allow)
+    policy = Policy(sweep(texts, (analyzer or Analyzer()).analyze(texts)), allow=allow)
     out = [policy.outbound(t) for t in texts]
     system = out[0] + "\n\n" + PRESERVE_LINE if request.system else PRESERVE_LINE
     messages = [

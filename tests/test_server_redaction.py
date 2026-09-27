@@ -404,3 +404,56 @@ def test_the_policy_refuses_an_unknown_rehydrate_scope() -> None:
     with pytest.raises(ValidationError):
         ClassRule.model_validate({"rehydrate": "everything"})
     assert ClassRule().rehydrate == "caller"
+
+
+# -- the policy's redaction settings (0.23) ---------------------------------------------------
+
+
+def test_an_allow_file_is_read_relative_to_the_policy(tmp_path: Path) -> None:
+    from boundary.enforce import load_policy
+
+    from .conftest import CONFIG_DIR
+
+    text = (CONFIG_DIR / "policy.yaml").read_text(encoding="utf-8")
+    (tmp_path / "terms.txt").write_text("# a comment\nPassive management\nETF\n", encoding="utf-8")
+    (tmp_path / "policy.yaml").write_text(
+        text + "\nredaction:\n  allow: [PINs]\n  allow_file: terms.txt\n", encoding="utf-8"
+    )
+    policy = load_policy(tmp_path / "policy.yaml")
+    assert policy.redaction.allow == ("PINs", "Passive management", "ETF")
+    assert policy.redaction.detector == "rules"
+
+
+async def test_the_proxy_leaves_the_allow_list_in_clear(
+    repo_config: BoundaryConfig, tmp_path: Path, keys: None, upstream: respx.MockRouter
+) -> None:
+    from boundary.enforce import RedactionSettings
+
+    route = upstream.post(FOUNDRY_URL).mock(side_effect=_echo)
+    base = _policy("caller")
+    policy = base.model_copy(update={"redaction": RedactionSettings(allow=("Zorblatt",))})
+    p = Proxy(repo_config, tmp_path, teams(), policy=policy)
+    try:
+        r = await p.post(
+            body(messages=[{"role": "user", "content": "Zorblatt fees apply. " + MESSAGE}])
+        )
+        assert r.status_code == 200, r.text
+        sent = _sent_user(route.calls.last.request)
+        assert "Zorblatt" in sent
+        for value in SECRETS:
+            assert value not in sent
+    finally:
+        await p.close()
+
+
+def test_the_presidio_detector_is_built_once_at_start() -> None:
+    pytest.importorskip("presidio_analyzer")
+    from boundary.enforce import RedactionSettings
+    from boundary.server.app import _analyzer
+
+    policy = _policy("caller")
+    assert _analyzer(policy) is None
+    analyzer = _analyzer(
+        policy.model_copy(update={"redaction": RedactionSettings(detector="presidio")})
+    )
+    assert analyzer is not None and "presidio" in [r.id for r in analyzer.recognisers]

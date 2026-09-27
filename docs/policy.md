@@ -18,6 +18,7 @@ without one, and substitutes `personal` for an absent `X-Data-Class` header at t
 | Key | Meaning |
 |---|---|
 | `undeclared` | The class a call that declared nothing is judged as. `personal`: absent means personal |
+| `redaction` | How the proxy redacts (0.23): `detector` (`rules`, the default, or `presidio`, which needs the `redact` extra and is loaded once at start), `allow` (terms the second pass leaves alone) and `allow_file` (one term per line, `#` comments, relative to the policy file; its terms join `allow`). docs/redact.md measures the four combinations |
 | `injection` | What the proxy does when its injection screen fires (0.22): `flag` (default) sends the call and records the flag; `block` refuses it with a 400 and a ledger row; `off` does not screen. docs/screen.md |
 | `max_residency` | The widest residency the class tolerates: `single-region`, `geo` or `global` |
 | `regions` | The regions a call may be **sent** to. Compared without regard to case |

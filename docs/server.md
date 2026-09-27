@@ -150,7 +150,8 @@ Response headers say what happened: `x-boundary-redacted` (`true` or `false`),
 answer, `x-boundary-unresolved` (placeholders in the answer that the vault does not hold,
 such as one a model invented, which are left as written), and since 0.21
 `x-boundary-rehydrate` (`caller` or `all`) and `x-boundary-withheld` (placeholders the vault
-holds and the scope kept back). Every answer since 0.22 also carries `x-boundary-injection`:
+holds and the scope kept back). Since 0.23 the policy's `redaction` block chooses the detector (`rules` or `presidio`, the
+second built once at start) and the allow list the proxy redacts with. Every answer since 0.22 also carries `x-boundary-injection`:
 `clean`, `flagged: <rules>` or `off`, from the injection screen (docs/screen.md), which reads
 the user messages before redaction and blocks only under the policy's `injection: block`.
 

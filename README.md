@@ -143,7 +143,7 @@ script scores it:
 | built-in recognisers only | 97.1% (94.7% to 98.9%) | 32.0% (27.6% to 36.9%) | 32.2% (29.9% to 34.9%) | 78.4% (75.3% to 81.2%) |
 | built-in recognisers only, allow list of 1,013 | 97.1% (94.7% to 98.8%) | 29.4% (25.0% to 34.5%) | 45.4% (42.6% to 48.4%) | 41.7% (37.8% to 45.5%) |
 | built-in recognisers and Presidio | 98.7% (97.4% to 99.6%) | 33.7% (29.3% to 38.6%) | 27.9% (25.8% to 30.3%) | 80.7% (78.2% to 83.1%) |
-| built-in recognisers and Presidio, allow list of 1,013 | 98.7% (97.4% to 99.6%) | 32.2% (27.8% to 37.2%) | 37.6% (34.9% to 40.5%) | 51.4% (47.2% to 55.5%) |
+| built-in recognisers and Presidio, allow list of 1,013 | 98.7% (97.4% to 99.6%) | 32.3% (27.8% to 37.2%) | 37.6% (34.9% to 40.5%) | 51.4% (47.2% to 55.5%) |
 <!-- tab:end -->
 
 Filled by `boundary redact eval --tab --presidio --tab-allow train --write-readme`, which
@@ -312,6 +312,28 @@ values the caller sent (`caller_scoped`, measured offline on the stored answers)
 600 and leaves a placeholder in 7 of 900 ordinary answers; **since `v0.21.0` it is what the
 proxy does by default** (`rehydrate: caller` in the data policy, Peter's decision 2026-09-27).
 Method and every row in [docs/redact.md](docs/redact.md).
+
+**The proxy's redaction settings compared** (`v0.23.0`): the policy's `redaction` block
+
+| Configuration | Personal values on the wire | Came back as sent | Refused | Required phrases masked (03 gold) | Placeholders, median | Redaction ms p50 / p95 |
+|---|---|---|---|---|---|---|
+<!-- detectors:start -->
+| rules | 0 of 1450, 0.0% (0.0% to 0.3%) | 100.0% (99.0% to 100.0%) | 0 | 14.0% (9.0% to 21.0%) | 15 | 2.6 / 3.0 |
+| rules + allow list | 0 of 1450, 0.0% (0.0% to 0.3%) | 100.0% (99.0% to 100.0%) | 0 | 10.1% (6.0% to 16.5%) | 11 | 3.1 / 3.5 |
+| Presidio | 0 of 1450, 0.0% (0.0% to 0.3%) | 100.0% (99.0% to 100.0%) | 0 | 16.3% (10.9% to 23.6%) | 17 | 67.8 / 78.0 |
+| Presidio + allow list | 0 of 1450, 0.0% (0.0% to 0.3%) | 100.0% (99.0% to 100.0%) | 0 | 12.4% (7.8% to 19.2%) | 12 | 68.7 / 79.3 |
+<!-- detectors:end -->
+
+Filled by `boundary redact detectors --write-readme`, offline: the proxy end to end on the
+generated corpus (1,450 planted values, plain; 400 answers, plain and streamed), over-masking
+on 03's gold set, and the time to redact each gold request. **Presidio buys nothing here and
+costs 66 ms a request**: no leak the rules miss on this corpus, more of the answer's context
+masked, and a median of 69 ms against 3. Its first run did buy something, a leak: it called
+the `ATIPP-2024` of a file number `ATIPP-2024-1749` an organisation, the file-number
+recogniser lost the span, and `-1749` went out in clear on 3 of 200 pages. The policy now
+masks the rest of a value glued to one of its placeholders (`v0.23.0`), which is what the
+rows above were run with. The proxy's default stays `rules`; a deployment turns Presidio on
+where its text has the names the rules cannot see, and supplies its own allow list.
 
 **The injection screen** (`v0.22.0`, PLAN.md B2.6): rules only, advisory by default
 

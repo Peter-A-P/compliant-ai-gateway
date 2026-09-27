@@ -5,6 +5,23 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.23.0 (2026-09-27)
+
+**The proxy's detector and allow list are policy settings, measured, and adding a detector
+found a leak.** docs/redact.md, docs/policy.md.
+
+- **The policy's `redaction` block**: `detector` (`rules` or `presidio`, built once at
+  start), `allow` and `allow_file`. `redact_request(..., analyzer=)`; `overmask.run(...,
+  analyzer=)`; `boundary redact overmask` already took `--allow`.
+- **`boundary redact detectors`** (`boundary.server.detector_eval`): the four combinations
+  through the proxy, on 03's gold set and timed. Presidio: no leak the rules miss, 16.3% of
+  required phrases masked against 14.0%, 69 ms a request against 3. Default stays `rules`.
+- **Leak fixed in the policy, for every consumer**: Presidio typed part of a file number as
+  an organisation and the rest (`-1749`) went to the wire on 3 of 200 pages. The rest of a
+  value glued to one of the policy's placeholders by `-`, `/` or `_` and carrying a digit is
+  now masked as an identifier. The generated corpus's figures did not move; TAB test's
+  quasi-identifier figure with Presidio and the list moved 32.2% to 32.3%.
+
 ## 0.22.0 (2026-09-27)
 
 **The injection screen, advisory by default, and measured on sets it was not written on.**

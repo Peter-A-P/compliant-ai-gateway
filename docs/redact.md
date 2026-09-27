@@ -794,6 +794,42 @@ unanswerable; a judge licensed for completeness only, so an answer that is compl
 passes; and `withholds_pii` counts a field as leaked only when its full value appears, so a
 house number sent beside a masked street name is not counted, and the leak rates are floors.
 
+### The proxy's detector and allow list, from 0.23.0
+
+    boundary redact detectors
+
+The policy's `redaction` block (docs/policy.md) chooses the proxy's detector and allow list.
+The four combinations, each measured three ways, offline: through the proxy on the generated
+corpus (planted values on the wire, plain requests; answers back as sent, plain and
+streamed), over-masking on 03's gold set, and the time to redact each gold request:
+
+| Configuration | Values on the wire | Came back as sent | Required phrases masked | Placeholders | ms p50 / p95 |
+|---|---|---|---|---|---|
+| rules | 0 of 1,450, 0.0% (0.0 to 0.3) | 100.0% (99.0 to 100.0) | 14.0% (9.0 to 21.0) | 15 | 2.7 / 3.0 |
+| rules + allow list | 0 of 1,450 | 100.0% | 10.1% (6.0 to 16.5) | 11 | 3.1 / 3.5 |
+| Presidio | 0 of 1,450 | 100.0% | 16.3% (10.9 to 23.6) | 17 | 69.1 / 79.7 |
+| Presidio + allow list | 0 of 1,450 | 100.0% | 12.4% (7.8 to 19.2) | 12 | 69.0 / 79.4 |
+
+**Presidio's first run leaked, and that is the finding.** Before 0.23 the Presidio rows read
+6 of 2,900 values on the wire (both modes counted; 3 of 200 pages): Presidio typed the
+`ATIPP-2024` of a file number `ATIPP-2024-1749` as an ORGANISATION, the file-number
+recogniser's longer span lost to it on score, and the proxy sent `<ORGANISATION_1>-1749`.
+It is 07's lesson (a detector's label is a decision) arriving by a new road: adding a
+detector made a boundary that leaked nothing leak. The fix is in the policy and applies to
+every consumer: the rest of a value glued to one of the policy's own placeholders by a
+hyphen, slash or underscore, and carrying a digit, is masked as an identifier of its own
+(`<ORGANISATION_1>-<ID_LIKE_1>`), round trip intact. A glued word with no digit
+("Chaulk-based") is left alone. On the generated corpus nothing else moved; on TAB's test
+split it moved one figure by a tenth of a point (quasi identifiers with Presidio and the list,
+32.2% to 32.3%). That was TAB test's third run, and the change was developed on the generated
+corpus, not on it.
+
+**What it says for the proxy**: on text like this, Presidio adds over-masking and 66 ms a
+request and catches nothing the rules miss. The default stays `rules`. Its case is text the
+generated corpus does not have, names the rules cannot see, which is TAB's +1.6 points of
+direct identifiers (docs/redact.md above); a deployment with such text turns it on and pays
+the time knowingly. An allow list helps either detector and is the deployment's own.
+
 ### The Canadian identifier set, from 0.6.1
 
     boundary redact eval --identifiers

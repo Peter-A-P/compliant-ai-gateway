@@ -67,6 +67,24 @@ class ClassRule(BaseModel):
     rehydrate: Literal["caller", "all"] = "caller"
 
 
+class RedactionSettings(BaseModel):
+    """How the proxy redacts (0.23). Deployment settings, not per class: one request is one
+    document, redacted once."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    # Which recognisers find the spans. `rules`: the built-in set and the policy's second
+    # pass, no model, microseconds. `presidio`: the same plus Presidio and a spaCy model,
+    # which needs the `redact` extra and costs tens of milliseconds a request (docs/redact.md
+    # has both measured through the proxy).
+    detector: Literal["rules", "presidio"] = "rules"
+    # Terms the second pass leaves alone, the jurisdiction's vocabulary. `allow_file`, one
+    # term per line with `#` comments, is read at load and relative to the policy file; its
+    # terms join these.
+    allow: tuple[str, ...] = ()
+    allow_file: str | None = None
+
+
 class DataPolicy(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -80,6 +98,7 @@ class DataPolicy(BaseModel):
     # Advisory by default because the false-positive rate is a cost the policy owner should
     # choose to pay knowingly (docs/screen.md has it).
     injection: Literal["off", "flag", "block"] = "flag"
+    redaction: RedactionSettings = Field(default_factory=RedactionSettings)
 
     @model_validator(mode="after")
     def _redacted_as(self) -> Self:
@@ -114,7 +133,19 @@ class Decision:
 def load_policy(path: Path) -> DataPolicy:
     try:
         data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-        return DataPolicy.model_validate(data)
+        policy = DataPolicy.model_validate(data)
+        name = policy.redaction.allow_file
+        if name is not None:
+            terms = [
+                t.strip()
+                for t in (path.parent / name).read_text(encoding="utf-8").splitlines()
+                if t.strip() and not t.lstrip().startswith("#")
+            ]
+            settings = policy.redaction.model_copy(
+                update={"allow": (*policy.redaction.allow, *terms)}
+            )
+            policy = policy.model_copy(update={"redaction": settings})
+        return policy
     except (OSError, yaml.YAMLError, ValidationError) as e:
         raise ConfigError(f"{path} is not a valid data policy:\n{e}") from e
 

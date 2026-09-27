@@ -428,6 +428,7 @@ from October the ledger-against-invoice difference is recorded there too (sectio
 | v0.20.0 | 2026-09-27 | B2.8 run: the quality cost of redaction through 03's gate (no cost visible on answerable questions), and the red team's finding that rehydration hands the caller what the model refused; `caller_scoped`; price list 2026-09-27 |
 | v0.21.0 | 2026-09-27 | The proxy rehydrates only what the caller sent (`rehydrate: caller`, the default), Peter's decision on the B2.8 red-team finding |
 | v0.22.0 | 2026-09-27 | The injection screen (B2.6): `boundary.screen`, `boundary screen eval`, the policy's `injection` key; ledger v10 `injection`; audit record schema 3 |
+| v0.23.0 | 2026-09-27 | The proxy's detector and allow list as policy settings, measured (`boundary redact detectors`); the policy masks the rest of a value glued to a placeholder, a leak Presidio exposed |
 | v1.0.0 | May 23 2027 | Everything in Part B; `boundary.redact` for 07; the proxy for 13 and 14 |
 
 03 pins `boundary>=0.1,<0.3` for Part A and moves to `>=1.0` when its Part B is built
