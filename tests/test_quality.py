@@ -246,3 +246,23 @@ def test_caller_scoped_rehydration_keeps_the_system_prompts_values_back() -> Non
     assert "victor.dunmore24@example.net" in full  # what the proxy did before 0.20
     assert "victor.dunmore24@example.net" not in scoped and theirs in scoped
     assert "ana.tremblay@example.com" in scoped
+
+
+@pytest.mark.parametrize(
+    ("text", "declined"),
+    [
+        ("The document doesn't specify the longest hold period.", True),
+        ("The document provided does not contain information about deposit insurance.", True),
+        ("I cannot answer this question based on the provided document.", True),
+        ("The document says you generally have 90 days to dispute a transaction.", False),
+        ("Bonds usually pay interest semiannually.", False),
+    ],
+)
+def test_declines_reads_a_decline_and_only_a_decline(text: str, declined: bool) -> None:
+    assert quality.declines(text) is declined
+
+
+def test_the_extended_pattern_only_adds() -> None:
+    text = "Based on the document provided, there is no information about mortgage brokers."
+    assert not quality.declines(text)
+    assert quality.declines(text, extended=True)

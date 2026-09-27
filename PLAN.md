@@ -429,6 +429,7 @@ from October the ledger-against-invoice difference is recorded there too (sectio
 | v0.21.0 | 2026-09-27 | The proxy rehydrates only what the caller sent (`rehydrate: caller`, the default), Peter's decision on the B2.8 red-team finding |
 | v0.22.0 | 2026-09-27 | The injection screen (B2.6): `boundary.screen`, `boundary screen eval`, the policy's `injection` key; ledger v10 `injection`; audit record schema 3 |
 | v0.23.0 | 2026-09-27 | The proxy's detector and allow list as policy settings, measured (`boundary redact detectors`); the policy masks the rest of a value glued to a placeholder, a leak Presidio exposed |
+| v0.24.0 | 2026-09-27 | B2.8 follow-up on 03's distractor stratum: a redacted request declines 14.4 points less often on a page that cannot answer; `quality.declines`, the `distractor` part |
 | v1.0.0 | May 23 2027 | Everything in Part B; `boundary.redact` for 07; the proxy for 13 and 14 |
 
 03 pins `boundary>=0.1,<0.3` for Part A and moves to `>=1.0` when its Part B is built
@@ -992,6 +993,15 @@ and none of the 8 labelled unfaithful was a decline. The expectation, stated now
 declines less than raw. Paired Newcombe per model and pooled, two-sided; and 03's own stored
 answers to the same prompts (2026-09-22) against today's raw arm, as the difference two runs
 of an unchanged prompt make.
+
+**Amended 2026-09-27, after the follow-up: the lead held.** US$0.45. Pooled over three
+models, a redacted request declines 14.4 points (-20.6 to -8.0) less often than raw on a page
+that cannot answer (32 stopped declining, 6 started, of 180), Llama 3.3 70B -25.0, gpt-5.4-mini
+-11.7, Haiku -6.7; with the allow list -17.8. Today's raw against 03's stored raw: under 2
+points. Reading the pairs found the pattern missing one decline phrasing Haiku used more when
+redacted; extended after the fact and labelled so, pooled -12.8 (-18.8 to -6.6), Haiku -1.7.
+The cost of redaction is here, not in over-masking. Next, not yet run: a preserve-line change
+telling the model the placeholders are personal details only, tested on the same design.
 
 ### B2.9 Out of scope in Part B, on purpose
 

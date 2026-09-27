@@ -789,6 +789,49 @@ starts a sentence. **Since 0.21.0 it is the proxy's default** (`rehydrate: calle
 policy, docs/policy.md), on Peter's decision of 2026-09-27; `rehydrate: all` restores the old
 behaviour for a class whose system prompt is the caller's own data.
 
+**The lead, tested (0.24.0).** 03's distractor stratum is 60 answerable questions each served
+against another page, the situation the twelve unanswerable questions were too few to
+measure. Run 2026-09-27 for US$0.45, 540 answers, design committed first (PLAN.md B2.8). No
+judge can grade it: 03's completeness judge marks a correct "the document does not cover
+this" as incomplete on a question written answerable, and neither judge is licensed on
+faithfulness. The outcome is whether the answer **declines** (`quality.DECLINE`), a pattern
+written on 03's odd-numbered distractor answers and checked on the even ones against the
+human labels; of the answers it calls declines, 145 of 146 were labelled faithful.
+
+| Arm, pooled over three models | Stopped / started declining | Declines, points (Newcombe) | Bootstrap by question |
+|---|---|---|---|
+| Redacted, the proxy's default, against raw | 32 / 6 of 180 | -14.4 (-20.6 to -8.0) | -21.1 to -7.2 |
+| Redacted with the allow list, against raw | 35 / 3 of 180 | -17.8 (-23.8 to -11.5) | -23.9 to -11.7 |
+| Today's raw against 03's stored raw (Haiku, Llama) | 1 / 1 of 120 | -1.7 and +1.7 per model | |
+
+Per model, redacted against raw: Llama 3.3 70B -25.0 (-35.5 to -13.8), gpt-5.4-mini -11.7
+(-23.6 to +0.7), Haiku 4.5 -6.7 (-16.1 to +2.6). Raw, Haiku and Llama declined 80% of the
+time and gpt-5.4-mini 37%; redacted, 73%, 55% and 25%.
+
+- **The expectation held.** A redacted request is less likely to say the page does not cover
+  the question, and when it does not decline it answers from memory: "The document says you
+  generally have **90 days** to dispute a transaction", from a page on ATM fees; "you
+  typically need to buy mortgage loan insurance" when the page is about pre-approval. Two
+  runs of the unchanged raw prompt a week apart differ by under 2 points, so this is not the
+  run.
+- **The allow list does not help**; if anything it declines less. Whatever the model reacts
+  to is not the masked vocabulary. One hypothesis, not tested here: a page full of
+  placeholders reads as a page with things removed, and a model told something was removed
+  is readier to believe the answer was among it.
+- **The grader has a blind spot, found by reading the pairs.** Of Haiku's 6 "stopped
+  declining" pairs, 3 were declines in words the pattern does not know ("there is no
+  information about"), a phrasing Haiku used more when redacted. Extending the pattern after
+  the fact (`DECLINE_EXTENDED`, labelled post hoc wherever it is printed) takes Haiku to -1.7
+  (-9.6 to +6.2) and the pooled figure to -12.8 (-18.8 to -6.6). The finding survives; Haiku's
+  share of it does not.
+
+This is the cost a buyer asked about, and it is not where 0.16.0 looked for it. On a page that
+answers, redaction cost nothing visible; on a page that does not, it makes a model likelier
+to answer anyway. A retrieval pipeline that sometimes returns the wrong page is exactly that
+case. The mitigation is not measured yet; the obvious first one is a line in the proxy's system
+prompt saying that placeholders stand for personal details only, and it is testable on the
+stored design for about the same cost.
+
 What this cannot see: one sample per answer at temperature 0; 100 questions, twelve of them
 unanswerable; a judge licensed for completeness only, so an answer that is complete and wrong
 passes; and `withholds_pii` counts a field as leaked only when its full value appears, so a

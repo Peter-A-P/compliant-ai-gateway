@@ -284,6 +284,30 @@ example, and it is the one the proxy sends. Detail, and what this cannot see, in
 |   of which, questions the page cannot answer | 36 | 2 / 0 | -6.2 (-20.4 to +5.5) | -15.4 to +0.0 | 20.5 |
 <!-- quality:end -->
 
+**Where the cost is: a page that cannot answer** (03's distractor stratum, 60 questions
+served against another page, three models; the outcome is whether the answer says the page
+does not cover the question)
+
+| Comparison, pooled over three models | Pairs | Stopped / started declining | Declines, points (Newcombe) | Bootstrap by question | Per model |
+|---|---|---|---|---|---|
+<!-- quality-distractor:start -->
+| Redacted as the proxy does today, against raw | 180 | 32 / 6 | -14.4 (-20.6 to -8.0) | -21.1 to -7.2 | claude-haiku-4-5-20251001 -6.7 (-16.1 to +2.6); Llama-3.3-70B-Instruct-Turbo -25.0 (-35.5 to -13.8); gpt-5.4-mini-2026-03-17 -11.7 (-23.6 to +0.7) |
+| Redacted with the allow list, against raw | 180 | 35 / 3 | -17.8 (-23.8 to -11.5) | -23.9 to -11.7 | claude-haiku-4-5-20251001 -6.7 (-15.1 to +1.4); Llama-3.3-70B-Instruct-Turbo -28.3 (-39.1 to -16.6); gpt-5.4-mini-2026-03-17 -18.3 (-29.9 to -6.4) |
+| Redacted against raw, decline pattern extended after reading the pairs | 180 | 29 / 6 | -12.8 (-18.8 to -6.6) | -19.4 to -6.1 | claude-haiku-4-5-20251001 -1.7 (-9.6 to +6.2); Llama-3.3-70B-Instruct-Turbo -25.0 (-35.5 to -13.8); gpt-5.4-mini-2026-03-17 -11.7 (-23.6 to +0.7) |
+<!-- quality-distractor:end -->
+
+Filled by the same command (`v0.24.0`, US$0.45 more, design committed first). **The lead
+held, and it is the real cost of redaction**: served a page that cannot answer, a raw model
+says so about four times in five, and a redacted one 14 points less often (-20.6 to -8.0),
+answering from memory instead ("The document says you generally have 90 days"). It is not
+run noise: today's raw answers and 03's own from 2026-09-22 differ by under 2 points. The
+allow list does not help. The outcome is programmatic, and the pattern was read against 03's
+human labels before the run (145 of 146 declines labelled faithful); reading the discordant
+pairs showed it missing one phrasing Haiku used more when redacted, and the third row, with
+that phrasing added after the fact, is the check that the result survives it. For a
+retrieval pipeline this is the case that matters: the wrong page comes back, and a redacted
+request is less likely to say so.
+
 **What redaction does to a leak, on 03's red team** (`pii_leakage`, 200 attacks on a
 confidential customer record, graded by 03's `withholds_pii`)
 
@@ -383,7 +407,9 @@ and blocks only under `injection: block`. Detail in [docs/screen.md](docs/screen
   judged on (`boundary redact overmask`, `v0.16.0`). Measured through project 03's gate
   (`v0.20.0`), that cost no answer its completeness on the questions a page answers, within
   about 1.6 points; the losses were on questions the page cannot answer, twelve per model,
-  too few to measure. Until `v0.21.0` the proxy also rehydrated every value into the answer,
+  too few to measure, so `v0.24.0` tested it on 03's 60-question distractor stratum: served a
+  page that cannot answer, a redacted request declines 14.4 points (-20.6 to -8.0) less often
+  than a raw one and answers from memory instead. Until `v0.21.0` the proxy also rehydrated every value into the answer,
   including ones that arrived in the system prompt, which on 03's red team turned a model's
   refusals into disclosures; it now puts back only what the caller sent, so an application
   that addresses its user by a name held only in its system prompt sees a placeholder there

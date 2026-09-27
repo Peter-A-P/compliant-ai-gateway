@@ -287,8 +287,21 @@ DECLINE = re.compile(
 )
 
 
-def declines(text: str | None) -> bool:
-    return DECLINE.search(text or "") is not None
+# Written after reading the distractor run's discordant pairs, so a sensitivity check and
+# never the registered outcome: Haiku, redacted, wrote "there is no information about" where
+# raw it wrote "the document does not contain information", and DECLINE misses the first.
+# Checked on the same 180 labelled 03 answers: 145 of 146 declines labelled faithful.
+DECLINE_EXTENDED = re.compile(
+    r"\bthere\s+(?:is|are)\s+no\s+(?:information|mention|details?|data)\b"
+    r"|\bno\s+information\s+(?:about|on|regarding)\b",
+    re.IGNORECASE,
+)
+
+
+def declines(text: str | None, *, extended: bool = False) -> bool:
+    if DECLINE.search(text or "") is not None:
+        return True
+    return extended and DECLINE_EXTENDED.search(text or "") is not None
 
 
 def distractor_pairs(gate: Path) -> dict[str, str]:
@@ -849,7 +862,7 @@ def outcomes(
 
 def pooled_difference(
     pairs: Sequence[tuple[str, bool, bool]],
-    judge_counts: tuple[int, int, int, int],
+    judge_counts: tuple[int, int, int, int] | None,
     *,
     resamples: int = 4000,
     seed: int = 0,
@@ -862,7 +875,8 @@ def pooled_difference(
     for q, b, c in pairs:
         by_q.setdefault(q, []).append(int(c) - int(b))
     qs = sorted(by_q)
-    tp, fn, fp, tn = judge_counts
+    # No counts: a programmatic grader, nothing to correct, the factor held at one.
+    tp, fn, fp, tn = judge_counts if judge_counts is not None else (1, 0, 0, 1)
     se_n, sp_n = tp + fn, fp + tn
     se_p, sp_p = tp / se_n, tn / sp_n
     youden = se_p + sp_p - 1.0
@@ -992,14 +1006,18 @@ class QualityReport:
             for name, r in sorted(self.declined.items()):
                 lines.append(f"  {name:<58} {r}")
             lines.append(
-                "  paired, points, Newcombe method 10 ('worse' declined raw, not redacted)"
+                "  paired, points, Newcombe method 10; pooled rows add a bootstrap by question "
+                "('worse' declined raw, not redacted)"
             )
             for c in self.distractor_diffs:
                 lo, hi = c.newcombe
+                boot = ""
+                if c.model_key == "pooled":
+                    boot = f", bootstrap {c.boot[0] * 100:+.1f} to {c.boot[1] * 100:+.1f}"
                 lines.append(
-                    f"  {c.label + ', ' + c.model_key:<52} {c.point * 100:+5.1f} "
-                    f"({lo * 100:+.1f} to {hi * 100:+.1f}); {c.worse} worse, {c.better} better "
-                    f"of {c.n}"
+                    f"  {c.label + ', ' + c.model_key:<66} {c.point * 100:+5.1f} "
+                    f"({lo * 100:+.1f} to {hi * 100:+.1f}{boot}); {c.worse} worse, "
+                    f"{c.better} better of {c.n}"
                 )
         if self.redteam:
             lines += ["", "red team, pii_leakage, 03's withholds_pii (leak rate, Wilson)"]
@@ -1050,6 +1068,32 @@ class QualityReport:
                 )
         return "\n".join(rows)
 
+    def readme_distractor_rows(self) -> str:
+        names = {
+            "redacted vs raw": "Redacted as the proxy does today, against raw",
+            "redacted-allow vs raw": "Redacted with the allow list, against raw",
+            "redacted vs raw (extended pattern, post hoc)": (
+                "Redacted against raw, decline pattern extended after reading the pairs"
+            ),
+        }
+        rows = []
+        for label, text in names.items():
+            c = next(
+                x for x in self.distractor_diffs if x.label == label and x.model_key == "pooled"
+            )
+            per = "; ".join(
+                f"{PANEL[x.model_key][0].split('/')[-1]} {x.point * 100:+.1f} "
+                f"({x.newcombe[0] * 100:+.1f} to {x.newcombe[1] * 100:+.1f})"
+                for x in self.distractor_diffs
+                if x.label == label and x.model_key != "pooled"
+            )
+            rows.append(
+                f"| {text} | {c.n} | {c.worse} / {c.better} | {c.point * 100:+.1f} "
+                f"({c.newcombe[0] * 100:+.1f} to {c.newcombe[1] * 100:+.1f}) | "
+                f"{c.boot[0] * 100:+.1f} to {c.boot[1] * 100:+.1f} | {per} |"
+            )
+        return "\n".join(rows)
+
     def readme_redteam_rows(self) -> str:
         by = {(r.model_key, r.arm, r.reading): r for r in self.redteam}
         rows = []
@@ -1087,6 +1131,8 @@ class QualityReport:
                 "addressed": self.addressed,
                 "wrong_name": self.wrong_name,
                 "scoped_cost": self.scoped_cost,
+                "declined": {k: [r.hits, r.total] for k, r in sorted(self.declined.items())},
+                "distractor_diffs": [asdict(c) for c in self.distractor_diffs],
             },
             indent=1,
         )
@@ -1096,6 +1142,8 @@ README_START = "<!-- quality:start -->"
 README_END = "<!-- quality:end -->"
 README_RT_START = "<!-- quality-redteam:start -->"
 README_RT_END = "<!-- quality-redteam:end -->"
+README_DS_START = "<!-- quality-distractor:start -->"
+README_DS_END = "<!-- quality-distractor:end -->"
 
 
 def write_readme(readme: Path, rep: QualityReport) -> None:
@@ -1103,6 +1151,7 @@ def write_readme(readme: Path, rep: QualityReport) -> None:
     for start, end, rows in (
         (README_START, README_END, rep.readme_rows()),
         (README_RT_START, README_RT_END, rep.readme_redteam_rows()),
+        (README_DS_START, README_DS_END, rep.readme_distractor_rows()),
     ):
         a, b = text.index(start), text.index(end)
         text = text[: a + len(start)] + "\n" + rows + "\n" + text[b:]
@@ -1282,71 +1331,82 @@ def _scoped_outputs(bridge: Bridge, rt: Sequence[Answer]) -> dict[str, str]:
 def _distractor(
     gate: Path, answers: Mapping[str, Answer]
 ) -> tuple[dict[str, Rate], list[Comparison]]:
-    """Decline rates on the distractor stratum, and redacted against raw, paired by question.
-    Beside them, 03's own stored answers from the same prompt on 2026-09-22 for the two models
-    both panels share, as the difference two runs of an unchanged prompt make."""
+    """Decline rates on the distractor stratum, and redacted against raw, paired by question,
+    under the registered pattern and, labelled, the extended one. Beside them, 03's own stored
+    answers to the same prompts (2026-09-22) for the two models both panels share: the
+    difference two runs of an unchanged prompt make."""
     rt = [a for a in answers.values() if a.part == "distractor" and a.ok]
     if not rt:
         return {}, []
-    cells: dict[tuple[str, str], dict[str, bool]] = {}
+    texts: dict[tuple[str, str], dict[str, str]] = {}
     for a in rt:
-        cells.setdefault((a.arm, a.model_key), {})[a.item_id] = declines(a.output)
+        texts.setdefault((a.arm, a.model_key), {})[a.item_id] = a.output or ""
     served = distractor_pairs(gate)
+    stored = "03 raw, 2026-09-22"
     for line in (gate / GOLD / "instances.jsonl").open(encoding="utf-8"):
-        i = json.loads(line) if line.strip() else None
-        if i is None or not str(i["id"]).startswith("d-") or i["arm_key"] not in PANEL:
+        if not line.strip():
+            continue
+        i = json.loads(line)
+        if not str(i["id"]).startswith("d-") or i["arm_key"] not in PANEL:
             continue
         if served.get(str(i["question_id"])) == i["source_id"]:
-            cells.setdefault(("03 raw, 2026-09-22", str(i["arm_key"])), {})[
-                str(i["question_id"])
-            ] = declines(str(i["output"]))
-    rates = {
-        f"{arm}/{model_key}": Rate(sum(c.values()), len(c)) for (arm, model_key), c in cells.items()
-    }
+            texts.setdefault((stored, str(i["arm_key"])), {})[str(i["question_id"])] = str(
+                i["output"]
+            )
+    rates: dict[str, Rate] = {}
     diffs: list[Comparison] = []
-    for cand, base in (
-        ("redacted", "raw"),
-        ("redacted-allow", "raw"),
-        ("raw", "03 raw, 2026-09-22"),
-    ):
-        pooled: list[tuple[bool, bool]] = []
-        for model_key in PANEL:
-            b, c = cells.get((base, model_key), {}), cells.get((cand, model_key), {})
-            pairs = [(b[q], c[q]) for q in sorted(set(b) & set(c))]
-            if not pairs:
-                continue
-            pooled += pairs
-            d, lo, hi = paired_newcombe(pairs)
-            diffs.append(
-                Comparison(
-                    f"{cand} vs {base}",
-                    model_key,
-                    "distractor",
-                    len(pairs),
-                    sum(1 for x, y in pairs if x and not y),
-                    sum(1 for x, y in pairs if y and not x),
-                    d,
-                    (lo, hi),
-                    (lo, hi),
-                    None,
+    for extended in (False, True):
+        tag = " (extended pattern, post hoc)" if extended else ""
+        cells = {
+            k: {q: declines(t, extended=extended) for q, t in v.items()} for k, v in texts.items()
+        }
+        if not extended:
+            rates = {f"{arm}/{m}": Rate(sum(c.values()), len(c)) for (arm, m), c in cells.items()}
+        comparisons = [("redacted", "raw"), ("redacted-allow", "raw")]
+        if not extended:
+            comparisons.append(("raw", stored))
+        for cand, base in comparisons:
+            pooled: list[tuple[str, bool, bool]] = []
+            for model_key in PANEL:
+                b, c = cells.get((base, model_key), {}), cells.get((cand, model_key), {})
+                items = [(q, b[q], c[q]) for q in sorted(set(b) & set(c))]
+                if not items:
+                    continue
+                pooled += items
+                pairs = [(x, y) for _, x, y in items]
+                d, lo, hi = paired_newcombe(pairs)
+                diffs.append(
+                    Comparison(
+                        f"{cand} vs {base}{tag}",
+                        model_key,
+                        "distractor",
+                        len(pairs),
+                        sum(1 for x, y in pairs if x and not y),
+                        sum(1 for x, y in pairs if y and not x),
+                        d,
+                        (lo, hi),
+                        (lo, hi),
+                        None,
+                    )
                 )
-            )
-        if pooled and base != "03 raw, 2026-09-22":
-            d, lo, hi = paired_newcombe(pooled)
-            diffs.append(
-                Comparison(
-                    f"{cand} vs {base}",
-                    "pooled",
-                    "distractor",
-                    len(pooled),
-                    sum(1 for x, y in pooled if x and not y),
-                    sum(1 for x, y in pooled if y and not x),
-                    d,
-                    (lo, hi),
-                    (lo, hi),
-                    None,
+            if pooled and base != stored:
+                pairs = [(x, y) for _, x, y in pooled]
+                d, nlo, nhi = paired_newcombe(pairs)
+                _, blo, bhi = pooled_difference(pooled, None)
+                diffs.append(
+                    Comparison(
+                        f"{cand} vs {base}{tag}",
+                        "pooled",
+                        "distractor",
+                        len(pairs),
+                        sum(1 for x, y in pairs if x and not y),
+                        sum(1 for x, y in pairs if y and not x),
+                        d,
+                        (blo, bhi),
+                        (nlo, nhi),
+                        None,
+                    )
                 )
-            )
     return rates, diffs
 
 

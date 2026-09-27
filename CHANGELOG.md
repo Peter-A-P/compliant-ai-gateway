@@ -5,6 +5,21 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.24.0 (2026-09-27)
+
+**Where redaction costs quality: a page that cannot answer.** PLAN.md B2.8. docs/redact.md.
+
+- **`boundary redact quality collect --part distractor`**: 03's 60 distractor questions, raw,
+  redacted and redacted with the allow list, three models, 540 answers, US$0.45, design
+  committed first.
+- **`quality.declines`** (`DECLINE`), a programmatic outcome checked against 03's human
+  labels (145 of 146 declines labelled faithful), and `DECLINE_EXTENDED`, a post hoc
+  extension reported as a sensitivity check.
+- **Result**: redacted declines 14.4 points (-20.6 to -8.0) less often than raw, pooled;
+  -17.8 with the allow list; -12.8 (-18.8 to -6.6) under the extended pattern. Two runs of the
+  raw prompt a week apart differ by under 2 points.
+- `pooled_difference` takes `judge_counts=None` for a programmatic grader.
+
 ## 0.23.0 (2026-09-27)
 
 **The proxy's detector and allow list are policy settings, measured, and adding a detector
