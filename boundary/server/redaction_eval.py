@@ -28,7 +28,6 @@ from __future__ import annotations
 import asyncio
 import datetime as dt
 import json
-import re
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -40,6 +39,7 @@ from boundary.config import BoundaryConfig
 from boundary.enforce import load_policy
 from boundary.redact.corpus import build
 from boundary.redact.evaluate import Rate
+from boundary.redact.request import survives
 from boundary.server.app import create_app
 from boundary.server.teams import Team, TeamsConfig, hash_key
 from boundary.transport import Transport
@@ -106,18 +106,6 @@ class ProxyRedactionResults:
             f"{stream.round_trip} | {plain.refused + stream.refused} of "
             f"{plain.requests + stream.requests} |"
         )
-
-
-def survives(value: str, wire: str, background: str) -> bool:
-    """Whether any of `value` reached `wire`: the whole of it, or a run of three or more of
-    its digits that `background` (the page with every personal value cut out) does not
-    already contain."""
-    if value in wire:
-        return True
-    return any(
-        run in wire and run not in background
-        for run in re.findall(r"\d{3,}", value.replace(" ", ""))
-    )
 
 
 def _sent_user_text(body: dict[str, Any]) -> str:
@@ -297,4 +285,4 @@ def write_readme(readme: Path, row: str) -> None:
     )
 
 
-__all__ = ["ModeRow", "ProxyRedactionResults", "run", "write_readme"]
+__all__ = ["ModeRow", "ProxyRedactionResults", "run", "survives", "write_readme"]

@@ -1,0 +1,232 @@
+# Pages for the allow list of PLAN.md B2.8 part 1, in project 03's source-spec format so that
+# 03's own fetcher (`gate.sources.fetch_all`) reads them, through bench/quality/gate_bridge.py.
+#
+# None of these is one of the 40 pages 03's gold set is answered from; a test holds that. The
+# allow list is derived from these mechanically (boundary.redact.quality.derive_allow) and
+# never from the gold pages, because a list tuned on the test pages would measure the tuning.
+# Chosen from the leaf links of each publisher's section indexes, read 2026-09-27, before any
+# answer was generated. Open Government Licence - Canada (FCAC) and US public domain
+# (investor.gov), which is why the extracted text is committed beside this file.
+#
+# The User-Agent is per host for the reason 03's gold-sources files give: canada.ca serves the
+# crawler form with a URL and tarpits anything else, investor.gov refuses any string with one.
+
+default_user_agent: "boundary/0.20 (+https://github.com/Peter-A-P/compliant-ai-gateway)"
+
+sources:
+  - id: fcac-100
+    publisher: fcac
+    title: "Artificial intelligence"
+    url: https://www.canada.ca/en/financial-consumer-agency/services/banking/artificial-intelligence.html
+  - id: fcac-101
+    publisher: fcac
+    title: "Bank accounts"
+    url: https://www.canada.ca/en/financial-consumer-agency/services/banking/bank-accounts.html
+  - id: fcac-102
+    publisher: fcac
+    title: "Choosing financial institution"
+    url: https://www.canada.ca/en/financial-consumer-agency/services/banking/choosing-financial-institution.html
+  - id: fcac-103
+    publisher: fcac
+    title: "Online banking"
+    url: https://www.canada.ca/en/financial-consumer-agency/services/banking/online-banking.html
+  - id: fcac-104
+    publisher: fcac
+    title: "Open banking"
+    url: https://www.canada.ca/en/financial-consumer-agency/services/banking/open-banking.html
+  - id: fcac-105
+    publisher: fcac
+    title: "Opening bank account"
+    url: https://www.canada.ca/en/financial-consumer-agency/services/banking/opening-bank-account.html
+  - id: fcac-106
+    publisher: fcac
+    title: "Overdraft protection"
+    url: https://www.canada.ca/en/financial-consumer-agency/services/banking/overdraft-protection.html
+  - id: fcac-107
+    publisher: fcac
+    title: "Preauthorized debit"
+    url: https://www.canada.ca/en/financial-consumer-agency/services/banking/preauthorized-debit.html
+  - id: fcac-108
+    publisher: fcac
+    title: "Right of offset"
+    url: https://www.canada.ca/en/financial-consumer-agency/services/banking/right-of-offset.html
+  - id: fcac-109
+    publisher: fcac
+    title: "Unclaimed balances"
+    url: https://www.canada.ca/en/financial-consumer-agency/services/banking/unclaimed-balances.html
+  - id: fcac-110
+    publisher: fcac
+    title: "Using debit"
+    url: https://www.canada.ca/en/financial-consumer-agency/services/banking/using-debit.html
+  - id: fcac-111
+    publisher: fcac
+    title: "Choose credit card"
+    url: https://www.canada.ca/en/financial-consumer-agency/services/credit-cards/choose-credit-card.html
+  - id: fcac-112
+    publisher: fcac
+    title: "Use credit responsibly"
+    url: https://www.canada.ca/en/financial-consumer-agency/services/credit-cards/use-credit-responsibly.html
+  - id: fcac-113
+    publisher: fcac
+    title: "Choose mortgage"
+    url: https://www.canada.ca/en/financial-consumer-agency/services/mortgages/choose-mortgage.html
+  - id: fcac-114
+    publisher: fcac
+    title: "Mortgage discharge"
+    url: https://www.canada.ca/en/financial-consumer-agency/services/mortgages/mortgage-discharge.html
+  - id: fcac-115
+    publisher: fcac
+    title: "Renew mortgage"
+    url: https://www.canada.ca/en/financial-consumer-agency/services/mortgages/renew-mortgage.html
+  - id: fcac-116
+    publisher: fcac
+    title: "Pay mortgage faster"
+    url: https://www.canada.ca/en/financial-consumer-agency/services/mortgages/pay-mortgage-faster.html
+  - id: fcac-117
+    publisher: fcac
+    title: "Debt help"
+    url: https://www.canada.ca/en/financial-consumer-agency/services/debt/debt-help.html
+  - id: fcac-118
+    publisher: fcac
+    title: "Limiting debt"
+    url: https://www.canada.ca/en/financial-consumer-agency/services/debt/limiting-debt.html
+  - id: fcac-119
+    publisher: fcac
+    title: "Payday loans"
+    url: https://www.canada.ca/en/financial-consumer-agency/services/loans/payday-loans.html
+  - id: fcac-120
+    publisher: fcac
+    title: "Personal loans"
+    url: https://www.canada.ca/en/financial-consumer-agency/services/loans/personal-loans.html
+  - id: fcac-121
+    publisher: fcac
+    title: "Rent to own"
+    url: https://www.canada.ca/en/financial-consumer-agency/services/loans/rent-to-own.html
+  - id: fcac-122
+    publisher: fcac
+    title: "Title loans"
+    url: https://www.canada.ca/en/financial-consumer-agency/services/loans/title-loans.html
+  - id: fcac-123
+    publisher: fcac
+    title: "Financing car"
+    url: https://www.canada.ca/en/financial-consumer-agency/services/loans/financing-car.html
+  - id: sec-100
+    publisher: sec
+    title: "Five questions ask you invest"
+    url: https://www.investor.gov/introduction-investing/getting-started/five-questions-ask-you-invest
+    user_agent: "boundary/0.20 (allow list for a redaction measurement; one-off)"
+  - id: sec-101
+    publisher: sec
+    title: "Understanding fees"
+    url: https://www.investor.gov/introduction-investing/getting-started/understanding-fees
+    user_agent: "boundary/0.20 (allow list for a redaction measurement; one-off)"
+  - id: sec-102
+    publisher: sec
+    title: "Investing your own"
+    url: https://www.investor.gov/introduction-investing/getting-started/investing-your-own
+    user_agent: "boundary/0.20 (allow list for a redaction measurement; one-off)"
+  - id: sec-103
+    publisher: sec
+    title: "Types orders"
+    url: https://www.investor.gov/introduction-investing/investing-basics/how-stock-markets-work/types-orders
+    user_agent: "boundary/0.20 (allow list for a redaction measurement; one-off)"
+  - id: sec-104
+    publisher: sec
+    title: "Executing order"
+    url: https://www.investor.gov/introduction-investing/investing-basics/how-stock-markets-work/executing-order
+    user_agent: "boundary/0.20 (allow list for a redaction measurement; one-off)"
+  - id: sec-105
+    publisher: sec
+    title: "Types brokerage accounts"
+    url: https://www.investor.gov/introduction-investing/investing-basics/how-stock-markets-work/types-brokerage-accounts
+    user_agent: "boundary/0.20 (allow list for a redaction measurement; one-off)"
+  - id: sec-106
+    publisher: sec
+    title: "Market participants"
+    url: https://www.investor.gov/introduction-investing/investing-basics/how-stock-markets-work/market-participants
+    user_agent: "boundary/0.20 (allow list for a redaction measurement; one-off)"
+  - id: sec-107
+    publisher: sec
+    title: "Brokerage accounts"
+    url: https://www.investor.gov/introduction-investing/investing-basics/investment-accounts/brokerage-accounts
+    user_agent: "boundary/0.20 (allow list for a redaction measurement; one-off)"
+  - id: sec-108
+    publisher: sec
+    title: "Advisory accounts"
+    url: https://www.investor.gov/introduction-investing/investing-basics/investment-accounts/advisory-accounts
+    user_agent: "boundary/0.20 (allow list for a redaction measurement; one-off)"
+  - id: sec-109
+    publisher: sec
+    title: "Individual retirement accounts iras"
+    url: https://www.investor.gov/introduction-investing/investing-basics/investment-accounts/tax-advantaged-accounts/retirement-savings/individual-retirement-accounts-iras
+    user_agent: "boundary/0.20 (allow list for a redaction measurement; one-off)"
+  - id: sec-110
+    publisher: sec
+    title: "403b and 457b plans"
+    url: https://www.investor.gov/introduction-investing/investing-basics/investment-accounts/tax-advantaged-accounts/retirement-savings/403b-and-457b-plans
+    user_agent: "boundary/0.20 (allow list for a redaction measurement; one-off)"
+  - id: sec-111
+    publisher: sec
+    title: "Variable annuities"
+    url: https://www.investor.gov/introduction-investing/investing-basics/investment-products/annuities/variable-annuities
+    user_agent: "boundary/0.20 (allow list for a redaction measurement; one-off)"
+  - id: sec-112
+    publisher: sec
+    title: "Commodities"
+    url: https://www.investor.gov/introduction-investing/investing-basics/investment-products/commodities
+    user_agent: "boundary/0.20 (allow list for a redaction measurement; one-off)"
+  - id: sec-113
+    publisher: sec
+    title: "International investing"
+    url: https://www.investor.gov/introduction-investing/investing-basics/investment-products/international-investing
+    user_agent: "boundary/0.20 (allow list for a redaction measurement; one-off)"
+  - id: sec-114
+    publisher: sec
+    title: "Real estate investment trusts reits"
+    url: https://www.investor.gov/introduction-investing/investing-basics/investment-products/real-estate-investment-trusts-reits
+    user_agent: "boundary/0.20 (allow list for a redaction measurement; one-off)"
+  - id: sec-115
+    publisher: sec
+    title: "Hedge funds"
+    url: https://www.investor.gov/introduction-investing/investing-basics/investment-products/private-investment-funds/hedge-funds
+    user_agent: "boundary/0.20 (allow list for a redaction measurement; one-off)"
+  - id: sec-116
+    publisher: sec
+    title: "Private equity"
+    url: https://www.investor.gov/introduction-investing/investing-basics/investment-products/private-investment-funds/private-equity
+    user_agent: "boundary/0.20 (allow list for a redaction measurement; one-off)"
+  - id: sec-117
+    publisher: sec
+    title: "Structured notes principal protection"
+    url: https://www.investor.gov/introduction-investing/investing-basics/investment-products/structured-notes-principal-protection
+    user_agent: "boundary/0.20 (allow list for a redaction measurement; one-off)"
+  - id: sec-118
+    publisher: sec
+    title: "Interval funds"
+    url: https://www.investor.gov/introduction-investing/investing-basics/investment-products/closed-end-funds/interval-funds
+    user_agent: "boundary/0.20 (allow list for a redaction measurement; one-off)"
+  - id: sec-119
+    publisher: sec
+    title: "Diversify your investments"
+    url: https://www.investor.gov/introduction-investing/investing-basics/save-and-invest/diversify-your-investments
+    user_agent: "boundary/0.20 (allow list for a redaction measurement; one-off)"
+  - id: sec-120
+    publisher: sec
+    title: "Gauge your risk tolerance"
+    url: https://www.investor.gov/introduction-investing/investing-basics/save-and-invest/gauge-your-risk-tolerance
+    user_agent: "boundary/0.20 (allow list for a redaction measurement; one-off)"
+  - id: sec-121
+    publisher: sec
+    title: "Options"
+    url: https://www.investor.gov/introduction-investing/investing-basics/glossary/options
+    user_agent: "boundary/0.20 (allow list for a redaction measurement; one-off)"
+  - id: sec-122
+    publisher: sec
+    title: "529 plans"
+    url: https://www.investor.gov/introduction-investing/investing-basics/glossary/529-plans
+    user_agent: "boundary/0.20 (allow list for a redaction measurement; one-off)"
+  - id: sec-123
+    publisher: sec
+    title: "Crypto assets"
+    url: https://www.investor.gov/additional-resources/spotlight/crypto-assets
+    user_agent: "boundary/0.20 (allow list for a redaction measurement; one-off)"

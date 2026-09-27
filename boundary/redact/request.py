@@ -80,6 +80,18 @@ _TAIL = re.compile(r"[A-Za-z0-9_.\-]*\Z")
 HOLD = 64
 
 
+def survives(value: str, wire: str, background: str) -> bool:
+    """Whether any of `value` reached `wire`: the whole of it, or a run of three or more of
+    its digits that `background` (the page with every personal value cut out) does not
+    already contain."""
+    if value in wire:
+        return True
+    return any(
+        run in wire and run not in background
+        for run in re.findall(r"\d{3,}", value.replace(" ", ""))
+    )
+
+
 class StreamRehydrator:
     """Rehydrates a streamed answer piece by piece.
 
@@ -123,4 +135,5 @@ __all__ = [
     "StreamRehydrator",
     "leak_counts",
     "redact_request",
+    "survives",
 ]

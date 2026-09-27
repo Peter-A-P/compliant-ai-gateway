@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import json
 import sys
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
@@ -681,7 +682,87 @@ def cmd_redact_overmask(args: argparse.Namespace) -> int:
     (0.16). Offline: no key, no network, no model."""
     from boundary.redact import overmask
 
-    print(overmask.run(Path(args.gold)).table())
+    allow: list[str] = []
+    if args.allow is not None:
+        allow = [
+            x.strip()
+            for x in args.allow.read_text(encoding="utf-8").splitlines()
+            if x.strip() and not x.startswith("#")
+        ]
+    print(overmask.run(Path(args.gold), allow=allow).table())
+    return 0
+
+
+def cmd_redact_quality(args: argparse.Namespace) -> int:
+    """The quality cost of redaction through 03's gate (0.20, PLAN.md B2.8). `allow` and
+    `report` are offline; `collect` and `judge` call vendors, each run capped by --max-usd
+    and by the project's per-run cap."""
+    import asyncio
+
+    from boundary.redact import quality
+
+    bridge = quality.Bridge(Path(args.gate), args.dir / "gate_bridge.py")
+    allow_file = args.dir / "allow.txt"
+    answers_file = args.dir / "answers.jsonl"
+    verdicts_file = args.dir / "verdicts.jsonl"
+    if args.step == "allow":
+        pages_file = args.dir / "allow-pages.jsonl"
+        if not pages_file.is_file():
+            got = bridge.run("fetch", {"spec": str((args.dir / "allow-sources.yaml").resolve())})
+            if got["failed"]:
+                print(f"not fetched: {got['failed']}", file=sys.stderr)
+            with pages_file.open("w", encoding="utf-8", newline="\n") as f:
+                for page in got["pages"]:
+                    f.write(json.dumps(page, ensure_ascii=False) + "\n")
+        pages = [json.loads(x)["text"] for x in pages_file.open(encoding="utf-8") if x.strip()]
+        terms = quality.derive_allow(pages)
+        allow_file.write_text(
+            "# Derived by `boundary redact quality allow` from allow-pages.jsonl; never edited.\n"
+            + "".join(t + "\n" for t in terms),
+            encoding="utf-8",
+        )
+        print(f"{len(terms)} terms from {len(pages)} pages, written to {allow_file}")
+        return 0
+    allow = [
+        x.strip()
+        for x in allow_file.read_text(encoding="utf-8").splitlines()
+        if x.strip() and not x.startswith("#")
+    ]
+    if args.step == "report":
+        rep = quality.report(
+            bridge, quality.read_answers(answers_file), quality.read_verdicts(verdicts_file)
+        )
+        print(rep.table())
+        return 0
+    gw = Gateway.from_config(args.config, project=args.project)
+    try:
+        if args.step == "collect":
+            jobs = quality.plan_jobs(args.part, bridge)
+            made, spent = asyncio.run(
+                quality.collect(
+                    gw,
+                    jobs,
+                    answers_file,
+                    allow=allow,
+                    run_id=args.run_id or f"quality-{args.part}",
+                    max_usd=args.max_usd,
+                )
+            )
+        else:
+            made, spent = asyncio.run(
+                quality.judge(
+                    gw,
+                    bridge,
+                    quality.read_answers(answers_file),
+                    verdicts_file,
+                    part=args.part,
+                    run_id=args.run_id or f"quality-judge-{args.part}",
+                    max_usd=args.max_usd,
+                )
+            )
+    finally:
+        gw.close()
+    print(f"{args.step} {args.part}: {made} calls, US${spent:.4f}", file=sys.stderr)
     return 0
 
 
@@ -1080,7 +1161,23 @@ def main(argv: list[str] | None = None) -> int:
         default="../03-ai-release-gate/gate/gold",
         help="03's gate/gold directory (questions.jsonl and sources.jsonl)",
     )
+    om.add_argument(
+        "--allow", type=Path, help="an allow list, one term per line (bench/quality/allow.txt)"
+    )
     om.set_defaults(func=cmd_redact_overmask)
+
+    qual = redact.add_parser(
+        "quality",
+        help="the quality cost of redaction through project 03's gate (PLAN.md B2.8): "
+        "allow and report are offline; collect and judge call vendors",
+    )
+    qual.add_argument("step", choices=("allow", "collect", "judge", "report"))
+    qual.add_argument("--part", choices=("public", "personal", "redteam"), default="public")
+    qual.add_argument("--gate", default="../03-ai-release-gate", help="the 03 checkout")
+    qual.add_argument("--dir", type=Path, default=Path("bench/quality"))
+    qual.add_argument("--max-usd", dest="max_usd", type=float, default=1.9)
+    qual.add_argument("--run-id", dest="run_id", default="")
+    qual.set_defaults(func=cmd_redact_quality)
 
     ledger = sub.add_parser("ledger", help="ledger commands").add_subparsers(
         dest="sub", required=True

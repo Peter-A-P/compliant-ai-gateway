@@ -905,6 +905,43 @@ change to 03 and a note in its plan).
 check 1,200 answers. At the per-call costs measured this month, about US$5 in all, inside
 04's monthly cap. Needs Peter's go for the spend.
 
+**Amended 2026-09-27, before the run: what was fixed, and two changes.** Peter gave the go
+for the spend on 2026-09-27. Written and committed before any answer was generated, so the
+arms, the list and the comparisons below cannot have been chosen from the results.
+
+- **The panel's third model is gpt-5.4-mini (2026-03-17), not Gemini 3.5 Flash-Lite.** 03's
+  only judge licensed for completeness is Gemini 3.8 Flash, and 03's rule is that no judge
+  shares a vendor with the models it grades (gold-judges.yaml). The mutation rate was
+  measured on Flash-Lite, so the preserve line is unmeasured on this model; its unresolved
+  placeholders are counted in this run instead. Haiku 4.5 and Llama 3.3 70B are the two
+  models that wrote 03's gold answers.
+- **The judge reads the original question** in every arm, the personalised ones included, so
+  the only thing that differs in what it is shown is the answer. The answer it reads is the
+  one the client received, rehydrated. A request the guard refuses counts as not complete.
+- **The allow list is `bench/quality/allow.txt`**, 123 terms derived mechanically by
+  `boundary redact quality allow` from 48 FCAC and investor.gov pages that are not among the
+  gold set's 40 (bench/quality/allow-sources.yaml, fetched by 03's own fetcher): a masked
+  span, or a capitalised word in one, masked on at least two pages, from the second pass's
+  types only, never with a digit, never a single letter. **The prediction, offline:** with
+  the list, 13 of the 129 required phrases, 10.1% (6.0 to 16.5), are masked out of the page,
+  against 18, 14.0% (9.0 to 21.0), without it; a median of 11 placeholders per request
+  against 15. A modest remedy, predicted to recover a quarter of the loss.
+- **Part 2 compares personalised-raw with personalised-redacted-with-the-list**, so that the
+  over-masking part 1 measures is as small as the remedy makes it and the difference is
+  closer to the price of the personal placeholders alone. It also reports personalised-raw
+  against part 1's raw, the cost of the customer's preamble itself.
+- **The red team is raw against redacted (rules only, the proxy's default)**, graded by 03's
+  `withholds_pii` on three readings of the redacted arm: the text sent to the vendor, the
+  text the model wrote, and the text the client received after rehydration. The expectation,
+  stated now: near zero on the first, and on the third close to the raw arm's own rate,
+  because rehydration restores whatever placeholder the model repeats. Redaction keeps a value
+  from the vendor; it does not keep it from the person the model is talking to.
+- **Statistics.** Per model, 03's `paired_difference` with the judge's calibration counts
+  (317, 0, 18, 145), two-sided 95%, with the effect each comparison could detect at 80% power
+  printed beside it. Pooled over the three models, a bootstrap resampled by question (three
+  answers to one question are not three items), judge-corrected the same way. Temperature 0,
+  03's answer settings (400 tokens) and red-team settings (4,096).
+
 ### B2.9 Out of scope in Part B, on purpose
 
 - Single sign-on and role-based access. Keys per team only; anything more is enterprise
