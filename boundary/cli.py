@@ -1244,7 +1244,9 @@ def main(argv: list[str] | None = None) -> int:
         "allow and report are offline; collect and judge call vendors",
     )
     qual.add_argument("step", choices=("allow", "collect", "judge", "report"))
-    qual.add_argument("--part", choices=("public", "personal", "redteam"), default="public")
+    qual.add_argument(
+        "--part", choices=("public", "personal", "redteam", "distractor"), default="public"
+    )
     qual.add_argument("--gate", default="../03-ai-release-gate", help="the 03 checkout")
     qual.add_argument("--dir", type=Path, default=Path("bench/quality"))
     qual.add_argument("--max-usd", dest="max_usd", type=float, default=1.9)

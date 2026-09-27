@@ -31,8 +31,20 @@ def answer_prompts(req: dict[str, Any]) -> dict[str, Any]:
     root = Path(req["gold"])
     sources = {s.id: s for s in g.read_sources(root / g.SOURCES_FILE)}
     replace: dict[str, str] = req.get("questions") or {}
+    # A question served against another page (03's distractor stratum): question id to the
+    # source id served, so the prompt is byte for byte the one 03's d- instances were sent.
+    served: dict[str, str] = req.get("served") or {}
     out = {}
     for q in g.read_questions(root / g.QUESTIONS_FILE):
+        if served:
+            if q.id not in served:
+                continue
+            out[q.id] = {
+                "source_id": served[q.id],
+                "system": generate.ANSWER_SYSTEM,
+                "prompt": generate.answer_prompt(sources[served[q.id]], q),
+            }
+            continue
         if replace:
             if q.id not in replace:
                 continue

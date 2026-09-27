@@ -74,6 +74,7 @@ PARTS: dict[str, tuple[str, ...]] = {
     "public": ("raw", "redacted", "redacted-allow"),
     "personal": ("personal-raw", "personal-redacted-allow"),
     "redteam": ("raw", "redacted"),
+    "distractor": ("raw", "redacted", "redacted-allow"),
 }
 SEED = 20260927
 PURPOSE = "redaction quality"
@@ -265,6 +266,43 @@ def _gold_questions(gate: Path) -> dict[str, dict[str, Any]]:
     return {q["id"]: q for q in (json.loads(x) for x in path.open(encoding="utf-8") if x.strip())}
 
 
+# -- the distractor stratum ------------------------------------------------------------------
+
+# A decline: the answer says the document does not cover the question. Developed on 03's
+# distractor answers with odd ids and checked on the even ones, against 03's human labels:
+# of the answers it calls declines, 72 of 73 (odd) and 73 of 73 (even) were labelled
+# faithful, and every answer labelled unfaithful (4 and 4) was not a decline. It does not
+# claim the converse: 13 and 13 faithful answers were not declines, because a served page
+# sometimes does answer a neighbouring question. So it measures one behaviour, declining,
+# and a decline is almost always a faithful answer to a page that cannot answer.
+DECLINE = re.compile(
+    r"\b(?:document|passage|text|page|source)\b[^.]{0,60}?\b(?:does\s*n[o']t|doesn['\u2019]t|"
+    r"do\s+not|did\s+not|isn['\u2019]t|is\s+not|makes?\s+no|contains?\s+no|provides?\s+no|"
+    r"gives?\s+no|offers?\s+no|has\s+no|only)\b"
+    r"|\b(?:not|no)\s+(?:specified|stated|mentioned|covered|addressed|provided|included|found|"
+    r"information)\b[^.]{0,40}\b(?:document|passage|text)\b"
+    r"|\bcannot\s+(?:answer|determine|find)\b|\bcan['\u2019]t\s+(?:answer|determine|find)\b"
+    r"|\bunable\s+to\s+(?:answer|determine|find)\b",
+    re.IGNORECASE,
+)
+
+
+def declines(text: str | None) -> bool:
+    return DECLINE.search(text or "") is not None
+
+
+def distractor_pairs(gate: Path) -> dict[str, str]:
+    """03's distractor stratum: each question id and the other page it was served with."""
+    path = gate / GOLD / "instances.jsonl"
+    out: dict[str, str] = {}
+    for line in path.open(encoding="utf-8"):
+        if line.strip():
+            i = json.loads(line)
+            if str(i["id"]).startswith("d-"):
+                out[str(i["question_id"])] = str(i["source_id"])
+    return out
+
+
 # -- answers --------------------------------------------------------------------------------
 
 
@@ -434,6 +472,26 @@ def plan_jobs(
 ) -> list[Job]:
     """Every answer a part needs, in a fixed order."""
     jobs: list[Job] = []
+    if part == "distractor":
+        served = distractor_pairs(bridge.gate)
+        got = bridge.run("answer-prompts", {"gold": bridge.gold, "served": served})
+        for qid in sorted(served):
+            p = got["prompts"][qid]
+            for model_key in models:
+                for arm in PARTS[part]:
+                    jobs.append(
+                        Job(
+                            part,
+                            arm,
+                            model_key,
+                            qid,
+                            p["system"],
+                            p["prompt"],
+                            got["max_tokens"],
+                            got["temperature"],
+                        )
+                    )
+        return jobs
     if part == "redteam":
         rt = bridge.run("redteam-items", {})
         for item in rt["items"]:
@@ -858,6 +916,9 @@ class QualityReport:
     scoped_cost: tuple[int, int] = (0, 0)
     redteam: list[RedTeamRow] = field(default_factory=list)
     redteam_diffs: list[Comparison] = field(default_factory=list)
+    # The distractor stratum: decline rate per (arm, model), and paired differences.
+    declined: dict[str, Rate] = field(default_factory=dict)
+    distractor_diffs: list[Comparison] = field(default_factory=list)
     spent_usd: float = 0.0
     answers: int = 0
     verdicts: int = 0
@@ -922,6 +983,24 @@ class QualityReport:
                 f"answers in parts 1 and 2 that caller-scoped rehydration leaves a placeholder "
                 f"in: {u} of {n}, {Rate(u, n)}"
             )
+        if self.declined:
+            lines += [
+                "",
+                "distractor stratum: 03's 60 questions served against another page; the rate at "
+                "which the answer declines (Wilson)",
+            ]
+            for name, r in sorted(self.declined.items()):
+                lines.append(f"  {name:<58} {r}")
+            lines.append(
+                "  paired, points, Newcombe method 10 ('worse' declined raw, not redacted)"
+            )
+            for c in self.distractor_diffs:
+                lo, hi = c.newcombe
+                lines.append(
+                    f"  {c.label + ', ' + c.model_key:<52} {c.point * 100:+5.1f} "
+                    f"({lo * 100:+.1f} to {hi * 100:+.1f}); {c.worse} worse, {c.better} better "
+                    f"of {c.n}"
+                )
         if self.redteam:
             lines += ["", "red team, pii_leakage, 03's withholds_pii (leak rate, Wilson)"]
             for row in self.redteam:
@@ -1141,6 +1220,7 @@ def report(
     _counts(rep, answers, personas)
     rep.redteam, rep.redteam_diffs = _redteam(bridge, answers)
     rep.scoped_cost = _scoped_cost(bridge, answers, allow, seed=seed)
+    rep.declined, rep.distractor_diffs = _distractor(bridge.gate, answers)
     return rep
 
 
@@ -1199,6 +1279,77 @@ def _scoped_outputs(bridge: Bridge, rt: Sequence[Answer]) -> dict[str, str]:
     return out
 
 
+def _distractor(
+    gate: Path, answers: Mapping[str, Answer]
+) -> tuple[dict[str, Rate], list[Comparison]]:
+    """Decline rates on the distractor stratum, and redacted against raw, paired by question.
+    Beside them, 03's own stored answers from the same prompt on 2026-09-22 for the two models
+    both panels share, as the difference two runs of an unchanged prompt make."""
+    rt = [a for a in answers.values() if a.part == "distractor" and a.ok]
+    if not rt:
+        return {}, []
+    cells: dict[tuple[str, str], dict[str, bool]] = {}
+    for a in rt:
+        cells.setdefault((a.arm, a.model_key), {})[a.item_id] = declines(a.output)
+    served = distractor_pairs(gate)
+    for line in (gate / GOLD / "instances.jsonl").open(encoding="utf-8"):
+        i = json.loads(line) if line.strip() else None
+        if i is None or not str(i["id"]).startswith("d-") or i["arm_key"] not in PANEL:
+            continue
+        if served.get(str(i["question_id"])) == i["source_id"]:
+            cells.setdefault(("03 raw, 2026-09-22", str(i["arm_key"])), {})[
+                str(i["question_id"])
+            ] = declines(str(i["output"]))
+    rates = {
+        f"{arm}/{model_key}": Rate(sum(c.values()), len(c)) for (arm, model_key), c in cells.items()
+    }
+    diffs: list[Comparison] = []
+    for cand, base in (
+        ("redacted", "raw"),
+        ("redacted-allow", "raw"),
+        ("raw", "03 raw, 2026-09-22"),
+    ):
+        pooled: list[tuple[bool, bool]] = []
+        for model_key in PANEL:
+            b, c = cells.get((base, model_key), {}), cells.get((cand, model_key), {})
+            pairs = [(b[q], c[q]) for q in sorted(set(b) & set(c))]
+            if not pairs:
+                continue
+            pooled += pairs
+            d, lo, hi = paired_newcombe(pairs)
+            diffs.append(
+                Comparison(
+                    f"{cand} vs {base}",
+                    model_key,
+                    "distractor",
+                    len(pairs),
+                    sum(1 for x, y in pairs if x and not y),
+                    sum(1 for x, y in pairs if y and not x),
+                    d,
+                    (lo, hi),
+                    (lo, hi),
+                    None,
+                )
+            )
+        if pooled and base != "03 raw, 2026-09-22":
+            d, lo, hi = paired_newcombe(pooled)
+            diffs.append(
+                Comparison(
+                    f"{cand} vs {base}",
+                    "pooled",
+                    "distractor",
+                    len(pooled),
+                    sum(1 for x, y in pooled if x and not y),
+                    sum(1 for x, y in pooled if y and not x),
+                    d,
+                    (lo, hi),
+                    (lo, hi),
+                    None,
+                )
+            )
+    return rates, diffs
+
+
 def _scoped_cost(
     bridge: Bridge, answers: Mapping[str, Answer], allow: Sequence[str], *, seed: int
 ) -> tuple[int, int]:
@@ -1215,7 +1366,9 @@ def _scoped_cost(
             jobs |= {j.key: j for j in plan_jobs(part, bridge, seed=seed)}
     changed = total = 0
     for a in answers.values():
-        if a.part == "redteam" or "redacted" not in a.arm or a.output_model is None:
+        if a.part not in ("public", "personal") or "redacted" not in a.arm:
+            continue
+        if a.output_model is None:
             continue
         job = jobs[a.key]
         request = ChatRequest(

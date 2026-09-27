@@ -977,6 +977,22 @@ proxy rehydrates caller-scoped by default (`rehydrate: caller`), with the full v
 per-class policy option (`rehydrate: all`) for deployments whose system prompt is the
 caller's own data.
 
+**Amended 2026-09-27, before a follow-up run: the lead, tested on 03's distractor stratum.**
+Every loss above was on an unanswerable question, twelve per model. 03 has a larger set of the
+same situation: 60 answerable questions served against another page (its `d-` stratum, 180
+instances human-labelled). Committed before the first answer: the 60 question and page pairs
+exactly as 03 served them, three models, arms raw, redacted (the proxy's default) and
+redacted with the allow list, 540 answers, about US$0.45, under Peter's go of 2026-09-27 for
+up to US$2. **No judge**: 03's completeness judge scores a correct "the document does not
+cover this" as incomplete on a question written answerable, and neither judge is licensed on
+faithfulness. The outcome is programmatic instead, **whether the answer declines**
+(`quality.DECLINE`), developed on 03's odd-numbered `d-` answers and checked on the even ones
+against the human labels: of the answers it calls declines, 145 of 146 were labelled faithful,
+and none of the 8 labelled unfaithful was a decline. The expectation, stated now: redacted
+declines less than raw. Paired Newcombe per model and pooled, two-sided; and 03's own stored
+answers to the same prompts (2026-09-22) against today's raw arm, as the difference two runs
+of an unchanged prompt make.
+
 ### B2.9 Out of scope in Part B, on purpose
 
 - Single sign-on and role-based access. Keys per team only; anything more is enterprise
