@@ -427,6 +427,7 @@ from October the ledger-against-invoice difference is recorded there too (sectio
 | v0.19.0 | 2026-09-25 | `boundary loadtest`, the layered load test harness, with development figures; ledger v9's spend table, removing a per-call scan of the whole ledger from the caps |
 | v0.20.0 | 2026-09-27 | B2.8 run: the quality cost of redaction through 03's gate (no cost visible on answerable questions), and the red team's finding that rehydration hands the caller what the model refused; `caller_scoped`; price list 2026-09-27 |
 | v0.21.0 | 2026-09-27 | The proxy rehydrates only what the caller sent (`rehydrate: caller`, the default), Peter's decision on the B2.8 red-team finding |
+| v0.22.0 | 2026-09-27 | The injection screen (B2.6): `boundary.screen`, `boundary screen eval`, the policy's `injection` key; ledger v10 `injection`; audit record schema 3 |
 | v1.0.0 | May 23 2027 | Everything in Part B; `boundary.redact` for 07; the proxy for 13 and 14 |
 
 03 pins `boundary>=0.1,<0.3` for Part A and moves to `>=1.0` when its Part B is built
@@ -813,6 +814,18 @@ Default action is to flag in the audit record; blocking is a per-policy choice, 
 the false-positive rate is a real cost and the policy owner should choose it knowingly.
 Evaluated on 03's injection red-team suite (Rule F: reuse) and a public set.
 
+**Amended 2026-09-27: built in 0.22.0, rules first, measured the way B2.8 was.** A rules
+screen (`boundary.screen`, seven named rules), not a classifier, because it runs in
+microseconds with no model and no dependency, and because its measured ceiling is the case for
+or against paying for a classifier. Developed on deepset/prompt-injections' train split only
+and frozen in a commit before anything else was run: 80.8% of train's injections, **43.3%
+(31.6 to 55.9) of the held-out split's**, every one of 03's 200 PromptInject attacks, and the
+100 PromptInject items of 03's leak suite but none of its 100 social-engineering items, which
+are not injections. False positives: 0 of 150 over-refusal prompts, 0 of 56 held-out ordinary
+rows, 2 of 100 gold prompts (one page's "pretend to be", left as found). `flag` by default,
+with the flag on the ledger (v10) and sealed in the audit chain (record schema 3); `block` per
+policy. docs/screen.md.
+
 ### B2.7 Teams, budgets and quotas
 
 API keys map to teams; each team has a monthly budget and a rate quota; budgets extend
@@ -1128,7 +1141,7 @@ the ledger and the spans as its production signal.
 - [x] Redaction precision and recall per entity type on public corpora and the Canadian set, with CIs. **Done 2026-09-23 (0.8.0)**; detail on the annotated line below
 - [x] Quality effect of redaction measured through the 03 gate, two-sided, with interval. **Done 2026-09-27 (v0.20.0, US$3.33)**: no loss in 264 answerable pairs under any arm; 4 of 300 pooled under the proxy's redaction, -1.5 points (-3.8 to +0.2, Newcombe), all on unanswerable questions; the red team found full rehydration handing the caller values the model refused, and `caller_scoped` removing it offline (B2.8, docs/redact.md)
 - [ ] Semantic cache hit rate, dollars saved and false-hit rate on replayed traffic
-- [ ] Injection screen detection and false-positive rates reported (unless dropped, and then said so)
+- [x] Injection screen detection and false-positive rates reported (unless dropped, and then said so). **Done 2026-09-27 (0.22.0)**: rules only, 43.3% (31.6 to 55.9) on deepset held-out against 80.8% on the train split it was written on, 200 of 200 of 03's injections, 0 of 150 over-refusal prompts flagged (docs/screen.md)
 - [ ] Audit log chain verification tool included; daily anchors in the public repository; tamper test detects every injected corruption. **Tool and tamper test done 2026-09-22 (0.7.0)**: `boundary audit verify`, and `boundary audit tamper-test` detecting 2,400 of 2,400 corruptions across twelve kinds before the last anchor with 0 false alarms, the six kinds a chain cannot see after it reported beside them (B2.4, amended). **Daily anchors in the public repository** are what remain, and they need the proxy's always-on log to anchor
 - [x] Per-team budgets and quotas enforced; 429 body names the limit. **Done 2026-09-25 (0.13.0)**: team monthly and per-run budgets, the gateway ceiling and the per-minute quota each refuse with zero upstream calls and a body naming the limit, its reset and a `Retry-After`. The in-memory quota and the unpriced-model gap are in B2.7
 - [ ] Load test published: p50, p95, p99 overhead by layer and load level, with CIs and the VPS size stated. **Harness built 2026-09-25 (0.19.0)** and run on the development laptop (docs/loadtest.md): median overhead 0.3 to 2.6 ms across the three layers at 50 and 200 rps; 500 rps is beyond the Python client and needs k6. Waits on the VPS

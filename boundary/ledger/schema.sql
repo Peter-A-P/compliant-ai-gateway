@@ -73,7 +73,8 @@ CREATE TABLE IF NOT EXISTS ledger (
     batch_id            TEXT,
     ttft_ms             REAL,
     data_class          TEXT,
-    redacted            INTEGER
+    redacted            INTEGER,
+    injection           INTEGER
 );
 
 -- Indexes over columns that every schema version has. The indexes over call_uid and
@@ -84,6 +85,10 @@ CREATE TABLE IF NOT EXISTS ledger (
 --             it redacted the payload itself), null otherwise. Like data_class it is the
 --             caller's statement: the library cannot tell a redacted body from a raw one
 --             without reading content, which it does not do.
+-- v10 (0.22, September 2026) adds one column for the proxy's injection screen:
+--   injection 1 when the screen flagged the request, null otherwise. It records that a rule
+--             fired, never what it matched: the rule names go in the response header and
+--             the refusal body, and the text stays with the caller.
 CREATE INDEX IF NOT EXISTS ledger_project_ts ON ledger (project, ts_utc);
 CREATE INDEX IF NOT EXISTS ledger_project_run ON ledger (project, run_id);
 

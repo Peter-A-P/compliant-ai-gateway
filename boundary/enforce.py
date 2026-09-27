@@ -74,6 +74,12 @@ class DataPolicy(BaseModel):
     # The class a call that declared nothing is treated as. B2.2: absent means personal.
     undeclared: DataClass = DataClass.PERSONAL
     classes: dict[DataClass, ClassRule]
+    # What the proxy does when its injection screen fires on a request (0.22, B2.6): `flag`,
+    # the default, sends it and records the flag on the ledger, the audit chain and a
+    # response header; `block` refuses it with a 400 naming the rules; `off` does not screen.
+    # Advisory by default because the false-positive rate is a cost the policy owner should
+    # choose to pay knowingly (docs/screen.md has it).
+    injection: Literal["off", "flag", "block"] = "flag"
 
     @model_validator(mode="after")
     def _redacted_as(self) -> Self:

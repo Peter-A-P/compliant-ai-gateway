@@ -29,7 +29,7 @@ from typing import Any
 GENESIS = "0" * 64
 # Record schema 2 (0.18) seals `redacted` as well. A schema 1 record keeps verifying against
 # the fields it sealed; nothing already in a chain is rewritten.
-RECORD_SCHEMA = 2
+RECORD_SCHEMA = 3
 KIND_LEDGER_ROW = "ledger_row"
 
 # The ledger columns a record seals. Not `id`, which is per file and changes in a merge;
@@ -73,7 +73,10 @@ SEALED: tuple[str, ...] = (
 # Schema 2 (0.18): whether the call was sent redacted (ledger v8). A redacted personal call is
 # then in the chain as redacted, not only in the ledger.
 SEALED_V2: tuple[str, ...] = (*SEALED, "redacted")
-_SEALED_BY_SCHEMA = {1: SEALED, 2: SEALED_V2}
+# Schema 3 (0.22): whether the injection screen flagged the call (ledger v10), so a flag is
+# in the chain and cannot be removed from the ledger afterwards without the chain seeing it.
+SEALED_V3: tuple[str, ...] = (*SEALED_V2, "injection")
+_SEALED_BY_SCHEMA = {1: SEALED, 2: SEALED_V2, 3: SEALED_V3}
 
 
 def canonical(value: Mapping[str, Any]) -> str:
@@ -100,19 +103,23 @@ def sealed_fields(row: Mapping[str, Any], schema: int = RECORD_SCHEMA) -> dict[s
 
 def fields_schema(fields: Mapping[str, Any]) -> int:
     """Which record schema sealed these fields, read from the fields themselves."""
+    if "injection" in fields:
+        return 3
     return 2 if "redacted" in fields else 1
 
 
 def needs_seal(before: Mapping[str, Any] | None, row: Mapping[str, Any]) -> bool:
     """Whether a row has something its latest record does not hold: it was never sealed, it
-    changed since, or it was sealed under schema 1 and now carries a `redacted` that schema 1
-    had no place for. A schema 1 record of a row with nothing new is left as it is."""
+    changed since, or it was sealed under an older schema and now carries a field that schema
+    had no place for (`redacted` for schema 1, `injection` for 1 and 2). An older record of a
+    row with nothing new is left as it is."""
     if before is None:
         return True
     schema = fields_schema(before)
     if dict(before) != sealed_fields(row, schema):
         return True
-    return schema < 2 and row.get("redacted") is not None
+    newer = set(_SEALED_BY_SCHEMA[RECORD_SCHEMA]) - set(_SEALED_BY_SCHEMA[schema])
+    return any(row.get(name) is not None for name in newer)
 
 
 def ledger_body(row: Mapping[str, Any], *, sealed_utc: str) -> str:
@@ -358,6 +365,7 @@ __all__ = [
     "RECORD_SCHEMA",
     "SEALED",
     "SEALED_V2",
+    "SEALED_V3",
     "Anchor",
     "Break",
     "Record",

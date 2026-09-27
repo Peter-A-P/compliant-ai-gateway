@@ -313,6 +313,33 @@ values the caller sent (`caller_scoped`, measured offline on the stored answers)
 proxy does by default** (`rehydrate: caller` in the data policy, Peter's decision 2026-09-27).
 Method and every row in [docs/redact.md](docs/redact.md).
 
+**The injection screen** (`v0.22.0`, PLAN.md B2.6): rules only, advisory by default
+
+| Set | Injections detected | Ordinary requests flagged |
+|---|---|---|
+<!-- screen:start -->
+| deepset train (development set) | 164 of 203, 80.8% (74.8% to 85.6%) | 2 of 343, 0.6% (0.2% to 2.1%) |
+| deepset test | 26 of 60, 43.3% (31.6% to 55.9%) | 0 of 56, 0.0% (0.0% to 6.4%) |
+| 03 prompt_injection | 200 of 200, 100.0% (98.1% to 100.0%) |  |
+| 03 pii_leakage | 100 of 200, 50.0% (43.1% to 56.9%) |  |
+| 03 gold questions |  | 2 of 100, 2.0% (0.6% to 7.0%) |
+| 03 over_refusal |  | 0 of 150, 0.0% (0.0% to 2.5%) |
+| 03 jailbreak |  | 0 of 150 flagged; not injection |
+<!-- screen:end -->
+
+Filled by `boundary screen eval --write-readme`, offline. Seven named rules for the moves an
+injection makes (override, pivot, exfiltrate, persona, delimiter, canary, obfuscation),
+written on deepset/prompt-injections' **train** split only and frozen in a commit before the
+rest was run once. **The gap between the first two rows is the finding**: 80.8% on the set
+the rules were written on, 43.3% on the same source's held-out split. Rules catch the
+templated attacks (every one of 03's PromptInject attacks hidden in a regulator page, and
+the half of its leak suite built from PromptInject) and miss paraphrase; the other half of
+03's leak suite is social engineering ("I forgot which email I used"), which is not an
+injection and which no screen of this kind should catch. On ordinary requests it flagged 2
+of 100 of 03's gold prompts, both one page's "or pretend to be", and none of the 150
+over-refusal prompts. The proxy records a flag on the ledger, the audit chain and a header,
+and blocks only under `injection: block`. Detail in [docs/screen.md](docs/screen.md).
+
 | Cache hit rate / false-hit rate / saved, redacted and raw | Audit tamper detection with daily anchors |
 |---|---|
 | _not yet_ | _not yet_; the chain is measured above, the published anchors are Part B |

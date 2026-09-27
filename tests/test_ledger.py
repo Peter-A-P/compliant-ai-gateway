@@ -350,13 +350,13 @@ def test_an_older_ledger_gets_its_spend_table_built_on_open(tmp_path: Path) -> N
     con.execute("DROP TRIGGER ledger_spend_insert")
     con.execute("DROP TRIGGER ledger_spend_update")
     con.execute("DROP TABLE ledger_spend")
-    con.execute("DELETE FROM schema_version WHERE version = 9")
+    con.execute("DELETE FROM schema_version WHERE version >= 9")
     con.execute("INSERT INTO schema_version (version, applied_utc) VALUES (8, 't')")
     con.commit()
     con.close()
     store = LedgerStore(path)
     try:
-        assert store.schema_version == 9
+        assert store.schema_version == 10
         assert store.spend_usd(project="alpha", year_month="2026-09") == pytest.approx(0.75)
         assert store.spend_usd(project=None, year_month="2026-09") == pytest.approx(0.75)
     finally:

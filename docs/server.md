@@ -150,7 +150,9 @@ Response headers say what happened: `x-boundary-redacted` (`true` or `false`),
 answer, `x-boundary-unresolved` (placeholders in the answer that the vault does not hold,
 such as one a model invented, which are left as written), and since 0.21
 `x-boundary-rehydrate` (`caller` or `all`) and `x-boundary-withheld` (placeholders the vault
-holds and the scope kept back).
+holds and the scope kept back). Every answer since 0.22 also carries `x-boundary-injection`:
+`clean`, `flagged: <rules>` or `off`, from the injection screen (docs/screen.md), which reads
+the user messages before redaction and blocks only under the policy's `injection: block`.
 
 **Live, 2026-09-25.** Two requests with no header, so judged `personal`, each naming an
 invented person with an email address, a phone number and a file number: one to Claude Haiku

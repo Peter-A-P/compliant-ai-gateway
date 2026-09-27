@@ -53,10 +53,11 @@ from boundary.errors import (
     SpendCapExceeded,
     UnknownAlias,
 )
-from boundary.gateway import REDACTION_REFUSED, Gateway
+from boundary.gateway import INJECTION_BLOCKED, REDACTION_REFUSED, Gateway
 from boundary.providers import STREAM_ADAPTERS
 from boundary.redact.policy import Policy
 from boundary.routes import ModelRef
+from boundary.screen import rules_fired, screen_request
 from boundary.server import wire
 from boundary.server.redaction import (
     Redacted,
@@ -247,8 +248,13 @@ def create_app(
             "x-boundary-data-class-source": source,
             "x-boundary-version": __version__,
         }
+        # Screened before redaction, on what the caller wrote: the second pass masks
+        # capitalised words, "Ignore" among them, and a screen reading placeholders reads less.
         try:
-            redaction = _redact(state.policy, data_class, parsed, gw, purpose, run_id)
+            flagged = _screen(state.policy, data_class, parsed, gw, purpose, run_id, headers)
+            redaction = _redact(
+                state.policy, data_class, parsed, gw, purpose, run_id, injection=flagged
+            )
         except Refusal:
             state.sealed()
             raise
@@ -262,7 +268,17 @@ def create_app(
                 caller_scoped(redaction, parsed.request) if scope == "caller" else redaction.policy
             )
         call = _Call(
-            state, gw, parsed, purpose, run_id, data_class, ref, headers, redaction, restorer
+            state,
+            gw,
+            parsed,
+            purpose,
+            run_id,
+            data_class,
+            ref,
+            headers,
+            redaction,
+            restorer,
+            injection=flagged,
         )
         if not parsed.stream:
             resp = await call.run(call.plain())
@@ -365,6 +381,47 @@ def _resolve(gw: Gateway, model: str) -> ModelRef:
         ) from None
 
 
+def _screen(
+    policy: DataPolicy,
+    data_class: DataClass,
+    parsed: wire.Parsed,
+    gw: Gateway,
+    purpose: str,
+    run_id: str | None,
+    headers: dict[str, str],
+) -> bool:
+    """Run the injection screen over the caller's user messages (0.22, B2.6). Returns whether
+    it fired. Under `injection: block` a fired screen is a 400 naming the rules, with a
+    ledger row; under `flag` the call goes ahead and carries the flag."""
+    if policy.injection == "off":
+        headers["x-boundary-injection"] = "off"
+        return False
+    fired = rules_fired(screen_request(parsed.request))
+    headers["x-boundary-injection"] = ("flagged: " + ",".join(fired)) if fired else "clean"
+    if not fired or policy.injection == "flag":
+        return bool(fired)
+    ledger_id = gw.record_refusal(
+        parsed.request,
+        purpose=purpose,
+        run_id=run_id,
+        data_class=data_class,
+        error_type=INJECTION_BLOCKED,
+        injection=True,
+    )
+    raise Refusal(
+        400,
+        wire.error_body(
+            f"the injection screen flagged this request ({', '.join(fired)}) and the data "
+            "policy blocks flagged requests, so nothing was sent",
+            type_="injection_blocked",
+            code="injection_blocked",
+            rules=fired,
+            ledger_id=ledger_id,
+        ),
+        {"x-boundary-injection": headers["x-boundary-injection"]},
+    )
+
+
 def _redact(
     policy: DataPolicy,
     data_class: DataClass,
@@ -372,6 +429,8 @@ def _redact(
     gw: Gateway,
     purpose: str,
     run_id: str | None,
+    *,
+    injection: bool = False,
 ) -> Redacted | None:
     """Redact the request when its class's rule names a `redacted_as`, or refuse it with a
     422 when the guard will not vouch for the result. The refusal carries counts by kind and
@@ -389,6 +448,7 @@ def _redact(
             run_id=run_id,
             data_class=data_class,
             error_type=REDACTION_REFUSED,
+            injection=injection,
         )
         raise Refusal(
             422,
@@ -501,8 +561,11 @@ class _Call:
         headers: dict[str, str],
         redaction: Redacted | None = None,
         restorer: Policy | None = None,
+        *,
+        injection: bool = False,
     ) -> None:
         self.state = state
+        self.injection = injection
         self.redaction = redaction
         # The policy an answer is rehydrated with: the whole vault, or only what the caller
         # sent, as the class's `rehydrate` says.
@@ -542,6 +605,7 @@ class _Call:
                 run_id=self.run_id,
                 data_class=self.data_class,
                 redacted=self.redaction is not None,
+                injection=self.injection,
             )
         )
 
@@ -605,6 +669,7 @@ class _Call:
                 data_class=self.data_class,
                 on_text=on_text,
                 redacted=self.redaction is not None,
+                injection=self.injection,
             )
         )
         task.add_done_callback(lambda _t: queue.put_nowait(None))

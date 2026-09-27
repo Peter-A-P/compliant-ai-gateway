@@ -27,7 +27,12 @@ HAIKU = "anthropic/claude-haiku-4-5-20251001"
 collect_ignore = (
     []
     if importlib.util.find_spec("fastapi")
-    else ["test_server.py", "test_server_redaction.py", "test_loadtest.py"]
+    else [
+        "test_server.py",
+        "test_server_redaction.py",
+        "test_server_screen.py",
+        "test_loadtest.py",
+    ]
 )
 
 

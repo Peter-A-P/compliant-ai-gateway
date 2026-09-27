@@ -27,7 +27,7 @@ from boundary.audit import (
     verify,
 )
 from boundary.audit.chain import (
-    SEALED_V2,
+    SEALED_V3,
     Record,
     build,
     canonical,
@@ -109,8 +109,8 @@ def test_a_record_carries_the_sealed_columns_and_nothing_else() -> None:
     row = {**_ledger(1)[0], "raw_path": "C:/Users/somebody/raw/1.json", "trace_id": "abc"}
     body = json.loads(ledger_body(row, sealed_utc="t"))
     assert set(body) == {"kind", "schema", "sealed_utc", "row"}
-    assert tuple(sorted(body["row"])) == tuple(sorted(SEALED_V2))
-    assert body["schema"] == 2 and "redacted" in body["row"]
+    assert tuple(sorted(body["row"])) == tuple(sorted(SEALED_V3))
+    assert body["schema"] == 3 and "redacted" in body["row"] and "injection" in body["row"]
     assert "raw_path" not in body["row"] and "trace_id" not in body["row"]
 
 
@@ -141,7 +141,7 @@ def test_a_schema_1_row_that_was_redacted_is_resealed_once(tmp_path: Path) -> No
         assert (stats.sealed, stats.resealed, stats.unchanged) == (0, 1, 3)
         assert log.seal(ledger).resealed == 0, "idempotent"
         last = json.loads(log.records()[-1].body)
-        assert last["schema"] == 2 and last["row"]["redacted"] == 1
+        assert last["schema"] == 3 and last["row"]["redacted"] == 1
         assert verify(log.records(), ledger_rows=ledger).ok
 
 
@@ -152,6 +152,45 @@ def test_editing_redacted_after_it_was_sealed_is_caught() -> None:
     v = verify(records, ledger_rows=ledger)
     assert _kinds(v) == {"ledger_changed"}
     assert "redacted" in v.breaks[0].detail
+
+
+# -- record schema 3 (0.22): the injection flag is sealed ----------------------------------
+
+
+def _v2_body(row: dict[str, object]) -> str:
+    """A record exactly as 0.18 to 0.21 wrote it."""
+    return canonical(
+        {"kind": "ledger_row", "schema": 2, "sealed_utc": "t", "row": sealed_fields(row, 2)}
+    )
+
+
+def test_a_chain_of_schema_2_records_still_verifies_against_the_ledger() -> None:
+    ledger = [{**r, "injection": None} for r in _ledger(10)]
+    v = verify(build(_v2_body(r) for r in ledger), ledger_rows=ledger)
+    assert v.ok and v.resealable == 0
+
+
+def test_a_schema_2_row_flagged_since_is_resealed_once(tmp_path: Path) -> None:
+    ledger = [{**r, "injection": None} for r in _ledger(4)]
+    with AuditLog(tmp_path / "a.sqlite") as log:
+        log.append_bodies([_v2_body(r) for r in ledger])
+        ledger[1]["injection"] = 1
+        v = verify(log.records(), ledger_rows=ledger)
+        assert v.ok and v.resealable == 1
+        stats = log.seal(ledger)
+        assert (stats.sealed, stats.resealed, stats.unchanged) == (0, 1, 3)
+        last = json.loads(log.records()[-1].body)
+        assert last["schema"] == 3 and last["row"]["injection"] == 1
+        assert verify(log.records(), ledger_rows=ledger).ok
+
+
+def test_removing_an_injection_flag_after_it_was_sealed_is_caught() -> None:
+    ledger = [{**r, "injection": 1} for r in _ledger(3)]
+    records = build(ledger_body(r, sealed_utc="t") for r in ledger)
+    ledger[0] = {**ledger[0], "injection": None}
+    v = verify(records, ledger_rows=ledger)
+    assert _kinds(v) == {"ledger_changed"}
+    assert "injection" in v.breaks[0].detail
 
 
 # -- anchors -------------------------------------------------------------------------------

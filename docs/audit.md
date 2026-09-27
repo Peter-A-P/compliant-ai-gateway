@@ -41,6 +41,13 @@ ledger it will report `redacted` as a changed column, because it does not know t
 The real audit log on the development laptop, 2,811 schema 1 records, verified intact
 against its ledger on the day schema 2 shipped.
 
+**Record schema 3 (0.22)** seals `injection` as well (`SEALED_V3`), the proxy's injection
+screen flag (ledger v10), so a flag cannot be removed from the ledger afterwards without
+`verify` reporting the column as changed. The same rules hold: older records verify against
+the fields they sealed, and a row sealed under schema 1 or 2 that has since been flagged is
+resealed once and counted `resealable` in between. The laptop's chain verified intact again
+after its ledger was upgraded to v10.
+
 A body that parses but is not in canonical form is a break of its own. The hash would still
 check, but this library could not have written it.
 

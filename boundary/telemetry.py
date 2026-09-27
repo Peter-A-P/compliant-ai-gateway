@@ -60,6 +60,7 @@ ALLOWED_ATTRIBUTES: frozenset[str] = frozenset(
         "boundary.data_class",
         # Redaction (0.15). A boolean the caller states; it cannot carry content.
         "boundary.redacted",
+        "boundary.injection",
     }
 )
 

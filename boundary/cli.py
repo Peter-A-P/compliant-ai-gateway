@@ -774,6 +774,34 @@ def cmd_redact_quality(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_screen_eval(args: argparse.Namespace) -> int:
+    """The injection screen's detection and false-positive rates (0.22). Offline."""
+    import dataclasses
+
+    from boundary import screen_eval
+
+    results = screen_eval.run(args.data, args.gate)
+    print(results.table())
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    args.out.write_text(
+        json.dumps(
+            {
+                "boundary_version": results.boundary_version,
+                "sets": [dataclasses.asdict(x) for x in results.sets],
+            },
+            indent=1,
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    if args.write_readme:
+        readme = args.config.resolve().parent.parent / "README.md"
+        screen_eval.write_readme(readme, results.readme_rows())
+        print(f"README rows written to {readme}")
+    return 0
+
+
 def cmd_loadtest(args: argparse.Namespace) -> int:
     """The layered load test (0.19, PLAN.md B4): the proxy against a 50 ms mock upstream, by
     layer and load level. Local processes only; no vendor is called and nothing is spent."""
@@ -1251,6 +1279,20 @@ def main(argv: list[str] | None = None) -> int:
     )
     pe.add_argument("--write-readme", dest="write_readme", action="store_true")
     pe.set_defaults(func=cmd_policy_eval)
+
+    scr = sub.add_parser(
+        "screen", help="the injection screen the proxy runs (PLAN.md B2.6)"
+    ).add_subparsers(dest="sub", required=True)
+    se = scr.add_parser(
+        "eval",
+        help="detection and false-positive rates on deepset/prompt-injections and project 03's "
+        "red-team suites; offline",
+    )
+    se.add_argument("--data", type=Path, default=Path("bench/injection"))
+    se.add_argument("--gate", type=Path, default=Path("../03-ai-release-gate"))
+    se.add_argument("--out", type=Path, default=Path("bench/screen.json"))
+    se.add_argument("--write-readme", dest="write_readme", action="store_true")
+    se.set_defaults(func=cmd_screen_eval)
 
     serve = sub.add_parser("serve", help="run the OpenAI-compatible proxy (server extra)")
     serve.add_argument("--teams", help="the teams file (default: teams.yaml beside the config)")

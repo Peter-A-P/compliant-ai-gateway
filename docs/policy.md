@@ -18,6 +18,7 @@ without one, and substitutes `personal` for an absent `X-Data-Class` header at t
 | Key | Meaning |
 |---|---|
 | `undeclared` | The class a call that declared nothing is judged as. `personal`: absent means personal |
+| `injection` | What the proxy does when its injection screen fires (0.22): `flag` (default) sends the call and records the flag; `block` refuses it with a 400 and a ledger row; `off` does not screen. docs/screen.md |
 | `max_residency` | The widest residency the class tolerates: `single-region`, `geo` or `global` |
 | `regions` | The regions a call may be **sent** to. Compared without regard to case |
 | `providers` | The provider entries the class may use |

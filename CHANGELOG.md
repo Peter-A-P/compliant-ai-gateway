@@ -5,6 +5,29 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.22.0 (2026-09-27)
+
+**The injection screen, advisory by default, and measured on sets it was not written on.**
+PLAN.md B2.6. docs/screen.md.
+
+- **`boundary.screen`**: seven named rules (override, pivot, exfiltrate, persona, delimiter,
+  canary, obfuscation) over the user messages, never the system prompt. Findings carry rule
+  and offsets, never text.
+- **`boundary screen eval`** and `boundary.screen_eval`: detection and false-positive rates,
+  Wilson intervals, per set. Developed on deepset/prompt-injections train (80.8% detected),
+  frozen, then run once: 43.3% (31.6 to 55.9) on its held-out split, 200 of 200 of 03's
+  PromptInject attacks, 0 of 150 over-refusal prompts flagged, 2 of 100 gold prompts.
+- **In the proxy**: the policy's `injection` key, `flag` (default), `block` or `off`;
+  `x-boundary-injection` on every answer; a blocked request is a 400 of type
+  `injection_blocked` and a ledger row. Screened before redaction.
+- **Ledger schema v10**: `injection`, 1 when the screen flagged the call, null otherwise.
+  Additive; no column renamed or removed.
+- **Audit record schema 3** seals `injection`. Schema 1 and 2 records verify as before; a row
+  flagged after an older record is resealed once, as 0.18 did for `redacted`. The real chain
+  on the development laptop verified intact after its ledger was upgraded to v10.
+- `Gateway` call methods and `record_refusal` take `injection=`; `INJECTION_BLOCKED` joins
+  `CALLER_REFUSALS`.
+
 ## 0.21.0 (2026-09-27)
 
 **The proxy puts back only what the caller sent.** Peter's decision on 0.20.0's red-team

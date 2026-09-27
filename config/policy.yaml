@@ -18,6 +18,11 @@ version: 1
 # What a call that declared nothing is treated as. B2.2: absent means personal, fail closed.
 undeclared: personal
 
+# The injection screen (0.22, docs/screen.md): flag, the default, sends a flagged request and
+# records the flag; block refuses it; off does not screen. Advisory because the screen's
+# false-positive rate is a cost a policy owner should choose to pay (B2.6).
+injection: flag
+
 classes:
   # Published or publishable material. Anywhere, and the development cache may hold it.
   public:

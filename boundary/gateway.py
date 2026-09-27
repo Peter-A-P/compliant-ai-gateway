@@ -169,7 +169,9 @@ POLICY_REFUSED = "policy_refused"
 # The error_type of a refusal a caller made before handing the call over (0.16): the proxy's
 # redaction guard. Recorded through `Gateway.record_refusal`; a row carrying it was never sent.
 REDACTION_REFUSED = "redaction_refused"
-CALLER_REFUSALS = frozenset({REDACTION_REFUSED})
+# The proxy's injection screen blocked the request (0.22), under a policy that says block.
+INJECTION_BLOCKED = "injection_blocked"
+CALLER_REFUSALS = frozenset({REDACTION_REFUSED, INJECTION_BLOCKED})
 
 
 class Gateway:
@@ -263,6 +265,7 @@ class Gateway:
         mode: Mode = Mode.STANDARD,
         data_class: DataClass | str | None = None,
         redacted: bool = False,
+        injection: bool = False,
     ) -> ChatResponse:
         """One call. `redacted` (0.15) says the caller redacted the payload before handing it
         over; it is written to the row and, where the policy's rule names a `redacted_as`,
@@ -276,6 +279,7 @@ class Gateway:
             mode=mode,
             data_class=data_class,
             redacted=redacted,
+            injection=injection,
         )
         if call.cached is not None:
             return self._finish(call, call.cached, None, 0, cached=True)
@@ -291,6 +295,7 @@ class Gateway:
         mode: Mode = Mode.STANDARD,
         data_class: DataClass | str | None = None,
         redacted: bool = False,
+        injection: bool = False,
     ) -> ChatResponse:
         call = self._prepare(
             request,
@@ -299,6 +304,7 @@ class Gateway:
             mode=mode,
             data_class=data_class,
             redacted=redacted,
+            injection=injection,
         )
         if call.cached is not None:
             return self._finish(call, call.cached, None, 0, cached=True)
@@ -315,6 +321,7 @@ class Gateway:
         data_class: DataClass | str | None = None,
         on_text: Callable[[str], None] | None = None,
         redacted: bool = False,
+        injection: bool = False,
     ) -> ChatResponse:
         """One call, streamed, returned whole: the full text, the usage from the final event,
         and `ttft_ms`, the wall time from sending the request to the first content delta.
@@ -344,6 +351,7 @@ class Gateway:
             stream=True,
             data_class=data_class,
             redacted=redacted,
+            injection=injection,
         )
         result, error_type, retries = self._stream_sync(call, on_text)
         response = self._finish(call, result, error_type, retries, cached=False)
@@ -361,6 +369,7 @@ class Gateway:
         data_class: DataClass | str | None = None,
         on_text: Callable[[str], Awaitable[None]] | None = None,
         redacted: bool = False,
+        injection: bool = False,
     ) -> ChatResponse:
         """The async twin of `chat_stream`, with an awaited `on_text`. Sixty-four of these
         may be in flight at once against one host; the transport's pool is sized for it
@@ -373,6 +382,7 @@ class Gateway:
             stream=True,
             data_class=data_class,
             redacted=redacted,
+            injection=injection,
         )
         result, error_type, retries = await self._stream_async(call, on_text)
         response = self._finish(call, result, error_type, retries, cached=False)
@@ -1078,6 +1088,7 @@ class Gateway:
         stream: bool = False,
         data_class: DataClass | str | None = None,
         redacted: bool = False,
+        injection: bool = False,
     ) -> _Call:
         # Validated first, before the model is resolved and long before a row exists: an
         # unknown class is a caller's mistake, and the place to learn of it is the call site.
@@ -1105,6 +1116,7 @@ class Gateway:
             model_requested=ref.explicit,
             alias=ref.alias,
             redacted=redacted,
+            injection=injection,
         )
         if mode is Mode.PASSTHROUGH:
             if request.max_tokens is None:
@@ -1154,6 +1166,7 @@ class Gateway:
             env=self.env,
             data_class=declared,
             redacted=True if redacted else None,
+            injection=True if injection else None,
         )
         span = self.telemetry.start("boundary.chat_stream" if stream else "boundary.chat")
         ids = Telemetry.ids(span)
@@ -1188,6 +1201,7 @@ class Gateway:
         run_id: str | None = None,
         mode: Mode = Mode.STANDARD,
         data_class: DataClass | str | None = None,
+        injection: bool = False,
     ) -> int:
         """Write the row for a call the caller refused before handing it over, and return
         its id (0.16). Nothing is sent, no key is read and no body is built, so the row has
@@ -1219,6 +1233,7 @@ class Gateway:
             costed=True,
             env=self.env,
             data_class=declared,
+            injection=True if injection else None,
         )
         row_id = self.ledger.begin(row)
         row.error_type = error_type
@@ -1239,6 +1254,7 @@ class Gateway:
         alias: str | None,
         batch: Sequence[ModelRef] | None = None,
         redacted: bool = False,
+        injection: bool = False,
     ) -> bool:
         """Apply the data policy (0.12). Returns whether the cache may hold the call.
 
@@ -1279,6 +1295,7 @@ class Gateway:
                 env=self.env,
                 data_class=declared,
                 redacted=True if redacted else None,
+                injection=True if injection else None,
             )
             ids.append(self.ledger.begin(row))
             row.error_type = POLICY_REFUSED
@@ -1707,6 +1724,7 @@ class Gateway:
                 "boundary.ttft_ms": row.ttft_ms,
                 "boundary.data_class": row.data_class,
                 "boundary.redacted": row.redacted,
+                "boundary.injection": row.injection,
                 "boundary.ledger_id": row.id,
                 "boundary.version": row.boundary_version,
             },

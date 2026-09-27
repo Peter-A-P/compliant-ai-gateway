@@ -100,7 +100,7 @@ RULES: tuple[tuple[str, re.Pattern[str]], ...] = (
             r"\b(?:ignore|forget|disregard)\s+(?:all\s+)?(?:the\s+|your\s+)?instructions\b|"
             r"\b(?:oubliez|oublie)\s+toutes?\s+les\s+instructions\b|"
             r"\bolvid(?:a|e|ar)\s+(?:todo|todas\s+las\s+instrucciones)\b|"
-            r"\bзабудь(?:те)?\s+вс[её]\b|\bzaboravi\s+sve\b|"
+            r"\bзабудь(?:те)?\s+вс[её]\b|\bzaboravi\s+sve\b|"  # noqa: RUF001  Russian, on purpose
             r"\bdespite\s+what\s+you(?:'ve|\s+have)\s+been\s+told\b|"
             r"\bdisregarding\s+the\s+(?:articles|context|documents?|instructions)\b|"
             r"\bnot\s+(?:by|from)\s+the\s+(?:articles|context|documents?)\b|"

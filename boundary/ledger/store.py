@@ -24,7 +24,7 @@ from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 from typing import Any
 
-SCHEMA_VERSION = 9
+SCHEMA_VERSION = 10
 _SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 
 IN_FLIGHT = "in_flight"
@@ -136,6 +136,10 @@ class LedgerRow:
     # caller that says nothing has made no claim, and the library cannot look. Null on every
     # row written before the column existed.
     redacted: bool | None = None
+    # Whether the injection screen flagged the request (v10): True when the proxy's screen
+    # fired on it, null otherwise. Never False, for the reason `redacted` is never False: a
+    # row with no screen behind it has made no claim either way.
+    injection: bool | None = None
     id: int | None = field(default=None)
 
     def as_columns(self) -> dict[str, Any]:
@@ -269,6 +273,9 @@ class LedgerStore:
                 self._add_columns(("redacted", "INTEGER"))
             if current < 9:
                 self._rebuild_spend()
+            if current < 10:
+                # Null for every existing row: nothing screened a call before 0.22.
+                self._add_columns(("injection", "INTEGER"))
             self._conn.execute(
                 "INSERT INTO schema_version (version, applied_utc) VALUES (?, ?)",
                 (SCHEMA_VERSION, utc_now()),
