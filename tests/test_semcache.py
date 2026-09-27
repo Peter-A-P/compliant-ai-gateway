@@ -1,0 +1,68 @@
+"""The semantic cache (0.25): scope, threshold and the measurement's arithmetic, with a
+deterministic embedder so nothing is downloaded."""
+
+from __future__ import annotations
+
+import hashlib
+from collections.abc import Sequence
+
+import pytest
+
+from boundary.semcache import SemanticCache, Vector, cosine, scope_of, unit
+from boundary.semcache_eval import Curve, Point, choose
+from boundary.types import ChatRequest
+
+
+class _Words:
+    """A bag-of-words embedder: two texts are as similar as the words they share."""
+
+    def embed(self, texts: Sequence[str]) -> list[Vector]:
+        out = []
+        for t in texts:
+            v = [0.0] * 64
+            for w in t.lower().replace("?", "").split():
+                v[int(hashlib.sha256(w.encode()).hexdigest(), 16) % 64] += 1.0
+            out.append(unit(v))
+        return out
+
+
+def _req(text: str, **kw: object) -> ChatRequest:
+    return ChatRequest(model="m", messages=[{"role": "user", "content": text}], **kw)  # type: ignore[arg-type]
+
+
+def test_a_near_question_hits_and_a_far_one_does_not() -> None:
+    cache = SemanticCache(_Words(), threshold=0.7)
+    cache.store(_req("how long can a bank hold my cheque"), "up to 8 days")
+    hit = cache.lookup(_req("how long can the bank hold my cheque"))
+    assert hit is not None and hit.answer == "up to 8 days"
+    assert cache.lookup(_req("what is an index fund")) is None
+
+
+def test_scope_keeps_system_prompts_models_and_settings_apart() -> None:
+    cache = SemanticCache(_Words(), threshold=0.1)
+    cache.store(_req("hold period", system="A"), "x")
+    assert cache.lookup(_req("hold period", system="B")) is None
+    assert cache.lookup(_req("hold period", system="A", max_tokens=5)) is None
+    assert cache.lookup(_req("hold period", system="A")) is not None
+    assert scope_of(_req("q1", system="A")) == scope_of(_req("q2", system="A"))
+
+
+def test_the_threshold_is_checked() -> None:
+    with pytest.raises(ValueError):
+        SemanticCache(_Words(), threshold=0.0)
+
+
+def test_cosine_of_unit_vectors() -> None:
+    assert cosine(unit([1.0, 0.0]), unit([2.0, 0.0])) == pytest.approx(1.0)
+    assert cosine(unit([1.0, 0.0]), unit([0.0, 3.0])) == pytest.approx(0.0)
+
+
+def test_choose_takes_the_lowest_threshold_within_the_false_hit_limit() -> None:
+    c = Curve("chat", "odd", "paraphrase")
+    c.points = [
+        Point(0.8, queries=100, seen=50, correct=50, false=10),
+        Point(0.85, queries=100, seen=50, correct=49, false=1),
+        Point(0.9, queries=100, seen=50, correct=40, false=0),
+    ]
+    assert choose(c) == 0.85
+    assert c.at(0.85).false_hit_rate.hits == 1

@@ -826,6 +826,44 @@ def cmd_redact_detectors(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_cache_paraphrase(args: argparse.Namespace) -> int:
+    """Two paraphrases per gold question, written once (0.25). Calls Haiku, capped."""
+    import asyncio
+
+    from boundary import semcache_eval
+
+    gw = Gateway.from_config(args.config, project=args.project)
+    try:
+        spent = asyncio.run(semcache_eval.paraphrase(gw, args.gate, args.out, max_usd=args.max_usd))
+    finally:
+        gw.close()
+    print(f"paraphrases written to {args.out}, US${spent:.4f}", file=sys.stderr)
+    return 0
+
+
+def cmd_cache_eval(args: argparse.Namespace) -> int:
+    """The semantic cache's hit and false-hit rates (0.25). Offline."""
+    import dataclasses
+
+    from boundary import semcache_eval
+    from boundary.semcache import BgeSmall
+
+    results = semcache_eval.run(
+        args.gate,
+        args.paraphrases,
+        BgeSmall(),
+        splits=[x.strip() for x in args.splits.split(",") if x.strip()],
+    )
+    print(results.table())
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    args.out.write_text(json.dumps(dataclasses.asdict(results), indent=1) + "\n", encoding="utf-8")
+    if args.write_readme:
+        readme = args.config.resolve().parent.parent / "README.md"
+        semcache_eval.write_readme(readme, results)
+        print(f"README rows written to {readme}")
+    return 0
+
+
 def cmd_loadtest(args: argparse.Namespace) -> int:
     """The layered load test (0.19, PLAN.md B4): the proxy against a 50 ms mock upstream, by
     layer and load level. Local processes only; no vendor is called and nothing is spent."""
@@ -1331,6 +1369,28 @@ def main(argv: list[str] | None = None) -> int:
     se.add_argument("--out", type=Path, default=Path("bench/screen.json"))
     se.add_argument("--write-readme", dest="write_readme", action="store_true")
     se.set_defaults(func=cmd_screen_eval)
+
+    cache_p = sub.add_parser(
+        "cache", help="the semantic cache (PLAN.md B2.5; cache extra)"
+    ).add_subparsers(dest="sub", required=True)
+    cp = cache_p.add_parser(
+        "paraphrase", help="write two paraphrases of each 03 gold question once; calls Haiku"
+    )
+    cp.add_argument("--gate", type=Path, default=Path("../03-ai-release-gate"))
+    cp.add_argument("--out", type=Path, default=Path("bench/cache/paraphrases.jsonl"))
+    cp.add_argument("--max-usd", dest="max_usd", type=float, default=0.3)
+    cp.set_defaults(func=cmd_cache_paraphrase)
+    ce = cache_p.add_parser(
+        "eval",
+        help="hit and false-hit rates by threshold, labelled by construction; offline once "
+        "the paraphrases exist",
+    )
+    ce.add_argument("--gate", type=Path, default=Path("../03-ai-release-gate"))
+    ce.add_argument("--paraphrases", type=Path, default=Path("bench/cache/paraphrases.jsonl"))
+    ce.add_argument("--splits", default="odd,even")
+    ce.add_argument("--out", type=Path, default=Path("bench/cache.json"))
+    ce.add_argument("--write-readme", dest="write_readme", action="store_true")
+    ce.set_defaults(func=cmd_cache_eval)
 
     serve = sub.add_parser("serve", help="run the OpenAI-compatible proxy (server extra)")
     serve.add_argument("--teams", help="the teams file (default: teams.yaml beside the config)")

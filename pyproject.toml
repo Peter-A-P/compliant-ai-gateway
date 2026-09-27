@@ -48,6 +48,12 @@ server = [
   "fastapi>=0.141,<1",
   "uvicorn>=0.54,<1",
 ]
+# The semantic cache's embeddings (0.25, PLAN.md B2.5): bge-small, run locally through
+# fastembed's ONNX runtime rather than torch, so an embedding costs milliseconds on a CPU and
+# no text leaves the machine to be embedded. Optional because only the proxy's cache uses it,
+# and it brings onnxruntime and a model download. Below 1 because fastembed is pre-1.0 and
+# has renamed model identifiers between minors.
+cache = ["fastembed>=0.8,<1"]
 
 [dependency-groups]
 dev = [
@@ -126,6 +132,11 @@ ignore_missing_imports = true
 # is typed against its own protocol rather than against Presidio's classes.
 [[tool.mypy.overrides]]
 module = ["presidio_analyzer", "presidio_analyzer.*"]
+ignore_missing_imports = true
+
+# Same reason again: fastembed is the optional `cache` extra (0.25).
+[[tool.mypy.overrides]]
+module = ["fastembed", "fastembed.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
