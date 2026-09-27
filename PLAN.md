@@ -425,6 +425,7 @@ from October the ledger-against-invoice difference is recorded there too (sectio
 | v0.17.0 | 2026-09-25 | `boundary redact eval --proxy`: 0 of 1,450 personal values reached the wire through the proxy, every page came back as sent |
 | v0.18.0 | 2026-09-25 | The proxy appends to the audit chain as it answers; record schema 2 seals `redacted` |
 | v0.19.0 | 2026-09-25 | `boundary loadtest`, the layered load test harness, with development figures; ledger v9's spend table, removing a per-call scan of the whole ledger from the caps |
+| v0.20.0 | 2026-09-27 | B2.8 run: the quality cost of redaction through 03's gate (no cost visible on answerable questions), and the red team's finding that rehydration hands the caller what the model refused; `caller_scoped`; price list 2026-09-27 |
 | v1.0.0 | May 23 2027 | Everything in Part B; `boundary.redact` for 07; the proxy for 13 and 14 |
 
 03 pins `boundary>=0.1,<0.3` for Part A and moves to `>=1.0` when its Part B is built
@@ -942,6 +943,24 @@ arms, the list and the comparisons below cannot have been chosen from the result
   answers to one question are not three items), judge-corrected the same way. Temperature 0,
   03's answer settings (400 tokens) and red-team settings (4,096).
 
+**Amended 2026-09-27, after the run: the result, and the change it proposes.** Run the same
+day for US$3.33 (docs/redact.md has every row). Part 1 and part 2 found no quality cost the
+run could see on answerable questions, 0 losses in 264 pairs per arm; every raw answer was
+complete, so each comparison carries Newcombe's paired interval beside 03's bootstrap, which
+is zero-width at that ceiling. The losses, 4 of 300 under the proxy's redaction, 1 with the
+allow list and 2 in part 2, were all on questions 03 wrote as unanswerable, where a redacted
+model stops saying the page does not cover it; that split was read off the failures and is
+labelled post hoc, and with twelve such questions per model it is a lead for the next set,
+not a finding. The over-masking prediction did not hold: its 15 questions lost nothing. **The
+red team inverted the premise.** Redacted, 0 of 600 values reached a vendor, but the proxy
+rehydrates every value, and Haiku 4.5 (0 leaks raw) listed placeholders in its refusals and
+leaked 13 of 200 records to the caller, +6.5 points (+3.2 to +10.8). Rehydrating only values
+the caller's own messages carried (`caller_scoped`, measured offline on the stored answers)
+leaked 0 of 600 and left a placeholder in 7 of 900 ordinary answers, every one the word
+"Answer" from 03's system prompt. **Proposed, not made:** the proxy rehydrates caller-scoped
+by default, with the full vault a per-class policy option for deployments whose system prompt
+is the caller's own data. It changes what every client receives, so it waits for Peter.
+
 ### B2.9 Out of scope in Part B, on purpose
 
 - Single sign-on and role-based access. Keys per team only; anything more is enterprise
@@ -1105,7 +1124,7 @@ the ledger and the spans as its production signal.
 - [x] Data classification header enforced, absent means `personal`; residency violations zero on the adversarial suite, with correct refusals. **Engine and adversarial suite done 2026-09-23 (0.12.0)**: 0 of 550 forbidden cases sent, 0 false refusals, every refusal audited, absent judged as `personal`. The header itself is the proxy's. **Header done 2026-09-25 (0.13.0)**: absent becomes `personal` at the door and is written as a declaration, an unknown word is a 400, and the proxy refuses to start without a policy. **Through the proxy 2026-09-25 (0.13.1)**: `boundary policy eval --proxy`, 338 cases over HTTP with thirteen header values, 0 of 262 forbidden sent, 0 of 76 allowed refused, 210 of 210 refusals on the ledger; run in CI on every push
 - [x] Reversible redaction round-trips under property tests; rehydration fidelity and mutation rate reported. **Mutation rate done 2026-09-25 (0.14.0)**: `boundary redact mutation`, 480 calls over three models, two tasks and two arms, US$0.24, stored and re-scored from `bench/mutation.json`. Without the preserve line Llama 3.3 70B mutates 37.0% of placeholders and Haiku 6.8%, nearly all recoverably; with it 0.6% and 0.0%; Gemini 0.0% either way (docs/redact.md). It did not need the proxy after all, only a model; the proxy is where the line will be sent. **Property tests and fidelity done 2026-09-21 (0.6.4)**: the round trip is a property test over generated documents, and `boundary redact eval --rehydration` reports resolution per mutation form with intervals, 14 of 15 at 100% and 0 fabrications. The **mutation rate** is what remains, and it needs the proxy: which of those forms a model actually produces, sampled from real answers
 - [x] Redaction precision and recall per entity type on public corpora and the Canadian set, with CIs. **Done 2026-09-23 (0.8.0)**; detail on the annotated line below
-- [ ] Quality effect of redaction measured through the 03 gate, two-sided, with interval. **Planned 2026-09-25 (B2.8 amended)**: 03's gold set holds no personal data, so the measurement is two, over-masking of public context (predicted by `boundary redact overmask`: 14.0% (9.0 to 21.0) of required phrases masked) and the cost of removing personal data on a personalised variant. Waits on Peter's go for about US$5
+- [x] Quality effect of redaction measured through the 03 gate, two-sided, with interval. **Done 2026-09-27 (v0.20.0, US$3.33)**: no loss in 264 answerable pairs under any arm; 4 of 300 pooled under the proxy's redaction, -1.5 points (-3.8 to +0.2, Newcombe), all on unanswerable questions; the red team found full rehydration handing the caller values the model refused, and `caller_scoped` removing it offline (B2.8, docs/redact.md)
 - [ ] Semantic cache hit rate, dollars saved and false-hit rate on replayed traffic
 - [ ] Injection screen detection and false-positive rates reported (unless dropped, and then said so)
 - [ ] Audit log chain verification tool included; daily anchors in the public repository; tamper test detects every injected corruption. **Tool and tamper test done 2026-09-22 (0.7.0)**: `boundary audit verify`, and `boundary audit tamper-test` detecting 2,400 of 2,400 corruptions across twelve kinds before the last anchor with 0 false alarms, the six kinds a chain cannot see after it reported beside them (B2.4, amended). **Daily anchors in the public repository** are what remain, and they need the proxy's always-on log to anchor

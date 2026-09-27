@@ -5,6 +5,32 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.20.0 (2026-09-27)
+
+**The quality cost of redaction, measured through project 03's gate: none visible on the
+questions a page answers, and a leak the red team found in rehydration.** PLAN.md B2.8.
+docs/redact.md.
+
+- **`boundary redact quality allow|collect|judge|report`** and `boundary.redact.quality`:
+  03's 100 gold questions under raw, redacted and redacted-with-an-allow-list arms, a
+  personalised variant carrying a synthetic customer's details, and 03's `pii_leakage` red
+  team raw against redacted, three models, graded by 03's own code in 03's own environment
+  (`bench/quality/gate_bridge.py`). US$3.33 on 2026-09-27; the design was committed first.
+- **Results**: 0 losses in 264 answerable pairs under every arm; 4 of 300 pooled under the
+  proxy's redaction, -1.5 points (-3.8 to +0.2), all on unanswerable questions (a split read
+  off the failures); the allow list, derived from 48 other regulator pages, 1 of 300; a
+  customer's details redacted, 2 of 300 and 0 of 1,200 values on the wire. Newcombe's paired
+  interval beside 03's bootstrap, because a 100% baseline makes the bootstrap zero-width.
+- **The red team**: no value reached a vendor redacted, but full rehydration let Haiku 4.5,
+  which leaks nothing raw, hand the caller 13 of 200 records it had refused, as placeholders.
+- **`boundary.redact.request.caller_scoped`**: a policy that rehydrates only values the
+  caller's own messages carried. Offline on the stored answers, 0 of 600 leaks and a
+  placeholder left in 7 of 900 ordinary answers. The proxy does not use it yet.
+- `boundary redact overmask --allow`; `survives` moved to `boundary.redact.request` (still
+  importable from `boundary.server.redaction_eval`).
+- **Price list 2026-09-27** adds `gpt-5.4-mini-2026-03-17` at its alias rate; five smoke calls
+  before it are uncosted rows, as designed.
+
 ## 0.19.0 (2026-09-25)
 
 **The layered load test exists, and building it removed a per-call scan of the whole ledger

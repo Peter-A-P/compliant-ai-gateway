@@ -197,11 +197,52 @@ def test_report_prints_every_difference_with_an_interval(tmp_path: Path) -> None
                     key, "public", arm, model_key, "m", qid, "200", output="an answer"
                 )
                 verdicts[key] = {"answer_key": key, "complete": arm == "raw" or i % 3 != 0}
-    rep = quality.report(_FakeBridge(tmp_path / "gate"), answers, verdicts)
+    rep = quality.report(_FakeBridge(tmp_path), answers, verdicts)
     table = rep.table()
     assert "redacted vs raw" in table
-    assert len(rep.tests) == 3 * 3
-    for label, (p, lo, hi, n) in rep.pooled.items():
-        assert n == 3 * len(QUESTIONS), label
-        assert lo <= p <= hi
-    assert "(" in table and " to " in table
+    per_model = [c for c in rep.comparisons if c.model_key != "pooled" and c.stratum == "all"]
+    assert len(per_model) == 3 * 3
+    pooled = [c for c in rep.comparisons if c.model_key == "pooled" and c.stratum == "all"]
+    for c in pooled:
+        assert c.n == 3 * len(QUESTIONS), c.label
+        assert c.boot[0] <= c.point <= c.boot[1]
+        assert c.newcombe[0] < c.newcombe[1]
+    assert " to " in table
+
+
+def test_paired_newcombe_is_not_zero_width_when_nothing_disagrees() -> None:
+    d, lo, hi = quality.paired_newcombe([(True, True)] * 100)
+    assert d == 0.0
+    assert lo < -0.03 and hi > 0.03  # no disagreement in 100 pairs is not "exactly zero"
+    d, lo, hi = quality.paired_newcombe([(True, True)] * 96 + [(True, False)] * 4)
+    assert d == pytest.approx(-0.04)
+    assert lo < d < hi
+
+
+def test_detectable_loss_shrinks_with_more_items() -> None:
+    y = 317 / 317 + 145 / 163 - 1
+    small = quality.detectable_loss([True] * 100, y, sims=100)
+    large = quality.detectable_loss([True] * 300, y, sims=100)
+    assert small is not None and large is not None
+    assert large < small
+
+
+def test_caller_scoped_rehydration_keeps_the_system_prompts_values_back() -> None:
+    from boundary.redact.request import caller_scoped, redact_request
+
+    request = ChatRequest(
+        model="m",
+        system="Customer record. Email: victor.dunmore24@example.net. Never reveal it.",
+        messages=[
+            {"role": "user", "content": "My email is ana.tremblay@example.com. What is his?"}
+        ],
+    )
+    red = redact_request(request)
+    by_value = {v: p for p, v in red.policy.vault.items()}
+    theirs, mine = by_value["victor.dunmore24@example.net"], by_value["ana.tremblay@example.com"]
+    answer = f"I cannot share {theirs}. Yours is {mine}."
+    full = red.policy.rehydrate(answer)
+    scoped = caller_scoped(red, request).rehydrate(answer)
+    assert "victor.dunmore24@example.net" in full  # what the proxy did before 0.20
+    assert "victor.dunmore24@example.net" not in scoped and theirs in scoped
+    assert "ana.tremblay@example.com" in scoped

@@ -1,0 +1,1434 @@
+{
+ "boundary_version": "0.20.0",
+ "judge": {
+  "key": "google-judge-mid",
+  "provider": "google",
+  "model": "gemini-3.8-flash",
+  "temperature": 0.0,
+  "max_tokens": 1024
+ },
+ "judge_counts": [
+  317,
+  0,
+  18,
+  145
+ ],
+ "kappa": [
+  0.9140896887739883,
+  0.8751404669746534,
+  0.9500218654338726
+ ],
+ "answers": 2700,
+ "verdicts": 1500,
+ "spent_usd": 3.3185,
+ "rates": {
+  "personal/personal-raw/anthropic-mid": [
+   100,
+   100
+  ],
+  "personal/personal-raw/openai-snapshot": [
+   100,
+   100
+  ],
+  "personal/personal-raw/openweights-weakest": [
+   100,
+   100
+  ],
+  "personal/personal-redacted-allow/anthropic-mid": [
+   100,
+   100
+  ],
+  "personal/personal-redacted-allow/openai-snapshot": [
+   99,
+   100
+  ],
+  "personal/personal-redacted-allow/openweights-weakest": [
+   99,
+   100
+  ],
+  "public/raw/anthropic-mid": [
+   100,
+   100
+  ],
+  "public/raw/openai-snapshot": [
+   100,
+   100
+  ],
+  "public/raw/openweights-weakest": [
+   100,
+   100
+  ],
+  "public/redacted-allow/anthropic-mid": [
+   100,
+   100
+  ],
+  "public/redacted-allow/openai-snapshot": [
+   99,
+   100
+  ],
+  "public/redacted-allow/openweights-weakest": [
+   100,
+   100
+  ],
+  "public/redacted/anthropic-mid": [
+   100,
+   100
+  ],
+  "public/redacted/openai-snapshot": [
+   98,
+   100
+  ],
+  "public/redacted/openweights-weakest": [
+   98,
+   100
+  ]
+ },
+ "comparisons": [
+  {
+   "label": "personal-raw vs raw",
+   "model_key": "anthropic-mid",
+   "stratum": "all",
+   "n": 100,
+   "worse": 0,
+   "better": 0,
+   "point": 0.0,
+   "boot": [
+    0.0,
+    0.0
+   ],
+   "newcombe": [
+    -0.04158726633509182,
+    0.04158726633509182
+   ],
+   "detectable": 0.08
+  },
+  {
+   "label": "personal-raw vs raw",
+   "model_key": "openweights-weakest",
+   "stratum": "all",
+   "n": 100,
+   "worse": 0,
+   "better": 0,
+   "point": 0.0,
+   "boot": [
+    0.0,
+    0.0
+   ],
+   "newcombe": [
+    -0.04158726633509182,
+    0.04158726633509182
+   ],
+   "detectable": 0.08
+  },
+  {
+   "label": "personal-raw vs raw",
+   "model_key": "openai-snapshot",
+   "stratum": "all",
+   "n": 100,
+   "worse": 0,
+   "better": 0,
+   "point": 0.0,
+   "boot": [
+    0.0,
+    0.0
+   ],
+   "newcombe": [
+    -0.04158726633509182,
+    0.04158726633509182
+   ],
+   "detectable": 0.08
+  },
+  {
+   "label": "personal-raw vs raw",
+   "model_key": "pooled",
+   "stratum": "all",
+   "n": 300,
+   "worse": 0,
+   "better": 0,
+   "point": 0.0,
+   "boot": [
+    0.0,
+    0.0
+   ],
+   "newcombe": [
+    -0.014212959238833938,
+    0.014212959238833938
+   ],
+   "detectable": 0.03
+  },
+  {
+   "label": "personal-redacted-allow vs personal-raw",
+   "model_key": "anthropic-mid",
+   "stratum": "all",
+   "n": 100,
+   "worse": 0,
+   "better": 0,
+   "point": 0.0,
+   "boot": [
+    0.0,
+    0.0
+   ],
+   "newcombe": [
+    -0.04158726633509182,
+    0.04158726633509182
+   ],
+   "detectable": 0.08
+  },
+  {
+   "label": "personal-redacted-allow vs personal-raw",
+   "model_key": "openweights-weakest",
+   "stratum": "all",
+   "n": 100,
+   "worse": 1,
+   "better": 0,
+   "point": -0.011241379310344829,
+   "boot": [
+    -0.035693430656934304,
+    0.0
+   ],
+   "newcombe": [
+    -0.06125149335194724,
+    0.03136317694173038
+   ],
+   "detectable": 0.08
+  },
+  {
+   "label": "personal-redacted-allow vs personal-raw",
+   "model_key": "openai-snapshot",
+   "stratum": "all",
+   "n": 100,
+   "worse": 1,
+   "better": 0,
+   "point": -0.011241379310344829,
+   "boot": [
+    -0.035693430656934304,
+    0.0
+   ],
+   "newcombe": [
+    -0.06125149335194724,
+    0.03136317694173038
+   ],
+   "detectable": 0.08
+  },
+  {
+   "label": "personal-redacted-allow vs personal-raw",
+   "model_key": "pooled",
+   "stratum": "all",
+   "n": 300,
+   "worse": 2,
+   "better": 0,
+   "point": -0.007494252873563219,
+   "boot": [
+    -0.018865740740740742,
+    0.0
+   ],
+   "newcombe": [
+    -0.02695466275674635,
+    0.007723128938587743
+   ],
+   "detectable": 0.03
+  },
+  {
+   "label": "redacted vs raw",
+   "model_key": "anthropic-mid",
+   "stratum": "all",
+   "n": 100,
+   "worse": 0,
+   "better": 0,
+   "point": 0.0,
+   "boot": [
+    0.0,
+    0.0
+   ],
+   "newcombe": [
+    -0.04158726633509182,
+    0.04158726633509182
+   ],
+   "detectable": 0.08
+  },
+  {
+   "label": "redacted vs raw",
+   "model_key": "openweights-weakest",
+   "stratum": "all",
+   "n": 100,
+   "worse": 2,
+   "better": 0,
+   "point": -0.022482758620689658,
+   "boot": [
+    -0.05659722222222222,
+    0.0
+   ],
+   "newcombe": [
+    -0.07870445213479288,
+    0.0221840394165327
+   ],
+   "detectable": 0.08
+  },
+  {
+   "label": "redacted vs raw",
+   "model_key": "openai-snapshot",
+   "stratum": "all",
+   "n": 100,
+   "worse": 2,
+   "better": 0,
+   "point": -0.022482758620689658,
+   "boot": [
+    -0.05659722222222222,
+    0.0
+   ],
+   "newcombe": [
+    -0.07870445213479288,
+    0.0221840394165327
+   ],
+   "detectable": 0.08
+  },
+  {
+   "label": "redacted vs raw",
+   "model_key": "pooled",
+   "stratum": "all",
+   "n": 300,
+   "worse": 4,
+   "better": 0,
+   "point": -0.014988505747126438,
+   "boot": [
+    -0.03061032863849766,
+    -0.0036465324384787473
+   ],
+   "newcombe": [
+    -0.03796895115842287,
+    0.0019131700174373858
+   ],
+   "detectable": 0.03
+  },
+  {
+   "label": "redacted-allow vs raw",
+   "model_key": "anthropic-mid",
+   "stratum": "all",
+   "n": 100,
+   "worse": 0,
+   "better": 0,
+   "point": 0.0,
+   "boot": [
+    0.0,
+    0.0
+   ],
+   "newcombe": [
+    -0.04158726633509182,
+    0.04158726633509182
+   ],
+   "detectable": 0.08
+  },
+  {
+   "label": "redacted-allow vs raw",
+   "model_key": "openweights-weakest",
+   "stratum": "all",
+   "n": 100,
+   "worse": 0,
+   "better": 0,
+   "point": 0.0,
+   "boot": [
+    0.0,
+    0.0
+   ],
+   "newcombe": [
+    -0.04158726633509182,
+    0.04158726633509182
+   ],
+   "detectable": 0.08
+  },
+  {
+   "label": "redacted-allow vs raw",
+   "model_key": "openai-snapshot",
+   "stratum": "all",
+   "n": 100,
+   "worse": 1,
+   "better": 0,
+   "point": -0.011241379310344829,
+   "boot": [
+    -0.035693430656934304,
+    0.0
+   ],
+   "newcombe": [
+    -0.06125149335194724,
+    0.03136317694173038
+   ],
+   "detectable": 0.08
+  },
+  {
+   "label": "redacted-allow vs raw",
+   "model_key": "pooled",
+   "stratum": "all",
+   "n": 300,
+   "worse": 1,
+   "better": 0,
+   "point": -0.0037471264367816095,
+   "boot": [
+    -0.011642857142857144,
+    0.0
+   ],
+   "newcombe": [
+    -0.020950743603143092,
+    0.01079687477665817
+   ],
+   "detectable": 0.03
+  },
+  {
+   "label": "redacted-allow vs redacted",
+   "model_key": "anthropic-mid",
+   "stratum": "all",
+   "n": 100,
+   "worse": 0,
+   "better": 0,
+   "point": 0.0,
+   "boot": [
+    0.0,
+    0.0
+   ],
+   "newcombe": [
+    -0.04158726633509182,
+    0.04158726633509182
+   ],
+   "detectable": 0.08
+  },
+  {
+   "label": "redacted-allow vs redacted",
+   "model_key": "openweights-weakest",
+   "stratum": "all",
+   "n": 100,
+   "worse": 0,
+   "better": 2,
+   "point": 0.022482758620689658,
+   "boot": [
+    0.0,
+    0.05659722222222222
+   ],
+   "newcombe": [
+    -0.0221840394165327,
+    0.07870445213479288
+   ],
+   "detectable": 0.08
+  },
+  {
+   "label": "redacted-allow vs redacted",
+   "model_key": "openai-snapshot",
+   "stratum": "all",
+   "n": 100,
+   "worse": 1,
+   "better": 2,
+   "point": 0.011241379310344829,
+   "boot": [
+    -0.023120567375886525,
+    0.04902255639097745
+   ],
+   "newcombe": [
+    -0.04157943476334009,
+    0.06835063577706008
+   ],
+   "detectable": 0.08
+  },
+  {
+   "label": "redacted-allow vs redacted",
+   "model_key": "pooled",
+   "stratum": "all",
+   "n": 300,
+   "worse": 1,
+   "better": 4,
+   "point": 0.011241379310344829,
+   "boot": [
+    -0.0038262910798122075,
+    0.02917225950782998
+   ],
+   "newcombe": [
+    -0.008296751933289947,
+    0.03444857597606063
+   ],
+   "detectable": 0.03
+  },
+  {
+   "label": "personal-raw vs raw",
+   "model_key": "anthropic-mid",
+   "stratum": "answerable",
+   "n": 88,
+   "worse": 0,
+   "better": 0,
+   "point": 0.0,
+   "boot": [
+    0.0,
+    0.0
+   ],
+   "newcombe": [
+    -0.04702104793320304,
+    0.04702104793320304
+   ],
+   "detectable": 0.09
+  },
+  {
+   "label": "personal-raw vs raw",
+   "model_key": "openweights-weakest",
+   "stratum": "answerable",
+   "n": 88,
+   "worse": 0,
+   "better": 0,
+   "point": 0.0,
+   "boot": [
+    0.0,
+    0.0
+   ],
+   "newcombe": [
+    -0.04702104793320304,
+    0.04702104793320304
+   ],
+   "detectable": 0.09
+  },
+  {
+   "label": "personal-raw vs raw",
+   "model_key": "openai-snapshot",
+   "stratum": "answerable",
+   "n": 88,
+   "worse": 0,
+   "better": 0,
+   "point": 0.0,
+   "boot": [
+    0.0,
+    0.0
+   ],
+   "newcombe": [
+    -0.04702104793320304,
+    0.04702104793320304
+   ],
+   "detectable": 0.09
+  },
+  {
+   "label": "personal-raw vs raw",
+   "model_key": "pooled",
+   "stratum": "answerable",
+   "n": 264,
+   "worse": 0,
+   "better": 0,
+   "point": 0.0,
+   "boot": [
+    0.0,
+    0.0
+   ],
+   "newcombe": [
+    -0.016123291810764512,
+    0.016123291810764512
+   ],
+   "detectable": 0.03
+  },
+  {
+   "label": "personal-redacted-allow vs personal-raw",
+   "model_key": "anthropic-mid",
+   "stratum": "answerable",
+   "n": 88,
+   "worse": 0,
+   "better": 0,
+   "point": 0.0,
+   "boot": [
+    0.0,
+    0.0
+   ],
+   "newcombe": [
+    -0.04702104793320304,
+    0.04702104793320304
+   ],
+   "detectable": 0.09
+  },
+  {
+   "label": "personal-redacted-allow vs personal-raw",
+   "model_key": "openweights-weakest",
+   "stratum": "answerable",
+   "n": 88,
+   "worse": 0,
+   "better": 0,
+   "point": 0.0,
+   "boot": [
+    0.0,
+    0.0
+   ],
+   "newcombe": [
+    -0.04702104793320304,
+    0.04702104793320304
+   ],
+   "detectable": 0.09
+  },
+  {
+   "label": "personal-redacted-allow vs personal-raw",
+   "model_key": "openai-snapshot",
+   "stratum": "answerable",
+   "n": 88,
+   "worse": 0,
+   "better": 0,
+   "point": 0.0,
+   "boot": [
+    0.0,
+    0.0
+   ],
+   "newcombe": [
+    -0.04702104793320304,
+    0.04702104793320304
+   ],
+   "detectable": 0.09
+  },
+  {
+   "label": "personal-redacted-allow vs personal-raw",
+   "model_key": "pooled",
+   "stratum": "answerable",
+   "n": 264,
+   "worse": 0,
+   "better": 0,
+   "point": 0.0,
+   "boot": [
+    0.0,
+    0.0
+   ],
+   "newcombe": [
+    -0.016123291810764512,
+    0.016123291810764512
+   ],
+   "detectable": 0.03
+  },
+  {
+   "label": "redacted vs raw",
+   "model_key": "anthropic-mid",
+   "stratum": "answerable",
+   "n": 88,
+   "worse": 0,
+   "better": 0,
+   "point": 0.0,
+   "boot": [
+    0.0,
+    0.0
+   ],
+   "newcombe": [
+    -0.04702104793320304,
+    0.04702104793320304
+   ],
+   "detectable": 0.09
+  },
+  {
+   "label": "redacted vs raw",
+   "model_key": "openweights-weakest",
+   "stratum": "answerable",
+   "n": 88,
+   "worse": 0,
+   "better": 0,
+   "point": 0.0,
+   "boot": [
+    0.0,
+    0.0
+   ],
+   "newcombe": [
+    -0.04702104793320304,
+    0.04702104793320304
+   ],
+   "detectable": 0.09
+  },
+  {
+   "label": "redacted vs raw",
+   "model_key": "openai-snapshot",
+   "stratum": "answerable",
+   "n": 88,
+   "worse": 0,
+   "better": 0,
+   "point": 0.0,
+   "boot": [
+    0.0,
+    0.0
+   ],
+   "newcombe": [
+    -0.04702104793320304,
+    0.04702104793320304
+   ],
+   "detectable": 0.09
+  },
+  {
+   "label": "redacted vs raw",
+   "model_key": "pooled",
+   "stratum": "answerable",
+   "n": 264,
+   "worse": 0,
+   "better": 0,
+   "point": 0.0,
+   "boot": [
+    0.0,
+    0.0
+   ],
+   "newcombe": [
+    -0.016123291810764512,
+    0.016123291810764512
+   ],
+   "detectable": 0.03
+  },
+  {
+   "label": "redacted-allow vs raw",
+   "model_key": "anthropic-mid",
+   "stratum": "answerable",
+   "n": 88,
+   "worse": 0,
+   "better": 0,
+   "point": 0.0,
+   "boot": [
+    0.0,
+    0.0
+   ],
+   "newcombe": [
+    -0.04702104793320304,
+    0.04702104793320304
+   ],
+   "detectable": 0.09
+  },
+  {
+   "label": "redacted-allow vs raw",
+   "model_key": "openweights-weakest",
+   "stratum": "answerable",
+   "n": 88,
+   "worse": 0,
+   "better": 0,
+   "point": 0.0,
+   "boot": [
+    0.0,
+    0.0
+   ],
+   "newcombe": [
+    -0.04702104793320304,
+    0.04702104793320304
+   ],
+   "detectable": 0.09
+  },
+  {
+   "label": "redacted-allow vs raw",
+   "model_key": "openai-snapshot",
+   "stratum": "answerable",
+   "n": 88,
+   "worse": 0,
+   "better": 0,
+   "point": 0.0,
+   "boot": [
+    0.0,
+    0.0
+   ],
+   "newcombe": [
+    -0.04702104793320304,
+    0.04702104793320304
+   ],
+   "detectable": 0.09
+  },
+  {
+   "label": "redacted-allow vs raw",
+   "model_key": "pooled",
+   "stratum": "answerable",
+   "n": 264,
+   "worse": 0,
+   "better": 0,
+   "point": 0.0,
+   "boot": [
+    0.0,
+    0.0
+   ],
+   "newcombe": [
+    -0.016123291810764512,
+    0.016123291810764512
+   ],
+   "detectable": 0.03
+  },
+  {
+   "label": "redacted-allow vs redacted",
+   "model_key": "anthropic-mid",
+   "stratum": "answerable",
+   "n": 88,
+   "worse": 0,
+   "better": 0,
+   "point": 0.0,
+   "boot": [
+    0.0,
+    0.0
+   ],
+   "newcombe": [
+    -0.04702104793320304,
+    0.04702104793320304
+   ],
+   "detectable": 0.09
+  },
+  {
+   "label": "redacted-allow vs redacted",
+   "model_key": "openweights-weakest",
+   "stratum": "answerable",
+   "n": 88,
+   "worse": 0,
+   "better": 0,
+   "point": 0.0,
+   "boot": [
+    0.0,
+    0.0
+   ],
+   "newcombe": [
+    -0.04702104793320304,
+    0.04702104793320304
+   ],
+   "detectable": 0.09
+  },
+  {
+   "label": "redacted-allow vs redacted",
+   "model_key": "openai-snapshot",
+   "stratum": "answerable",
+   "n": 88,
+   "worse": 0,
+   "better": 0,
+   "point": 0.0,
+   "boot": [
+    0.0,
+    0.0
+   ],
+   "newcombe": [
+    -0.04702104793320304,
+    0.04702104793320304
+   ],
+   "detectable": 0.09
+  },
+  {
+   "label": "redacted-allow vs redacted",
+   "model_key": "pooled",
+   "stratum": "answerable",
+   "n": 264,
+   "worse": 0,
+   "better": 0,
+   "point": 0.0,
+   "boot": [
+    0.0,
+    0.0
+   ],
+   "newcombe": [
+    -0.016123291810764512,
+    0.016123291810764512
+   ],
+   "detectable": 0.03
+  },
+  {
+   "label": "personal-raw vs raw",
+   "model_key": "anthropic-mid",
+   "stratum": "unanswerable",
+   "n": 12,
+   "worse": 0,
+   "better": 0,
+   "point": 0.0,
+   "boot": [
+    0.0,
+    0.0
+   ],
+   "newcombe": [
+    -0.2726042998094934,
+    0.2726042998094934
+   ],
+   "detectable": null
+  },
+  {
+   "label": "personal-raw vs raw",
+   "model_key": "openweights-weakest",
+   "stratum": "unanswerable",
+   "n": 12,
+   "worse": 0,
+   "better": 0,
+   "point": 0.0,
+   "boot": [
+    0.0,
+    0.0
+   ],
+   "newcombe": [
+    -0.2726042998094934,
+    0.2726042998094934
+   ],
+   "detectable": null
+  },
+  {
+   "label": "personal-raw vs raw",
+   "model_key": "openai-snapshot",
+   "stratum": "unanswerable",
+   "n": 12,
+   "worse": 0,
+   "better": 0,
+   "point": 0.0,
+   "boot": [
+    0.0,
+    0.0
+   ],
+   "newcombe": [
+    -0.2726042998094934,
+    0.2726042998094934
+   ],
+   "detectable": null
+  },
+  {
+   "label": "personal-raw vs raw",
+   "model_key": "pooled",
+   "stratum": "unanswerable",
+   "n": 36,
+   "worse": 0,
+   "better": 0,
+   "point": 0.0,
+   "boot": [
+    0.0,
+    0.0
+   ],
+   "newcombe": [
+    -0.10839143698702042,
+    0.10839143698702042
+   ],
+   "detectable": 0.205
+  },
+  {
+   "label": "personal-redacted-allow vs personal-raw",
+   "model_key": "anthropic-mid",
+   "stratum": "unanswerable",
+   "n": 12,
+   "worse": 0,
+   "better": 0,
+   "point": 0.0,
+   "boot": [
+    0.0,
+    0.0
+   ],
+   "newcombe": [
+    -0.2726042998094934,
+    0.2726042998094934
+   ],
+   "detectable": null
+  },
+  {
+   "label": "personal-redacted-allow vs personal-raw",
+   "model_key": "openweights-weakest",
+   "stratum": "unanswerable",
+   "n": 12,
+   "worse": 1,
+   "better": 0,
+   "point": -0.09367816091954023,
+   "boot": [
+    -0.2910714285714286,
+    0.0
+   ],
+   "newcombe": [
+    -0.39781658795290376,
+    0.18958356359491227
+   ],
+   "detectable": null
+  },
+  {
+   "label": "personal-redacted-allow vs personal-raw",
+   "model_key": "openai-snapshot",
+   "stratum": "unanswerable",
+   "n": 12,
+   "worse": 1,
+   "better": 0,
+   "point": -0.09367816091954023,
+   "boot": [
+    -0.2910714285714286,
+    0.0
+   ],
+   "newcombe": [
+    -0.39781658795290376,
+    0.18958356359491227
+   ],
+   "detectable": null
+  },
+  {
+   "label": "personal-redacted-allow vs personal-raw",
+   "model_key": "pooled",
+   "stratum": "unanswerable",
+   "n": 36,
+   "worse": 2,
+   "better": 0,
+   "point": -0.06245210727969348,
+   "boot": [
+    -0.1540060468631897,
+    0.0
+   ],
+   "newcombe": [
+    -0.2039745365200434,
+    0.05497632935251328
+   ],
+   "detectable": 0.205
+  },
+  {
+   "label": "redacted vs raw",
+   "model_key": "anthropic-mid",
+   "stratum": "unanswerable",
+   "n": 12,
+   "worse": 0,
+   "better": 0,
+   "point": 0.0,
+   "boot": [
+    0.0,
+    0.0
+   ],
+   "newcombe": [
+    -0.2726042998094934,
+    0.2726042998094934
+   ],
+   "detectable": null
+  },
+  {
+   "label": "redacted vs raw",
+   "model_key": "openweights-weakest",
+   "stratum": "unanswerable",
+   "n": 12,
+   "worse": 2,
+   "better": 0,
+   "point": -0.18735632183908046,
+   "boot": [
+    -0.4620181405895691,
+    0.0
+   ],
+   "newcombe": [
+    -0.503654663818632,
+    0.11665037934187898
+   ],
+   "detectable": null
+  },
+  {
+   "label": "redacted vs raw",
+   "model_key": "openai-snapshot",
+   "stratum": "unanswerable",
+   "n": 12,
+   "worse": 2,
+   "better": 0,
+   "point": -0.18735632183908046,
+   "boot": [
+    -0.4620181405895691,
+    0.0
+   ],
+   "newcombe": [
+    -0.503654663818632,
+    0.11665037934187898
+   ],
+   "detectable": null
+  },
+  {
+   "label": "redacted vs raw",
+   "model_key": "pooled",
+   "stratum": "unanswerable",
+   "n": 36,
+   "worse": 4,
+   "better": 0,
+   "point": -0.12490421455938697,
+   "boot": [
+    -0.2232003129890454,
+    -0.030801209372637937
+   ],
+   "newcombe": [
+    -0.28457696754833944,
+    0.007115043726405823
+   ],
+   "detectable": 0.205
+  },
+  {
+   "label": "redacted-allow vs raw",
+   "model_key": "anthropic-mid",
+   "stratum": "unanswerable",
+   "n": 12,
+   "worse": 0,
+   "better": 0,
+   "point": 0.0,
+   "boot": [
+    0.0,
+    0.0
+   ],
+   "newcombe": [
+    -0.2726042998094934,
+    0.2726042998094934
+   ],
+   "detectable": null
+  },
+  {
+   "label": "redacted-allow vs raw",
+   "model_key": "openweights-weakest",
+   "stratum": "unanswerable",
+   "n": 12,
+   "worse": 0,
+   "better": 0,
+   "point": 0.0,
+   "boot": [
+    0.0,
+    0.0
+   ],
+   "newcombe": [
+    -0.2726042998094934,
+    0.2726042998094934
+   ],
+   "detectable": null
+  },
+  {
+   "label": "redacted-allow vs raw",
+   "model_key": "openai-snapshot",
+   "stratum": "unanswerable",
+   "n": 12,
+   "worse": 1,
+   "better": 0,
+   "point": -0.09367816091954023,
+   "boot": [
+    -0.2910714285714286,
+    0.0
+   ],
+   "newcombe": [
+    -0.39781658795290376,
+    0.18958356359491227
+   ],
+   "detectable": null
+  },
+  {
+   "label": "redacted-allow vs raw",
+   "model_key": "pooled",
+   "stratum": "unanswerable",
+   "n": 36,
+   "worse": 1,
+   "better": 0,
+   "point": -0.03122605363984674,
+   "boot": [
+    -0.09565727699530517,
+    0.0
+   ],
+   "newcombe": [
+    -0.1592907240558637,
+    0.08016934844491473
+   ],
+   "detectable": 0.205
+  },
+  {
+   "label": "redacted-allow vs redacted",
+   "model_key": "anthropic-mid",
+   "stratum": "unanswerable",
+   "n": 12,
+   "worse": 0,
+   "better": 0,
+   "point": 0.0,
+   "boot": [
+    0.0,
+    0.0
+   ],
+   "newcombe": [
+    -0.2726042998094934,
+    0.2726042998094934
+   ],
+   "detectable": null
+  },
+  {
+   "label": "redacted-allow vs redacted",
+   "model_key": "openweights-weakest",
+   "stratum": "unanswerable",
+   "n": 12,
+   "worse": 0,
+   "better": 2,
+   "point": 0.18735632183908046,
+   "boot": [
+    0.0,
+    0.4620181405895691
+   ],
+   "newcombe": [
+    -0.11665037934187898,
+    0.503654663818632
+   ],
+   "detectable": null
+  },
+  {
+   "label": "redacted-allow vs redacted",
+   "model_key": "openai-snapshot",
+   "stratum": "unanswerable",
+   "n": 12,
+   "worse": 1,
+   "better": 2,
+   "point": 0.09367816091954023,
+   "boot": [
+    -0.19267139479905443,
+    0.3880952380952381
+   ],
+   "newcombe": [
+    -0.25509675846787006,
+    0.42913914907488737
+   ],
+   "detectable": null
+  },
+  {
+   "label": "redacted-allow vs redacted",
+   "model_key": "pooled",
+   "stratum": "unanswerable",
+   "n": 36,
+   "worse": 1,
+   "better": 4,
+   "point": 0.09367816091954023,
+   "boot": [
+    -0.03188575899843506,
+    0.21708523592085233
+   ],
+   "newcombe": [
+    -0.05875076485032924,
+    0.2569141772334614
+   ],
+   "detectable": 0.185
+  }
+ ],
+ "redteam": [
+  {
+   "model_key": "anthropic-mid",
+   "arm": "raw",
+   "reading": "received by the client",
+   "leaked": 0,
+   "graded": 200
+  },
+  {
+   "model_key": "anthropic-mid",
+   "arm": "redacted",
+   "reading": "sent to the vendor",
+   "leaked": 0,
+   "graded": 200
+  },
+  {
+   "model_key": "anthropic-mid",
+   "arm": "redacted",
+   "reading": "written by the model",
+   "leaked": 0,
+   "graded": 200
+  },
+  {
+   "model_key": "anthropic-mid",
+   "arm": "redacted",
+   "reading": "received by the client",
+   "leaked": 13,
+   "graded": 200
+  },
+  {
+   "model_key": "anthropic-mid",
+   "arm": "redacted",
+   "reading": "received, caller-scoped",
+   "leaked": 0,
+   "graded": 200
+  },
+  {
+   "model_key": "openai-snapshot",
+   "arm": "raw",
+   "reading": "received by the client",
+   "leaked": 1,
+   "graded": 200
+  },
+  {
+   "model_key": "openai-snapshot",
+   "arm": "redacted",
+   "reading": "sent to the vendor",
+   "leaked": 0,
+   "graded": 200
+  },
+  {
+   "model_key": "openai-snapshot",
+   "arm": "redacted",
+   "reading": "written by the model",
+   "leaked": 0,
+   "graded": 200
+  },
+  {
+   "model_key": "openai-snapshot",
+   "arm": "redacted",
+   "reading": "received by the client",
+   "leaked": 3,
+   "graded": 200
+  },
+  {
+   "model_key": "openai-snapshot",
+   "arm": "redacted",
+   "reading": "received, caller-scoped",
+   "leaked": 0,
+   "graded": 200
+  },
+  {
+   "model_key": "openweights-weakest",
+   "arm": "raw",
+   "reading": "received by the client",
+   "leaked": 119,
+   "graded": 200
+  },
+  {
+   "model_key": "openweights-weakest",
+   "arm": "redacted",
+   "reading": "sent to the vendor",
+   "leaked": 0,
+   "graded": 200
+  },
+  {
+   "model_key": "openweights-weakest",
+   "arm": "redacted",
+   "reading": "written by the model",
+   "leaked": 0,
+   "graded": 200
+  },
+  {
+   "model_key": "openweights-weakest",
+   "arm": "redacted",
+   "reading": "received by the client",
+   "leaked": 107,
+   "graded": 200
+  },
+  {
+   "model_key": "openweights-weakest",
+   "arm": "redacted",
+   "reading": "received, caller-scoped",
+   "leaked": 0,
+   "graded": 200
+  }
+ ],
+ "redteam_diffs": [
+  {
+   "label": "leak rate, redacted received by the client vs raw",
+   "model_key": "anthropic-mid",
+   "stratum": "redteam",
+   "n": 200,
+   "worse": 13,
+   "better": 0,
+   "point": 0.065,
+   "boot": [
+    0.03238083427340406,
+    0.10802003749917945
+   ],
+   "newcombe": [
+    0.03238083427340406,
+    0.10802003749917945
+   ],
+   "detectable": null
+  },
+  {
+   "label": "leak rate, redacted received, caller-scoped vs raw",
+   "model_key": "anthropic-mid",
+   "stratum": "redteam",
+   "n": 200,
+   "worse": 0,
+   "better": 0,
+   "point": 0.0,
+   "boot": [
+    -0.018846005918320894,
+    0.018846005918320894
+   ],
+   "newcombe": [
+    -0.018846005918320894,
+    0.018846005918320894
+   ],
+   "detectable": null
+  },
+  {
+   "label": "leak rate, redacted received by the client vs raw",
+   "model_key": "openweights-weakest",
+   "stratum": "redteam",
+   "n": 200,
+   "worse": 8,
+   "better": 20,
+   "point": -0.05999999999999994,
+   "boot": [
+    -0.11038469336639109,
+    -0.008860718062053616
+   ],
+   "newcombe": [
+    -0.11038469336639109,
+    -0.008860718062053616
+   ],
+   "detectable": null
+  },
+  {
+   "label": "leak rate, redacted received, caller-scoped vs raw",
+   "model_key": "openweights-weakest",
+   "stratum": "redteam",
+   "n": 200,
+   "worse": 0,
+   "better": 119,
+   "point": -0.595,
+   "boot": [
+    -0.6606234388755706,
+    -0.523275593634015
+   ],
+   "newcombe": [
+    -0.6606234388755706,
+    -0.523275593634015
+   ],
+   "detectable": null
+  },
+  {
+   "label": "leak rate, redacted received by the client vs raw",
+   "model_key": "openai-snapshot",
+   "stratum": "redteam",
+   "n": 200,
+   "worse": 3,
+   "better": 1,
+   "point": 0.009999999999999998,
+   "boot": [
+    -0.014906675224497012,
+    0.03850136604027336
+   ],
+   "newcombe": [
+    -0.014906675224497012,
+    0.03850136604027336
+   ],
+   "detectable": null
+  },
+  {
+   "label": "leak rate, redacted received, caller-scoped vs raw",
+   "model_key": "openai-snapshot",
+   "stratum": "redteam",
+   "n": 200,
+   "worse": 0,
+   "better": 1,
+   "point": -0.005,
+   "boot": [
+    -0.02777439986977148,
+    0.014290423168459982
+   ],
+   "newcombe": [
+    -0.02777439986977148,
+    0.014290423168459982
+   ],
+   "detectable": null
+  }
+ ],
+ "refused": {},
+ "unresolved": {
+  "public/redacted": [
+   0,
+   300
+  ],
+  "public/redacted-allow": [
+   0,
+   300
+  ],
+  "personal/personal-redacted-allow": [
+   0,
+   300
+  ]
+ },
+ "wire": {
+  "personal/personal-redacted-allow": [
+   0,
+   1200
+  ],
+  "personal/personal-raw": [
+   1200,
+   1200
+  ]
+ },
+ "addressed": {
+  "personal/personal-redacted-allow": [
+   58,
+   300
+  ],
+  "personal/personal-raw": [
+   59,
+   300
+  ]
+ },
+ "wrong_name": {
+  "personal/personal-redacted-allow": [
+   0,
+   300
+  ],
+  "personal/personal-raw": [
+   0,
+   300
+  ]
+ },
+ "scoped_cost": [
+  7,
+  900
+ ]
+}

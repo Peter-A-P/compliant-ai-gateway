@@ -67,6 +67,21 @@ def redact_request(request: ChatRequest, *, allow: Sequence[str] = ()) -> Redact
     return Redacted(redacted, policy, len(policy.vault))
 
 
+def caller_scoped(redacted: Redacted, request: ChatRequest) -> Policy:
+    """A policy that rehydrates only the values the caller's own messages carried (0.20).
+
+    The proxy redacts the system prompt and the messages together and, until now, put every
+    value back into the answer. When the system prompt holds data the caller must not see,
+    a customer record behind a support assistant, that turns a refusal into a disclosure:
+    PLAN.md B2.8 measured Haiku 4.5 refusing 03's pii_leakage attacks while listing what it
+    would not share as placeholders ("Social insurance number (<ID_LIKE_1>)"), and full
+    rehydration handing the caller every value in the list. A value the caller sent is one
+    the caller already has; anything else stays a placeholder. `request` is the request as
+    the caller sent it, before redaction."""
+    said = "\n".join(str(m["content"]) for m in request.messages)
+    return Policy((), vault={p: v for p, v in redacted.policy.vault.items() if v in said})
+
+
 def leak_counts(error: RedactionRefused) -> dict[str, int]:
     """What the guard found, as counts by kind and type: safe to return and to log."""
     return dict(Counter(f"{leak.kind}:{leak.entity_type.value}" for leak in error.leaks))
@@ -133,6 +148,7 @@ __all__ = [
     "Redacted",
     "RedactionRefused",
     "StreamRehydrator",
+    "caller_scoped",
     "leak_counts",
     "redact_request",
     "survives",

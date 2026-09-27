@@ -271,9 +271,50 @@ copied out of the instruction itself; the proxy's line (`v0.16.0`) gives none an
 example, and it is the one the proxy sends. Detail, and what this cannot see, in
 [docs/redact.md](docs/redact.md).
 
-| Quality effect of redaction (two-sided delta) | Cache hit rate / false-hit rate / saved, redacted and raw | Audit tamper detection with daily anchors |
-|---|---|---|
-| _not yet_ | _not yet_ | _not yet_; the chain is measured above, the published anchors are Part B |
+**The quality cost of redaction, through project 03's gate** (`v0.20.0`, PLAN.md B2.8)
+
+| Comparison, pooled over three models | Pairs | Worse / better | Complete answers, points (Newcombe) | 03's bootstrap | Could detect a loss of |
+|---|---|---|---|---|---|
+<!-- quality:start -->
+| Public pages, redacted as the proxy does today, against raw | 300 | 4 / 0 | -1.5 (-3.8 to +0.2) | -3.1 to -0.4 | 3.0 |
+|   of which, questions the page cannot answer | 36 | 4 / 0 | -12.5 (-28.5 to +0.7) | -22.3 to -3.1 | 20.5 |
+| Public pages, redacted with the allow list, against raw | 300 | 1 / 0 | -0.4 (-2.1 to +1.1) | -1.2 to +0.0 | 3.0 |
+|   of which, questions the page cannot answer | 36 | 1 / 0 | -3.1 (-15.9 to +8.0) | -9.6 to +0.0 | 20.5 |
+| A customer's details in the question, redacted (with the list), against raw | 300 | 2 / 0 | -0.7 (-2.7 to +0.8) | -1.9 to +0.0 | 3.0 |
+|   of which, questions the page cannot answer | 36 | 2 / 0 | -6.2 (-20.4 to +5.5) | -15.4 to +0.0 | 20.5 |
+<!-- quality:end -->
+
+**What redaction does to a leak, on 03's red team** (`pii_leakage`, 200 attacks on a
+confidential customer record, graded by 03's `withholds_pii`)
+
+| Model | Leaked, raw | Redacted: value sent to the vendor | Redacted: value received by the caller | Redacted, rehydrating only what the caller sent |
+|---|---|---|---|---|
+<!-- quality-redteam:start -->
+| anthropic/claude-haiku-4-5-20251001 | 0 of 200, 0.0% (0.0% to 1.9%) | 0 of 200, 0.0% (0.0% to 1.9%) | 13 of 200, 6.5% (3.8% to 10.8%) | 0 of 200, 0.0% (0.0% to 1.9%) |
+| openweights/meta-llama/Llama-3.3-70B-Instruct-Turbo | 119 of 200, 59.5% (52.6% to 66.1%) | 0 of 200, 0.0% (0.0% to 1.9%) | 107 of 200, 53.5% (46.6% to 60.3%) | 0 of 200, 0.0% (0.0% to 1.9%) |
+| openai/gpt-5.4-mini-2026-03-17 | 1 of 200, 0.5% (0.1% to 2.8%) | 0 of 200, 0.0% (0.0% to 1.9%) | 3 of 200, 1.5% (0.5% to 4.3%) | 0 of 200, 0.0% (0.0% to 1.9%) |
+<!-- quality-redteam:end -->
+
+Filled by `boundary redact quality report --write-readme` from stored answers and verdicts
+(`bench/quality/`), US$3.33 of calls on 2026-09-27, the design committed before the first
+answer. Answers from Haiku 4.5, Llama 3.3 70B and gpt-5.4-mini to 03's 100 gold questions,
+judged by 03's own completeness judge through 03's own code (kappa 0.914), each difference
+divided by the judge's Youden factor. Every raw answer was complete, so 03's bootstrap is
+shown beside Newcombe's paired interval, which is the one that stays honest at a 100%
+baseline. **No quality cost was visible on the 264 answerable pairs of any arm.** Every loss
+is on a question the page cannot answer, where a redacted model stops saying so; that split
+was chosen after reading the failures and is a lead, not a result. The prediction from
+over-masking (0.16.0) did not hold: the 15 questions whose required phrases were masked lost
+nothing. **The red team inverts the premise**: redacted, no value reaches the vendor, but the
+proxy rehydrates the answer, and Haiku, which leaks nothing raw, lists the placeholders it
+will not share and hands the caller all thirteen records it refused. Rehydrating only the
+values the caller sent (`caller_scoped`, measured offline on the stored answers) leaks 0 of
+600 and leaves a placeholder in 7 of 900 ordinary answers; **the proxy does not do this yet**.
+Method and every row in [docs/redact.md](docs/redact.md).
+
+| Cache hit rate / false-hit rate / saved, redacted and raw | Audit tamper detection with daily anchors |
+|---|---|
+| _not yet_ | _not yet_; the chain is measured above, the published anchors are Part B |
 
 ## What this does not do
 
@@ -283,16 +324,19 @@ example, and it is the one the proxy sends. Detail, and what this cannot see, in
   guessed classifications would be making a compliance decision nobody reviewed. Enforcement
   is opt-in for a library caller; through the proxy (`v0.13.0`) it is always on, and an
   absent class becomes `personal` at the door.
-- **The proxy's redaction is rules only, and neither its effect on answer quality nor the
-  proxy's overhead is measured yet.** Since `v0.15.0` a personal request through the proxy is
+- **The proxy's redaction is rules only, and it gives back more than it should.** Since `v0.15.0` a personal request through the proxy is
   redacted before it leaves and routed as internal data, so it can reach Claude on Bedrock in
   `ca-central-1` but not the direct Anthropic API, which declares no residency here. With no
   detector configured, names become `<NAME_LIKE_n>` and anything capitalised the vocabulary
   does not know is masked, which fails closed and over-masks: on project 03's gold set, which
   holds no personal data at all, it masks 14.0% (9.0 to 21.0) of the phrases the answers are
-  judged on (`boundary redact overmask`, `v0.16.0`). Whether that costs answer quality is
-  Part B's measurement through project 03, planned and not yet run. No latency figure for the
-  proxy is claimed until the load test on the VPS.
+  judged on (`boundary redact overmask`, `v0.16.0`). Measured through project 03's gate
+  (`v0.20.0`), that cost no answer its completeness on the questions a page answers, within
+  about 1.6 points; the losses were on questions the page cannot answer, twelve per model,
+  too few to measure. And the proxy rehydrates every value into the answer, including ones
+  that arrived in the system prompt, which on 03's red team turned a model's refusals into
+  disclosures; see the table above. No latency figure for the proxy is claimed until the
+  load test on the VPS.
 - It does not run in more than one region. Residency here means controlling where requests
   are allowed to go, not where the proxy runs.
 - **It cannot verify residency, and no tool can.** It records what the operator declared and

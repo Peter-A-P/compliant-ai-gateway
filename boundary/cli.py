@@ -730,9 +730,17 @@ def cmd_redact_quality(args: argparse.Namespace) -> int:
     ]
     if args.step == "report":
         rep = quality.report(
-            bridge, quality.read_answers(answers_file), quality.read_verdicts(verdicts_file)
+            bridge,
+            quality.read_answers(answers_file),
+            quality.read_verdicts(verdicts_file),
+            allow=allow,
         )
         print(rep.table())
+        (args.dir / "results.json").write_text(rep.to_json() + "\n", encoding="utf-8")
+        if args.write_readme:
+            readme = args.config.resolve().parent.parent / "README.md"
+            quality.write_readme(readme, rep)
+            print(f"README rows written to {readme}")
         return 0
     gw = Gateway.from_config(args.config, project=args.project)
     try:
@@ -1177,6 +1185,7 @@ def main(argv: list[str] | None = None) -> int:
     qual.add_argument("--dir", type=Path, default=Path("bench/quality"))
     qual.add_argument("--max-usd", dest="max_usd", type=float, default=1.9)
     qual.add_argument("--run-id", dest="run_id", default="")
+    qual.add_argument("--write-readme", dest="write_readme", action="store_true")
     qual.set_defaults(func=cmd_redact_quality)
 
     ledger = sub.add_parser("ledger", help="ledger commands").add_subparsers(

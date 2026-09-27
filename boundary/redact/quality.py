@@ -214,6 +214,17 @@ def _addresses(text: str, persona: Persona) -> bool:
     return persona.name in text or re.search(rf"\b{re.escape(forename)}\b", text) is not None
 
 
+def _wrong_name(text: str, persona: Persona) -> bool:
+    """Whether an answer uses a forename from the corpus that is not part of this customer's
+    own name: the rehydration error that would address one person by another's name."""
+    from boundary.redact import corpus
+
+    names = {*corpus.FORENAMES_PLAIN, *corpus.FORENAMES_ACCENTED, *corpus.FORENAMES_HYPHENATED}
+    return any(
+        n not in persona.name and re.search(rf"\b{re.escape(n)}\b", text) is not None for n in names
+    )
+
+
 # -- the bridge to 03 -----------------------------------------------------------------------
 
 
@@ -517,33 +528,36 @@ async def collect(
 
 
 def instances(answers: Iterable[Answer], gate: Path) -> list[dict[str, Any]]:
-    """03's AnswerInstance records for the judge-graded parts, with stable ids by key."""
+    """03's AnswerInstance records for the judge-graded parts. The id is the answer's place
+    among its part's keys, offset by a thousand per part, so it does not move when another
+    part's answers are added."""
     questions = _gold_questions(gate)
-    graded = sorted(
-        (a for a in answers if a.part in COMPARISONS and a.ok),
-        key=lambda a: a.key,
-    )
+    everything = list(answers)
     out = []
-    for n, a in enumerate(graded, start=1):
-        text = a.output or ""
-        out.append(
-            {
-                "id": f"i-{n:04d}",
-                "question_id": a.item_id,
-                "source_id": questions[a.item_id]["source_id"],
-                "arm_key": f"{a.part}/{a.arm}/{a.model_key}",
-                "model_requested": a.model,
-                "model_returned": a.model_returned,
-                "output": text,
-                "output_sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
-                "finish_reason": a.finish_reason,
-                "generated_utc": a.generated_utc,
-                "run_id": f"quality-{a.part}",
-                "ledger_id": None,
-                "cost_usd": a.cost_usd,
-            }
-        )
-    return out
+    for offset, part in enumerate(COMPARISONS):
+        keys = sorted(a.key for a in everything if a.part == part)
+        place = {k: offset * 1000 + n for n, k in enumerate(keys, start=1)}
+        out += [(place[a.key], a) for a in everything if a.part == part and a.ok]
+    return [_instance(n, a, questions) for n, a in sorted(out, key=lambda x: x[0])]
+
+
+def _instance(n: int, a: Answer, questions: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
+    text = a.output or ""
+    return {
+        "id": f"i-{n:04d}",
+        "question_id": a.item_id,
+        "source_id": questions[a.item_id]["source_id"],
+        "arm_key": f"{a.part}/{a.arm}/{a.model_key}",
+        "model_requested": a.model,
+        "model_returned": a.model_returned,
+        "output": text,
+        "output_sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
+        "finish_reason": a.finish_reason,
+        "generated_utc": a.generated_utc,
+        "run_id": f"quality-{a.part}",
+        "ledger_id": None,
+        "cost_usd": a.cost_usd,
+    }
 
 
 def read_verdicts(path: Path) -> dict[str, dict[str, Any]]:
@@ -580,7 +594,9 @@ async def judge(
     todo = [
         (k, i)
         for k, i in insts.items()
-        if k.startswith(part + "/") and (k not in done or done[k]["complete"] is None)
+        # Nothing is re-asked: an ungradeable verdict is stored and stays ungradeable, 03's
+        # rule, so a judge that failed on some answers is not given a second chance at them.
+        if k.startswith(part + "/") and k not in done
     ]
     if not todo:
         return 0, 0.0
@@ -635,44 +651,122 @@ async def judge(
                     }
                 )
 
-    await asyncio.gather(*(one(k, i) for k, i in todo))
-    got = bridge.run(
-        "verdicts",
-        {"judge": JUDGE, "replies": [{k: v for k, v in r.items() if k != "key"} for r in replies]},
-    )
-    rows = []
-    for r, v in zip(replies, got["verdicts"], strict=True):
-        rows.append({**v, "answer_key": r["key"], "instance_ref": r["instance"]["id"]})
-    _append(out, rows)
-    return len(rows), spent
+    made = 0
+    # In chunks, each stored as soon as 03's parser has read it, so a failure late in a run
+    # loses one chunk's replies rather than every one paid for.
+    for start in range(0, len(todo), 100):
+        replies.clear()
+        await asyncio.gather(*(one(k, i) for k, i in todo[start : start + 100]))
+        if not replies:
+            break
+        got = bridge.run(
+            "verdicts",
+            {
+                "judge": JUDGE,
+                "replies": [{k: v for k, v in r.items() if k != "key"} for r in replies],
+            },
+        )
+        rows = [
+            {**v, "answer_key": r["key"], "instance_ref": r["instance"]["id"]}
+            for r, v in zip(replies, got["verdicts"], strict=True)
+        ]
+        _append(out, rows)
+        made += len(rows)
+    return made, spent
 
 
 # -- the report -----------------------------------------------------------------------------
 
+# The strata a comparison is reported in. The split by answerability was not in the plan: it
+# was chosen after reading the five answers part 1 judged incomplete, every one of which was
+# to a question 03 wrote as NOT answerable from its page, and it is labelled post hoc wherever
+# it is printed.
+STRATA = ("all", "answerable", "unanswerable")
+
+
+def paired_newcombe(
+    pairs: Sequence[tuple[bool, bool]], *, z: float = 1.96
+) -> tuple[float, float, float]:
+    """Candidate minus baseline over paired binary outcomes, (baseline, candidate) per item,
+    with Newcombe's interval for a paired difference (1998, method 10): Wilson intervals on
+    the two margins, combined with the phi correlation of the pairs.
+
+    Beside 03's bootstrap rather than instead of it, because a bootstrap of pairs that never
+    disagree resamples zeros into a zero-width interval, a bare number in brackets, and at a
+    100% baseline that is most of what this run produces. This interval stays honest there:
+    no disagreement in 100 pairs is about plus or minus four points, not zero."""
+    from boundary.redact.evaluate import wilson
+
+    n = len(pairs)
+    if n == 0:
+        return float("nan"), float("nan"), float("nan")
+    e = sum(1 for b, c in pairs if b and c)
+    f = sum(1 for b, c in pairs if b and not c)
+    g = sum(1 for b, c in pairs if not b and c)
+    h = n - e - f - g
+    p1, p2 = (e + f) / n, (e + g) / n
+    l1, u1 = wilson(e + f, n, z=z)
+    l2, u2 = wilson(e + g, n, z=z)
+    denom = ((e + f) * (g + h) * (e + g) * (f + h)) ** 0.5
+    phi = (e * h - f * g) / denom if denom else 0.0
+    d = p2 - p1
+    lower = d - max(0.0, (p2 - l2) ** 2 - 2 * phi * (p2 - l2) * (u1 - p1) + (u1 - p1) ** 2) ** 0.5
+    upper = d + max(0.0, (u2 - p2) ** 2 - 2 * phi * (u2 - p2) * (p1 - l1) + (p1 - l1) ** 2) ** 0.5
+    return d, lower, upper
+
+
+def detectable_loss(
+    baseline: Sequence[bool],
+    youden: float,
+    *,
+    power: float = 0.8,
+    sims: int = 400,
+    seed: int = 0,
+) -> float | None:
+    """The smallest true loss, in proportion, that this many items at this baseline would
+    show at `power` as a Newcombe interval wholly below zero: each baseline success is made
+    a failure with probability loss times the judge's Youden factor (the loss the judge would
+    see), nothing improves, and the search runs in half-point steps. None past thirty points.
+    Printed beside every comparison because a null from a small set is a statement about the
+    set as much as about redaction (B2.8)."""
+    rng = random.Random(seed)
+    for step in range(1, 61):
+        loss = step / 200
+        seen = loss * youden
+        hits = 0
+        for _ in range(sims):
+            pairs = [(b, b and rng.random() >= seen) for b in baseline]
+            if paired_newcombe(pairs)[2] < 0:
+                hits += 1
+        if hits / sims >= power:
+            return loss
+    return None
+
 
 @dataclass
-class Test:
-    name: str
-    model_key: str
+class Comparison:
+    """One comparison: candidate minus baseline, judge-corrected, with both intervals."""
+
+    label: str
+    model_key: str  # a panel key, or "pooled"
+    stratum: str
     n: int
-    point: float
-    lo: float
-    hi: float
     worse: int
     better: int
-    candidate_rate: Rate
-    baseline_rate: Rate
-
-    @property
-    def detectable(self) -> float:
-        """The effect this comparison had 80% power to see, from its own interval: the
-        half-width scaled from 1.96 standard errors to 2.80."""
-        return (self.hi - self.lo) / 2 * (2.80 / 1.96)
+    point: float
+    boot: tuple[float, float]
+    newcombe: tuple[float, float]
+    detectable: float | None
 
     def cell(self) -> str:
+        blo, bhi = self.boot
+        nlo, nhi = self.newcombe
+        det = f"~{self.detectable * 100:.1f}" if self.detectable is not None else "over 30"
         return (
-            f"{self.point * 100:+.1f} ({self.lo * 100:+.1f} to {self.hi * 100:+.1f}), "
-            f"n {self.n}, could detect ~{self.detectable * 100:.0f}"
+            f"{self.point * 100:+5.1f}  bootstrap {blo * 100:+.1f} to {bhi * 100:+.1f}  "
+            f"Newcombe {nlo * 100:+.1f} to {nhi * 100:+.1f}  "
+            f"({self.worse} worse, {self.better} better of {self.n}; could detect a loss of "
+            f"{det})"
         )
 
 
@@ -753,17 +847,25 @@ class QualityReport:
     boundary_version: str
     judge_counts: tuple[int, int, int, int]
     kappa: tuple[float, float, float]
-    tests: list[Test] = field(default_factory=list)
-    pooled: dict[str, tuple[float, float, float, int]] = field(default_factory=dict)
+    comparisons: list[Comparison] = field(default_factory=list)
     rates: dict[str, Rate] = field(default_factory=dict)
     refused: dict[str, int] = field(default_factory=dict)
     unresolved: dict[str, tuple[int, int]] = field(default_factory=dict)
     wire: dict[str, tuple[int, int]] = field(default_factory=dict)
     addressed: dict[str, tuple[int, int]] = field(default_factory=dict)
+    wrong_name: dict[str, tuple[int, int]] = field(default_factory=dict)
+    # Answers in parts 1 and 2 that caller-scoped rehydration would leave a placeholder in.
+    scoped_cost: tuple[int, int] = (0, 0)
     redteam: list[RedTeamRow] = field(default_factory=list)
+    redteam_diffs: list[Comparison] = field(default_factory=list)
     spent_usd: float = 0.0
     answers: int = 0
     verdicts: int = 0
+
+    @property
+    def youden(self) -> float:
+        tp, fn, fp, tn = self.judge_counts
+        return tp / (tp + fn) + tn / (fp + tn) - 1
 
     def table(self) -> str:
         tp, fn, fp, tn = self.judge_counts
@@ -773,45 +875,167 @@ class QualityReport:
             f"(PLAN.md B2.8): {self.answers} answers, {self.verdicts} verdicts, "
             f"US${self.spent_usd:.2f}",
             f"judge {JUDGE['key']} ({JUDGE['model']}) on completeness, kappa {k:.3f} "
-            f"({klo:.3f} to {khi:.3f}); counts tp {tp} fn {fn} fp {fp} tn {tn}; differences "
-            "are judge-corrected, in points, candidate minus baseline",
+            f"({klo:.3f} to {khi:.3f}); counts tp {tp} fn {fn} fp {fp} tn {tn}, Youden "
+            f"{self.youden:.3f}",
+            "Differences are candidate minus baseline in points, divided by the Youden factor. "
+            "Per model the bootstrap is 03's paired_difference; pooled, a bootstrap by question. "
+            "Newcombe is the paired method 10 interval, divided by the same factor.",
             "",
-            "complete rate per arm and model",
+            "complete rate per arm and model (Wilson)",
         ]
         for name, r in sorted(self.rates.items()):
-            lines.append(f"  {name:<52} {r}")
-        lines += ["", "paired differences, per model (03's paired_difference)"]
-        for t in self.tests:
-            lines.append(f"  {t.name + ', ' + t.model_key:<60} {t.cell()}")
-        lines += ["", "pooled over the three models, resampled by question"]
-        for name, (p, lo, hi, n) in self.pooled.items():
-            det = (hi - lo) / 2 * (2.80 / 1.96)
-            lines.append(
-                f"  {name:<60} {p * 100:+.1f} ({lo * 100:+.1f} to {hi * 100:+.1f}), "
-                f"{n} pairs, could detect ~{det * 100:.0f}"
-            )
+            lines.append(f"  {name:<58} {r}")
+        for stratum in STRATA:
+            rows = [c for c in self.comparisons if c.stratum == stratum]
+            if not rows:
+                continue
+            note = "" if stratum == "all" else " (split chosen after reading the failures)"
+            lines += ["", f"{stratum} questions{note}"]
+            for c in rows:
+                lines.append(f"  {c.label + ', ' + c.model_key:<44} {c.cell()}")
         lines += ["", "refused by the guard: " + _pairs(self.refused)]
         lines.append(
             "answers with a placeholder left unresolved after rehydration: "
-            + "; ".join(f"{k} {u} of {n}" for k, (u, n) in sorted(self.unresolved.items()))
+            + (
+                "; ".join(f"{k} {u} of {n}" for k, (u, n) in sorted(self.unresolved.items()))
+                or "none"
+            )
         )
-        lines.append(
-            "personal values that reached the wire: "
-            + "; ".join(f"{k} {u} of {n}" for k, (u, n) in sorted(self.wire.items()))
-        )
-        lines.append(
-            "answers that use the customer's name: "
-            + "; ".join(f"{k} {u} of {n}" for k, (u, n) in sorted(self.addressed.items()))
-        )
+        if self.wire:
+            lines.append(
+                "personal values that reached the wire: "
+                + "; ".join(f"{k} {u} of {n}" for k, (u, n) in sorted(self.wire.items()))
+            )
+        if self.addressed:
+            lines.append(
+                "answers that use the customer's name: "
+                + "; ".join(f"{k} {u} of {n}" for k, (u, n) in sorted(self.addressed.items()))
+            )
+        if self.wrong_name:
+            lines.append(
+                "answers that use another customer's name: "
+                + "; ".join(f"{k} {u} of {n}" for k, (u, n) in sorted(self.wrong_name.items()))
+            )
+        u, n = self.scoped_cost
+        if n:
+            lines.append(
+                f"answers in parts 1 and 2 that caller-scoped rehydration leaves a placeholder "
+                f"in: {u} of {n}, {Rate(u, n)}"
+            )
         if self.redteam:
             lines += ["", "red team, pii_leakage, 03's withholds_pii (leak rate, Wilson)"]
             for row in self.redteam:
-                lines.append(f"  {row.model_key:<22} {row.arm:<9} {row.reading:<22} {row.rate}")
+                lines.append(f"  {row.model_key:<22} {row.arm:<9} {row.reading:<24} {row.rate}")
+            lines += [
+                "",
+                "red team, paired on the 200 items: leak rate difference in points, redacted "
+                "minus raw, Newcombe method 10 ('worse' is an item that leaked only redacted)",
+            ]
+            for c in self.redteam_diffs:
+                lo, hi = c.newcombe
+                lines.append(
+                    f"  {c.model_key:<22} {c.label:<50} {c.point * 100:+5.1f} "
+                    f"({lo * 100:+.1f} to {hi * 100:+.1f}); {c.worse} worse, {c.better} better"
+                )
         return "\n".join(lines)
+
+    def pooled(self, label: str, stratum: str = "all") -> Comparison:
+        return next(
+            c
+            for c in self.comparisons
+            if c.label == label and c.model_key == "pooled" and c.stratum == stratum
+        )
+
+    def readme_rows(self) -> str:
+        """The quality table: pooled comparisons, Newcombe first because it is the interval
+        that stays honest at a 100% baseline, 03's bootstrap beside it."""
+        names = {
+            "redacted vs raw": "Public pages, redacted as the proxy does today, against raw",
+            "redacted-allow vs raw": "Public pages, redacted with the allow list, against raw",
+            "personal-redacted-allow vs personal-raw": (
+                "A customer's details in the question, redacted (with the list), against raw"
+            ),
+        }
+        rows = []
+        for label, text in names.items():
+            for stratum in ("all", "unanswerable"):
+                c = self.pooled(label, stratum)
+                nlo, nhi = c.newcombe
+                blo, bhi = c.boot
+                det = f"{c.detectable * 100:.1f}" if c.detectable is not None else "over 30"
+                what = text if stratum == "all" else "  of which, questions the page cannot answer"
+                rows.append(
+                    f"| {what} | {c.n} | {c.worse} / {c.better} | {c.point * 100:+.1f} "
+                    f"({nlo * 100:+.1f} to {nhi * 100:+.1f}) | {blo * 100:+.1f} to "
+                    f"{bhi * 100:+.1f} | {det} |"
+                )
+        return "\n".join(rows)
+
+    def readme_redteam_rows(self) -> str:
+        by = {(r.model_key, r.arm, r.reading): r for r in self.redteam}
+        rows = []
+        for model_key, (model, _) in PANEL.items():
+            cells = [
+                by[(model_key, "raw", READINGS["client"])],
+                by[(model_key, "redacted", READINGS["sent"])],
+                by[(model_key, "redacted", READINGS["client"])],
+                by[(model_key, "redacted", READINGS["scoped"])],
+            ]
+            rows.append(
+                f"| {model} | "
+                + " | ".join(f"{c.leaked} of {c.graded}, {c.rate}" for c in cells)
+                + " |"
+            )
+        return "\n".join(rows)
+
+    def to_json(self) -> str:
+        return json.dumps(
+            {
+                "boundary_version": self.boundary_version,
+                "judge": JUDGE,
+                "judge_counts": self.judge_counts,
+                "kappa": self.kappa,
+                "answers": self.answers,
+                "verdicts": self.verdicts,
+                "spent_usd": round(self.spent_usd, 4),
+                "rates": {k: [r.hits, r.total] for k, r in sorted(self.rates.items())},
+                "comparisons": [asdict(c) for c in self.comparisons],
+                "redteam": [asdict(r) for r in self.redteam],
+                "redteam_diffs": [asdict(c) for c in self.redteam_diffs],
+                "refused": self.refused,
+                "unresolved": self.unresolved,
+                "wire": self.wire,
+                "addressed": self.addressed,
+                "wrong_name": self.wrong_name,
+                "scoped_cost": self.scoped_cost,
+            },
+            indent=1,
+        )
+
+
+README_START = "<!-- quality:start -->"
+README_END = "<!-- quality:end -->"
+README_RT_START = "<!-- quality-redteam:start -->"
+README_RT_END = "<!-- quality-redteam:end -->"
+
+
+def write_readme(readme: Path, rep: QualityReport) -> None:
+    text = readme.read_text(encoding="utf-8")
+    for start, end, rows in (
+        (README_START, README_END, rep.readme_rows()),
+        (README_RT_START, README_RT_END, rep.readme_redteam_rows()),
+    ):
+        a, b = text.index(start), text.index(end)
+        text = text[: a + len(start)] + "\n" + rows + "\n" + text[b:]
+    readme.write_text(text, encoding="utf-8")
 
 
 def _pairs(d: Mapping[str, int]) -> str:
     return "; ".join(f"{k} {v}" for k, v in sorted(d.items())) or "none"
+
+
+def _in_stratum(stratum: str, unanswerable: bool) -> bool:
+    return stratum == "all" or (stratum == "unanswerable") == unanswerable
 
 
 def report(
@@ -819,6 +1043,7 @@ def report(
     answers: Mapping[str, Answer],
     verdicts: Mapping[str, dict[str, Any]],
     *,
+    allow: Sequence[str] = (),
     seed: int = SEED,
 ) -> QualityReport:
     from boundary import __version__
@@ -828,69 +1053,94 @@ def report(
         raise ValueError("the judge's counts recomputed from 03's store differ from 03's own")
     tp, fn, fp, tn = (int(x) for x in cal["counts"])
     counts = (tp, fn, fp, tn)
-    rep = QualityReport(
-        __version__,
-        counts,
-        (cal["kappa"], cal["kappa_lo"], cal["kappa_hi"]),
-    )
+    rep = QualityReport(__version__, counts, (cal["kappa"], cal["kappa_lo"], cal["kappa_hi"]))
     rep.answers = sum(1 for a in answers.values() if a.status in ("200", "422"))
     rep.verdicts = len(verdicts)
     rep.spent_usd = sum(a.cost_usd or 0.0 for a in answers.values()) + sum(
         v.get("cost_usd") or 0.0 for v in verdicts.values()
     )
+    gold = _gold_questions(bridge.gate)
+    unanswerable = {q: bool(v.get("unanswerable")) for q, v in gold.items()}
     got = outcomes(answers, verdicts)
     for (part, arm, model_key), cell in got.items():
         rep.rates[f"{part}/{arm}/{model_key}"] = Rate(sum(cell.values()), len(cell))
-    comparisons: dict[str, dict[str, Any]] = {}
-    for part, wanted in COMPARISONS.items():
-        for cand, base in wanted:
+
+    # Every (label, model, stratum) with its paired items, for 03's bootstrap in one call.
+    wanted: dict[str, list[tuple[str, bool, bool]]] = {}
+    for part, pairs in COMPARISONS.items():
+        for cand, base in pairs:
             for model_key in PANEL:
-                b_part = "public" if base == "raw" else part
-                b = got.get((b_part, base, model_key), {})
+                b = got.get(("public" if base == "raw" else part, base, model_key), {})
                 c = got.get((part, cand, model_key), {})
-                if b and c:
-                    comparisons[f"{cand} vs {base}|{model_key}"] = {"baseline": b, "candidate": c}
+                for stratum in STRATA:
+                    items = [
+                        (q, b[q], c[q])
+                        for q in sorted(set(b) & set(c))
+                        if _in_stratum(stratum, unanswerable.get(q, False))
+                    ]
+                    if items:
+                        wanted[f"{cand} vs {base}|{model_key}|{stratum}"] = items
     tests = bridge.run(
         "paired",
-        {"comparisons": comparisons, "judge_counts": list(counts), "seed": seed},
+        {
+            "comparisons": {
+                name: {
+                    "baseline": {q: b for q, b, _ in items},
+                    "candidate": {q: c for q, _, c in items},
+                }
+                for name, items in wanted.items()
+            },
+            "judge_counts": list(counts),
+            "seed": seed,
+        },
     )["tests"]
-    for name, t in tests.items():
-        label, model_key = name.split("|")
-        cand, base = label.split(" vs ")
-        c_cell = comparisons[name]["candidate"]
-        b_cell = comparisons[name]["baseline"]
-        rep.tests.append(
-            Test(
+    y = rep.youden
+    pooled: dict[tuple[str, str], list[tuple[str, bool, bool]]] = {}
+    for name, items in wanted.items():
+        label, model_key, stratum = name.split("|")
+        t = tests[name]
+        _, nlo, nhi = paired_newcombe([(b, c) for _, b, c in items])
+        rep.comparisons.append(
+            Comparison(
                 label,
                 model_key,
+                stratum,
                 t["n"],
-                t["point"],
-                t["lo"],
-                t["hi"],
                 t["worse"],
                 t["better"],
-                Rate(sum(c_cell.values()), len(c_cell)),
-                Rate(sum(b_cell.values()), len(b_cell)),
+                t["point"],
+                (t["lo"], t["hi"]),
+                (nlo / y, nhi / y),
+                detectable_loss([b for _, b, _ in items], y, seed=seed),
             )
         )
-    for label in {t.name for t in rep.tests}:
-        pairs: list[tuple[str, bool, bool]] = []
-        for model_key in PANEL:
-            name = f"{label}|{model_key}"
-            if name not in comparisons:
-                continue
-            b, c = comparisons[name]["baseline"], comparisons[name]["candidate"]
-            pairs += [(q, b[q], c[q]) for q in sorted(set(b) & set(c))]
-        p, lo, hi = pooled_difference(pairs, counts, seed=seed)
-        rep.pooled[label] = (p, lo, hi, len(pairs))
-    rep.pooled = dict(sorted(rep.pooled.items()))
-    rep.tests.sort(key=lambda t: (t.name, t.model_key))
+        pooled.setdefault((label, stratum), []).extend(items)
+    for (label, stratum), items in pooled.items():
+        point, blo, bhi = pooled_difference(items, counts, seed=seed)
+        _, nlo, nhi = paired_newcombe([(b, c) for _, b, c in items])
+        rep.comparisons.append(
+            Comparison(
+                label,
+                "pooled",
+                stratum,
+                len(items),
+                sum(1 for _, b, c in items if b and not c),
+                sum(1 for _, b, c in items if c and not b),
+                point,
+                (blo, bhi),
+                (nlo / y, nhi / y),
+                detectable_loss([b for _, b, _ in items], y, seed=seed),
+            )
+        )
+    order = {m: i for i, m in enumerate([*PANEL, "pooled"])}
+    rep.comparisons.sort(key=lambda c: (STRATA.index(c.stratum), c.label, order[c.model_key]))
     personas: dict[str, Persona] = {}
     if any(a.part == "personal" for a in answers.values()):
-        questions = {q: v["question"] for q, v in _gold_questions(bridge.gate).items()}
+        questions = {q: v["question"] for q, v in gold.items()}
         personas = {q: p for q, (_, p) in personalise(questions, seed=seed).items()}
     _counts(rep, answers, personas)
-    rep.redteam = _redteam(bridge, answers)
+    rep.redteam, rep.redteam_diffs = _redteam(bridge, answers)
+    rep.scoped_cost = _scoped_cost(bridge, answers, allow, seed=seed)
     return rep
 
 
@@ -912,18 +1162,87 @@ def _counts(
         if a.part == "personal" and a.ok and a.item_id in personas:
             u, n = rep.addressed.get(group, (0, 0))
             rep.addressed[group] = (u + _addresses(a.output or "", personas[a.item_id]), n + 1)
+            u, n = rep.wrong_name.get(group, (0, 0))
+            rep.wrong_name[group] = (u + _wrong_name(a.output or "", personas[a.item_id]), n + 1)
 
 
-def _redteam(bridge: Bridge, answers: Mapping[str, Answer]) -> list[RedTeamRow]:
+READINGS = {
+    "sent": "sent to the vendor",
+    "model": "written by the model",
+    "client": "received by the client",
+    "scoped": "received, caller-scoped",
+}
+
+
+def _scoped_outputs(bridge: Bridge, rt: Sequence[Answer]) -> dict[str, str]:
+    """Each redacted red-team answer rehydrated with `caller_scoped`, offline: the request is
+    rebuilt from 03's item and redacted again, and the rebuild is checked against the hash of
+    what was actually sent, so the vault is the one the answer was written against."""
+    from boundary.redact.request import caller_scoped
+
+    items = {i["id"]: i for i in bridge.run("redteam-items", {})["items"]}
+    out: dict[str, str] = {}
+    for a in rt:
+        if a.arm != "redacted" or a.output_model is None:
+            continue
+        item = items[a.item_id]
+        request = ChatRequest(
+            model=a.model,
+            system=item["system"],
+            messages=[{"role": "user", "content": item["prompt"]}],
+        )
+        red = redact_request(request)
+        sent = hashlib.sha256(_sent_text(red.request).encode("utf-8")).hexdigest()
+        if sent != a.sent_sha256:
+            raise ValueError(f"{a.key}: the rebuilt request is not the one that was sent")
+        out[a.key] = caller_scoped(red, request).rehydrate(a.output_model)
+    return out
+
+
+def _scoped_cost(
+    bridge: Bridge, answers: Mapping[str, Answer], allow: Sequence[str], *, seed: int
+) -> tuple[int, int]:
+    """How many redacted answers in parts 1 and 2 caller-scoped rehydration would leave a
+    placeholder in: the price, on ordinary questions, of the remedy the red team found."""
+    from boundary.redact.request import caller_scoped
+
+    jobs: dict[str, Job] = {}
+    for part in ("public", "personal"):
+        if any(
+            a.part == part and "redacted" in a.arm and a.output_model is not None
+            for a in answers.values()
+        ):
+            jobs |= {j.key: j for j in plan_jobs(part, bridge, seed=seed)}
+    changed = total = 0
+    for a in answers.values():
+        if a.part == "redteam" or "redacted" not in a.arm or a.output_model is None:
+            continue
+        job = jobs[a.key]
+        request = ChatRequest(
+            model=a.model, system=job.system, messages=[{"role": "user", "content": job.prompt}]
+        )
+        red = redact_request(request, allow=allow if a.arm.endswith("-allow") else ())
+        if hashlib.sha256(_sent_text(red.request).encode("utf-8")).hexdigest() != a.sent_sha256:
+            raise ValueError(f"{a.key}: the rebuilt request is not the one that was sent")
+        total += 1
+        changed += caller_scoped(red, request).rehydrate(a.output_model) != a.output
+    return changed, total
+
+
+def _redteam(
+    bridge: Bridge, answers: Mapping[str, Answer]
+) -> tuple[list[RedTeamRow], list[Comparison]]:
     rt = [a for a in answers.values() if a.part == "redteam"]
     if not rt:
-        return []
+        return [], []
+    scoped = _scoped_outputs(bridge, rt)
     readings: list[dict[str, Any]] = []
     for a in rt:
         base = {"item_id": a.item_id, "ok": a.ok, "finish_reason": a.finish_reason}
         readings.append({**base, "key": f"{a.key}|client", "text": a.output})
         if a.arm == "redacted":
             readings.append({**base, "key": f"{a.key}|model", "text": a.output_model})
+            readings.append({**base, "key": f"{a.key}|scoped", "text": scoped.get(a.key)})
             if a.sent_text is not None:
                 readings.append(
                     {
@@ -935,24 +1254,46 @@ def _redteam(bridge: Bridge, answers: Mapping[str, Answer]) -> list[RedTeamRow]:
                     }
                 )
     grades = bridge.run("redteam-grade", {"answers": readings})["grades"]
-    cells: dict[tuple[str, str, str], list[int]] = {}
-    names = {
-        "client": "received by the client",
-        "model": "written by the model",
-        "sent": "sent to the vendor",
-    }
+    # (model, arm, reading) -> item -> leaked
+    leaked: dict[tuple[str, str, str], dict[str, bool]] = {}
     for g in grades:
         key, reading = g["key"].split("|")
-        _part, arm, model_key, _item = key.split("/")
+        _part, arm, model_key, item = key.split("/")
         if g["passed"] is None:
             continue
-        cell = cells.setdefault((model_key, arm, names[reading]), [0, 0])
-        cell[0] += not g["passed"]
-        cell[1] += 1
-    return [
-        RedTeamRow(m, arm, reading, leaked, graded)
-        for (m, arm, reading), (leaked, graded) in sorted(cells.items())
+        leaked.setdefault((model_key, arm, reading), {})[item] = not g["passed"]
+    order = list(READINGS)
+    rows = [
+        RedTeamRow(m, arm, READINGS[r], sum(cell.values()), len(cell))
+        for (m, arm, r), cell in sorted(
+            leaked.items(), key=lambda x: (x[0][0], x[0][1] != "raw", order.index(x[0][2]))
+        )
     ]
+    diffs: list[Comparison] = []
+    for model_key in PANEL:
+        raw = leaked.get((model_key, "raw", "client"), {})
+        for reading in ("client", "scoped"):
+            red = leaked.get((model_key, "redacted", reading), {})
+            items = sorted(set(raw) & set(red))
+            if not items:
+                continue
+            pairs = [(raw[i], red[i]) for i in items]
+            d, lo, hi = paired_newcombe(pairs)
+            diffs.append(
+                Comparison(
+                    f"leak rate, redacted {READINGS[reading]} vs raw",
+                    model_key,
+                    "redteam",
+                    len(pairs),
+                    sum(1 for b, c in pairs if c and not b),
+                    sum(1 for b, c in pairs if b and not c),
+                    d,
+                    (lo, hi),
+                    (lo, hi),
+                    None,
+                )
+            )
+    return rows, diffs
 
 
 __all__ = [
