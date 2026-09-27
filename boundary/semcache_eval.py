@@ -162,8 +162,10 @@ class CacheResults:
         )
         for c in self.curves:
             t = self.chosen.get(c.scope)
+            if t is None:
+                t = GRID[-1]
             for p in c.points:
-                if t is None or p.threshold != t:
+                if p.threshold != t:
                     continue
                 lines.append(
                     f"{c.scope:<10}{c.split:<6}{c.kind:<18}{p.threshold:>5}  "
@@ -311,14 +313,17 @@ README_END = "<!-- cache:end -->"
 
 
 def readme_rows(results: CacheResults) -> str:
+    """The held-out half at the chosen threshold; for a scope where none qualified, at the
+    strictest threshold on the grid, labelled so, to show how far from qualifying it is."""
     rows = []
     for c in results.curves:
-        t = results.chosen.get(c.scope)
-        if c.split != "even" or t is None:
+        if c.split != "even":
             continue
-        p = c.at(t)
+        t = results.chosen.get(c.scope)
+        label = f"{t:.2f}" if t is not None else f"{GRID[-1]:.2f}, none qualified"
+        p = c.at(t if t is not None else GRID[-1])
         rows.append(
-            f"| {c.scope} | {c.kind} | {t:.2f} | {p.correct} of {p.seen}, {p.hit_rate} | "
+            f"| {c.scope} | {c.kind} | {label} | {p.correct} of {p.seen}, {p.hit_rate} | "
             f"{p.false} of {p.correct + p.false}, {p.false_hit_rate} |"
         )
     return "\n".join(rows)

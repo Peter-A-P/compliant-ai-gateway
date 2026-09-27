@@ -5,6 +5,22 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.25.0 (2026-09-27)
+
+**The semantic cache, built and measured before the proxy uses it.** PLAN.md B2.5.
+docs/cache.md.
+
+- **`boundary.semcache`**: `SemanticCache` (scope is everything but the final user message;
+  only that message is embedded), `BgeSmall` (bge-small through fastembed, local), pure
+  Python store. New optional extra **`cache`**, `fastembed>=0.8,<1`.
+- **`boundary cache paraphrase`** (paid, once: US$0.024) and **`boundary cache eval`**
+  (offline), `boundary.semcache_eval`: hit and false-hit rates by threshold, labelled by
+  construction, threshold chosen on the odd half and reported on the even.
+- **Result**: bare questions at 0.82, 98.0% of paraphrased repeats found, 0 of 49 hits false;
+  retrieval-shaped prompts, no threshold qualifies (28.6% false at 0.99); redacted customer
+  questions, 100% found and 49.0% of hits false.
+- Not yet in `boundary serve`.
+
 ## 0.24.0 (2026-09-27)
 
 **Where redaction costs quality: a page that cannot answer.** PLAN.md B2.8. docs/redact.md.

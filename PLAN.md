@@ -430,6 +430,7 @@ from October the ledger-against-invoice difference is recorded there too (sectio
 | v0.22.0 | 2026-09-27 | The injection screen (B2.6): `boundary.screen`, `boundary screen eval`, the policy's `injection` key; ledger v10 `injection`; audit record schema 3 |
 | v0.23.0 | 2026-09-27 | The proxy's detector and allow list as policy settings, measured (`boundary redact detectors`); the policy masks the rest of a value glued to a placeholder, a leak Presidio exposed |
 | v0.24.0 | 2026-09-27 | B2.8 follow-up on 03's distractor stratum: a redacted request declines 14.4 points less often on a page that cannot answer; `quality.declines`, the `distractor` part |
+| v0.25.0 | 2026-09-27 | The semantic cache built and measured (B2.5): `boundary.semcache`, `boundary cache paraphrase` and `eval`, the `cache` extra; not yet in the proxy |
 | v1.0.0 | May 23 2027 | Everything in Part B; `boundary.redact` for 07; the proxy for 13 and 14 |
 
 03 pins `boundary>=0.1,<0.3` for Part A and moves to `>=1.0` when its Part B is built
@@ -808,6 +809,17 @@ found the second method wrong by one when it moved the figure from a hand-writte
 to a measured column, and the error grows with every warm re-run, because the cache holds
 entries the run never asked for. The replay harness reports keys touched, distinct keys and
 asks, so the three can be checked against each other.
+
+**Amended 2026-09-27: built (0.25.0) and measured before it is wired in**, labelled by
+construction on 03's gold questions because the replay traffic does not exist yet
+(docs/cache.md). bge-small through fastembed (the `cache` extra), scope is everything but the
+final user message. Threshold 0.82 chosen on the odd half, committed, then the even half run:
+bare questions, 98% of paraphrased repeats found and 0 of 49 hits false; **retrieval-shaped
+prompts, no threshold qualifies** (at 0.99, 28.6% of hits false), so the cache will embed only
+messages marked as bare questions; and redacted customer questions hit every time and half of
+the hits were wrong, which confirms 07's repeat-rate prediction and why `personal` is never
+cached. Still to do: the proxy wiring, the replay on real traffic, and the 200 hand-labelled
+hits.
 
 ### B2.6 Injection screening is advisory by default
 

@@ -1,0 +1,2615 @@
+{
+ "boundary_version": "0.24.0",
+ "model": "BAAI/bge-small-en-v1.5",
+ "curves": [
+  {
+   "scope": "chat",
+   "split": "odd",
+   "kind": "paraphrase",
+   "points": [
+    {
+     "threshold": 0.7,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 21
+    },
+    {
+     "threshold": 0.71,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 17
+    },
+    {
+     "threshold": 0.72,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 14
+    },
+    {
+     "threshold": 0.73,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 12
+    },
+    {
+     "threshold": 0.74,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 11
+    },
+    {
+     "threshold": 0.75,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 10
+    },
+    {
+     "threshold": 0.76,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 9
+    },
+    {
+     "threshold": 0.77,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 8
+    },
+    {
+     "threshold": 0.78,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 6
+    },
+    {
+     "threshold": 0.79,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 5
+    },
+    {
+     "threshold": 0.8,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 3
+    },
+    {
+     "threshold": 0.81,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 2
+    },
+    {
+     "threshold": 0.82,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 1
+    },
+    {
+     "threshold": 0.83,
+     "queries": 100,
+     "seen": 50,
+     "correct": 49,
+     "false": 1
+    },
+    {
+     "threshold": 0.84,
+     "queries": 100,
+     "seen": 50,
+     "correct": 49,
+     "false": 1
+    },
+    {
+     "threshold": 0.85,
+     "queries": 100,
+     "seen": 50,
+     "correct": 46,
+     "false": 0
+    },
+    {
+     "threshold": 0.86,
+     "queries": 100,
+     "seen": 50,
+     "correct": 45,
+     "false": 0
+    },
+    {
+     "threshold": 0.87,
+     "queries": 100,
+     "seen": 50,
+     "correct": 44,
+     "false": 0
+    },
+    {
+     "threshold": 0.88,
+     "queries": 100,
+     "seen": 50,
+     "correct": 41,
+     "false": 0
+    },
+    {
+     "threshold": 0.89,
+     "queries": 100,
+     "seen": 50,
+     "correct": 38,
+     "false": 0
+    },
+    {
+     "threshold": 0.9,
+     "queries": 100,
+     "seen": 50,
+     "correct": 30,
+     "false": 0
+    },
+    {
+     "threshold": 0.91,
+     "queries": 100,
+     "seen": 50,
+     "correct": 27,
+     "false": 0
+    },
+    {
+     "threshold": 0.92,
+     "queries": 100,
+     "seen": 50,
+     "correct": 25,
+     "false": 0
+    },
+    {
+     "threshold": 0.93,
+     "queries": 100,
+     "seen": 50,
+     "correct": 21,
+     "false": 0
+    },
+    {
+     "threshold": 0.94,
+     "queries": 100,
+     "seen": 50,
+     "correct": 14,
+     "false": 0
+    },
+    {
+     "threshold": 0.95,
+     "queries": 100,
+     "seen": 50,
+     "correct": 9,
+     "false": 0
+    },
+    {
+     "threshold": 0.96,
+     "queries": 100,
+     "seen": 50,
+     "correct": 8,
+     "false": 0
+    },
+    {
+     "threshold": 0.97,
+     "queries": 100,
+     "seen": 50,
+     "correct": 3,
+     "false": 0
+    },
+    {
+     "threshold": 0.98,
+     "queries": 100,
+     "seen": 50,
+     "correct": 2,
+     "false": 0
+    },
+    {
+     "threshold": 0.99,
+     "queries": 100,
+     "seen": 50,
+     "correct": 0,
+     "false": 0
+    }
+   ]
+  },
+  {
+   "scope": "chat",
+   "split": "odd",
+   "kind": "persona-raw",
+   "points": [
+    {
+     "threshold": 0.7,
+     "queries": 50,
+     "seen": 25,
+     "correct": 20,
+     "false": 30
+    },
+    {
+     "threshold": 0.71,
+     "queries": 50,
+     "seen": 25,
+     "correct": 20,
+     "false": 30
+    },
+    {
+     "threshold": 0.72,
+     "queries": 50,
+     "seen": 25,
+     "correct": 20,
+     "false": 30
+    },
+    {
+     "threshold": 0.73,
+     "queries": 50,
+     "seen": 25,
+     "correct": 20,
+     "false": 29
+    },
+    {
+     "threshold": 0.74,
+     "queries": 50,
+     "seen": 25,
+     "correct": 20,
+     "false": 27
+    },
+    {
+     "threshold": 0.75,
+     "queries": 50,
+     "seen": 25,
+     "correct": 20,
+     "false": 26
+    },
+    {
+     "threshold": 0.76,
+     "queries": 50,
+     "seen": 25,
+     "correct": 20,
+     "false": 24
+    },
+    {
+     "threshold": 0.77,
+     "queries": 50,
+     "seen": 25,
+     "correct": 20,
+     "false": 22
+    },
+    {
+     "threshold": 0.78,
+     "queries": 50,
+     "seen": 25,
+     "correct": 20,
+     "false": 18
+    },
+    {
+     "threshold": 0.79,
+     "queries": 50,
+     "seen": 25,
+     "correct": 20,
+     "false": 15
+    },
+    {
+     "threshold": 0.8,
+     "queries": 50,
+     "seen": 25,
+     "correct": 20,
+     "false": 15
+    },
+    {
+     "threshold": 0.81,
+     "queries": 50,
+     "seen": 25,
+     "correct": 20,
+     "false": 11
+    },
+    {
+     "threshold": 0.82,
+     "queries": 50,
+     "seen": 25,
+     "correct": 20,
+     "false": 10
+    },
+    {
+     "threshold": 0.83,
+     "queries": 50,
+     "seen": 25,
+     "correct": 20,
+     "false": 8
+    },
+    {
+     "threshold": 0.84,
+     "queries": 50,
+     "seen": 25,
+     "correct": 18,
+     "false": 7
+    },
+    {
+     "threshold": 0.85,
+     "queries": 50,
+     "seen": 25,
+     "correct": 16,
+     "false": 5
+    },
+    {
+     "threshold": 0.86,
+     "queries": 50,
+     "seen": 25,
+     "correct": 14,
+     "false": 2
+    },
+    {
+     "threshold": 0.87,
+     "queries": 50,
+     "seen": 25,
+     "correct": 14,
+     "false": 1
+    },
+    {
+     "threshold": 0.88,
+     "queries": 50,
+     "seen": 25,
+     "correct": 10,
+     "false": 1
+    },
+    {
+     "threshold": 0.89,
+     "queries": 50,
+     "seen": 25,
+     "correct": 7,
+     "false": 1
+    },
+    {
+     "threshold": 0.9,
+     "queries": 50,
+     "seen": 25,
+     "correct": 5,
+     "false": 0
+    },
+    {
+     "threshold": 0.91,
+     "queries": 50,
+     "seen": 25,
+     "correct": 4,
+     "false": 0
+    },
+    {
+     "threshold": 0.92,
+     "queries": 50,
+     "seen": 25,
+     "correct": 4,
+     "false": 0
+    },
+    {
+     "threshold": 0.93,
+     "queries": 50,
+     "seen": 25,
+     "correct": 4,
+     "false": 0
+    },
+    {
+     "threshold": 0.94,
+     "queries": 50,
+     "seen": 25,
+     "correct": 3,
+     "false": 0
+    },
+    {
+     "threshold": 0.95,
+     "queries": 50,
+     "seen": 25,
+     "correct": 2,
+     "false": 0
+    },
+    {
+     "threshold": 0.96,
+     "queries": 50,
+     "seen": 25,
+     "correct": 1,
+     "false": 0
+    },
+    {
+     "threshold": 0.97,
+     "queries": 50,
+     "seen": 25,
+     "correct": 1,
+     "false": 0
+    },
+    {
+     "threshold": 0.98,
+     "queries": 50,
+     "seen": 25,
+     "correct": 0,
+     "false": 0
+    },
+    {
+     "threshold": 0.99,
+     "queries": 50,
+     "seen": 25,
+     "correct": 0,
+     "false": 0
+    }
+   ]
+  },
+  {
+   "scope": "chat",
+   "split": "odd",
+   "kind": "persona-redacted",
+   "points": [
+    {
+     "threshold": 0.7,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 25
+    },
+    {
+     "threshold": 0.71,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 25
+    },
+    {
+     "threshold": 0.72,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 25
+    },
+    {
+     "threshold": 0.73,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 25
+    },
+    {
+     "threshold": 0.74,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 25
+    },
+    {
+     "threshold": 0.75,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 25
+    },
+    {
+     "threshold": 0.76,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 25
+    },
+    {
+     "threshold": 0.77,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 25
+    },
+    {
+     "threshold": 0.78,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 24
+    },
+    {
+     "threshold": 0.79,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 23
+    },
+    {
+     "threshold": 0.8,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 23
+    },
+    {
+     "threshold": 0.81,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 22
+    },
+    {
+     "threshold": 0.82,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 21
+    },
+    {
+     "threshold": 0.83,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 21
+    },
+    {
+     "threshold": 0.84,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 19
+    },
+    {
+     "threshold": 0.85,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 16
+    },
+    {
+     "threshold": 0.86,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.87,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 9
+    },
+    {
+     "threshold": 0.88,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 8
+    },
+    {
+     "threshold": 0.89,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 3
+    },
+    {
+     "threshold": 0.9,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 3
+    },
+    {
+     "threshold": 0.91,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 3
+    },
+    {
+     "threshold": 0.92,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 3
+    },
+    {
+     "threshold": 0.93,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 1
+    },
+    {
+     "threshold": 0.94,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 1
+    },
+    {
+     "threshold": 0.95,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 0
+    },
+    {
+     "threshold": 0.96,
+     "queries": 50,
+     "seen": 25,
+     "correct": 19,
+     "false": 0
+    },
+    {
+     "threshold": 0.97,
+     "queries": 50,
+     "seen": 25,
+     "correct": 16,
+     "false": 0
+    },
+    {
+     "threshold": 0.98,
+     "queries": 50,
+     "seen": 25,
+     "correct": 9,
+     "false": 0
+    },
+    {
+     "threshold": 0.99,
+     "queries": 50,
+     "seen": 25,
+     "correct": 4,
+     "false": 0
+    }
+   ]
+  },
+  {
+   "scope": "retrieval",
+   "split": "odd",
+   "kind": "paraphrase",
+   "points": [
+    {
+     "threshold": 0.7,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 50
+    },
+    {
+     "threshold": 0.71,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 50
+    },
+    {
+     "threshold": 0.72,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 50
+    },
+    {
+     "threshold": 0.73,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 48
+    },
+    {
+     "threshold": 0.74,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 48
+    },
+    {
+     "threshold": 0.75,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 46
+    },
+    {
+     "threshold": 0.76,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 42
+    },
+    {
+     "threshold": 0.77,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 38
+    },
+    {
+     "threshold": 0.78,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 36
+    },
+    {
+     "threshold": 0.79,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 35
+    },
+    {
+     "threshold": 0.8,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 30
+    },
+    {
+     "threshold": 0.81,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 26
+    },
+    {
+     "threshold": 0.82,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 21
+    },
+    {
+     "threshold": 0.83,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 20
+    },
+    {
+     "threshold": 0.84,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 20
+    },
+    {
+     "threshold": 0.85,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 20
+    },
+    {
+     "threshold": 0.86,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 20
+    },
+    {
+     "threshold": 0.87,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 20
+    },
+    {
+     "threshold": 0.88,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 20
+    },
+    {
+     "threshold": 0.89,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 20
+    },
+    {
+     "threshold": 0.9,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 20
+    },
+    {
+     "threshold": 0.91,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 20
+    },
+    {
+     "threshold": 0.92,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 20
+    },
+    {
+     "threshold": 0.93,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 20
+    },
+    {
+     "threshold": 0.94,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 20
+    },
+    {
+     "threshold": 0.95,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 20
+    },
+    {
+     "threshold": 0.96,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 20
+    },
+    {
+     "threshold": 0.97,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 20
+    },
+    {
+     "threshold": 0.98,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 20
+    },
+    {
+     "threshold": 0.99,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 20
+    }
+   ]
+  },
+  {
+   "scope": "retrieval",
+   "split": "odd",
+   "kind": "persona-raw",
+   "points": [
+    {
+     "threshold": 0.7,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 25
+    },
+    {
+     "threshold": 0.71,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 25
+    },
+    {
+     "threshold": 0.72,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 25
+    },
+    {
+     "threshold": 0.73,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 24
+    },
+    {
+     "threshold": 0.74,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 23
+    },
+    {
+     "threshold": 0.75,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 22
+    },
+    {
+     "threshold": 0.76,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 21
+    },
+    {
+     "threshold": 0.77,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 19
+    },
+    {
+     "threshold": 0.78,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 18
+    },
+    {
+     "threshold": 0.79,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 16
+    },
+    {
+     "threshold": 0.8,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 15
+    },
+    {
+     "threshold": 0.81,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 13
+    },
+    {
+     "threshold": 0.82,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 11
+    },
+    {
+     "threshold": 0.83,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.84,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.85,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.86,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.87,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.88,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.89,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.9,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.91,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.92,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.93,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.94,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.95,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.96,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.97,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.98,
+     "queries": 50,
+     "seen": 25,
+     "correct": 23,
+     "false": 10
+    },
+    {
+     "threshold": 0.99,
+     "queries": 50,
+     "seen": 25,
+     "correct": 20,
+     "false": 8
+    }
+   ]
+  },
+  {
+   "scope": "retrieval",
+   "split": "odd",
+   "kind": "persona-redacted",
+   "points": [
+    {
+     "threshold": 0.7,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 25
+    },
+    {
+     "threshold": 0.71,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 25
+    },
+    {
+     "threshold": 0.72,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 25
+    },
+    {
+     "threshold": 0.73,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 24
+    },
+    {
+     "threshold": 0.74,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 24
+    },
+    {
+     "threshold": 0.75,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 24
+    },
+    {
+     "threshold": 0.76,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 22
+    },
+    {
+     "threshold": 0.77,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 19
+    },
+    {
+     "threshold": 0.78,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 18
+    },
+    {
+     "threshold": 0.79,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 17
+    },
+    {
+     "threshold": 0.8,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 16
+    },
+    {
+     "threshold": 0.81,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 14
+    },
+    {
+     "threshold": 0.82,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 11
+    },
+    {
+     "threshold": 0.83,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.84,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.85,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.86,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.87,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.88,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.89,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.9,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.91,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.92,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.93,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.94,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.95,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.96,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.97,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.98,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.99,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    }
+   ]
+  },
+  {
+   "scope": "chat",
+   "split": "even",
+   "kind": "paraphrase",
+   "points": [
+    {
+     "threshold": 0.7,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 20
+    },
+    {
+     "threshold": 0.71,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 20
+    },
+    {
+     "threshold": 0.72,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 17
+    },
+    {
+     "threshold": 0.73,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 14
+    },
+    {
+     "threshold": 0.74,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 12
+    },
+    {
+     "threshold": 0.75,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 12
+    },
+    {
+     "threshold": 0.76,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 7
+    },
+    {
+     "threshold": 0.77,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 5
+    },
+    {
+     "threshold": 0.78,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 4
+    },
+    {
+     "threshold": 0.79,
+     "queries": 100,
+     "seen": 50,
+     "correct": 49,
+     "false": 2
+    },
+    {
+     "threshold": 0.8,
+     "queries": 100,
+     "seen": 50,
+     "correct": 49,
+     "false": 0
+    },
+    {
+     "threshold": 0.81,
+     "queries": 100,
+     "seen": 50,
+     "correct": 49,
+     "false": 0
+    },
+    {
+     "threshold": 0.82,
+     "queries": 100,
+     "seen": 50,
+     "correct": 49,
+     "false": 0
+    },
+    {
+     "threshold": 0.83,
+     "queries": 100,
+     "seen": 50,
+     "correct": 48,
+     "false": 0
+    },
+    {
+     "threshold": 0.84,
+     "queries": 100,
+     "seen": 50,
+     "correct": 47,
+     "false": 0
+    },
+    {
+     "threshold": 0.85,
+     "queries": 100,
+     "seen": 50,
+     "correct": 46,
+     "false": 0
+    },
+    {
+     "threshold": 0.86,
+     "queries": 100,
+     "seen": 50,
+     "correct": 45,
+     "false": 0
+    },
+    {
+     "threshold": 0.87,
+     "queries": 100,
+     "seen": 50,
+     "correct": 39,
+     "false": 0
+    },
+    {
+     "threshold": 0.88,
+     "queries": 100,
+     "seen": 50,
+     "correct": 38,
+     "false": 0
+    },
+    {
+     "threshold": 0.89,
+     "queries": 100,
+     "seen": 50,
+     "correct": 35,
+     "false": 0
+    },
+    {
+     "threshold": 0.9,
+     "queries": 100,
+     "seen": 50,
+     "correct": 31,
+     "false": 0
+    },
+    {
+     "threshold": 0.91,
+     "queries": 100,
+     "seen": 50,
+     "correct": 31,
+     "false": 0
+    },
+    {
+     "threshold": 0.92,
+     "queries": 100,
+     "seen": 50,
+     "correct": 23,
+     "false": 0
+    },
+    {
+     "threshold": 0.93,
+     "queries": 100,
+     "seen": 50,
+     "correct": 19,
+     "false": 0
+    },
+    {
+     "threshold": 0.94,
+     "queries": 100,
+     "seen": 50,
+     "correct": 17,
+     "false": 0
+    },
+    {
+     "threshold": 0.95,
+     "queries": 100,
+     "seen": 50,
+     "correct": 14,
+     "false": 0
+    },
+    {
+     "threshold": 0.96,
+     "queries": 100,
+     "seen": 50,
+     "correct": 7,
+     "false": 0
+    },
+    {
+     "threshold": 0.97,
+     "queries": 100,
+     "seen": 50,
+     "correct": 5,
+     "false": 0
+    },
+    {
+     "threshold": 0.98,
+     "queries": 100,
+     "seen": 50,
+     "correct": 3,
+     "false": 0
+    },
+    {
+     "threshold": 0.99,
+     "queries": 100,
+     "seen": 50,
+     "correct": 1,
+     "false": 0
+    }
+   ]
+  },
+  {
+   "scope": "chat",
+   "split": "even",
+   "kind": "persona-raw",
+   "points": [
+    {
+     "threshold": 0.7,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 25
+    },
+    {
+     "threshold": 0.71,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 25
+    },
+    {
+     "threshold": 0.72,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 25
+    },
+    {
+     "threshold": 0.73,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 25
+    },
+    {
+     "threshold": 0.74,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 25
+    },
+    {
+     "threshold": 0.75,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 23
+    },
+    {
+     "threshold": 0.76,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 19
+    },
+    {
+     "threshold": 0.77,
+     "queries": 50,
+     "seen": 25,
+     "correct": 24,
+     "false": 13
+    },
+    {
+     "threshold": 0.78,
+     "queries": 50,
+     "seen": 25,
+     "correct": 24,
+     "false": 9
+    },
+    {
+     "threshold": 0.79,
+     "queries": 50,
+     "seen": 25,
+     "correct": 24,
+     "false": 8
+    },
+    {
+     "threshold": 0.8,
+     "queries": 50,
+     "seen": 25,
+     "correct": 24,
+     "false": 7
+    },
+    {
+     "threshold": 0.81,
+     "queries": 50,
+     "seen": 25,
+     "correct": 24,
+     "false": 4
+    },
+    {
+     "threshold": 0.82,
+     "queries": 50,
+     "seen": 25,
+     "correct": 23,
+     "false": 3
+    },
+    {
+     "threshold": 0.83,
+     "queries": 50,
+     "seen": 25,
+     "correct": 21,
+     "false": 3
+    },
+    {
+     "threshold": 0.84,
+     "queries": 50,
+     "seen": 25,
+     "correct": 20,
+     "false": 3
+    },
+    {
+     "threshold": 0.85,
+     "queries": 50,
+     "seen": 25,
+     "correct": 18,
+     "false": 1
+    },
+    {
+     "threshold": 0.86,
+     "queries": 50,
+     "seen": 25,
+     "correct": 17,
+     "false": 0
+    },
+    {
+     "threshold": 0.87,
+     "queries": 50,
+     "seen": 25,
+     "correct": 13,
+     "false": 0
+    },
+    {
+     "threshold": 0.88,
+     "queries": 50,
+     "seen": 25,
+     "correct": 10,
+     "false": 0
+    },
+    {
+     "threshold": 0.89,
+     "queries": 50,
+     "seen": 25,
+     "correct": 7,
+     "false": 0
+    },
+    {
+     "threshold": 0.9,
+     "queries": 50,
+     "seen": 25,
+     "correct": 5,
+     "false": 0
+    },
+    {
+     "threshold": 0.91,
+     "queries": 50,
+     "seen": 25,
+     "correct": 4,
+     "false": 0
+    },
+    {
+     "threshold": 0.92,
+     "queries": 50,
+     "seen": 25,
+     "correct": 2,
+     "false": 0
+    },
+    {
+     "threshold": 0.93,
+     "queries": 50,
+     "seen": 25,
+     "correct": 1,
+     "false": 0
+    },
+    {
+     "threshold": 0.94,
+     "queries": 50,
+     "seen": 25,
+     "correct": 0,
+     "false": 0
+    },
+    {
+     "threshold": 0.95,
+     "queries": 50,
+     "seen": 25,
+     "correct": 0,
+     "false": 0
+    },
+    {
+     "threshold": 0.96,
+     "queries": 50,
+     "seen": 25,
+     "correct": 0,
+     "false": 0
+    },
+    {
+     "threshold": 0.97,
+     "queries": 50,
+     "seen": 25,
+     "correct": 0,
+     "false": 0
+    },
+    {
+     "threshold": 0.98,
+     "queries": 50,
+     "seen": 25,
+     "correct": 0,
+     "false": 0
+    },
+    {
+     "threshold": 0.99,
+     "queries": 50,
+     "seen": 25,
+     "correct": 0,
+     "false": 0
+    }
+   ]
+  },
+  {
+   "scope": "chat",
+   "split": "even",
+   "kind": "persona-redacted",
+   "points": [
+    {
+     "threshold": 0.7,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 25
+    },
+    {
+     "threshold": 0.71,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 25
+    },
+    {
+     "threshold": 0.72,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 25
+    },
+    {
+     "threshold": 0.73,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 25
+    },
+    {
+     "threshold": 0.74,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 25
+    },
+    {
+     "threshold": 0.75,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 25
+    },
+    {
+     "threshold": 0.76,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 25
+    },
+    {
+     "threshold": 0.77,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 25
+    },
+    {
+     "threshold": 0.78,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 25
+    },
+    {
+     "threshold": 0.79,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 25
+    },
+    {
+     "threshold": 0.8,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 25
+    },
+    {
+     "threshold": 0.81,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 25
+    },
+    {
+     "threshold": 0.82,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 24
+    },
+    {
+     "threshold": 0.83,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 24
+    },
+    {
+     "threshold": 0.84,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 21
+    },
+    {
+     "threshold": 0.85,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 15
+    },
+    {
+     "threshold": 0.86,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 11
+    },
+    {
+     "threshold": 0.87,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 7
+    },
+    {
+     "threshold": 0.88,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 4
+    },
+    {
+     "threshold": 0.89,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 2
+    },
+    {
+     "threshold": 0.9,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 1
+    },
+    {
+     "threshold": 0.91,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 1
+    },
+    {
+     "threshold": 0.92,
+     "queries": 50,
+     "seen": 25,
+     "correct": 24,
+     "false": 0
+    },
+    {
+     "threshold": 0.93,
+     "queries": 50,
+     "seen": 25,
+     "correct": 24,
+     "false": 0
+    },
+    {
+     "threshold": 0.94,
+     "queries": 50,
+     "seen": 25,
+     "correct": 24,
+     "false": 0
+    },
+    {
+     "threshold": 0.95,
+     "queries": 50,
+     "seen": 25,
+     "correct": 23,
+     "false": 0
+    },
+    {
+     "threshold": 0.96,
+     "queries": 50,
+     "seen": 25,
+     "correct": 21,
+     "false": 0
+    },
+    {
+     "threshold": 0.97,
+     "queries": 50,
+     "seen": 25,
+     "correct": 16,
+     "false": 0
+    },
+    {
+     "threshold": 0.98,
+     "queries": 50,
+     "seen": 25,
+     "correct": 11,
+     "false": 0
+    },
+    {
+     "threshold": 0.99,
+     "queries": 50,
+     "seen": 25,
+     "correct": 7,
+     "false": 0
+    }
+   ]
+  },
+  {
+   "scope": "retrieval",
+   "split": "even",
+   "kind": "paraphrase",
+   "points": [
+    {
+     "threshold": 0.7,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 48
+    },
+    {
+     "threshold": 0.71,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 48
+    },
+    {
+     "threshold": 0.72,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 46
+    },
+    {
+     "threshold": 0.73,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 44
+    },
+    {
+     "threshold": 0.74,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 43
+    },
+    {
+     "threshold": 0.75,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 40
+    },
+    {
+     "threshold": 0.76,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 38
+    },
+    {
+     "threshold": 0.77,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 38
+    },
+    {
+     "threshold": 0.78,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 37
+    },
+    {
+     "threshold": 0.79,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 34
+    },
+    {
+     "threshold": 0.8,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 29
+    },
+    {
+     "threshold": 0.81,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 26
+    },
+    {
+     "threshold": 0.82,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 23
+    },
+    {
+     "threshold": 0.83,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 20
+    },
+    {
+     "threshold": 0.84,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 20
+    },
+    {
+     "threshold": 0.85,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 20
+    },
+    {
+     "threshold": 0.86,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 20
+    },
+    {
+     "threshold": 0.87,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 20
+    },
+    {
+     "threshold": 0.88,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 20
+    },
+    {
+     "threshold": 0.89,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 20
+    },
+    {
+     "threshold": 0.9,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 20
+    },
+    {
+     "threshold": 0.91,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 20
+    },
+    {
+     "threshold": 0.92,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 20
+    },
+    {
+     "threshold": 0.93,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 20
+    },
+    {
+     "threshold": 0.94,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 20
+    },
+    {
+     "threshold": 0.95,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 20
+    },
+    {
+     "threshold": 0.96,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 20
+    },
+    {
+     "threshold": 0.97,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 20
+    },
+    {
+     "threshold": 0.98,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 20
+    },
+    {
+     "threshold": 0.99,
+     "queries": 100,
+     "seen": 50,
+     "correct": 50,
+     "false": 20
+    }
+   ]
+  },
+  {
+   "scope": "retrieval",
+   "split": "even",
+   "kind": "persona-raw",
+   "points": [
+    {
+     "threshold": 0.7,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 24
+    },
+    {
+     "threshold": 0.71,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 24
+    },
+    {
+     "threshold": 0.72,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 23
+    },
+    {
+     "threshold": 0.73,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 23
+    },
+    {
+     "threshold": 0.74,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 22
+    },
+    {
+     "threshold": 0.75,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 21
+    },
+    {
+     "threshold": 0.76,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 20
+    },
+    {
+     "threshold": 0.77,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 18
+    },
+    {
+     "threshold": 0.78,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 17
+    },
+    {
+     "threshold": 0.79,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 17
+    },
+    {
+     "threshold": 0.8,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 14
+    },
+    {
+     "threshold": 0.81,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 13
+    },
+    {
+     "threshold": 0.82,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 11
+    },
+    {
+     "threshold": 0.83,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.84,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.85,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.86,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.87,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.88,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.89,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.9,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.91,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.92,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.93,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.94,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.95,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.96,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.97,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.98,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.99,
+     "queries": 50,
+     "seen": 25,
+     "correct": 22,
+     "false": 6
+    }
+   ]
+  },
+  {
+   "scope": "retrieval",
+   "split": "even",
+   "kind": "persona-redacted",
+   "points": [
+    {
+     "threshold": 0.7,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 24
+    },
+    {
+     "threshold": 0.71,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 24
+    },
+    {
+     "threshold": 0.72,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 23
+    },
+    {
+     "threshold": 0.73,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 23
+    },
+    {
+     "threshold": 0.74,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 22
+    },
+    {
+     "threshold": 0.75,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 21
+    },
+    {
+     "threshold": 0.76,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 20
+    },
+    {
+     "threshold": 0.77,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 19
+    },
+    {
+     "threshold": 0.78,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 17
+    },
+    {
+     "threshold": 0.79,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 17
+    },
+    {
+     "threshold": 0.8,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 14
+    },
+    {
+     "threshold": 0.81,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 14
+    },
+    {
+     "threshold": 0.82,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 12
+    },
+    {
+     "threshold": 0.83,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.84,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.85,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.86,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.87,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.88,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.89,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.9,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.91,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.92,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.93,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.94,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.95,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.96,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.97,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.98,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    },
+    {
+     "threshold": 0.99,
+     "queries": 50,
+     "seen": 25,
+     "correct": 25,
+     "false": 10
+    }
+   ]
+  }
+ ],
+ "chosen": {
+  "chat": 0.82,
+  "retrieval": null
+ },
+ "savings_per_call_usd": null
+}

@@ -386,9 +386,35 @@ of 100 of 03's gold prompts, both one page's "or pretend to be", and none of the
 over-refusal prompts. The proxy records a flag on the ledger, the audit chain and a header,
 and blocks only under `injection: block`. Detail in [docs/screen.md](docs/screen.md).
 
-| Cache hit rate / false-hit rate / saved, redacted and raw | Audit tamper detection with daily anchors |
-|---|---|
-| _not yet_ | _not yet_; the chain is measured above, the published anchors are Part B |
+**The semantic cache, before it is switched on** (`v0.25.0`, PLAN.md B2.5; held-out half)
+
+| Prompt shape | Query | Threshold | Hits on questions the cache holds | False hits, of all hits |
+|---|---|---|---|---|
+<!-- cache:start -->
+| chat | paraphrase | 0.82 | 49 of 50, 98.0% (89.5% to 99.6%) | 0 of 49, 0.0% (0.0% to 7.3%) |
+| chat | persona-raw | 0.82 | 23 of 25, 92.0% (75.0% to 97.8%) | 3 of 26, 11.5% (4.0% to 29.0%) |
+| chat | persona-redacted | 0.82 | 25 of 25, 100.0% (86.7% to 100.0%) | 24 of 49, 49.0% (35.6% to 62.5%) |
+| retrieval | paraphrase | 0.99, none qualified | 50 of 50, 100.0% (92.9% to 100.0%) | 20 of 70, 28.6% (19.3% to 40.1%) |
+| retrieval | persona-raw | 0.99, none qualified | 22 of 25, 88.0% (70.0% to 95.8%) | 6 of 28, 21.4% (10.2% to 39.5%) |
+| retrieval | persona-redacted | 0.99, none qualified | 25 of 25, 100.0% (86.7% to 100.0%) | 10 of 35, 28.6% (16.3% to 45.1%) |
+<!-- cache:end -->
+
+Filled by `boundary cache eval --write-readme`, offline, bge-small run locally, labelled by
+construction on 03's gold questions (the cache holds half; a hit on the other half, or on a
+different question, is false). The threshold, 0.82, was chosen on the odd half and committed
+before the even half ran. **A bare question caches well**: paraphrases hit 98% of the time
+with no false hit in 49. **A question inside a retrieved page cannot be cached this way at
+all**: no threshold qualified, and even at 0.99 more than a quarter of hits were a different
+question about the same page, because the page is most of the text. **Redaction does raise
+the hit rate, as project 07 predicted, and the false-hit rate with it**: a customer's details
+replaced by placeholders make every customer's preamble identical, and half the hits were
+the wrong question. So the proxy's cache, when it is wired in, embeds bare questions only and
+never a redacted payload, which the data policy's `cache: false` for `personal` already
+says. Dollars saved need real traffic, which is Part B's replay.
+
+| Audit tamper detection with daily anchors |
+|---|
+| _not yet_; the chain is measured above, the published anchors are Part B |
 
 ## What this does not do
 
