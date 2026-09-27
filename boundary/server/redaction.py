@@ -7,6 +7,7 @@ from boundary.redact.request import (
     Redacted,
     RedactionRefused,
     StreamRehydrator,
+    caller_scoped,
     leak_counts,
     redact_request,
 )
@@ -17,6 +18,7 @@ __all__ = [
     "Redacted",
     "RedactionRefused",
     "StreamRehydrator",
+    "caller_scoped",
     "leak_counts",
     "redact_request",
 ]

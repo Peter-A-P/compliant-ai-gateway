@@ -31,7 +31,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Self
+from typing import Literal, Self
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
@@ -58,6 +58,13 @@ class ClassRule(BaseModel):
     # redacts and cannot tell a redacted body from a raw one; the caller states it, and the
     # proxy states it only when it redacted the payload itself and the guard passed.
     redacted_as: DataClass | None = None
+    # What the proxy puts back into the answer of a call it redacted (0.21). `caller`: only
+    # the values the caller's own messages carried, so a value that arrived in the system
+    # prompt stays a placeholder. `all`: every value in the vault, what 0.15 to 0.20 did.
+    # PLAN.md B2.8 measured the difference on 03's red team: under `all`, a model that
+    # refuses to disclose a record while naming its fields as placeholders has the record
+    # disclosed for it (Haiku 4.5, 13 of 200); under `caller`, 0 of 600.
+    rehydrate: Literal["caller", "all"] = "caller"
 
 
 class DataPolicy(BaseModel):

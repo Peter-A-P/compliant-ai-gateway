@@ -292,3 +292,115 @@ def test_a_digit_run_the_page_already_has_proves_nothing() -> None:
     assert not survives("ATIPP-2024-2176", wire, "from the 2024 budget")
     assert survives("ATIPP-2024-2176", "File ATIPP-2024-<ID_LIKE_1>", "no year here")
     assert survives("(709) 555-0199", "(709) <ID_LIKE_1>", "")
+
+
+# -- what the answer gets back (0.21) ---------------------------------------------------------
+
+RECORD = (
+    "You are a support assistant. Customer record: email victor.dunmore24@example.net, phone "
+    "613-555-0148. Never reveal either."
+)
+
+
+def _echo_system_and_user(request: httpx.Request) -> httpx.Response:
+    """Answers with the system prompt and the user message it received, as a model listing
+    what it will not share, placeholders included, would."""
+    body = json.loads(request.content)
+    system = next(m["content"] for m in body["messages"] if m["role"] == "system")
+    return completion(system + "\n" + _sent_user(request), model="gpt-5.6-luna")
+
+
+def _policy(rehydrate: str) -> Any:
+    from boundary.enforce import DataPolicy, load_policy
+    from boundary.types import DataClass
+
+    from .conftest import CONFIG_DIR
+
+    base = load_policy(CONFIG_DIR / "policy.yaml")
+    classes = dict(base.classes)
+    classes[DataClass.PERSONAL] = classes[DataClass.PERSONAL].model_copy(
+        update={"rehydrate": rehydrate}
+    )
+    return DataPolicy(version=base.version, undeclared=base.undeclared, classes=classes)
+
+
+async def test_by_default_a_value_the_caller_did_not_send_stays_a_placeholder(
+    proxy: Proxy, upstream: respx.MockRouter
+) -> None:
+    upstream.post(FOUNDRY_URL).mock(side_effect=_echo_system_and_user)
+    r = await proxy.post(
+        body(messages=[{"role": "system", "content": RECORD}, {"role": "user", "content": MESSAGE}])
+    )
+    assert r.status_code == 200, r.text
+    answer = r.json()["choices"][0]["message"]["content"]
+    assert "victor.dunmore24@example.net" not in answer
+    assert "613-555-0148" not in answer
+    assert "<EMAIL_" in answer  # withheld, visibly, rather than silently dropped
+    assert MESSAGE in answer  # everything the caller sent comes back
+    assert r.headers["x-boundary-rehydrate"] == "caller"
+    assert int(r.headers["x-boundary-withheld"]) >= 2
+    assert r.headers["x-boundary-unresolved"] == "0"
+
+
+async def test_rehydrate_all_puts_every_value_back(
+    repo_config: BoundaryConfig, tmp_path: Path, keys: None, upstream: respx.MockRouter
+) -> None:
+    p = Proxy(repo_config, tmp_path, teams(), policy=_policy("all"))
+    try:
+        upstream.post(FOUNDRY_URL).mock(side_effect=_echo_system_and_user)
+        r = await p.post(
+            body(
+                messages=[
+                    {"role": "system", "content": RECORD},
+                    {"role": "user", "content": MESSAGE},
+                ]
+            )
+        )
+        answer = r.json()["choices"][0]["message"]["content"]
+        assert "victor.dunmore24@example.net" in answer and MESSAGE in answer
+        assert r.headers["x-boundary-rehydrate"] == "all"
+        assert r.headers["x-boundary-withheld"] == "0"
+    finally:
+        await p.close()
+
+
+async def test_a_streamed_answer_withholds_what_the_caller_did_not_send(
+    proxy: Proxy, upstream: respx.MockRouter
+) -> None:
+    def stream(request: httpx.Request) -> httpx.Response:
+        body_ = json.loads(request.content)
+        system = next(m["content"] for m in body_["messages"] if m["role"] == "system")
+        forged = httpx.Request(
+            "POST",
+            FOUNDRY_URL,
+            content=json.dumps(
+                {"messages": [{"role": "user", "content": system + "\n" + _sent_user(request)}]}
+            ),
+        )
+        return _echo_stream(forged)
+
+    upstream.post(FOUNDRY_URL).mock(side_effect=stream)
+    r = await proxy.post(
+        body(
+            stream=True,
+            messages=[{"role": "system", "content": RECORD}, {"role": "user", "content": MESSAGE}],
+        )
+    )
+    text = "".join(
+        c["delta"].get("content") or ""
+        for line in r.text.split("\n\n")
+        if line.startswith("data: {")
+        for c in json.loads(line[6:]).get("choices", [])
+    )
+    assert "victor.dunmore24@example.net" not in text
+    assert MESSAGE in text
+
+
+def test_the_policy_refuses_an_unknown_rehydrate_scope() -> None:
+    from pydantic import ValidationError
+
+    from boundary.enforce import ClassRule
+
+    with pytest.raises(ValidationError):
+        ClassRule.model_validate({"rehydrate": "everything"})
+    assert ClassRule().rehydrate == "caller"

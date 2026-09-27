@@ -785,8 +785,9 @@ stays a placeholder. Rebuilt from the stored requests (each rebuild checked agai
 of what was sent), it leaks **0 of 600**, for all three models, and its price on the ordinary
 questions is **7 of 900 answers, 0.8% (0.4 to 1.6)**, left with a placeholder, every one of
 them the word "Answer" from 03's own system prompt, which the second pass masks when it
-starts a sentence. **The proxy does not do this yet**; changing what it rehydrates changes what
-every client receives, and it is the next change proposed (PLAN.md B2.8).
+starts a sentence. **Since 0.21.0 it is the proxy's default** (`rehydrate: caller` in the data
+policy, docs/policy.md), on Peter's decision of 2026-09-27; `rehydrate: all` restores the old
+behaviour for a class whose system prompt is the caller's own data.
 
 What this cannot see: one sample per answer at temperature 0; 100 questions, twelve of them
 unanswerable; a judge licensed for completeness only, so an answer that is complete and wrong

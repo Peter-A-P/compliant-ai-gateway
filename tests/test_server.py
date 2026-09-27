@@ -22,7 +22,7 @@ import pytest
 import respx
 
 from boundary.config import BoundaryConfig
-from boundary.enforce import load_policy
+from boundary.enforce import DataPolicy, load_policy
 from boundary.errors import ConfigError
 from boundary.ledger.store import LedgerStore
 from boundary.server import create_app
@@ -138,14 +138,20 @@ async def _no_sleep(_: float) -> None:
 
 
 class Proxy:
-    def __init__(self, repo_config: BoundaryConfig, tmp_path: Path, team_cfg: TeamsConfig) -> None:
+    def __init__(
+        self,
+        repo_config: BoundaryConfig,
+        tmp_path: Path,
+        team_cfg: TeamsConfig,
+        policy: DataPolicy | None = None,
+    ) -> None:
         self.ledger_path = tmp_path / "proxy.sqlite"
         self.clock = Clock()
         self.app = create_app(
             repo_config,
             team_cfg,
             ledger_path=self.ledger_path,
-            policy=load_policy(CONFIG_DIR / "policy.yaml"),
+            policy=policy or load_policy(CONFIG_DIR / "policy.yaml"),
             clock=self.clock,
             wall=lambda: NOW,
             sleep=lambda _s: None,

@@ -55,12 +55,14 @@ from boundary.errors import (
 )
 from boundary.gateway import REDACTION_REFUSED, Gateway
 from boundary.providers import STREAM_ADAPTERS
+from boundary.redact.policy import Policy
 from boundary.routes import ModelRef
 from boundary.server import wire
 from boundary.server.redaction import (
     Redacted,
     RedactionRefused,
     StreamRehydrator,
+    caller_scoped,
     leak_counts,
     redact_request,
 )
@@ -251,16 +253,27 @@ def create_app(
             state.sealed()
             raise
         headers["x-boundary-redacted"] = "true" if redaction is not None else "false"
+        restorer = None
         if redaction is not None:
             headers["x-boundary-placeholders"] = str(redaction.placeholders)
-        call = _Call(state, gw, parsed, purpose, run_id, data_class, ref, headers, redaction)
+            scope = state.policy.classes[data_class].rehydrate
+            headers["x-boundary-rehydrate"] = scope
+            restorer = (
+                caller_scoped(redaction, parsed.request) if scope == "caller" else redaction.policy
+            )
+        call = _Call(
+            state, gw, parsed, purpose, run_id, data_class, ref, headers, redaction, restorer
+        )
         if not parsed.stream:
             resp = await call.run(call.plain())
             headers["x-boundary-call-uid"] = resp.call_uid or ""
-            if redaction is not None:
-                headers["x-boundary-unresolved"] = str(
-                    len(redaction.policy.unresolved(resp.text or ""))
-                )
+            if redaction is not None and restorer is not None:
+                text = resp.text or ""
+                unresolved = len(redaction.policy.unresolved(text))
+                headers["x-boundary-unresolved"] = str(unresolved)
+                # Placeholders the vault knows and the scope kept back: values the caller did
+                # not send, left as placeholders on purpose.
+                headers["x-boundary-withheld"] = str(len(restorer.unresolved(text)) - unresolved)
             return JSONResponse(
                 wire.completion_body(resp, created=int(state.wall()), text=call.restore(resp.text)),
                 headers=headers,
@@ -487,9 +500,13 @@ class _Call:
         ref: ModelRef,
         headers: dict[str, str],
         redaction: Redacted | None = None,
+        restorer: Policy | None = None,
     ) -> None:
         self.state = state
         self.redaction = redaction
+        # The policy an answer is rehydrated with: the whole vault, or only what the caller
+        # sent, as the class's `rehydrate` says.
+        self.restorer = restorer if restorer is not None or redaction is None else redaction.policy
         # What is sent: the redacted request when the class calls for it.
         self.request = redaction.request if redaction is not None else parsed.request
         self.gw = gw
@@ -513,9 +530,9 @@ class _Call:
 
     def restore(self, text: str | None) -> str | None:
         """The answer as the client sees it: rehydrated when the request was redacted."""
-        if text is None or self.redaction is None:
+        if text is None or self.restorer is None:
             return text
-        return self.redaction.policy.rehydrate(text)
+        return self.restorer.rehydrate(text)
 
     def plain(self) -> asyncio.Task[ChatResponse]:
         return self._task(
@@ -607,7 +624,7 @@ class _Call:
         wall = self.state.wall
         # A placeholder can arrive split across pieces, so a redacted answer is rehydrated
         # through a buffer that never releases half of one.
-        rehydrator = StreamRehydrator(self.redaction.policy) if self.redaction is not None else None
+        rehydrator = StreamRehydrator(self.restorer) if self.restorer is not None else None
 
         def out(piece: str) -> str:
             return rehydrator.feed(piece) if rehydrator is not None else piece

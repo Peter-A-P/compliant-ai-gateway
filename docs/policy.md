@@ -23,6 +23,7 @@ without one, and substitutes `personal` for an absent `X-Data-Class` header at t
 | `providers` | The provider entries the class may use |
 | `cache` | Whether the development cache may store and serve these calls. Off unless said |
 | `redacted_as` | The class a call of this class is judged as once redacted (0.15). Must name a listed class that has none of its own. The proxy redacts every request of such a class; a library caller gets it only by passing `redacted=True` |
+| `rehydrate` | What the proxy puts back into a redacted call's answer (0.21): `caller`, the default, only values the caller's own messages carried; `all`, every value, including ones that arrived in the system prompt |
 
 ## Every rule fails closed
 

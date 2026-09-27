@@ -134,8 +134,13 @@ header. What happens, in order:
 4. **Routed as the `redacted_as` class**, with `redacted=True` on the gateway call. The row
    keeps the declared class and records the redaction: `data_class = personal`,
    `redacted = 1`.
-5. **The answer is rehydrated.** Placeholders in the model's text are replaced with the
-   values they stand for, tolerating the forms models write (docs/redact.md). A streamed
+5. **The answer is rehydrated, with what the caller sent (0.21).** Placeholders in the
+   model's text are replaced with the values they stand for, tolerating the forms models
+   write (docs/redact.md), but only values that appear in the caller's own messages. A value
+   that arrived only in the system prompt stays a placeholder: on 03's red team a model
+   refusing to disclose a record named its fields as placeholders, and putting every value
+   back handed the caller the record (docs/redact.md, 0.20.0). The class's `rehydrate: all`
+   puts every value back, as 0.15 to 0.20 did. A streamed
    answer goes through `StreamRehydrator`, which never releases half a placeholder: a test
    over random texts and random cuts checks that what it releases, joined, is exactly the
    whole answer rehydrated.
@@ -143,7 +148,9 @@ header. What happens, in order:
 Response headers say what happened: `x-boundary-redacted` (`true` or `false`),
 `x-boundary-placeholders` (how many values the request's vault holds) and, on a non-streamed
 answer, `x-boundary-unresolved` (placeholders in the answer that the vault does not hold,
-such as one a model invented, which are left as written).
+such as one a model invented, which are left as written), and since 0.21
+`x-boundary-rehydrate` (`caller` or `all`) and `x-boundary-withheld` (placeholders the vault
+holds and the scope kept back).
 
 **Live, 2026-09-25.** Two requests with no header, so judged `personal`, each naming an
 invented person with an email address, a phone number and a file number: one to Claude Haiku

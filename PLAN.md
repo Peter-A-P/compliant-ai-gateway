@@ -426,6 +426,7 @@ from October the ledger-against-invoice difference is recorded there too (sectio
 | v0.18.0 | 2026-09-25 | The proxy appends to the audit chain as it answers; record schema 2 seals `redacted` |
 | v0.19.0 | 2026-09-25 | `boundary loadtest`, the layered load test harness, with development figures; ledger v9's spend table, removing a per-call scan of the whole ledger from the caps |
 | v0.20.0 | 2026-09-27 | B2.8 run: the quality cost of redaction through 03's gate (no cost visible on answerable questions), and the red team's finding that rehydration hands the caller what the model refused; `caller_scoped`; price list 2026-09-27 |
+| v0.21.0 | 2026-09-27 | The proxy rehydrates only what the caller sent (`rehydrate: caller`, the default), Peter's decision on the B2.8 red-team finding |
 | v1.0.0 | May 23 2027 | Everything in Part B; `boundary.redact` for 07; the proxy for 13 and 14 |
 
 03 pins `boundary>=0.1,<0.3` for Part A and moves to `>=1.0` when its Part B is built
@@ -957,9 +958,10 @@ rehydrates every value, and Haiku 4.5 (0 leaks raw) listed placeholders in its r
 leaked 13 of 200 records to the caller, +6.5 points (+3.2 to +10.8). Rehydrating only values
 the caller's own messages carried (`caller_scoped`, measured offline on the stored answers)
 leaked 0 of 600 and left a placeholder in 7 of 900 ordinary answers, every one the word
-"Answer" from 03's system prompt. **Proposed, not made:** the proxy rehydrates caller-scoped
-by default, with the full vault a per-class policy option for deployments whose system prompt
-is the caller's own data. It changes what every client receives, so it waits for Peter.
+"Answer" from 03's system prompt. **Decided by Peter the same day and built in 0.21.0:** the
+proxy rehydrates caller-scoped by default (`rehydrate: caller`), with the full vault a
+per-class policy option (`rehydrate: all`) for deployments whose system prompt is the
+caller's own data.
 
 ### B2.9 Out of scope in Part B, on purpose
 

@@ -43,6 +43,10 @@ classes:
     max_residency: single-region
     regions: [localhost, ca-central-1, canadacentral, canadaeast, northamerica-northeast1, northamerica-northeast2]
     redacted_as: internal
+    # The default, written out: an answer gets back only values the caller's own messages
+    # carried, so a record held in the system prompt cannot be disclosed by rehydration
+    # (0.21; the red-team measurement is in docs/redact.md).
+    rehydrate: caller
 
   # Health, criminal, financial and the like. The local model only, redacted or not: no
   # `redacted_as`, so the proxy does not redact it and redaction would unlock nothing.

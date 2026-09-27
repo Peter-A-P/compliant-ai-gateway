@@ -5,6 +5,22 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.21.0 (2026-09-27)
+
+**The proxy puts back only what the caller sent.** Peter's decision on 0.20.0's red-team
+finding. docs/server.md, docs/policy.md.
+
+- **`rehydrate` in the data policy**, per class: `caller` (the default) rehydrates only the
+  values that appear in the caller's own messages, so a value that arrived in the system
+  prompt stays a placeholder; `all` is the 0.15 to 0.20 behaviour. `config/policy.yaml`
+  writes the default out for `personal`.
+- **Headers**: `x-boundary-rehydrate` on every redacted answer, and `x-boundary-withheld`
+  on a non-streamed one, counting the placeholders the scope kept back.
+- **Behaviour change for proxy clients**: an answer that repeats a system-prompt value now
+  shows its placeholder. Measured on 0.20.0's stored answers: 0 of 600 red-team leaks
+  against 13, 3 and 107 per 200, and 7 of 900 ordinary answers left with a placeholder.
+  Library callers are unaffected; `Policy.rehydrate` is unchanged.
+
 ## 0.20.0 (2026-09-27)
 
 **The quality cost of redaction, measured through project 03's gate: none visible on the
@@ -25,7 +41,7 @@ docs/redact.md.
   which leaks nothing raw, hand the caller 13 of 200 records it had refused, as placeholders.
 - **`boundary.redact.request.caller_scoped`**: a policy that rehydrates only values the
   caller's own messages carried. Offline on the stored answers, 0 of 600 leaks and a
-  placeholder left in 7 of 900 ordinary answers. The proxy does not use it yet.
+  placeholder left in 7 of 900 ordinary answers. The proxy uses it from 0.21.0.
 - `boundary redact overmask --allow`; `survives` moved to `boundary.redact.request` (still
   importable from `boundary.server.redaction_eval`).
 - **Price list 2026-09-27** adds `gpt-5.4-mini-2026-03-17` at its alias rate; five smoke calls

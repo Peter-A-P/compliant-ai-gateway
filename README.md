@@ -309,7 +309,8 @@ nothing. **The red team inverts the premise**: redacted, no value reaches the ve
 proxy rehydrates the answer, and Haiku, which leaks nothing raw, lists the placeholders it
 will not share and hands the caller all thirteen records it refused. Rehydrating only the
 values the caller sent (`caller_scoped`, measured offline on the stored answers) leaks 0 of
-600 and leaves a placeholder in 7 of 900 ordinary answers; **the proxy does not do this yet**.
+600 and leaves a placeholder in 7 of 900 ordinary answers; **since `v0.21.0` it is what the
+proxy does by default** (`rehydrate: caller` in the data policy, Peter's decision 2026-09-27).
 Method and every row in [docs/redact.md](docs/redact.md).
 
 | Cache hit rate / false-hit rate / saved, redacted and raw | Audit tamper detection with daily anchors |
@@ -324,7 +325,7 @@ Method and every row in [docs/redact.md](docs/redact.md).
   guessed classifications would be making a compliance decision nobody reviewed. Enforcement
   is opt-in for a library caller; through the proxy (`v0.13.0`) it is always on, and an
   absent class becomes `personal` at the door.
-- **The proxy's redaction is rules only, and it gives back more than it should.** Since `v0.15.0` a personal request through the proxy is
+- **The proxy's redaction is rules only.** Since `v0.15.0` a personal request through the proxy is
   redacted before it leaves and routed as internal data, so it can reach Claude on Bedrock in
   `ca-central-1` but not the direct Anthropic API, which declares no residency here. With no
   detector configured, names become `<NAME_LIKE_n>` and anything capitalised the vocabulary
@@ -333,9 +334,11 @@ Method and every row in [docs/redact.md](docs/redact.md).
   judged on (`boundary redact overmask`, `v0.16.0`). Measured through project 03's gate
   (`v0.20.0`), that cost no answer its completeness on the questions a page answers, within
   about 1.6 points; the losses were on questions the page cannot answer, twelve per model,
-  too few to measure. And the proxy rehydrates every value into the answer, including ones
-  that arrived in the system prompt, which on 03's red team turned a model's refusals into
-  disclosures; see the table above. No latency figure for the proxy is claimed until the
+  too few to measure. Until `v0.21.0` the proxy also rehydrated every value into the answer,
+  including ones that arrived in the system prompt, which on 03's red team turned a model's
+  refusals into disclosures; it now puts back only what the caller sent, so an application
+  that addresses its user by a name held only in its system prompt sees a placeholder there
+  (7 of 900 ordinary answers, all 03's own word "Answer"). No latency figure for the proxy is claimed until the
   load test on the VPS.
 - It does not run in more than one region. Residency here means controlling where requests
   are allowed to go, not where the proxy runs.
