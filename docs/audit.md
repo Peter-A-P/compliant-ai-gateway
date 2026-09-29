@@ -48,6 +48,10 @@ the fields they sealed, and a row sealed under schema 1 or 2 that has since been
 resealed once and counted `resealable` in between. The laptop's chain verified intact again
 after its ledger was upgraded to v10.
 
+**Record schema 4 (0.27)** seals `cache_similarity` and `cache_source` (`SEALED_V4`, ledger
+v11). A semantic cache hit hands a caller another call's answer, and which call it was is
+then in the chain, not only in the ledger.
+
 A body that parses but is not in canonical form is a break of its own. The hash would still
 check, but this library could not have written it.
 

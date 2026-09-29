@@ -9,16 +9,21 @@ ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
     UV_PROJECT_ENVIRONMENT=/opt/venv \
     PYTHONUNBUFFERED=1 \
+    FASTEMBED_CACHE_PATH=/opt/fastembed \
     PATH=/opt/venv/bin:$PATH
 
 WORKDIR /app
 COPY pyproject.toml uv.lock README.md LICENSE ./
 COPY boundary ./boundary
 COPY config ./config
-# The server extra only: the proxy's default detector is the rules, which need nothing
-# more, and the cache is not switched on in the proxy yet. Everything world-readable, since
-# a checkout's file modes are whatever the machine that wrote them used.
-RUN uv sync --frozen --no-dev --extra server && chmod -R a+rX /app /opt/venv
+# The server and cache extras: the proxy's default detector is the rules, which need
+# nothing more, and the semantic cache (off unless `--semantic-cache`) needs fastembed. Its
+# model, bge-small, is fetched here at build time, so a running proxy never downloads one.
+# Everything world-readable, since a checkout's file modes are whatever the machine that
+# wrote them used.
+RUN uv sync --frozen --no-dev --extra server --extra cache \
+    && python -c "from boundary.semcache import BgeSmall; BgeSmall().embed(['warm'])" \
+    && chmod -R a+rX /app /opt/venv /opt/fastembed
 
 # Never root. The ledger and the audit chain live on the /data volume.
 RUN useradd --system --uid 10001 --home /data boundary && mkdir -p /data && chown boundary /data
@@ -30,4 +35,5 @@ EXPOSE 8080
 CMD ["boundary", "--config", "/app/config/boundary.yaml", "serve", \
      "--host", "0.0.0.0", "--port", "8080", \
      "--teams", "/run/boundary/teams.yaml", \
-     "--ledger", "/data/boundary.proxy.sqlite"]
+     "--ledger", "/data/boundary.proxy.sqlite", \
+     "--central", "/data/boundary.central.sqlite"]

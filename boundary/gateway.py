@@ -19,6 +19,7 @@ import asyncio
 import dataclasses
 import os
 import random
+import threading
 import time
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
@@ -173,6 +174,21 @@ REDACTION_REFUSED = "redaction_refused"
 INJECTION_BLOCKED = "injection_blocked"
 CALLER_REFUSALS = frozenset({REDACTION_REFUSED, INJECTION_BLOCKED})
 
+# One admission lock per ledger file (0.27). A cap is checked against the ledger and the row
+# that spends against it is written straight after; the two must be one step, or two calls
+# admitted at once can both pass a cap only one of them fits under. On one event loop that
+# held without a lock, because nothing awaited between them. The async path now writes the
+# ledger from a worker thread, so the step is a lock, shared by every Gateway on the file,
+# since the proxy's team gateways all write one ledger and the ceiling spans them.
+_ADMISSION: dict[str, threading.Lock] = {}
+_ADMISSION_GUARD = threading.Lock()
+
+
+def _admission_lock(path: Path) -> threading.Lock:
+    key = str(Path(path).resolve())
+    with _ADMISSION_GUARD:
+        return _ADMISSION.setdefault(key, threading.Lock())
+
 
 class Gateway:
     def __init__(
@@ -210,6 +226,7 @@ class Gateway:
             self.self_hosted_prices = latest_price_list(config.self_hosted_prices)
         check_price_lists(config, self.prices, self.self_hosted_prices)
         self.ledger = LedgerStore(ledger_path or config.ledger.path)
+        self._admission = _admission_lock(self.ledger.path)
         self.raw_store = RawStore(raw_store) if raw_store is not None else None
         self.cache = ExactMatchCache(config.cache.path) if config.cache.enabled else None
         self.transport = transport or Transport(config.defaults.timeouts)
@@ -297,7 +314,11 @@ class Gateway:
         redacted: bool = False,
         injection: bool = False,
     ) -> ChatResponse:
-        call = self._prepare(
+        # The ledger's commits run in a worker thread (0.27): each is an fsync, and on the
+        # event loop every one of them stopped every other request for its duration, which
+        # the first VPS load test found to be where the proxy stopped holding its rate.
+        call = await asyncio.to_thread(
+            self._prepare,
             request,
             purpose=purpose,
             run_id=run_id,
@@ -307,9 +328,11 @@ class Gateway:
             injection=injection,
         )
         if call.cached is not None:
-            return self._finish(call, call.cached, None, 0, cached=True)
+            return await asyncio.to_thread(self._finish, call, call.cached, None, 0, cached=True)
         result, error_type, retries = await self._send_async(call)
-        return self._finish(call, result, error_type, retries, cached=False)
+        return await asyncio.to_thread(
+            self._finish, call, result, error_type, retries, cached=False
+        )
 
     def chat_stream(
         self,
@@ -373,8 +396,9 @@ class Gateway:
     ) -> ChatResponse:
         """The async twin of `chat_stream`, with an awaited `on_text`. Sixty-four of these
         may be in flight at once against one host; the transport's pool is sized for it
-        (boundary/transport.py)."""
-        call = self._prepare(
+        (boundary/transport.py). Its ledger commits run in a worker thread, as `achat`'s do."""
+        call = await asyncio.to_thread(
+            self._prepare,
             request,
             purpose=purpose,
             run_id=run_id,
@@ -385,7 +409,9 @@ class Gateway:
             injection=injection,
         )
         result, error_type, retries = await self._stream_async(call, on_text)
-        response = self._finish(call, result, error_type, retries, cached=False)
+        response = await asyncio.to_thread(
+            self._finish, call, result, error_type, retries, cached=False
+        )
         if call.on_text_error is not None:
             raise call.on_text_error
         return response
@@ -1145,33 +1171,34 @@ class Gateway:
         entry = self._price_for(pc, ref.provider, ref.model)
         max_tokens = effective.max_tokens or 0
         estimate = estimate_usd(len(built.body), max_tokens, entry) if entry is not None else 0.0
-        self._check_caps(run_id, estimate=estimate)
-
-        row = LedgerRow(
-            ts_utc=utc_now(),
-            boundary_version=__version__,
-            project=self.project,
-            purpose=purpose,
-            mode=mode.value,
-            provider=ref.provider,
-            model_requested=ref.explicit,
-            run_id=run_id,
-            alias=ref.alias,
-            region=ref.region,
-            residency=_residency(ref.provider_config),
-            price_list=prices.name if prices is not None else None,
-            price_sha256=prices.rates_sha256 if prices is not None else None,
-            cost_usd=estimate if entry is not None else None,
-            request_sha256=sha256_hex(built.body),
-            env=self.env,
-            data_class=declared,
-            redacted=True if redacted else None,
-            injection=True if injection else None,
-        )
-        span = self.telemetry.start("boundary.chat_stream" if stream else "boundary.chat")
-        ids = Telemetry.ids(span)
-        row.trace_id, row.span_id = ids.trace_id, ids.span_id
-        self.ledger.begin(row)
+        # Checked and written as one step: see _ADMISSION.
+        with self._admission:
+            self._check_caps(run_id, estimate=estimate)
+            row = LedgerRow(
+                ts_utc=utc_now(),
+                boundary_version=__version__,
+                project=self.project,
+                purpose=purpose,
+                mode=mode.value,
+                provider=ref.provider,
+                model_requested=ref.explicit,
+                run_id=run_id,
+                alias=ref.alias,
+                region=ref.region,
+                residency=_residency(ref.provider_config),
+                price_list=prices.name if prices is not None else None,
+                price_sha256=prices.rates_sha256 if prices is not None else None,
+                cost_usd=estimate if entry is not None else None,
+                request_sha256=sha256_hex(built.body),
+                env=self.env,
+                data_class=declared,
+                redacted=True if redacted else None,
+                injection=True if injection else None,
+            )
+            span = self.telemetry.start("boundary.chat_stream" if stream else "boundary.chat")
+            ids = Telemetry.ids(span)
+            row.trace_id, row.span_id = ids.trace_id, ids.span_id
+            self.ledger.begin(row)
 
         cached: HttpResult | None = None
         # A stream never reads the cache: a cached answer has no first token to time.
@@ -1239,6 +1266,79 @@ class Gateway:
         row.error_type = error_type
         self.ledger.complete(row)
         return row_id
+
+    def record_cache_hit(
+        self,
+        request: ChatRequest,
+        *,
+        purpose: str,
+        text: str,
+        similarity: float,
+        source: str | None,
+        model_returned: str | None,
+        finish_reason: str | None,
+        latency_ms: float,
+        run_id: str | None = None,
+        data_class: DataClass | str | None = None,
+    ) -> ChatResponse:
+        """Write the row for a call the proxy's semantic cache answered, and return the
+        response it serves (0.27). Nothing is sent and no key is read. The row is `cached`,
+        costs zero, and carries the similarity and the `call_uid` of the stored call whose
+        answer it reused, because a hit is the one row whose answer came from another call.
+
+        Standard mode only, by construction: the proxy never calls this for pass-through,
+        and the class's `cache` flag is checked by the caller, which knows the class."""
+        declared = data_class_value(data_class)
+        ref = resolve(request.model, self.config, Mode.STANDARD)
+        row = LedgerRow(
+            ts_utc=utc_now(),
+            boundary_version=__version__,
+            project=self.project,
+            purpose=purpose,
+            mode=Mode.STANDARD.value,
+            provider=ref.provider,
+            model_requested=ref.explicit,
+            run_id=run_id,
+            alias=ref.alias,
+            region=ref.region,
+            residency=_residency(ref.provider_config),
+            cost_usd=0.0,
+            costed=True,
+            env=self.env,
+            data_class=declared,
+            cache_similarity=round(similarity, 6),
+            cache_source=source,
+        )
+        with self._admission:
+            row_id = self.ledger.begin(row)
+        row.model_returned = model_returned
+        row.input_tokens = 0
+        row.output_tokens = 0
+        row.cached = True
+        row.http_status = 200
+        row.latency_ms = latency_ms
+        row.retries = 0
+        row.error_type = None
+        self.ledger.complete(row)
+        return ChatResponse(
+            text=text,
+            finish_reason=finish_reason,
+            usage=Usage(input_tokens=0, output_tokens=0),
+            cost_usd=0.0,
+            costed=True,
+            model_requested=ref.explicit,
+            model_returned=model_returned,
+            provider=ref.provider,
+            latency_ms=latency_ms,
+            status=200,
+            headers={},
+            raw=None,
+            ledger_id=row_id,
+            mode=Mode.STANDARD,
+            cached=True,
+            data_class=declared,
+            call_uid=row.call_uid,
+        )
 
     def _enforce(
         self,

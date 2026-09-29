@@ -22,7 +22,13 @@ budgets and the data policy always on (`v0.13.0`, [docs/server.md](docs/server.m
 placeholder mutation measured under three models (`v0.14.0`), and redaction inside the
 proxy, where personal data leaves as placeholders and comes back restored (`v0.15.0`). The
 last seven are pieces of Part B pulled forward because none of them needed the VPS or any
-spend. Release by release, with the evidence for each: [CHANGELOG.md](CHANGELOG.md).
+spend. **Since `v0.26.0` the proxy is live at gateway.peterparker.ca** on a VPS in Quebec
+([docs/deploy.md](docs/deploy.md)), with its audit chain anchored in this repository every
+day and its overhead measured there. `v0.27.0` adds the semantic cache to the proxy, off by
+default ([docs/cache.md](docs/cache.md)), and the portfolio dashboard at
+[gateway.peterparker.ca/dashboard](https://gateway.peterparker.ca/dashboard), read from the
+ledger rows each project pushes ([docs/central.md](docs/central.md)). Release by release,
+with the evidence for each: [CHANGELOG.md](CHANGELOG.md).
 Part B, the full gateway, is planned for May 2027 in [PLAN.md](PLAN.md).
 
 Four things worth knowing before the tables.
@@ -226,28 +232,36 @@ declaration, not a vendor's conduct, and the command says so. Detail in
 | Layer | Load (rps) | Overhead p50 / p95 / p99 ms (95% CI) | Errors |
 |---|---|---|---|
 <!-- loadtest:start -->
-| routing | 50 | 3.1 (3.0 to 3.3) / 3.6 (3.4 to 3.9) / 3.9 (3.7 to 4.1) | 0 of 2503 |
-| routing | 200 | 3.5 (3.4 to 3.5) / 4.6 (4.3 to 4.9) / 7.7 (6.8 to 9.2) | 0 of 10005 |
-| routing | 500 | saturated: the proxy cannot hold this rate | 7075 of 10001 |
-| audit | 50 | 4.9 (4.7 to 5.0) / 5.4 (5.2 to 5.6) / 6.0 (5.8 to 6.2) | 0 of 2504 |
-| audit | 200 | saturated: the proxy cannot hold this rate | 1760 of 4000 |
-| audit | 500 | saturated: the proxy cannot hold this rate | 8189 of 10001 |
-| redaction | 50 | 6.3 (6.3 to 6.4) / 7.0 (6.9 to 7.1) / 7.4 (7.1 to 7.7) | 0 of 2503 |
-| redaction | 200 | saturated: the proxy cannot hold this rate | 2151 of 4000 |
-| redaction | 500 | saturated: the proxy cannot hold this rate | 8279 of 10002 |
+| routing | 50 | 3.7 (3.5 to 3.8) / 4.1 (3.8 to 4.5) / 4.8 (4.3 to 5.6) | 0 of 2505 |
+| routing | 200 | 4.0 (3.9 to 4.2) / 6.4 (6.1 to 6.8) / 9.7 (7.7 to 12.4) | 0 of 10004 |
+| routing | 500 | saturated: the proxy cannot hold this rate | 7145 of 10001 |
+| audit | 50 | 3.6 (3.5 to 3.7) / 4.0 (3.7 to 4.2) / 4.5 (4.2 to 4.8) | 0 of 2505 |
+| audit | 200 | 4.4 (4.2 to 4.6) / 7.7 (7.2 to 8.4) / 13.2 (9.3 to 20.1) | 0 of 10003 |
+| audit | 500 | saturated: the proxy cannot hold this rate | 7245 of 10000 |
+| redaction | 50 | 5.2 (5.1 to 5.3) / 5.5 (5.3 to 5.7) / 5.9 (5.6 to 6.3) | 0 of 2503 |
+| redaction | 200 | saturated: the proxy cannot hold this rate | 1452 of 4002 |
+| redaction | 500 | saturated: the proxy cannot hold this rate | 7707 of 10000 |
+| cache | 50 | 17.9 (17.3 to 18.6) / 28.8 (21.0 to 41.9) / 54.7 (27.5 to 94.6) | 0 of 2504 |
+| cache | 200 | saturated: the proxy cannot hold this rate | 2315 of 4001 |
+| cache | 500 | saturated: the proxy cannot hold this rate | 7974 of 10001 |
 <!-- loadtest:end -->
 
-Filled by `boundary loadtest --generator k6 --published --write-readme` (`v0.26.0`), run
+Filled by `boundary loadtest --generator k6 --published --write-readme` (`v0.27.0`), run
 on the VPS that serves gateway.peterparker.ca: an OVHcloud VPS-2, 4 vCPU (AMD EPYC-Milan) and
 8 GB, in Beauharnois, with k6, a 50 ms mock upstream and the proxy on the same host. Five
 runs of 10 s per cell; overhead is the proxy's percentile minus the mock's in the same run,
-and the interval is a bootstrap over runs. **Where the proxy holds the rate, it adds 3 to 7
-ms at p99 with every layer on, inside the provisional budget of PLAN.md B4. It does not hold
-the rate everywhere: one process saturates between 200 and 500 requests a second on routing
-alone, and between 50 and 200 once the audit chain is on.** A saturated cell has no overhead
-figure, because the latencies that survive are not the proxy's cost but its queue. The
-failures are requests k6 could not start because every connection was waiting on the proxy.
-Detail, and the Python client's cross-check, in [docs/loadtest.md](docs/loadtest.md).
+and the interval is a bootstrap over runs. **Where the proxy holds the rate, routing, the
+audit chain and redaction add 4.5 to 13 ms at p99, inside the provisional budget of PLAN.md
+B4.** A saturated cell has no overhead figure, because the latencies that survive are not the
+proxy's cost but its queue; the failures are requests k6 could not start because every
+connection was waiting on the proxy. **The first measurement changed the architecture, as B4
+meant it to.** In `v0.26.0` the audit chain stopped the proxy holding 200 requests a second.
+Moving the ledger commits off the event loop and group-committing the chain (`v0.27.0`)
+holds it there at 13.2 ms p99. The cache layer is the price of a miss with the semantic
+cache on: the question embedded on the proxy's own CPU, about 14 ms more than the audit
+layer at the median. One process still saturates at 500 requests a second on every layer,
+and at 200 with redaction or the cache on. Detail, the `v0.26.0` table and the Python
+client's cross-check are in [docs/loadtest.md](docs/loadtest.md).
 
 | Residency violations through the proxy | False refusals | Refusals audited on the ledger |
 |---|---|---|
@@ -458,10 +472,11 @@ says. Dollars saved need real traffic, which is Part B's replay.
   that addresses its user by a name held only in its system prompt sees a placeholder there
   (7 of 900 ordinary answers, all 03's own word "Answer").
 - **It is one process, and it saturates at modest rates.** On the 4 vCPU VPS it holds 200
-  requests a second on routing alone and 50 with the audit chain or redaction on, but not 200
-  (`v0.26.0`, the table above). Every ledger and audit write is a synchronous SQLite commit
-  on the event loop. That is the next thing the architecture has to change, as PLAN.md B4
-  intended the first measurement to decide.
+  requests a second with routing and the audit chain, and 50 with redaction or the semantic
+  cache on, but not 500 on any layer (`v0.27.0`, the table above). What is left is CPU in
+  one Python process: redaction's recognisers and the cache's embedding run on the cores the
+  proxy has. More than one process needs the shared ledger and quotas that Postgres and
+  Redis bring (PLAN.md B2).
 - It does not run in more than one region. Residency here means controlling where requests
   are allowed to go, not where the proxy runs.
 - **It cannot verify residency, and no tool can.** It records what the operator declared and

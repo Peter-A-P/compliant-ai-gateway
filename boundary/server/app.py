@@ -44,6 +44,7 @@ from fastapi.responses import JSONResponse, Response, StreamingResponse
 
 from boundary import __version__
 from boundary.audit.appender import AuditAppender
+from boundary.central import CentralLedger, union
 from boundary.config import BoundaryConfig
 from boundary.enforce import DataPolicy, load_policy
 from boundary.errors import (
@@ -59,7 +60,8 @@ from boundary.redact.analyzer import Analyzer
 from boundary.redact.policy import Policy
 from boundary.routes import ModelRef
 from boundary.screen import rules_fired, screen_request
-from boundary.server import wire
+from boundary.semcache import SemanticCache
+from boundary.server import dashboard, wire
 from boundary.server.redaction import (
     Redacted,
     RedactionRefused,
@@ -75,6 +77,9 @@ from boundary.types import ChatResponse, DataClass, Mode
 # The class a request without the header is judged as. Fails closed (PLAN.md B2.2).
 ABSENT_CLASS = DataClass.PERSONAL
 DEFAULT_PURPOSE = "proxy"
+# How long a completed call waits for others to share its audit commit (0.27). The window in
+# which a completed call is in the ledger and not yet in the chain.
+AUDIT_FLUSH_S = 0.05
 _MAX_LABEL = 200
 
 
@@ -106,18 +111,50 @@ class ServerState:
     analyzer: Analyzer | None = None
     # The audit chain, appended as the proxy answers (0.18). None: not kept.
     audit: AuditAppender | None = None
+    # Group commit (0.27): a completed call schedules one seal AUDIT_FLUSH_S later, and every
+    # call completing before it runs is sealed by the same commit, in a worker thread. One
+    # commit per call on the event loop was where the first VPS load test found the proxy
+    # stopping at 200 requests a second with the chain on.
+    audit_scheduled: bool = False
+    audit_tasks: set[asyncio.Task[int]] = field(default_factory=set)
+    # The semantic cache (0.27), one per team, so a hit never hands one team another's
+    # answer. None: off, which is the default.
+    semcaches: dict[str, SemanticCache] | None = None
+    # The central ledger other environments push to, and the dashboard over it (0.27).
+    central: CentralLedger | None = None
+    ingest_hashes: frozenset[str] = frozenset()
+    page: tuple[float, str] | None = None
 
     def sealed(self) -> None:
-        """Append every row completed since the last call to the audit chain."""
+        """Schedule the seal of every row completed since the last one."""
+        if self.audit is None or self.audit_scheduled:
+            return
+        self.audit_scheduled = True
+        asyncio.get_running_loop().call_later(AUDIT_FLUSH_S, self._flush)
+
+    def _flush(self) -> None:
+        self.audit_scheduled = False
+        if self.audit is None:
+            return
+        task = asyncio.ensure_future(asyncio.to_thread(self.audit.after_call))
+        self.audit_tasks.add(task)
+        task.add_done_callback(self.audit_tasks.discard)
+
+    async def flush_audit(self) -> None:
+        """Seal now, and wait for it: what `/audit/head` and shutdown need."""
         if self.audit is not None:
-            self.audit.after_call()
+            await asyncio.to_thread(self.audit.after_call)
 
     async def close(self) -> None:
         if self.tasks:
             await asyncio.gather(*self.tasks, return_exceptions=True)
+        if self.audit_tasks:
+            await asyncio.gather(*self.audit_tasks, return_exceptions=True)
         if self.audit is not None:
             self.audit.after_call()
             self.audit.close()
+        if self.central is not None:
+            self.central.close()
         for gw in self.gateways.values():
             await gw.aclose()
 
@@ -131,6 +168,8 @@ def create_app(
     policy: DataPolicy | None = None,
     transport: Transport | None = None,
     audit_path: Path | None = None,
+    semantic_cache: Callable[[], SemanticCache] | None = None,
+    central_path: Path | None = None,
     clock: Callable[[], float] = time.monotonic,
     wall: Callable[[], float] = time.time,
     sleep: Callable[[float], None] = time.sleep,
@@ -169,7 +208,13 @@ def create_app(
         wall=wall,
         policy=policy,
         analyzer=_analyzer(policy),
+        semcaches=(
+            {name: semantic_cache() for name in teams.teams} if semantic_cache is not None else None
+        ),
     )
+    if central_path is not None:
+        state.central = CentralLedger(central_path)
+        state.ingest_hashes = frozenset(teams.ingest_key_sha256)
     if audit_path is not None:
         # Every team's gateway writes the same ledger file, so any one of them reads it.
         state.audit = AuditAppender(audit_path, next(iter(gateways.values())).ledger)
@@ -197,6 +242,60 @@ def create_app(
     async def healthz() -> dict[str, str]:
         return {"status": "ok", "version": __version__}
 
+    @app.get("/")
+    async def root() -> Response:
+        return Response(status_code=307, headers={"location": "/dashboard"})
+
+    @app.get("/dashboard")
+    async def dashboard_page() -> Response:
+        """The portfolio dashboard (0.27): public, read-only, counts and sums of rows."""
+        if state.central is None:
+            raise Refusal(404, wire.error_body("no dashboard on this proxy", type_="not_found"))
+        now = state.wall()
+        if state.page is None or now - state.page[0] > DASHBOARD_TTL_S:
+            state.page = (now, await asyncio.to_thread(_render_dashboard, state))
+        return Response(state.page[1], media_type="text/html; charset=utf-8")
+
+    @app.post("/v1/ledger/ingest")
+    async def ingest(request: Request) -> Response:
+        """Rows pushed from another environment's ledger into the central one (0.27).
+        An ingest key, never a team's: pushing rows is not making calls."""
+        if state.central is None:
+            raise Refusal(
+                404, wire.error_body("no central ledger on this proxy", type_="not_found")
+            )
+        auth = request.headers.get("authorization") or ""
+        key = auth[7:].strip() if auth.lower().startswith("bearer ") else ""
+        if not key or hash_key(key) not in state.ingest_hashes:
+            raise Refusal(
+                401, wire.error_body("an ingest key is required", type_="authentication_error")
+            )
+        try:
+            payload = await request.json()
+            rows = payload["rows"]
+            source = str(payload["source"])
+            env = payload.get("env")
+            local_rows = int(payload["local_rows"])
+            if not isinstance(rows, list) or not all(isinstance(r, dict) for r in rows):
+                raise TypeError("rows must be a list of objects")
+        except (ValueError, KeyError, TypeError) as e:
+            raise Refusal(
+                400, wire.error_body(f"not an ingest body: {e}", type_="invalid_request_error")
+            ) from None
+        central = state.central
+        try:
+            result = await asyncio.to_thread(
+                central.ingest,
+                rows,
+                source=source,
+                env=None if env is None else str(env),
+                local_rows=local_rows,
+            )
+        except ValueError as e:
+            raise Refusal(400, wire.error_body(str(e), type_="invalid_request_error")) from None
+        state.page = None
+        return JSONResponse(result.to_json())
+
     @app.get("/audit/head")
     async def audit_head() -> Response:
         """The audit chain's head as one canonical anchor line (0.26, B2.4): what the daily
@@ -206,7 +305,7 @@ def create_app(
             raise Refusal(
                 404, wire.error_body("this proxy keeps no audit chain", type_="not_found")
             )
-        anchor = state.audit.anchor()
+        anchor = await asyncio.to_thread(state.audit.anchor)
         return Response(anchor.to_line(), media_type="application/json")
 
     @app.get("/v1/models")
@@ -303,9 +402,59 @@ def create_app(
             restorer,
             injection=flagged,
         )
+        marked = (request.headers.get("x-boundary-cache") or "").strip().lower() == "question"
+        semcache = _semcache(
+            state, team, data_class, redaction, flagged, parsed, headers, marked=marked
+        )
+        vector = None
+        if semcache is not None:
+            started = time.perf_counter()
+            vector = await asyncio.to_thread(semcache.embed, parsed.request)
+            hit = await asyncio.to_thread(semcache.lookup, parsed.request, vector)
+            if hit is not None:
+                resp = await asyncio.to_thread(
+                    gw.record_cache_hit,
+                    parsed.request,
+                    purpose=purpose,
+                    text=hit.answer,
+                    similarity=hit.similarity,
+                    source=hit.source,
+                    model_returned=hit.model,
+                    finish_reason=hit.finish_reason,
+                    latency_ms=(time.perf_counter() - started) * 1000.0,
+                    run_id=run_id,
+                    data_class=data_class,
+                )
+                state.sealed()
+                headers["x-boundary-cache"] = "hit"
+                headers["x-boundary-cache-similarity"] = f"{hit.similarity:.4f}"
+                headers["x-boundary-cache-source"] = hit.source or ""
+                headers["x-boundary-call-uid"] = resp.call_uid or ""
+                return JSONResponse(
+                    wire.completion_body(resp, created=int(state.wall())), headers=headers
+                )
+            headers["x-boundary-cache"] = "miss"
         if not parsed.stream:
             resp = await call.run(call.plain())
             headers["x-boundary-call-uid"] = resp.call_uid or ""
+            if (
+                semcache is not None
+                and vector is not None
+                and resp.ok
+                and resp.text
+                and wire.finish_reason(resp.finish_reason) == "stop"
+            ):
+                # Only a whole answer is kept: one cut off at max_tokens is not an answer
+                # to hand another caller.
+                await asyncio.to_thread(
+                    semcache.store,
+                    parsed.request,
+                    resp.text,
+                    vector=vector,
+                    source=resp.call_uid,
+                    model=resp.model_returned,
+                    finish_reason=resp.finish_reason,
+                )
             if redaction is not None and restorer is not None:
                 text = resp.text or ""
                 unresolved = len(redaction.policy.unresolved(text))
@@ -578,6 +727,81 @@ def _budget(exc: SpendCapExceeded, *, team: str, wall: Callable[[], float]) -> R
         ),
         headers,
     )
+
+
+# -- the dashboard ---------------------------------------------------------------------------
+
+# How long a rendered dashboard is served before it is built again. A push clears it.
+DASHBOARD_TTL_S = 60.0
+
+
+def _render_dashboard(state: ServerState) -> str:
+    assert state.central is not None
+    own = next(iter(state.gateways.values())).ledger.rows()
+    rows = union(state.central.rows(), own)
+    return dashboard.render(
+        rows,
+        state.central.sources(),
+        proxy_rows=len(own),
+        generated_utc=dt.datetime.fromtimestamp(state.wall(), dt.UTC).isoformat(),
+    )
+
+
+# -- the semantic cache ----------------------------------------------------------------------
+
+
+def _semcache(
+    state: ServerState,
+    team: str,
+    data_class: DataClass,
+    redaction: Redacted | None,
+    flagged: bool,
+    parsed: wire.Parsed,
+    headers: dict[str, str],
+    *,
+    marked: bool,
+) -> SemanticCache | None:
+    """The team's cache when this request may use it, else None with the reason in the
+    `x-boundary-cache` header. A request is served from the cache, or stored in it, only
+    when every one of these holds (0.27, B2.5):
+
+    - the class's `cache` flag is true: `public` and `internal` in the Canadian policy, never
+      `personal` or `sensitive`, redacted or not (the flag of the class declared, not of the
+      class a redacted request is judged as);
+    - it was not redacted, so no placeholder and no vault entry is ever in the cache;
+    - the injection screen did not flag it, so a flagged prompt's answer is never handed to
+      anyone else;
+    - it is not a stream, which is answered live: a hit has no first token to time;
+    - the caller marked the final message as a bare question, with `X-Boundary-Cache:
+      question`. docs/cache.md measured why: a question inside a retrieved page cannot be
+      cached by embedding the message, because the page is most of the text and every
+      question about it looks alike (28.6% false hits at a cosine of 0.99). The proxy
+      cannot tell a bare question from a prompt with a page in it; the caller can.
+    """
+    if state.semcaches is None:
+        return None
+    reason = None
+    if not marked:
+        reason = "unmarked"
+    elif not state.policy.classes[data_class].cache:
+        reason = "class"
+    elif redaction is not None:
+        reason = "redacted"
+    elif flagged:
+        reason = "injection"
+    elif parsed.stream:
+        reason = "stream"
+    else:
+        messages = list(parsed.request.messages)
+        last = messages[-1] if messages else {}
+        if str(last.get("role")) != "user" or not isinstance(last.get("content"), str):
+            # A scope is everything but a final user message of plain text; anything else
+            # has no question to compare.
+            reason = "shape"
+    if reason is not None:
+        headers["x-boundary-cache"] = f"skip: {reason}"
+        return None
+    return state.semcaches[team]
 
 
 # -- one call -------------------------------------------------------------------------------

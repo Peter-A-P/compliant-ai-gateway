@@ -12,8 +12,14 @@ fresh proxy and ledger:
 - `audit`: the same, with the audit chain appended as the proxy answers.
 - `redaction`: the same, with no header, so the request is `personal` and redacted, and the
   answer rehydrated.
-
-B4's fourth layer, the cache, does not exist yet. The interval on each figure is a bootstrap
+- `cache` (0.27): `audit` plus the semantic cache, on the path a miss takes: every request
+  is a bare question marked for the cache (`QUESTION`, not the page the other layers send,
+  because a page is never cached) carrying its own number, so every one is embedded, looked
+  up, missed and stored. Public
+  data, because personal data is never cached, so this layer branches from `audit` rather
+  than stacking on `redaction`. A hit skips the upstream altogether, so its latency is not
+  an overhead on it; the miss is the price every request pays for the cache being on.
+ The interval on each figure is a bootstrap
 over runs, not over requests: requests within a run share whatever the machine was doing.
 
 **Where it runs decides what it means.** B4 publishes the overhead budget from the first
@@ -29,6 +35,7 @@ import json
 import os
 import platform
 import random
+import secrets
 import shutil
 import socket
 import subprocess
@@ -48,7 +55,10 @@ import yaml
 # query parameter, which answered every request with a 422 in the first trial of this file.
 from fastapi import FastAPI, Request
 
-LAYERS = ("routing", "audit", "redaction")
+LAYERS = ("routing", "audit", "redaction", "cache")
+# The cache layer's threshold: 1.0, so that no two requests, each with its own number, can
+# hit, and every request pays the miss path.
+CACHE_MISS_THRESHOLD = "1.0"
 MOCK_DELAY_S = 0.050
 KEY = "bnd_loadtest-key"
 MODEL = "loadmock/m"
@@ -68,6 +78,12 @@ MIN_RUNS = 3
 MAX_ERROR_SHARE = 0.01
 # Saturated runs after which a cell stops: more runs only take longer to say so.
 SATURATED_STOP = 2
+# A run whose mock p99 sits this far above its own p50 had a pause on the machine while the
+# baseline was taken (0.27). The mock does nothing but wait 50 ms, so a 200 ms p99 is the
+# host, and subtracting it from the proxy's p99 gave a negative overhead in the first 0.27
+# run. Such a run is dropped and counted, as a stalled client run is. A pause during the
+# proxy's own run is not detectable apart from the proxy, and stays in the figure.
+MOCK_STALL_MS = 20.0
 # About a page of the kind of text the proxy exists for: a person, an email address, a phone
 # number and a file number, so the redaction layer has real work and the echo has a size.
 TEXT = (
@@ -77,6 +93,12 @@ TEXT = (
     "part. The file was assigned to Gerald Penney, an analyst, who notified a third party. "
     "Confirm the request, the file number and that the review is under way."
 )
+
+# The cache layer's question. The cache only ever sees a message its caller marked as a bare
+# question (docs/cache.md), so that is what this layer sends, not the page the others send.
+# Embedding cost grows with length: on the VPS, bge-small takes about 5 ms for this and 22 ms
+# for TEXT.
+QUESTION = "How long do I have to dispute a charge on my credit card statement?"
 
 
 def mock_app(delay_s: float = MOCK_DELAY_S) -> Any:
@@ -186,6 +208,7 @@ async def _drive(
     body: dict[str, Any],
     lags: list[float] | None = None,
     clock: Callable[[], float] = time.perf_counter,
+    unique: bool = False,
 ) -> tuple[list[float], int]:
     """Open loop at `rps` for `duration_s`. Latency runs from each request's scheduled time,
     so falling behind is measured rather than hidden. Returns latencies in ms and errors.
@@ -193,14 +216,21 @@ async def _drive(
     passes `ABANDON_LAG_S` the rest of the run is not sent."""
     latencies: list[float] = []
     errors = 0
+    nonce = secrets.token_hex(6)
     n = int(rps * duration_s)
     interval = 1.0 / rps
     start = clock() + 0.05
 
-    async def one(scheduled: float) -> None:
+    async def one(scheduled: float, i: int) -> None:
         nonlocal errors
+        payload = body
+        if unique:
+            # Every request its own question (the cache layer).
+            msgs = [dict(m) for m in body["messages"]]
+            msgs[0]["content"] = f"{msgs[0]['content']} Reference {nonce}-{i}."
+            payload = {**body, "messages": msgs}
         try:
-            r = await client.post(url, json=body, headers=headers)
+            r = await client.post(url, json=payload, headers=headers)
             ok = r.status_code == 200
         except httpx.HTTPError:
             ok = False
@@ -219,7 +249,7 @@ async def _drive(
             break
         if lags is not None:
             lags.append(max(0.0, (clock() - scheduled) * 1000.0))
-        tasks.append(asyncio.create_task(one(scheduled)))
+        tasks.append(asyncio.create_task(one(scheduled, i)))
     await asyncio.gather(*tasks)
     return latencies, errors
 
@@ -246,6 +276,8 @@ class Cell:
     # k6 only: what the proxy's failures were, summed over runs. `timeout` is no answer in
     # 30 s or no connection, `dropped` a request k6 could not start for want of a free user.
     failures: dict[str, int] = field(default_factory=dict)
+    # Runs dropped because the mock's own p99 showed a pause on the host (MOCK_STALL_MS).
+    mock_stalled_runs: int = 0
 
     @property
     def excluded_runs(self) -> int:
@@ -270,7 +302,9 @@ class Cell:
             return (
                 f"k6 could not start {max(self.dropped_iterations)} requests on schedule in a run"
             )
-        worst = max(self.send_lag_p99_ms, default=float("nan"))
+        if not self.send_lag_p99_ms:
+            return f"fewer than {MIN_RUNS} clean runs"
+        worst = max(self.send_lag_p99_ms)
         return f"the client sent up to {worst:.0f} ms late at p99"
 
     @property
@@ -336,6 +370,10 @@ class LoadResults:
                 cols.append(f"{mean:.1f} ({lo:.1f} to {hi:.1f})")
             dropped = (
                 f"  ({c.excluded_runs} run dropped: client stalled)" if c.excluded_runs else ""
+            ) + (
+                f"  ({c.mock_stalled_runs} run dropped: host paused during the baseline)"
+                if c.mock_stalled_runs
+                else ""
             )
             lines.append(
                 f"{c.layer:<11}{c.rps:>5}  {cols[0]:<22}{cols[1]:<22}{cols[2]:<22}"
@@ -445,11 +483,14 @@ def run(
                 ]  # fmt: skip
                 if layer == "routing":
                     cmd.append("--no-audit")
+                if layer == "cache":
+                    cmd += ["--semantic-cache", CACHE_MISS_THRESHOLD]
                 proxy = subprocess.Popen(
                     cmd, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
                 )
                 try:
-                    _wait(f"http://127.0.0.1:{port}/healthz", proxy)
+                    # The cache layer loads its embedding model before it answers.
+                    _wait(f"http://127.0.0.1:{port}/healthz", proxy, timeout_s=180.0)
                     headers = {"authorization": f"Bearer {KEY}"}
                     if layer != "redaction":
                         headers["x-data-class"] = "public"
@@ -458,13 +499,29 @@ def run(
                         "messages": [{"role": "user", "content": TEXT}],
                         "max_tokens": 200,
                     }
+                    unique = layer == "cache"
+                    if unique:
+                        headers["x-boundary-cache"] = "question"
+                        body["messages"] = [{"role": "user", "content": QUESTION}]
                     for rps in levels:
                         cell = Cell(layer, rps)
                         if generator == "k6":
-                            _cell_k6(cell, port, mock_port, headers, body, runs, duration_s, work)
+                            _cell_k6(
+                                cell, port, mock_port, headers, body, runs, duration_s, work,
+                                unique=unique,
+                            )  # fmt: skip
                         else:
                             asyncio.run(
-                                _cell(cell, port, mock_port, headers, body, runs, duration_s)
+                                _cell(
+                                    cell,
+                                    port,
+                                    mock_port,
+                                    headers,
+                                    body,
+                                    runs,
+                                    duration_s,
+                                    unique=unique,
+                                )
                             )
                         cells.append(cell)
                         # Progress as it goes, so a run that dies later has still said something.
@@ -500,14 +557,18 @@ async def _cell(
     body: dict[str, Any],
     runs: int,
     duration_s: float,
+    *,
+    unique: bool = False,
 ) -> None:
     limits = httpx.Limits(max_connections=2000, max_keepalive_connections=2000)
     async with httpx.AsyncClient(limits=limits, timeout=30.0) as client:
         proxy_url = f"http://127.0.0.1:{port}/v1/chat/completions"
         mock_url = f"http://127.0.0.1:{mock_port}/v1/chat/completions"
         # Warm both: connections, the proxy's first-call costs, the mock's.
-        await _drive(client, proxy_url, rps=20, duration_s=1.0, headers=headers, body=body)
-        await _drive(client, mock_url, rps=20, duration_s=1.0, headers={}, body=body)
+        await _drive(
+            client, proxy_url, rps=20, duration_s=1.0, headers=headers, body=body, unique=unique
+        )
+        await _drive(client, mock_url, rps=20, duration_s=1.0, headers={}, body=body, unique=unique)
         for _ in range(runs):
             lags: list[float] = []
             mock_lat, _mock_errors = await _drive(
@@ -518,10 +579,11 @@ async def _cell(
                 headers={},
                 body=body,
                 lags=lags,
+                unique=unique,
             )
             proxy_lat, proxy_err = await _drive(
                 client, proxy_url, rps=cell.rps, duration_s=duration_s, headers=headers,
-                body=body, lags=lags,
+                body=body, lags=lags, unique=unique,
             )  # fmt: skip
             lag = round(_p(lags, 0.99), 3) if lags else float("inf")
             cell.send_lag_p99_ms.append(lag)
@@ -539,6 +601,9 @@ async def _cell(
                     break
                 continue
             if not mock_lat:
+                continue
+            if _p(mock_lat, 0.99) - _p(mock_lat, 0.50) > MOCK_STALL_MS:
+                cell.mock_stalled_runs += 1
                 continue
             for q in PERCENTILES:
                 name = f"p{int(q * 100)}"
@@ -565,8 +630,18 @@ export const options = {
   } },
 };
 const body = JSON.stringify(cfg.body);
+let n = 0;
 export default function () {
-  const r = http.post(cfg.url, body, { headers: cfg.headers, timeout: "30s" });
+  let payload = body;
+  if (cfg.unique) {
+    // Every request its own question, so none repeats another (the cache layer), in this
+    // run or any other: the nonce is fresh for every k6 process.
+    n += 1;
+    const b = JSON.parse(body);
+    b.messages[0].content += " Reference " + cfg.nonce + "-" + __VU + "-" + n + ".";
+    payload = JSON.stringify(b);
+  }
+  const r = http.post(cfg.url, payload, { headers: cfg.headers, timeout: "30s" });
   if (r.status === 0) statuses.s0.add(1);
   else if (r.status >= 500) statuses.s5xx.add(1);
   else if (r.status >= 400) statuses.s4xx.add(1);
@@ -590,7 +665,7 @@ export function handleSummary(data) {
 
 def _k6(
     work: Path, url: str, *, rps: int, duration_s: float, headers: dict[str, str],
-    body: dict[str, Any],
+    body: dict[str, Any], unique: bool = False,
 ) -> dict[str, float]:  # fmt: skip
     """One k6 run against `url`; its summary. k6 times each request from its send, and a
     request it could not send on time is a dropped iteration rather than a late one."""
@@ -609,6 +684,8 @@ def _k6(
                 "vus": max(20, rps // 2),
                 "headers": {"content-type": "application/json", **headers},
                 "body": body,
+                "unique": unique,
+                "nonce": secrets.token_hex(6),
             }
         ),
         encoding="utf-8",
@@ -635,17 +712,33 @@ def _cell_k6(
     runs: int,
     duration_s: float,
     work: Path,
+    *,
+    unique: bool = False,
 ) -> None:
     """`_cell` with k6 as the generator: the same pairing of a mock run and a proxy run, the
     same overhead per run, and a run the generator could not keep to schedule excluded."""
     proxy_url = f"http://127.0.0.1:{port}/v1/chat/completions"
     mock_url = f"http://127.0.0.1:{mock_port}/v1/chat/completions"
-    _k6(work, proxy_url, rps=20, duration_s=1.0, headers=headers, body=body)
-    _k6(work, mock_url, rps=20, duration_s=1.0, headers={}, body=body)
+    _k6(work, proxy_url, rps=20, duration_s=1.0, headers=headers, body=body, unique=unique)
+    _k6(work, mock_url, rps=20, duration_s=1.0, headers={}, body=body, unique=unique)
     for _ in range(runs):
-        mock = _k6(work, mock_url, rps=cell.rps, duration_s=duration_s, headers={}, body=body)
+        mock = _k6(
+            work,
+            mock_url,
+            rps=cell.rps,
+            duration_s=duration_s,
+            headers={},
+            body=body,
+            unique=unique,
+        )
         proxy = _k6(
-            work, proxy_url, rps=cell.rps, duration_s=duration_s, headers=headers, body=body
+            work,
+            proxy_url,
+            rps=cell.rps,
+            duration_s=duration_s,
+            headers=headers,
+            body=body,
+            unique=unique,
         )
         # Dropped against the mock is the client's limit. Dropped against the proxy alone is
         # the proxy's: its slow answers held every virtual user, so none was free on time.
@@ -668,6 +761,9 @@ def _cell_k6(
             cell.saturated_runs += 1
             if cell.saturated_runs >= SATURATED_STOP:
                 break
+            continue
+        if float(mock["p99"]) - float(mock["p50"]) > MOCK_STALL_MS:
+            cell.mock_stalled_runs += 1
             continue
         for name in ("p50", "p95", "p99"):
             pm, mm = float(proxy[name]), float(mock[name])

@@ -74,7 +74,9 @@ CREATE TABLE IF NOT EXISTS ledger (
     ttft_ms             REAL,
     data_class          TEXT,
     redacted            INTEGER,
-    injection           INTEGER
+    injection           INTEGER,
+    cache_similarity    REAL,
+    cache_source        TEXT
 );
 
 -- Indexes over columns that every schema version has. The indexes over call_uid and
@@ -89,6 +91,10 @@ CREATE TABLE IF NOT EXISTS ledger (
 --   injection 1 when the screen flagged the request, null otherwise. It records that a rule
 --             fired, never what it matched: the rule names go in the response header and
 --             the refusal body, and the text stays with the caller.
+-- v11 (0.27, September 2026) adds two columns for the proxy's semantic cache:
+--   cache_similarity  the cosine between this request's question and the stored one whose
+--                     answer was returned; null unless the semantic cache answered.
+--   cache_source      that stored call's call_uid, so a hit names the call it reused.
 CREATE INDEX IF NOT EXISTS ledger_project_ts ON ledger (project, ts_utc);
 CREATE INDEX IF NOT EXISTS ledger_project_run ON ledger (project, run_id);
 

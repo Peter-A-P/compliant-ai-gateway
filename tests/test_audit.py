@@ -27,7 +27,7 @@ from boundary.audit import (
     verify,
 )
 from boundary.audit.chain import (
-    SEALED_V3,
+    SEALED_V4,
     Record,
     build,
     canonical,
@@ -109,8 +109,8 @@ def test_a_record_carries_the_sealed_columns_and_nothing_else() -> None:
     row = {**_ledger(1)[0], "raw_path": "C:/Users/somebody/raw/1.json", "trace_id": "abc"}
     body = json.loads(ledger_body(row, sealed_utc="t"))
     assert set(body) == {"kind", "schema", "sealed_utc", "row"}
-    assert tuple(sorted(body["row"])) == tuple(sorted(SEALED_V3))
-    assert body["schema"] == 3 and "redacted" in body["row"] and "injection" in body["row"]
+    assert tuple(sorted(body["row"])) == tuple(sorted(SEALED_V4))
+    assert body["schema"] == 4 and "redacted" in body["row"] and "cache_source" in body["row"]
     assert "raw_path" not in body["row"] and "trace_id" not in body["row"]
 
 
@@ -141,7 +141,7 @@ def test_a_schema_1_row_that_was_redacted_is_resealed_once(tmp_path: Path) -> No
         assert (stats.sealed, stats.resealed, stats.unchanged) == (0, 1, 3)
         assert log.seal(ledger).resealed == 0, "idempotent"
         last = json.loads(log.records()[-1].body)
-        assert last["schema"] == 3 and last["row"]["redacted"] == 1
+        assert last["schema"] == 4 and last["row"]["redacted"] == 1
         assert verify(log.records(), ledger_rows=ledger).ok
 
 
@@ -180,7 +180,7 @@ def test_a_schema_2_row_flagged_since_is_resealed_once(tmp_path: Path) -> None:
         stats = log.seal(ledger)
         assert (stats.sealed, stats.resealed, stats.unchanged) == (0, 1, 3)
         last = json.loads(log.records()[-1].body)
-        assert last["schema"] == 3 and last["row"]["injection"] == 1
+        assert last["schema"] == 4 and last["row"]["injection"] == 1
         assert verify(log.records(), ledger_rows=ledger).ok
 
 

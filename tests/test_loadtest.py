@@ -8,6 +8,7 @@ import random
 from pathlib import Path
 
 import httpx
+import pytest
 
 from boundary.loadtest import Cell, LoadResults, _ci, _drive, _p
 
@@ -146,3 +147,42 @@ def test_a_proxy_that_cannot_hold_the_rate_is_saturated_not_generator_bound() ->
     assert "saturated: 9386 of 10000" in out and "generator-bound" not in out
     row = LoadResults("x", "t", "the VPS", True, 5, 10.0, 50.0, [cell]).readme_rows()
     assert "saturated" in row and row.endswith("| 9386 of 10000 |")
+
+
+def _summary(
+    p50: float, p99: float, *, requests: int = 500, failed: int = 0, dropped: int = 0
+) -> dict[str, float]:
+    return {"p50": p50, "p95": p50 + 1, "p99": p99, "requests": requests, "failed": failed,
+            "dropped": dropped, "s0": 0, "s4xx": 0, "s5xx": 0}  # fmt: skip
+
+
+def test_k6_runs_are_sorted_into_measured_stalled_dropped_and_saturated(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The k6 cell's rules, on canned summaries (0.26, 0.27): a clean pair is an overhead; a
+    pause in the mock's baseline drops the run; dropped against the mock is the client's
+    limit; failures against the proxy while the mock is clean are saturation."""
+    from boundary import loadtest
+
+    script = iter(
+        [
+            _summary(52, 55), _summary(52, 55),  # warm-up, proxy then mock
+            _summary(52, 53), _summary(55, 58),  # run 1: mock, proxy: clean, 3 ms p50
+            _summary(52, 240), _summary(55, 58),  # run 2: the host paused in the baseline
+            _summary(52, 53, dropped=4), _summary(55, 58),  # run 3: the client's limit
+            _summary(52, 53), _summary(55, 59),  # run 4: clean
+            _summary(52, 53), _summary(55, 60),  # run 5: clean
+        ]
+    )  # fmt: skip
+    monkeypatch.setattr(loadtest, "_k6", lambda *a, **k: next(script))
+    cell = Cell("audit", 50)
+    loadtest._cell_k6(cell, 1, 2, {}, {}, 5, 10.0, tmp_path)
+    assert cell.overhead_ms["p50"] == [3.0, 3.0, 3.0]
+    assert cell.mock_stalled_runs == 1 and cell.dropped_iterations.count(4) == 1
+    assert not cell.generator_bound and not cell.saturated
+
+    script = iter([_summary(52, 55)] * 2 + [_summary(52, 53), _summary(900, 5000, failed=100)] * 2)
+    monkeypatch.setattr(loadtest, "_k6", lambda *a, **k: next(script))
+    cell = Cell("audit", 200)
+    loadtest._cell_k6(cell, 1, 2, {}, {}, 5, 10.0, tmp_path)
+    assert cell.saturated and cell.saturated_runs == 2, "stops after two"

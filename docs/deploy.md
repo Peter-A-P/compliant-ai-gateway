@@ -20,7 +20,7 @@ The host is the machine the published load test names. It runs nothing else.
 | Service | What | Reachable from |
 |---|---|---|
 | `caddy` | TLS from Let's Encrypt, HTTP to HTTPS, HSTS, a 2 MB body limit, server-sent events flushed as they arrive | ports 80 and 443 |
-| `gateway` | `boundary serve` on the tagged checkout, as a non-root user; the ledger and the audit chain are SQLite files on `/srv/boundary/data` | Caddy only: compose publishes no port for it |
+| `gateway` | `boundary serve` on the tagged checkout, as a non-root user; the ledger, the audit chain and the central ledger (0.27, docs/central.md) are SQLite files on `/srv/boundary/data` | Caddy only: compose publishes no port for it |
 
 **Postgres, pgvector and Redis are not deployed yet.** PLAN.md puts them on this host, and
 they will be, but today the proxy's ledger and audit chain are SQLite and its vault is in

@@ -1,4 +1,4 @@
-# The ledger, schema v10
+# The ledger, schema v11
 
 One SQLite file per environment (`ledger.path` in `boundary.yaml`, or `ledger_path` on the
 gateway), combined by `boundary ledger merge`. Writing locally rather than to one central
@@ -28,7 +28,8 @@ again by something the vendor also knows.
 **v4 (0.2.1)** adds `residency`, **v5 (0.2.2)** adds `price_sha256`, **v6 (0.3)** adds
 `ttft_ms`, **v7 (0.4)** adds `data_class`, and **v8 (0.15)** adds `redacted`, each one
 nullable column and nothing else. **v9 (0.19)** adds no column: it adds a derived table,
-`ledger_spend`, described below. **v10 (0.22)** adds `injection`, one nullable column. No
+`ledger_spend`, described below. **v10 (0.22)** adds `injection`, one nullable column. **v11 (0.27)** adds `cache_similarity`
+and `cache_source`, two nullable columns for the proxy's semantic cache. No
 existing row is backfilled by any of them: a value invented after the fact would be a claim
 the call never made.
 
@@ -57,6 +58,8 @@ hand, and inventing one would let the same call merge twice.
 | `residency` | text or null | `single-region`, `geo` or `global`, as declared on the provider entry (v4). Null when none was declared, which is not the same as `global` |
 | `data_class` | text or null | `public`, `internal`, `personal` or `sensitive`, as the **caller** declared on the call (v7). Null when it declared none, which is not the same as `public`. A declaration and never an inference: the library does not read content to guess one. Validated before the row is written, so the column never holds a word outside the vocabulary |
 | `injection` | integer or null | 1 when the proxy's injection screen flagged the request (v10), null otherwise and on every earlier row. Never 0. It records that a rule fired, never what it matched (docs/screen.md) |
+| `cache_similarity` | real or null | On a row the proxy's semantic cache answered (v11): the cosine between this request's question and the stored one whose answer was returned. Null on every other row, and on every row before 0.27. Such a row has `cached = 1`, zero tokens and a cost of zero (docs/cache.md) |
+| `cache_source` | text or null | On the same rows (v11): the `call_uid` of the stored call whose answer was reused, so a hit always names the call it came from |
 | `redacted` | integer or null | 1 when the caller said the request was sent redacted (v8), which the proxy says when it redacted the payload itself and the guard passed. Null otherwise, and on every row written before the column existed. Never 0: a caller that says nothing has made no claim, and the library cannot look. A redacted row keeps its declared `data_class`, so `personal` with `redacted = 1` is personal data that left the boundary as placeholders |
 | `input_tokens` | integer | As returned. For OpenAI-compatible hosts this is `prompt_tokens` minus cached tokens |
 | `output_tokens` | integer | As returned |

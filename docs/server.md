@@ -275,6 +275,12 @@ anybody reads them.
 | `X-Data-Class` | The class of the data. Absent is `personal` |
 | `X-Boundary-Purpose` | The row's `purpose`. Default `proxy`. At most 200 characters |
 | `X-Boundary-Run-Id` | The row's `run_id`, which the team's per-run budget is measured against |
+| `X-Boundary-Cache: question` | The final user message is a bare question, which the semantic cache may answer and store (0.27, only when the proxy runs with `--semantic-cache`). Unmarked, the cache is not used (docs/cache.md) |
+
+When the semantic cache is on, every answer says what it did in `x-boundary-cache`: `hit`
+(with `x-boundary-cache-similarity` and `x-boundary-cache-source`, the call whose answer was
+reused), `miss`, or `skip: <reason>`. The reasons are `unmarked`, `class`, `redacted`,
+`injection`, `stream` and `shape`.
 
 ## Upstream failures
 
@@ -297,6 +303,6 @@ Each of these is in PLAN.md Part B and lands in the stage it names:
   `boundary serve` seals every call into `<ledger>.audit.sqlite` as its row completes (turn
   it off with `--no-audit`). `GET /audit/head` publishes the head with no key, and an Action
   commits it to this repository every day (docs/audit.md).
-- No semantic cache (B2.5), no injection screen (B2.6), no dashboard, SQLite rather than
-  Postgres, and one process.
+- No dashboard, SQLite rather than Postgres, and one process. The semantic cache (0.27) is
+  in memory, per process, and empty after a restart.
 - Typed tool calls are refused rather than carried (PLAN.md B11).

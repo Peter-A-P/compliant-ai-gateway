@@ -456,6 +456,65 @@ def cmd_ledger_residency(args: argparse.Namespace) -> int:
     return 2
 
 
+def cmd_ledger_push(args: argparse.Namespace) -> int:
+    """Copy this ledger's rows to a central ledger (0.27). Every row, every time: the far
+    side merges by call_uid, so a push is safe to repeat, and the count it reports is what
+    the dashboard's completeness panel compares against. The ingest key is read from
+    BOUNDARY_INGEST_KEY and never from a flag, so it stays out of shell history."""
+    import collections
+    import os
+
+    import httpx
+
+    key = os.environ.get("BOUNDARY_INGEST_KEY", "").strip()
+    if not key:
+        print("error: set BOUNDARY_INGEST_KEY to an ingest key", file=sys.stderr)
+        return 2
+    cfg = load_config(args.config)
+    path = Path(args.ledger) if args.ledger else cfg.ledger.path
+    if not path.is_file():
+        print(f"no ledger at {path}", file=sys.stderr)
+        return 1
+    # Read as `ledger merge` reads a source, from a temporary copy: opening a ledger upgrades
+    # it in place, and a push must never stop an older library appending to its own file.
+    from boundary.ledger.store import _read_source_rows
+
+    rows = _read_source_rows(path)
+    if args.project:
+        # Only the named projects' rows leave the machine: a laptop ledger can hold calls for
+        # a project whose repository is still private, and a public dashboard is not where
+        # it should first appear. The completeness count is then of those rows.
+        rows = [r for r in rows if r.get("project") in set(args.project)]
+    envs = collections.Counter(str(r.get("env") or "-") for r in rows)
+    env = envs.most_common(1)[0][0] if envs else None
+    source = args.source or f"{env or '-'}:{path.name}"
+    url = args.url.rstrip("/") + "/v1/ledger/ingest"
+    batch = max(1, min(args.batch, 1000))
+    totals = collections.Counter[str]()
+    held = 0
+    with httpx.Client(timeout=60.0) as client:
+        for i in range(0, max(len(rows), 1), batch):
+            chunk = [{k: v for k, v in r.items() if k != "id"} for r in rows[i : i + batch]]
+            r = client.post(
+                url,
+                json={"source": source, "env": env, "local_rows": len(rows), "rows": chunk},
+                headers={"authorization": f"Bearer {key}"},
+            )
+            if r.status_code != 200:
+                print(f"error: {r.status_code} {r.text[:300]}", file=sys.stderr)
+                return 1
+            out = r.json()
+            for k in ("inserted", "completed", "already_held"):
+                totals[k] += int(out[k])
+            held = int(out["held"])
+    print(
+        f"{source}: {len(rows)} row(s) pushed; {totals['inserted']} inserted, "
+        f"{totals['completed']} completed, {totals['already_held']} already held; the "
+        f"central ledger holds {held} of this source's {len(rows)}"
+    )
+    return 0 if held >= len(rows) else 1
+
+
 def cmd_ledger_merge(args: argparse.Namespace) -> int:
     """Combine per-environment ledgers into one file. Idempotent: a second run of the same
     sources inserts nothing, which is the property the local-first design rests on."""
@@ -864,6 +923,16 @@ def cmd_cache_eval(args: argparse.Namespace) -> int:
     return 0
 
 
+def loadtest_layers() -> tuple[str, ...]:
+    """The load test's layers, from the harness itself, so the default can never miss one
+    (0.27: the first run with a cache layer skipped it, because this default was a copy)."""
+    try:
+        from boundary.loadtest import LAYERS
+    except ImportError:  # the server extra is missing; the command says so when run
+        return ("routing", "audit", "redaction", "cache")
+    return LAYERS
+
+
 def cmd_loadtest(args: argparse.Namespace) -> int:
     """The layered load test (0.19, PLAN.md B4): the proxy against a 50 ms mock upstream, by
     layer and load level. Local processes only; no vendor is called and nothing is spent."""
@@ -929,6 +998,10 @@ def cmd_policy_eval(args: argparse.Namespace) -> int:
 
 
 PROXY_LEDGER = "boundary.proxy.sqlite"
+# The threshold `boundary cache eval` chose on the odd half and reported on the even
+# (0.25, docs/cache.md), and a bound on each team's cache for a long-running proxy.
+SEMCACHE_THRESHOLD = 0.82
+SEMCACHE_MAX_ENTRIES = 20_000
 
 
 def cmd_serve(args: argparse.Namespace) -> int:
@@ -965,16 +1038,37 @@ def cmd_serve(args: argparse.Namespace) -> int:
         if args.no_audit
         else (Path(args.audit) if args.audit else ledger.with_name(ledger.stem + ".audit.sqlite"))
     )
+    semantic_cache = None
+    if args.semantic_cache is not None:
+        try:
+            from boundary.semcache import BgeSmall, SemanticCache
+        except ImportError:
+            print("error: --semantic-cache needs the cache extra", file=sys.stderr)
+            return 2
+        try:
+            embedder = BgeSmall()
+        except ImportError:
+            print("error: --semantic-cache needs the cache extra: uv sync --extra cache",
+                  file=sys.stderr)  # fmt: skip
+            return 2
+        threshold = float(args.semantic_cache)
+
+        def semantic_cache() -> SemanticCache:
+            return SemanticCache(embedder, threshold=threshold, max_entries=SEMCACHE_MAX_ENTRIES)
+
     app = create_app(
         cfg,
         load_teams(teams_path),
         ledger_path=ledger,
         policy=load_policy(policy_path),
         audit_path=audit,
+        semantic_cache=semantic_cache,
+        central_path=Path(args.central) if args.central else None,
     )
     print(
         f"boundary {__version__} proxy on http://{args.host}:{args.port}/v1 "
-        f"(teams {teams_path}, policy {policy_path}, ledger {ledger}, audit {audit})",
+        f"(teams {teams_path}, policy {policy_path}, ledger {ledger}, audit {audit}, "
+        f"semantic cache {args.semantic_cache if args.semantic_cache is not None else 'off'})",
         file=sys.stderr,
     )
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")
@@ -1362,6 +1456,22 @@ def main(argv: list[str] | None = None) -> int:
         help="report what would be inserted without writing to the destination",
     )
     merge.set_defaults(func=cmd_ledger_merge)
+    push = ledger.add_parser(
+        "push", help="send a copy of this ledger's rows to a central ledger (docs/central.md)"
+    )
+    push.add_argument("--url", required=True, help="the proxy, e.g. https://gateway.peterparker.ca")
+    push.add_argument("--ledger", help="the ledger to push (default from config)")
+    push.add_argument(
+        "--source",
+        help="what the central ledger calls this file (default: <env>:<file name>)",
+    )
+    push.add_argument(
+        "--project",
+        action="append",
+        help="push only this project's rows (repeatable); the rest never leave the machine",
+    )
+    push.add_argument("--batch", type=int, default=500)
+    push.set_defaults(func=cmd_ledger_push)
 
     pol = sub.add_parser(
         "policy", help="the data policy: which provider each class of data may reach"
@@ -1436,6 +1546,24 @@ def main(argv: list[str] | None = None) -> int:
     serve.add_argument(
         "--no-audit", dest="no_audit", action="store_true", help="keep no audit chain"
     )
+    serve.add_argument(
+        "--semantic-cache",
+        dest="semantic_cache",
+        type=float,
+        nargs="?",
+        const=SEMCACHE_THRESHOLD,
+        default=None,
+        metavar="THRESHOLD",
+        help="answer repeats from a semantic cache, one per team (cache extra; off by "
+        f"default). THRESHOLD is the cosine for a hit, default {SEMCACHE_THRESHOLD}, the one "
+        "docs/cache.md measured",
+    )
+    serve.add_argument(
+        "--central",
+        default=None,
+        help="keep a central ledger at this path: POST /v1/ledger/ingest accepts pushed rows "
+        "(ingest keys in teams.yaml) and GET /dashboard shows them (docs/central.md)",
+    )
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", type=int, default=8080)
     serve.set_defaults(func=cmd_serve)
@@ -1451,7 +1579,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     lt.add_argument("--runs", type=int, default=5)
     lt.add_argument("--duration", type=float, default=10.0, help="seconds per run")
-    lt.add_argument("--layers", default=",".join(("routing", "audit", "redaction")))
+    lt.add_argument("--layers", default=",".join(loadtest_layers()))
     lt.add_argument("--machine", default=None, help="what to call the machine in the output")
     lt.add_argument(
         "--generator",

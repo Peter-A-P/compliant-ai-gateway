@@ -36,19 +36,78 @@ boundary loadtest --from bench/loadtest.json --write-readme   # fill the README 
   `python`, is the open-loop client below, which counts from the schedule instead.
 - **Layers, cumulative**: `routing` (team key, policy, routing, ledger; public data; no audit
   chain), `audit` (plus the chain appended as the proxy answers), `redaction` (no header, so
-  personal: redacted before it leaves, rehydrated after). The cache, B4's fourth layer, does
-  not exist yet.
+  personal: redacted before it leaves, rehydrated after), and since 0.27 `cache` (audit plus
+  the semantic cache, on a miss: a bare question marked for the cache, each with its own
+  number, public, because personal data is never cached, so it branches from `audit`).
 
 The request is about a page of text naming a person, an email address, a phone number and a
 file number, so the redaction layer has real work to do and the echo has a realistic size.
 
-## The VPS run: the published figure (0.26)
+## The VPS run: the published figure (0.27)
+
+2026-09-29, boundary 0.27.0, the same host, generator and settings as the 0.26 run below,
+with the fourth layer added. `bench/loadtest.json`, milliseconds:
+
+| Layer | 50 rps p50 | 50 rps p99 | 200 rps p50 | 200 rps p99 | 500 rps |
+|---|---|---|---|---|---|
+| routing | 3.7 (3.5 to 3.8) | 4.8 (4.3 to 5.6) | 4.0 (3.9 to 4.2) | 9.7 (7.7 to 12.4) | saturated, 7,145 of 10,001 failed |
+| + audit | 3.6 (3.5 to 3.7) | 4.5 (4.2 to 4.8) | 4.4 (4.2 to 4.6) | 13.2 (9.3 to 20.1) | saturated, 7,245 of 10,000 |
+| + redaction | 5.2 (5.1 to 5.3) | 5.9 (5.6 to 6.3) | saturated, 1,452 of 4,002 | | saturated |
+| cache (audit + cache, miss path) | 17.9 (17.3 to 18.6) | 54.7 (27.5 to 94.6) | saturated, 2,315 of 4,001 | | saturated |
+
+**What changed since 0.26, and why.** The 0.26 run found the proxy failing at 200 requests a
+second once the audit chain was on. Every ledger write and every audit append was an `fsync`
+on the event loop, and on this host a commit costs about 1 ms (the table below). 0.27 made
+two changes and nothing else on the timed path:
+
+- `Gateway.achat` and `achat_stream` write the ledger from a worker thread. A cap check and
+  the row that spends against it are one step under a lock per ledger file, shared by every
+  gateway on it. A test sends twelve calls at once against a cap that fits three and
+  requires exactly three sent; without the lock it fails.
+- The proxy group-commits the audit chain. A completed call schedules one seal 50 ms later,
+  in a worker thread, and every call that completes before it runs shares the commit. The
+  price is a window of up to 50 ms in which a call is in the ledger and not yet in the
+  chain. `GET /audit/head` seals before it answers, so an anchor never misses a call that
+  had completed.
+
+With the audit chain on, the proxy now holds 200 requests a second (4.4 ms p50, 13.2 ms p99),
+and its p99 at 50 fell from 6.0 to 4.5 ms. Routing alone and redaction moved within their
+intervals or slightly down. At 500 every layer still saturates, and redaction still does at
+200: what is left is CPU in one Python process, not waiting on the disk.
+
+**The cache layer.** This is audit plus the semantic cache on the path a miss takes. Every
+request is a bare question marked for the cache, carrying its own number, so each one is
+embedded, looked up, missed and stored. It is the price every request pays for having the
+cache on. A hit instead skips the upstream altogether. bge-small takes about 5 ms to embed
+a twelve-word question on this host (22 ms for the page the other layers send), and with
+several at once on four cores the miss costs about 14 ms more than the audit layer at the
+median. It saturates at 200.
+
+**Two things the runs before this one found.**
+
+- **BLAS threads.** The first cache run's overhead jumped from 16 ms to 90 ms after two runs,
+  and stayed there. The store's scores were a numpy matrix product. Past about a thousand
+  entries BLAS fans a product out over every core, and with a lookup in each of several
+  worker threads they fought for the same four. The store now scores with `einsum`, whose
+  loop stays on the calling thread. At the same size a six-run probe held 16 to 18 ms in
+  every run. The embedding's own threads were not the cause: one, two or every core gave
+  the same jump.
+- **A pause on the host during the baseline.** In an interim 0.27 run, one run's mock p99 was
+  244 ms against a 52 ms median, and subtracting it gave redaction a p99 overhead of
+  -32 ms. The mock does nothing but wait 50 ms, so such a pause is the host's. A run whose mock
+  p99 sits more than 20 ms above its own median is now dropped and counted
+  (`MOCK_STALL_MS`), as a stalled client run is. This rule was written after seeing that
+  run, and is stated as such. The published run above dropped none. A pause during the
+  proxy's own run cannot be told apart from the proxy, and stays in the figure: the routing
+  cell's wide p99 interval at 200 is that.
+
+## The first VPS run (0.26)
 
 2026-09-29, boundary 0.26.0, on the host that serves gateway.peterparker.ca: OVHcloud VPS-2,
 4 vCPU (AMD EPYC-Milan), 8 GB, Beauharnois, Ubuntu 24.04 (docs/deploy.md). The generator, the
 mock and the proxy share the host, in a throwaway container beside the live proxy, which
 served no traffic during the run. `boundary loadtest --generator k6 --levels 50,200,500 --runs
-5 --duration 10 --published`, stored in `bench/loadtest.json`, milliseconds:
+5 --duration 10 --published`, stored in `bench/loadtest-026.json`, milliseconds:
 
 | Layer | 50 rps p50 | 50 rps p99 | 200 rps p50 | 200 rps p99 | 500 rps |
 |---|---|---|---|---|---|

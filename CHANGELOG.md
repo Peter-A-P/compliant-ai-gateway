@@ -5,6 +5,33 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.27.0 (2026-09-29)
+
+**What the first VPS measurement changed, the semantic cache in the proxy, and the portfolio
+dashboard.** PLAN.md B4, B2.5 and B1; docs/loadtest.md, docs/cache.md, docs/central.md.
+
+- **Throughput**: `Gateway.achat` and `achat_stream` write the ledger from a worker thread,
+  the cap check and its row held as one step under a lock per ledger file (a test sends
+  twelve calls at a cap that fits three). The proxy group-commits the audit chain on a 50 ms
+  timer, off the loop. With the chain on, the proxy now holds 200 rps: p99 overhead 13.2 ms
+  (9.3 to 20.1), where 0.26 failed 1,760 of 4,000.
+- **Semantic cache in the proxy**: `boundary serve --semantic-cache [THRESHOLD]`, off by
+  default, 0.82 by default. Only for a message marked `X-Boundary-Cache: question`, one
+  cache per team, never personal, sensitive, redacted, flagged or streamed, only whole
+  answers. A hit is a ledger row (`Gateway.record_cache_hit`); **ledger v11** adds
+  `cache_similarity` and `cache_source`, and **audit record schema 4** seals them. The
+  `SemanticCache` store scores with numpy when present (`einsum`, after BLAS threads made a
+  miss six times slower past a thousand entries), and is bounded by `max_entries`.
+- **Load test**: the fourth layer, `cache`, on the miss path: 17.9 ms p50 at 50 rps,
+  saturated at 200. A run whose mock baseline shows a host pause is dropped and counted.
+  `--layers` defaults to the harness's own list.
+- **Central ledger and dashboard**: `boundary.central`, `boundary serve --central`,
+  `POST /v1/ledger/ingest` with ingest keys (`teams.yaml` `ingest_key_sha256`, never a team
+  key), `boundary ledger push` (from a copy of the file, `--project` to send only named
+  projects, completeness counted per source), and `GET /dashboard`, read-only and
+  server-rendered: calls, errors, refusals, cache hits, cost and latency by project, by
+  provider and model, and by day, and the completeness panel. `LedgerStore.merge_rows`.
+
 ## 0.26.0 (2026-09-29)
 
 **Deployed, anchored and load-tested on the VPS.** PLAN.md B2.4 and B4; docs/deploy.md,

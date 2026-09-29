@@ -356,8 +356,45 @@ def test_an_older_ledger_gets_its_spend_table_built_on_open(tmp_path: Path) -> N
     con.close()
     store = LedgerStore(path)
     try:
-        assert store.schema_version == 10
+        assert store.schema_version == 11
         assert store.spend_usd(project="alpha", year_month="2026-09") == pytest.approx(0.75)
         assert store.spend_usd(project=None, year_month="2026-09") == pytest.approx(0.75)
+    finally:
+        store.close()
+
+
+def test_a_v10_ledger_gains_the_cache_columns_empty(tmp_path: Path) -> None:
+    """v11 (0.27) is additive: an older file opens with the two cache columns added and
+    null on every row it already held."""
+    import sqlite3
+
+    from boundary.ledger.store import LedgerRow, utc_now
+
+    path = tmp_path / "v10.sqlite"
+    store = LedgerStore(path)
+    row = LedgerRow(
+        ts_utc=utc_now(),
+        boundary_version="0.26.0",
+        project="alpha",
+        purpose="t",
+        mode="standard",
+        provider="p",
+        model_requested="p/m",
+    )
+    store.begin(row)
+    store.complete(row)
+    store.close()
+    con = sqlite3.connect(path)
+    con.execute("ALTER TABLE ledger DROP COLUMN cache_similarity")
+    con.execute("ALTER TABLE ledger DROP COLUMN cache_source")
+    con.execute("DELETE FROM schema_version WHERE version >= 11")
+    con.execute("INSERT INTO schema_version (version, applied_utc) VALUES (10, 't')")
+    con.commit()
+    con.close()
+    store = LedgerStore(path)
+    try:
+        assert store.schema_version == 11
+        (old,) = store.rows()
+        assert old["cache_similarity"] is None and old["cache_source"] is None
     finally:
         store.close()

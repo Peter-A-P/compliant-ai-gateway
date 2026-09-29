@@ -71,7 +71,7 @@ def _write(store: LedgerStore, env: str, n: int, *, complete: bool = True) -> li
 def test_a_new_file_is_current_with_a_unique_index_on_call_uid(tmp_path: Path) -> None:
     store = _store(tmp_path, "fresh")
     try:
-        assert store.schema_version == SCHEMA_VERSION == 10
+        assert store.schema_version == SCHEMA_VERSION == 11
         row = _row("laptop")
         store.begin(row)
         assert store.rows()[0]["call_uid"] == row.call_uid

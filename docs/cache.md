@@ -1,7 +1,8 @@
 # The semantic cache
 
-`boundary.semcache` (0.25) is PLAN.md B2.5's cache, built and measured before the proxy uses
-it. It is not wired into `boundary serve` yet; this page is the evidence for how it will be.
+`boundary.semcache` (0.25) is PLAN.md B2.5's cache, built and measured before the proxy used
+it. Since 0.27 `boundary serve --semantic-cache` uses it (below). This page is the evidence
+for how it does.
 
     uv sync --extra cache
     boundary cache paraphrase     # once, US$0.024, already stored in bench/cache/
@@ -70,6 +71,34 @@ What it says:
   them. The data policy's `cache: false` for `personal` keeps redacted payloads out, and this
   is the measurement behind it.
 - **Dollars saved** depend on how often real traffic repeats, which only the replay can say.
+
+## In the proxy (0.27)
+
+`boundary serve --semantic-cache [THRESHOLD]` turns it on. It is off by default, and the
+threshold defaults to 0.82, the one chosen above. A request is looked up, and its answer
+stored, only when every one of these holds:
+
+| Rule | Why |
+|---|---|
+| The caller sends `X-Boundary-Cache: question` | The result above: a question inside a page cannot be cached by embedding the message, and only the caller knows which it sent |
+| The declared class's `cache` flag is true (`public`, `internal`) | Personal and sensitive data are never cached, redacted or not; the redaction result above is the measurement behind it |
+| It was not redacted and the injection screen did not flag it | No placeholder or vault entry ever enters the cache, and a flagged prompt's answer is never handed to anyone else |
+| It is not a stream | A stream is answered live; a hit has no first token to time |
+| One cache per team | A hit never hands one team another's answer |
+| Only a whole answer is stored | One cut off at `max_tokens` is not an answer to give another caller |
+
+**A hit is on the record like any call.** It writes a ledger row with `cached = 1`, zero
+tokens, a cost of zero, `cache_similarity` and `cache_source`, the `call_uid` of the call
+whose answer it reused (ledger v11). The audit chain seals both (record schema 4). The
+response says `x-boundary-cache: hit` with the similarity and the source; a miss says `miss`,
+and a request the rules keep out says `skip:` and which rule.
+
+**What it costs a request that misses** is the load test's `cache` layer (docs/loadtest.md):
+the question embedded on the proxy's CPU, looked up and stored.
+
+The store is in memory, one per team per process, bounded at 20,000 entries, and empty
+after a restart. With numpy (which the `cache` extra brings) a lookup is one matrix product.
+pgvector replaces it when the proxy runs on Postgres.
 
 What this cannot see: 03's questions are one domain and 100 items, the halves 50 each, and
 the paraphrases were written by a model (a floor on false hits, above). The hand-labelled 200

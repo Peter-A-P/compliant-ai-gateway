@@ -19,12 +19,12 @@ import sqlite3
 import tempfile
 import threading
 import uuid
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 from typing import Any
 
-SCHEMA_VERSION = 10
+SCHEMA_VERSION = 11
 _SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 
 IN_FLIGHT = "in_flight"
@@ -140,6 +140,12 @@ class LedgerRow:
     # fired on it, null otherwise. Never False, for the reason `redacted` is never False: a
     # row with no screen behind it has made no claim either way.
     injection: bool | None = None
+    # A semantic cache hit (v11): the cosine similarity between this request's question and
+    # the stored one whose answer was returned, and that stored call's `call_uid`. Null on
+    # every row the semantic cache did not answer, including every row before 0.27. A hit is
+    # the one row whose answer came from another call, so the row says which.
+    cache_similarity: float | None = None
+    cache_source: str | None = None
     id: int | None = field(default=None)
 
     def as_columns(self) -> dict[str, Any]:
@@ -214,6 +220,11 @@ class LedgerStore:
     def _columns(self) -> set[str]:
         return {str(r[1]) for r in self._conn.execute("PRAGMA table_info(ledger)")}
 
+    def column_names(self) -> set[str]:
+        """The ledger table's columns in this file."""
+        with self._lock:
+            return self._columns()
+
     def _migrate(self) -> int:
         """Bring the file up to SCHEMA_VERSION in place. Additive only: the upgrade adds
         columns and indexes, and never rewrites a value a call recorded.
@@ -276,6 +287,10 @@ class LedgerStore:
             if current < 10:
                 # Null for every existing row: nothing screened a call before 0.22.
                 self._add_columns(("injection", "INTEGER"))
+            if current < 11:
+                # Null for every existing row: nothing was answered from the semantic cache
+                # before 0.27.
+                self._add_columns(("cache_similarity", "REAL"), ("cache_source", "TEXT"))
             self._conn.execute(
                 "INSERT INTO schema_version (version, applied_utc) VALUES (?, ?)",
                 (SCHEMA_VERSION, utc_now()),
@@ -465,8 +480,22 @@ class LedgerStore:
             raise FileNotFoundError(f"no ledger file at {src_path}")
         if src_path.resolve() == self.path.resolve():
             raise ValueError(f"cannot merge {src_path} into itself")
-        rows = _read_source_rows(src_path)
+        return self.merge_rows(_read_source_rows(src_path), source=str(src_path), dry_run=dry_run)
+
+    def merge_rows(
+        self,
+        rows: Sequence[Mapping[str, Any]],
+        *,
+        source: str,
+        dry_run: bool = False,
+    ) -> MergeStats:
+        """`merge_from` over rows already read (0.27): what the central ledger's ingest
+        endpoint receives over the network. The same rules, in one transaction. A column
+        this ledger does not have is refused rather than dropped, so a row from a newer
+        library is never merged short."""
+        known = self.column_names()
         inserted = completed = skipped = 0
+        src_path = source
         with self._lock:
             self._conn.execute("BEGIN IMMEDIATE")
             try:
@@ -481,6 +510,12 @@ class LedgerStore:
                         "SELECT id, error_type FROM ledger WHERE call_uid = ?", (uid,)
                     ).fetchone()
                     cols = {k: v for k, v in row.items() if k != "id"}
+                    unknown = set(cols) - known
+                    if unknown:
+                        raise ValueError(
+                            f"{src_path} has column(s) this ledger does not: "
+                            f"{', '.join(sorted(unknown))}; upgrade boundary before merging"
+                        )
                     if held is None:
                         if not dry_run:
                             names = ", ".join(cols)
@@ -505,7 +540,7 @@ class LedgerStore:
                 self._conn.execute("ROLLBACK")
                 raise
         return MergeStats(
-            source=str(src_path),
+            source=source,
             source_rows=len(rows),
             inserted=inserted,
             completed=completed,

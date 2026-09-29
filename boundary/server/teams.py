@@ -53,6 +53,16 @@ class _Strict(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
+def _check_hashes(v: list[str]) -> list[str]:
+    for h in v:
+        if len(h) != 64 or not set(h) <= _HEX:
+            raise ValueError(
+                "each key_sha256 must be 64 lower-case hex characters, the SHA-256 of a "
+                "key; a raw key in this file is refused (boundary teams key prints the hash)"
+            )
+    return v
+
+
 class Team(_Strict):
     """One team. `key_sha256` is a list so a key can be rotated without an outage: add the
     new hash, move the callers, remove the old one."""
@@ -65,13 +75,7 @@ class Team(_Strict):
     @field_validator("key_sha256")
     @classmethod
     def _hashes(cls, v: list[str]) -> list[str]:
-        for h in v:
-            if len(h) != 64 or not set(h) <= _HEX:
-                raise ValueError(
-                    "each key_sha256 must be 64 lower-case hex characters, the SHA-256 of a "
-                    "key; a raw key in this file is refused (boundary teams key prints the hash)"
-                )
-        return v
+        return _check_hashes(v)
 
 
 class TeamsConfig(_Strict):
@@ -81,6 +85,15 @@ class TeamsConfig(_Strict):
     version: Literal[1]
     gateway_monthly_usd: float = Field(gt=0)
     teams: dict[str, Team] = Field(min_length=1)
+    # Keys that may push ledger rows to the central ledger (0.27, `POST /v1/ledger/ingest`).
+    # Hashes only, as for teams, and never a team's key: pushing rows is not making calls, and
+    # a key that can do one should not be able to do the other.
+    ingest_key_sha256: list[str] = Field(default_factory=list)
+
+    @field_validator("ingest_key_sha256")
+    @classmethod
+    def _ingest_hashes(cls, v: list[str]) -> list[str]:
+        return _check_hashes(v)
 
     @model_validator(mode="after")
     def _consistent(self) -> Self:
@@ -95,6 +108,11 @@ class TeamsConfig(_Strict):
                         "must identify exactly one team"
                     )
                 seen[h] = name
+        for h in self.ingest_key_sha256:
+            if h in seen:
+                raise ValueError(
+                    f"an ingest key hash is also {seen[h]!r}'s key; an ingest key must be its own"
+                )
         total = sum(t.monthly_usd for t in self.teams.values())
         if total > self.gateway_monthly_usd:
             # The same check caps.yaml has for its projects: a ceiling below the sum of the

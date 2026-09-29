@@ -79,7 +79,9 @@ class AuditLog:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         # Autocommit, with explicit transactions around each append so that reading the head
         # and writing the next record are one step for any second writer.
-        self._conn = sqlite3.connect(self.path, isolation_level=None)
+        # Usable from a worker thread (0.27: the proxy seals off its event loop). One thread
+        # at a time: the proxy's appender holds a lock around every use.
+        self._conn = sqlite3.connect(self.path, isolation_level=None, check_same_thread=False)
         self._conn.executescript(_SCHEMA)
 
     def close(self) -> None:

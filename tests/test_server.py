@@ -849,6 +849,14 @@ async def test_the_proxy_seals_every_call_as_it_answers(
         assert (await p.post(body())).status_code == 403  # personal, redacted, no residency
         streamed_ok = await p.post(body(stream=True), headers=PUBLIC)
         assert streamed_ok.status_code in (200, 502)
+        # Group commit (0.27): sealed by the scheduled flush, not by shutting down.
+        from boundary.server.app import AUDIT_FLUSH_S
+
+        for _ in range(40):
+            await asyncio.sleep(AUDIT_FLUSH_S)
+            with AuditLog(audit) as log:
+                if len(log.records()) == 3:
+                    break
         rows = p.rows()
         with AuditLog(audit) as log:
             records = log.records()
@@ -945,3 +953,51 @@ async def test_a_proxy_without_a_chain_has_no_head(
     finally:
         await http.aclose()
         await app.state.boundary.close()
+
+
+async def test_calls_completing_together_share_one_audit_commit(
+    repo_config: BoundaryConfig, tmp_path: Path, keys: None, upstream: respx.MockRouter
+) -> None:
+    """0.27: twenty calls answered at once are sealed by a handful of commits, not twenty,
+    and the chain still verifies against the ledger."""
+    from boundary.audit import AuditLog, verify
+
+    upstream.post(OPENWEIGHTS_URL).mock(return_value=completion())
+    audit = tmp_path / "proxy.audit.sqlite"
+    app = create_app(
+        repo_config,
+        teams(),
+        ledger_path=tmp_path / "proxy.sqlite",
+        policy=load_policy(CONFIG_DIR / "policy.yaml"),
+        audit_path=audit,
+        asleep=_no_sleep,
+        wall=lambda: NOW,
+    )
+    state = app.state.boundary
+    assert state.audit is not None
+    commits = 0
+    original = state.audit.log.append_bodies
+
+    def counting(bodies: Any) -> Any:
+        nonlocal commits
+        commits += 1
+        return original(bodies)
+
+    state.audit.log.append_bodies = counting
+    http = httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://proxy")
+    try:
+        auth = {"authorization": f"Bearer {KEY}", **PUBLIC}
+        replies = await asyncio.gather(
+            *(http.post("/v1/chat/completions", json=body(), headers=auth) for _ in range(20))
+        )
+        assert all(r.status_code == 200 for r in replies)
+        head = await http.get("/audit/head")
+        assert json.loads(head.text)["seq"] == 20
+        assert commits < 20
+        with AuditLog(audit) as log:
+            records = log.records()
+        rows = LedgerStore(tmp_path / "proxy.sqlite").rows()
+        assert verify(records, ledger_rows=rows).ok
+    finally:
+        await http.aclose()
+        await state.close()

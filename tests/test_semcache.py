@@ -66,3 +66,27 @@ def test_choose_takes_the_lowest_threshold_within_the_false_hit_limit() -> None:
     ]
     assert choose(c) == 0.85
     assert c.at(0.85).false_hit_rate.hits == 1
+
+
+def test_the_numpy_store_scores_as_the_pure_one_does_as_it_grows() -> None:
+    """0.27: with numpy, a scope keeps its vectors as a matrix grown by doubling. Its scores
+    must be the pure-Python cosines, through every growth step."""
+    import random
+
+    import pytest as _pytest
+
+    from boundary.semcache import _numpy, _Scope, cosine, unit
+
+    np = _numpy()
+    if np is None:
+        _pytest.skip("numpy is the cache extra's")
+    rng = random.Random(7)
+    fast, slow = _Scope(), _Scope()
+    for _ in range(40):
+        v = unit([rng.uniform(-1, 1) for _ in range(24)])
+        fast.add(v, np)
+        slow.add(v, None)
+    q = unit([rng.uniform(-1, 1) for _ in range(24)])
+    assert fast.matrix is not None and fast.matrix.shape[0] == 64
+    assert fast.scores(q, np) == _pytest.approx(slow.scores(q, None), abs=1e-6)
+    assert slow.scores(q, None) == [cosine(q, w) for w in slow.vectors]

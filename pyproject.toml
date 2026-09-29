@@ -1,6 +1,6 @@
 [project]
 name = "boundary"
-version = "0.26.0"
+version = "0.27.0"
 description = "One library every model call in the portfolio goes through: raw-HTTP adapters, routing by configuration, a cost ledger row and a telemetry span per call, spend caps, and an inviolable pass-through mode."
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
@@ -137,6 +137,12 @@ ignore_missing_imports = true
 # Same reason again: fastembed is the optional `cache` extra (0.25).
 [[tool.mypy.overrides]]
 module = ["fastembed", "fastembed.*"]
+ignore_missing_imports = true
+
+# numpy comes with fastembed, so only with the `cache` extra, which CI's type check does not
+# install; the semantic cache uses it when present (0.27).
+[[tool.mypy.overrides]]
+module = ["numpy", "numpy.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

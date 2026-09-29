@@ -116,3 +116,40 @@ def test_cost_arithmetic_needs_rates_for_the_features_used() -> None:
         full,
     ) == pytest.approx(1.0 + 0.1 + 1.25)
     assert cost_usd(Usage(output_tokens=1_000_000), full, batch=True) == pytest.approx(2.5)
+
+
+async def test_concurrent_calls_cannot_pass_a_cap_together(
+    repo_config: BoundaryConfig, tmp_path: Path, keys: None
+) -> None:
+    """0.27: the async path writes the ledger from worker threads, so the cap check and the
+    row that spends against it are held as one step. A cap that fits three estimates admits
+    three of twelve calls sent at once, across two gateways on one ledger."""
+    import asyncio
+
+    import httpx
+
+    ref = resolve(HAIKU, repo_config, Mode.STANDARD)
+    entry = PriceEntry(input=1.0, output=5.0)
+    built = AnthropicAdapter().build_request(ref, _req(), ref.provider_config, "k")
+    one = estimate_usd(len(built.body), 8, entry)
+    caps = _caps(monthly=one * 3.5)
+    a = make_gateway(repo_config, tmp_path, caps=caps)
+    b = make_gateway(repo_config, tmp_path, caps=caps)
+
+    async def slow(_request: httpx.Request) -> httpx.Response:
+        await asyncio.sleep(0.05)
+        return anthropic_ok(input_tokens=10, output_tokens=2)
+
+    try:
+        with respx.mock(assert_all_called=False) as mock:
+            route = mock.post(ANTHROPIC_URL).mock(side_effect=slow)
+            results = await asyncio.gather(
+                *((a if i % 2 else b).achat(_req(), purpose="dev") for i in range(12)),
+                return_exceptions=True,
+            )
+        refused = [r for r in results if isinstance(r, SpendCapExceeded)]
+        assert route.call_count == 3
+        assert len(refused) == 9
+    finally:
+        a.close()
+        b.close()

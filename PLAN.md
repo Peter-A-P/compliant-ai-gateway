@@ -433,6 +433,7 @@ from October the ledger-against-invoice difference is recorded there too (sectio
 | v0.24.0 | 2026-09-27 | B2.8 follow-up on 03's distractor stratum: a redacted request declines 14.4 points less often on a page that cannot answer; `quality.declines`, the `distractor` part |
 | v0.25.0 | 2026-09-27 | The semantic cache built and measured (B2.5): `boundary.semcache`, `boundary cache paraphrase` and `eval`, the `cache` extra; not yet in the proxy |
 | v0.26.0 | 2026-09-29 | Deployed at gateway.peterparker.ca (OVHcloud, Beauharnois); `GET /audit/head` and the daily anchor Action; the first VPS load test with k6, published: 3 to 7 ms at p99 where the proxy holds the rate, saturated from 200 rps with audit on |
+| v0.27.0 | 2026-09-29 | Ledger commits off the event loop and a group-committed audit chain: 200 rps held with audit on; the semantic cache in the proxy, off by default, for marked questions only, hits on the ledger (v11) and in the chain (schema 4); the load test's cache layer; the central ledger, `ledger push` and the dashboard |
 | v1.0.0 | May 23 2027 | Everything in Part B; `boundary.redact` for 07; the proxy for 13 and 14 |
 
 03 pins `boundary>=0.1,<0.3` for Part A and moves to `>=1.0` when its Part B is built
@@ -823,6 +824,16 @@ the hits were wrong, which confirms 07's repeat-rate prediction and why `persona
 cached. Still to do: the proxy wiring, the replay on real traffic, and the 200 hand-labelled
 hits.
 
+**Amended 2026-09-29: wired into the proxy (0.27.0), off by default** (`boundary serve
+--semantic-cache`, docs/cache.md). The 0.25 finding became the rule: only a message the caller
+marks with `X-Boundary-Cache: question` is looked up or stored. Also: one cache per team, the
+declared class's `cache` flag, never a redacted or flagged request, never a stream, only whole
+answers. A hit is a ledger row (`cached`, cost zero, ledger v11 `cache_similarity` and
+`cache_source`, the call it reused) and is sealed (audit schema 4), so the 200 hand-labelled
+hits can be drawn from the ledger with their sources. In memory, not pgvector, until Postgres
+is deployed. Its cost on a miss is the load test's fourth layer. Still to do: the replay on
+real traffic and the labelling.
+
 ### B2.6 Injection screening is advisory by default
 
 A classifier over user-supplied and retrieved content flags likely prompt injection.
@@ -1111,6 +1122,17 @@ harness itself changed with the run: a proxy that fails more than 1% of a run wh
 client keeps up is `saturated`, not generator-bound, because the first VPS run blamed the
 client for the proxy. Four layers became three measured ones and the cache stays out until
 the proxy uses it.
+
+**Amended 2026-09-29 (0.27.0): the fix, measured, and the fourth layer.** Ledger commits moved
+off the event loop, with the cap check and its row held as one step under a per-file lock,
+and the audit chain group-committed on a 50 ms timer. With the chain on, the proxy now holds
+200 rps at 13.2 ms p99, where 0.26 failed. The cache layer (the miss path, since a hit never
+reaches the upstream) costs about 14 ms more than audit at the median and saturates at 200.
+Two harness rules came out of the runs: a run whose mock p99 shows a host pause is dropped
+and counted, written after seeing one and said so; and the store scores with `einsum`
+because BLAS threads fought over four cores. What limits the proxy now is CPU in one Python
+process. More than one process needs the shared ledger and quotas that Postgres and Redis
+bring, which is B2's plan and not done.
 
 ### Tests that matter
 

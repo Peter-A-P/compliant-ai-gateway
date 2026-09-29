@@ -31,6 +31,8 @@ collect_ignore = (
         "test_server.py",
         "test_server_redaction.py",
         "test_server_screen.py",
+        "test_server_cache.py",
+        "test_server_central.py",
         "test_loadtest.py",
     ]
 )
