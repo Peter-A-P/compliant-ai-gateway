@@ -37,9 +37,10 @@ Each joins `compose.yaml` in the commit that makes the code use it.
 
 ## Running it
 
-On the host, from a checkout of a tag:
+On the host, from a clone of this repository at a tag, in `/srv/boundary/repo`:
 
 ```
+cd /srv/boundary/repo && git fetch --tags && git checkout v0.26.0
 cd deploy
 sudo docker compose build gateway
 sudo docker compose up -d
@@ -71,4 +72,19 @@ provider entry that declares a residency the policy accepts. Declaring one that 
 checked would be the guess the policy exists to refuse.
 
 Afterwards, `audit verify` reported the chain intact over 3 records, with no anchor yet.
-The daily anchor is the next step.
+
+## The anchor and the load test (0.26)
+
+- **The daily anchor**: `GET /audit/head` on this host, read by `.github/workflows/anchor.yml`
+  and committed to `anchors/gateway.jsonl`. The host holds no GitHub credential
+  (docs/audit.md).
+- **The load test**: `boundary loadtest --generator k6` runs in a throwaway container from
+  the same image, with the host's k6 (from Grafana's apt repository) mounted in. It starts
+  its own mock and proxies on the container's loopback, and never touches the live proxy or
+  its ledger. Results and method are in docs/loadtest.md.
+
+```
+sudo docker run --rm -v /usr/bin/k6:/usr/local/bin/k6:ro -v /srv/boundary/loadtest:/out \
+  boundary-gateway:local boundary --config /app/config/boundary.yaml loadtest \
+  --generator k6 --levels 50,200,500 --published --machine "..." --out /out/loadtest.json
+```

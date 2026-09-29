@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import asyncio
 import random
+from pathlib import Path
 
 import httpx
 
@@ -93,3 +94,55 @@ def test_one_stalled_run_is_dropped_not_the_cell() -> None:
     assert not cell.generator_bound and cell.excluded_runs == 1
     out = LoadResults("x", "t", "a laptop", False, 4, 10.0, 50.0, [cell]).table()
     assert "1 run dropped" in out
+
+
+def test_the_readme_rows_carry_intervals_and_name_a_generator_bound_cell() -> None:
+    ok = Cell(
+        "audit",
+        200,
+        overhead_ms={"p50": [1.0, 1.2, 1.1], "p95": [2.0, 2.1, 2.2], "p99": [3.0, 3.3, 3.1]},
+        requests=6000,
+        errors=0,
+    )
+    bound = Cell("audit", 500, overhead_ms={}, send_lag_p99_ms=[250.0])
+    rows = LoadResults("x", "t", "the VPS", True, 3, 10.0, 50.0, [ok, bound]).readme_rows()
+    first, second = rows.splitlines()
+    assert first.startswith("| audit | 200 | 1.1 (") and " to " in first
+    assert first.endswith("| 0 of 6000 |")
+    assert "generator-bound" in second and "250 ms" in second
+
+
+def test_only_a_published_run_fills_the_readme(tmp_path: Path) -> None:
+    import argparse
+
+    from boundary.cli import _loadtest_readme
+
+    (tmp_path / "config").mkdir()
+    readme = tmp_path / "README.md"
+    readme.write_text("<!-- loadtest:start -->\n<!-- loadtest:end -->\n", encoding="utf-8")
+    three = [1.0, 1.0, 1.0]
+    cell = Cell("routing", 50, overhead_ms={"p50": three, "p95": three, "p99": three})
+    args = argparse.Namespace(write_readme=True, config=tmp_path / "config" / "boundary.yaml")
+    dev = LoadResults("x", "t", "a laptop", False, 1, 10.0, 50.0, [cell])
+    assert _loadtest_readme(args, dev) == 2
+    assert "routing" not in readme.read_text(encoding="utf-8")
+    pub = LoadResults("x", "t", "the VPS", True, 1, 10.0, 50.0, [cell])
+    assert _loadtest_readme(args, pub) == 0
+    assert "| routing | 50 | 1.0 (1.0 to 1.0)" in readme.read_text(encoding="utf-8")
+
+
+def test_a_proxy_that_cannot_hold_the_rate_is_saturated_not_generator_bound() -> None:
+    # The first VPS run: the client kept to schedule, the proxy failed 9,386 of 10,000.
+    cell = Cell(
+        "audit",
+        200,
+        requests=10000,
+        errors=9386,
+        send_lag_p99_ms=[1.1, 1.1],
+        saturated_runs=2,
+    )
+    assert cell.generator_bound and cell.saturated
+    out = LoadResults("x", "t", "the VPS", True, 5, 10.0, 50.0, [cell]).table()
+    assert "saturated: 9386 of 10000" in out and "generator-bound" not in out
+    row = LoadResults("x", "t", "the VPS", True, 5, 10.0, 50.0, [cell]).readme_rows()
+    assert "saturated" in row and row.endswith("| 9386 of 10000 |")

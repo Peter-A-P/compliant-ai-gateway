@@ -432,6 +432,7 @@ from October the ledger-against-invoice difference is recorded there too (sectio
 | v0.23.0 | 2026-09-27 | The proxy's detector and allow list as policy settings, measured (`boundary redact detectors`); the policy masks the rest of a value glued to a placeholder, a leak Presidio exposed |
 | v0.24.0 | 2026-09-27 | B2.8 follow-up on 03's distractor stratum: a redacted request declines 14.4 points less often on a page that cannot answer; `quality.declines`, the `distractor` part |
 | v0.25.0 | 2026-09-27 | The semantic cache built and measured (B2.5): `boundary.semcache`, `boundary cache paraphrase` and `eval`, the `cache` extra; not yet in the proxy |
+| v0.26.0 | 2026-09-29 | Deployed at gateway.peterparker.ca (OVHcloud, Beauharnois); `GET /audit/head` and the daily anchor Action; the first VPS load test with k6, published: 3 to 7 ms at p99 where the proxy holds the rate, saturated from 200 rps with audit on |
 | v1.0.0 | May 23 2027 | Everything in Part B; `boundary.redact` for 07; the proxy for 13 and 14 |
 
 03 pins `boundary>=0.1,<0.3` for Part A and moves to `>=1.0` when its Part B is built
@@ -1098,6 +1099,19 @@ second machine, as written above; the 50 and 200 rps levels are within this clie
 it found the per-call spend scan fixed in ledger v9 (docs/ledger.md), and development figures
 are in docs/loadtest.md, labelled as such. The budget is still set from the VPS run.
 
+**Amended 2026-09-29 (0.26.0): the VPS run, with k6, and what it set.** `--generator k6` was
+added and the first VPS run published from it (docs/loadtest.md): overhead p99 3.9 ms
+(routing), 6.0 (plus audit) and 7.4 (plus redaction) at 50 requests a second, inside the
+provisional budget; but one process saturates between 200 and 500 rps on routing and between
+50 and 200 with audit on. So the budget's first effect on the architecture is throughput, not
+latency: every ledger and audit write is a synchronous SQLite commit on the event loop, and a
+commit on this host costs about 1 ms where the laptop's costs 0.2. The fix (commits off the
+loop, or a group commit for the audit chain) is the next step and gets its own run. The
+harness itself changed with the run: a proxy that fails more than 1% of a run while the
+client keeps up is `saturated`, not generator-bound, because the first VPS run blamed the
+client for the proxy. Four layers became three measured ones and the cache stays out until
+the proxy uses it.
+
 ### Tests that matter
 
 Rehydration round-trip property test (any text, any spans, redact then rehydrate is the
@@ -1186,7 +1200,7 @@ the ledger and the spans as its production signal.
 - [x] Injection screen detection and false-positive rates reported (unless dropped, and then said so). **Done 2026-09-27 (0.22.0)**: rules only, 43.3% (31.6 to 55.9) on deepset held-out against 80.8% on the train split it was written on, 200 of 200 of 03's injections, 0 of 150 over-refusal prompts flagged (docs/screen.md)
 - [ ] Audit log chain verification tool included; daily anchors in the public repository; tamper test detects every injected corruption. **Tool and tamper test done 2026-09-22 (0.7.0)**: `boundary audit verify`, and `boundary audit tamper-test` detecting 2,400 of 2,400 corruptions across twelve kinds before the last anchor with 0 false alarms, the six kinds a chain cannot see after it reported beside them (B2.4, amended). **Daily anchors in the public repository** are what remain, and they need the proxy's always-on log to anchor
 - [x] Per-team budgets and quotas enforced; 429 body names the limit. **Done 2026-09-25 (0.13.0)**: team monthly and per-run budgets, the gateway ceiling and the per-minute quota each refuse with zero upstream calls and a body naming the limit, its reset and a `Retry-After`. The in-memory quota and the unpriced-model gap are in B2.7
-- [ ] Load test published: p50, p95, p99 overhead by layer and load level, with CIs and the VPS size stated. **Harness built 2026-09-25 (0.19.0)** and run on the development laptop (docs/loadtest.md): median overhead 0.3 to 2.6 ms across the three layers at 50 and 200 rps; 500 rps is beyond the Python client and needs k6. Waits on the VPS
+- [x] Load test published: p50, p95, p99 overhead by layer and load level, with CIs and the VPS size stated. **Published 2026-09-29 (0.26.0)** from the VPS with k6 (B4, amended): every cell the proxy holds has its three percentiles and intervals, and every cell it does not is named saturated with its failure count, which is the result rather than a gap. The cache layer is added when the proxy has a cache. **Harness built 2026-09-25 (0.19.0)** and run on the development laptop (docs/loadtest.md): median overhead 0.3 to 2.6 ms across the three layers at 50 and 200 rps; 500 rps is beyond the Python client and needs k6. Waits on the VPS
 - [ ] Observability dashboard shows every project's calls and costs live; completeness panel against local ledgers
 - [ ] Hosted demo live at gateway.peterparker.ca. **The proxy is live there since 2026-09-29** (docs/deploy.md): TLS, team keys, the policy and the audit chain, with one costed call on the record. The demo (the dashboard, and a key a visitor can use) is what remains
 - [x] Foundry, Bedrock and Vertex adapters each exercised with calls recorded. **Foundry and Bedrock answered live; Vertex exercised to the vendor's refusal** (Part A section 10, closed 2026-09-23). If Google grants the quota later, one smoke run adds the 200

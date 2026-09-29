@@ -1,0 +1,88 @@
+name: anchor
+
+# The daily audit anchor (PLAN.md B2.4, docs/audit.md). Reads the head of the hosted
+# gateway's audit chain from https://gateway.peterparker.ca/audit/head and commits it as one
+# line to anchors/gateway.jsonl in this public repository.
+#
+# GitHub pulls it; the gateway pushes nothing. The host holds no credential that can write
+# here, so an operator or an intruder on the host can stop anchors arriving but cannot
+# rewrite one that has arrived. The commit history is the timestamp nobody on the host
+# controls.
+#
+# The job refuses, and fails without committing, when the head moves in a way no honest chain
+# does: the sequence going backwards, or the same sequence under a different hash. That
+# failure is the finding, and the red run is where it is reported. When nothing has been
+# sealed since the last line, it commits nothing: the last anchor still covers every record.
+
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: anchor
+  cancel-in-progress: false
+
+jobs:
+  anchor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read the head
+        run: |
+          curl --fail --silent --show-error --max-time 30 --retry 3 --retry-delay 10 \
+            https://gateway.peterparker.ca/audit/head -o head.json
+          cat head.json; echo
+
+      - name: Check it against the last anchor and append
+        id: append
+        run: |
+          python3 - <<'EOF'
+          import json, os, re, sys
+          from pathlib import Path
+
+          raw = Path("head.json").read_text(encoding="ascii").strip()
+          new = json.loads(raw)
+          canonical = json.dumps(new, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+          if set(new) != {"head", "seq", "ts_utc"} or raw != canonical:
+              sys.exit(f"not an anchor line: {raw!r}")
+          if not (isinstance(new["seq"], int) and re.fullmatch(r"[0-9a-f]{64}", new["head"])):
+              sys.exit(f"malformed anchor: {raw!r}")
+
+          path = Path("anchors/gateway.jsonl")
+          lines = [x for x in path.read_text(encoding="ascii").splitlines() if x.strip()] if path.is_file() else []
+          changed = True
+          if lines:
+              last = json.loads(lines[-1])
+              if new["seq"] < last["seq"]:
+                  sys.exit(f"the chain went backwards: seq {last['seq']} anchored, now {new['seq']}")
+              if new["seq"] == last["seq"] and new["head"] != last["head"]:
+                  sys.exit(f"seq {new['seq']} was anchored as {last['head']} and now reads {new['head']}")
+              changed = new["seq"] != last["seq"]
+          if new["seq"] == 0:
+              changed = False
+          if changed:
+              path.parent.mkdir(exist_ok=True)
+              with path.open("a", encoding="ascii", newline="\n") as f:
+                  f.write(canonical + "\n")
+              print(f"anchored seq {new['seq']} head {new['head']}")
+          else:
+              print(f"nothing sealed since the last anchor (seq {new['seq']}); no commit")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write(f"changed={'true' if changed else 'false'}\nseq={new['seq']}\n")
+          EOF
+
+      - name: Commit
+        if: steps.append.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add anchors/gateway.jsonl
+          git commit -m "Anchor: gateway audit chain at seq ${{ steps.append.outputs.seq }}"
+          git pull --rebase --quiet
+          git push

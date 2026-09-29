@@ -10,7 +10,8 @@ Each append is one transaction on the log, whatever else is running.
 What this closes is the window docs/audit.md describes, between a call and the operator's
 next `boundary audit seal`, in which only the ledger held it. What it does not close is the
 window after the last anchor, which needs the anchor published somewhere the operator cannot
-rewrite: B2.4's daily Action, which needs the proxy on an always-on host.
+rewrite: B2.4's daily Action, which reads `anchor()` through the proxy's `GET /audit/head`
+(0.26) and commits it to the public repository.
 """
 
 from __future__ import annotations
@@ -18,7 +19,7 @@ from __future__ import annotations
 import threading
 from pathlib import Path
 
-from boundary.audit.chain import ledger_body
+from boundary.audit.chain import Anchor, ledger_body
 from boundary.audit.log import AuditLog
 from boundary.ledger.store import IN_FLIGHT, LedgerStore, utc_now
 
@@ -55,6 +56,14 @@ class AuditAppender:
                 self.log.append_bodies(bodies)
                 self.appended += len(bodies)
             return len(bodies)
+
+    def anchor(self) -> Anchor:
+        """The current head, for the public anchor (0.26): sealed up to date first, so the
+        head covers every call that has completed, and under the append lock, so it is never
+        read half way through an append."""
+        self.after_call()
+        with self._lock:
+            return self.log.anchor()
 
     def close(self) -> None:
         self.log.close()

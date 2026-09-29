@@ -162,14 +162,41 @@ Two rows are worth reading closely:
 Verifying 500 records with the ledger cross-check took 8.3 ms on the laptop (the README row
 is the current figure), so checking a year of the portfolio's calls is seconds.
 
+## The daily anchor (0.26)
+
+The hosted proxy at gateway.peterparker.ca (docs/deploy.md) keeps its chain beside its
+ledger and publishes the head at `GET /audit/head`, with no key: one canonical anchor line,
+`{"head","seq","ts_utc"}`, the same line `boundary audit anchor` writes. A count, a hash and
+a time, never a row.
+
+**GitHub pulls it; the host pushes nothing.** `.github/workflows/anchor.yml` runs daily at
+06:17 UTC, reads the head and appends it to `anchors/gateway.jsonl` in this repository. The
+host holds no credential that can write here. So an operator, or anyone who takes the host,
+can stop anchors arriving but cannot rewrite one that has arrived, and the commit history
+dates each anchor from GitHub's clock, not the host's.
+
+The job fails without committing when the head moves in a way no honest chain does: a
+sequence number lower than the last anchor's, or the same sequence number under a different
+hash. That red run is where the finding would be reported. When nothing has been sealed
+since the last anchor it commits nothing, because the last anchor still covers every record.
+
+To check the hosted chain against the published anchors, on the host:
+
+```
+curl -fsS https://raw.githubusercontent.com/Peter-A-P/compliant-ai-gateway/main/anchors/gateway.jsonl \
+  -o /srv/boundary/data/anchors.jsonl
+sudo docker compose exec gateway boundary --config /app/config/boundary.yaml audit verify \
+  --ledger /data/boundary.proxy.sqlite --anchors /data/anchors.jsonl
+```
+
+What the anchors do not do: they pin the hosted proxy's chain only. The library's own calls
+on each machine are still sealed after the fact where they were made, and are not anchored.
+
 ## What this does not do, yet
 
-- **Nothing is anchored in this repository yet.** The daily Action that commits an anchor is
-  Part B, because there is no always-on log to anchor until the proxy runs somewhere that is
-  always on. The proxy exists since 0.13 (docs/server.md) but runs on a laptop until it is
-  deployed, and today each environment's ledger is sealed after the fact on the machine
-  that holds it. An anchor file
-  in the repository pointing at a laptop's log would be a claim nobody else could check.
+- **Only the hosted proxy is anchored.** Each machine's library ledger is sealed after the
+  fact on that machine, and an anchor pointing at a laptop's log would be a claim nobody else
+  could check.
 - **For a library caller, the seal runs after the call, not during it.** The gateway is
   untouched, so the pass-through path and the overhead figure are exactly what they were, and
   a call is on the record from its ledger row onwards. The price is a window between a call
@@ -184,5 +211,6 @@ is the current figure), so checking a year of the portfolio's calls is seconds.
   the application role. The chain and the verifier are storage-independent pure functions
   (`boundary/audit/chain.py`), so the Part B store is a different place to keep the same
   records rather than a different design.
-- **Nothing is anchored yet, still.** The proxy appends as it answers, but it runs on a
-  laptop, so its chain is not yet the always-on log a daily anchor needs.
+- **The chain's append costs throughput.** On the VPS the audit layer is what stops the
+  proxy holding 200 requests a second (docs/loadtest.md): each call's seal is its own SQLite
+  commit on the event loop.

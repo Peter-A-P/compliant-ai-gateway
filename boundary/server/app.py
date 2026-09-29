@@ -197,6 +197,18 @@ def create_app(
     async def healthz() -> dict[str, str]:
         return {"status": "ok", "version": __version__}
 
+    @app.get("/audit/head")
+    async def audit_head() -> Response:
+        """The audit chain's head as one canonical anchor line (0.26, B2.4): what the daily
+        Action commits to the public repository. No key, because an anchor is published by
+        design: a count, a hash and a time, never a row. 404 when the proxy keeps no chain."""
+        if state.audit is None:
+            raise Refusal(
+                404, wire.error_body("this proxy keeps no audit chain", type_="not_found")
+            )
+        anchor = state.audit.anchor()
+        return Response(anchor.to_line(), media_type="application/json")
+
     @app.get("/v1/models")
     async def models(request: Request) -> dict[str, Any]:
         _team(state, request)

@@ -5,10 +5,26 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.26.0 (2026-09-29)
+
+**Deployed, anchored and load-tested on the VPS.** PLAN.md B2.4 and B4; docs/deploy.md,
+docs/audit.md, docs/loadtest.md.
+
 - **Deployed**: `deploy/` (Dockerfile, compose, Caddyfile) and docs/deploy.md. `boundary
   serve` behind Caddy at gateway.peterparker.ca on an OVHcloud VPS in Beauharnois, Quebec;
   one costed call through the public URL, and the policy refusing redacted personal data to a
-  provider that declares no residency, as it does on the laptop. No library change.
+  provider that declares no residency, as it does on the laptop.
+- **`GET /audit/head`**: the proxy publishes its chain's head as one canonical anchor line,
+  with no key (`AuditAppender.anchor()`). **`.github/workflows/anchor.yml`** reads it daily
+  and commits it to `anchors/gateway.jsonl`; the host holds no GitHub credential, and the job
+  fails without committing if the sequence goes backwards or a sequence changes its hash.
+- **`boundary loadtest --generator k6`**, B4's generator; `--write-readme` (published runs
+  only) and `--from` a stored run. A cell whose proxy fails more than 1% of a run while the
+  client keeps up is **`saturated`**, not generator-bound; k6 cells record their failure kinds.
+- **Result** (`bench/loadtest.json`, README): p99 overhead 3.9, 6.0 and 7.4 ms for routing,
+  plus audit and plus redaction at 50 rps; routing 7.7 ms at 200; one process saturates at
+  500 rps on routing and at 200 with audit on. The Python client's run is kept beside it
+  (`bench/loadtest-vps-python.json`).
 
 ## 0.25.0 (2026-09-27)
 

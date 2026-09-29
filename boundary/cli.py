@@ -869,6 +869,14 @@ def cmd_loadtest(args: argparse.Namespace) -> int:
     layer and load level. Local processes only; no vendor is called and nothing is spent."""
     from boundary import loadtest
 
+    if args.from_results is not None:
+        # A stored run, so a run taken on the VPS fills the checkout's README without being
+        # taken again (0.26).
+        data = json.loads(args.from_results.read_text(encoding="utf-8"))
+        cells = [loadtest.Cell(**c) for c in data.pop("cells")]
+        stored = loadtest.LoadResults(**data, cells=cells)
+        print(stored.table())
+        return _loadtest_readme(args, stored)
     results = loadtest.run(
         args.config.resolve(),
         levels=[int(x) for x in args.levels.split(",")],
@@ -877,11 +885,27 @@ def cmd_loadtest(args: argparse.Namespace) -> int:
         layers=[x.strip() for x in args.layers.split(",")],
         machine=args.machine,
         published=args.published,
+        generator=args.generator,
     )
     print(results.table())
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(results.to_json(), encoding="utf-8")
     print(f"written to {args.out}", file=sys.stderr)
+    return _loadtest_readme(args, results)
+
+
+def _loadtest_readme(args: argparse.Namespace, results: Any) -> int:
+    from boundary import loadtest
+
+    if not args.write_readme:
+        return 0
+    if not results.published:
+        # PLAN.md B4: the README's budget comes from the VPS run and nothing else.
+        print("error: only a --published run fills the README", file=sys.stderr)
+        return 2
+    readme = args.config.resolve().parent.parent / "README.md"
+    loadtest.write_readme(readme, results.readme_rows())
+    print(f"README rows written to {readme}")
     return 0
 
 
@@ -1430,11 +1454,30 @@ def main(argv: list[str] | None = None) -> int:
     lt.add_argument("--layers", default=",".join(("routing", "audit", "redaction")))
     lt.add_argument("--machine", default=None, help="what to call the machine in the output")
     lt.add_argument(
+        "--generator",
+        choices=("python", "k6"),
+        default="python",
+        help="the load generator: this module's open-loop client, or k6 (needs k6 on PATH), "
+        "which holds 500 rps where the Python client cannot",
+    )
+    lt.add_argument(
         "--published",
         action="store_true",
         help="the run the README's overhead budget is taken from (the VPS, PLAN.md B4)",
     )
     lt.add_argument("--out", type=Path, default=Path("bench/loadtest-dev.json"))
+    lt.add_argument(
+        "--write-readme",
+        action="store_true",
+        help="fill the README's overhead table (a --published run only)",
+    )
+    lt.add_argument(
+        "--from",
+        dest="from_results",
+        type=Path,
+        default=None,
+        help="a stored run's JSON to report instead of running, e.g. the VPS run",
+    )
     lt.set_defaults(func=cmd_loadtest)
 
     teams = sub.add_parser("teams", help="proxy team commands").add_subparsers(

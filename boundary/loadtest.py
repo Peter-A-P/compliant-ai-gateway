@@ -62,6 +62,12 @@ MAX_SEND_LAG_MS = 10.0
 ABANDON_LAG_S = 1.0
 # The fewest clean runs a cell needs to report an overhead at all.
 MIN_RUNS = 3
+# A run in which more than this share of the proxy's requests failed measured a proxy that
+# could not hold the rate, and its surviving latencies are not an overhead (0.26: the first
+# VPS run labelled such a cell generator-bound, which blamed the client for the proxy).
+MAX_ERROR_SHARE = 0.01
+# Saturated runs after which a cell stops: more runs only take longer to say so.
+SATURATED_STOP = 2
 # About a page of the kind of text the proxy exists for: a person, an email address, a phone
 # number and a file number, so the redaction layer has real work and the echo has a size.
 TEXT = (
@@ -231,11 +237,41 @@ class Cell:
     # The generator's own lag at the 99th percentile, per run, in ms. Above MAX_SEND_LAG_MS
     # the cell measures the client, and is reported as generator-bound instead.
     send_lag_p99_ms: list[float] = field(default_factory=list)
+    # k6 (0.26) has no per-request lag to report. Its arrival-rate executor starts each
+    # request on schedule while it has a free virtual user and counts one it could not start
+    # as a dropped iteration, so a run with any dropped is the client's, and is excluded.
+    dropped_iterations: list[int] = field(default_factory=list)
+    # Runs the generator kept up with in which the proxy failed more than MAX_ERROR_SHARE.
+    saturated_runs: int = 0
+    # k6 only: what the proxy's failures were, summed over runs. `timeout` is no answer in
+    # 30 s or no connection, `dropped` a request k6 could not start for want of a free user.
+    failures: dict[str, int] = field(default_factory=dict)
 
     @property
     def excluded_runs(self) -> int:
         """Runs whose generator lagged: their overhead is not recorded."""
-        return sum(1 for v in self.send_lag_p99_ms if v > MAX_SEND_LAG_MS)
+        return sum(1 for v in self.send_lag_p99_ms if v > MAX_SEND_LAG_MS) + sum(
+            1 for d in self.dropped_iterations if d > 0
+        )
+
+    @property
+    def saturated(self) -> bool:
+        """Unmeasured because the proxy could not hold the rate, not because the client
+        could not send it."""
+        return self.generator_bound and self.saturated_runs > 0
+
+    def bound_reason(self) -> str:
+        if self.saturated:
+            return (
+                f"saturated: {self.errors} of {self.requests} requests failed, so the proxy "
+                "cannot hold this rate"
+            )
+        if any(self.dropped_iterations):
+            return (
+                f"k6 could not start {max(self.dropped_iterations)} requests on schedule in a run"
+            )
+        worst = max(self.send_lag_p99_ms, default=float("nan"))
+        return f"the client sent up to {worst:.0f} ms late at p99"
 
     @property
     def generator_bound(self) -> bool:
@@ -262,13 +298,15 @@ class LoadResults:
     duration_s: float
     mock_delay_ms: float
     cells: list[Cell]
+    # `python`, the open-loop client in this module, or `k6` (0.26, B4's generator).
+    generator: str = "python"
 
     def table(self) -> str:
         rng = random.Random(20260925)
         lines = [
             f"boundary {self.boundary_version}, layered load test on {self.machine}: "
             f"{self.runs} runs of {self.duration_s:g} s per cell, mock upstream "
-            f"{self.mock_delay_ms:g} ms",
+            f"{self.mock_delay_ms:g} ms, generator {self.generator}",
             ""
             if self.published
             else "A DEVELOPMENT FIGURE, NOT THE OVERHEAD BUDGET: PLAN.md B4 publishes that from "
@@ -278,11 +316,13 @@ class LoadResults:
             f"{'errors':>8}",
         ]
         for c in self.cells:
+            if c.saturated:
+                lines.append(f"{c.layer:<11}{c.rps:>5}  {c.bound_reason()}")
+                continue
             if c.generator_bound:
-                worst = max(c.send_lag_p99_ms, default=float("nan"))
                 lines.append(
-                    f"{c.layer:<11}{c.rps:>5}  generator-bound: the client sent up to "
-                    f"{worst:.0f} ms late at p99, so this cell measures the client, not the proxy"
+                    f"{c.layer:<11}{c.rps:>5}  generator-bound: {c.bound_reason()}, so this "
+                    "cell measures the client, not the proxy"
                 )
                 continue
             cols = []
@@ -304,12 +344,58 @@ class LoadResults:
         lines += [
             "",
             "Overhead is the proxy's percentile minus the mock's, per run; the interval is a "
-            "bootstrap over runs. Latency counts from each request's scheduled time.",
+            "bootstrap over runs. "
+            + (
+                "k6 times each request from its send and starts it on schedule; a run with a "
+                "request it could not start on time is dropped."
+                if self.generator == "k6"
+                else "Latency counts from each request's scheduled time."
+            ),
         ]
         return "\n".join(lines)
 
+    def readme_rows(self) -> str:
+        """The README's overhead table (0.26): one row per cell, a generator-bound cell named
+        as such rather than given a number."""
+        rng = random.Random(20260925)
+        rows = []
+        for c in self.cells:
+            if c.saturated:
+                rows.append(
+                    f"| {c.layer} | {c.rps} | saturated: the proxy cannot hold this rate | "
+                    f"{c.errors} of {c.requests} |"
+                )
+                continue
+            if c.generator_bound:
+                rows.append(
+                    f"| {c.layer} | {c.rps} | generator-bound: {c.bound_reason()}, so no figure | |"
+                )
+                continue
+            cols = []
+            for q in ("p50", "p95", "p99"):
+                vals = c.overhead_ms.get(q, [])
+                mean = sum(vals) / len(vals)
+                lo, hi = _ci(vals, rng) if len(vals) > 1 else (mean, mean)
+                cols.append(f"{mean:.1f} ({lo:.1f} to {hi:.1f})")
+            rows.append(
+                f"| {c.layer} | {c.rps} | {' / '.join(cols)} | {c.errors} of {c.requests} |"
+            )
+        return "\n".join(rows)
+
     def to_json(self) -> str:
         return json.dumps(asdict(self), indent=1) + "\n"
+
+
+README_START = "<!-- loadtest:start -->"
+README_END = "<!-- loadtest:end -->"
+
+
+def write_readme(readme: Path, rows: str) -> None:
+    text = readme.read_text(encoding="utf-8")
+    a, b = text.index(README_START), text.index(README_END)
+    readme.write_text(
+        text[: a + len(README_START)] + "\n" + rows + "\n" + text[b:], encoding="utf-8"
+    )
 
 
 def run(
@@ -321,8 +407,14 @@ def run(
     layers: Sequence[str] = LAYERS,
     machine: str | None = None,
     published: bool = False,
+    generator: str = "python",
 ) -> LoadResults:
     from boundary import __version__
+
+    if generator not in ("python", "k6"):
+        raise ValueError(f"unknown generator {generator!r}")
+    if generator == "k6" and shutil.which("k6") is None:
+        raise RuntimeError("the k6 generator needs k6 on PATH (https://grafana.com/docs/k6/)")
 
     cells: list[Cell] = []
     with tempfile.TemporaryDirectory() as tmp:
@@ -368,13 +460,18 @@ def run(
                     }
                     for rps in levels:
                         cell = Cell(layer, rps)
-                        asyncio.run(_cell(cell, port, mock_port, headers, body, runs, duration_s))
+                        if generator == "k6":
+                            _cell_k6(cell, port, mock_port, headers, body, runs, duration_s, work)
+                        else:
+                            asyncio.run(
+                                _cell(cell, port, mock_port, headers, body, runs, duration_s)
+                            )
                         cells.append(cell)
                         # Progress as it goes, so a run that dies later has still said something.
                         print(
                             f"  {layer} {rps} rps: overhead p50 per run "
                             f"{cell.overhead_ms.get('p50', [])}, send lag p99 "
-                            f"{cell.send_lag_p99_ms}",
+                            f"{cell.send_lag_p99_ms}, dropped {cell.dropped_iterations}",
                             file=sys.stderr,
                             flush=True,
                         )
@@ -391,6 +488,7 @@ def run(
         duration_s=duration_s,
         mock_delay_ms=MOCK_DELAY_S * 1000,
         cells=cells,
+        generator=generator,
     )
 
 
@@ -435,7 +533,12 @@ async def _cell(
                 continue
             cell.requests += int(cell.rps * duration_s)
             cell.errors += proxy_err
-            if not proxy_lat or not mock_lat:
+            if not proxy_lat or proxy_err > MAX_ERROR_SHARE * cell.rps * duration_s:
+                cell.saturated_runs += 1
+                if cell.saturated_runs >= SATURATED_STOP:
+                    break
+                continue
+            if not mock_lat:
                 continue
             for q in PERCENTILES:
                 name = f"p{int(q * 100)}"
@@ -445,4 +548,132 @@ async def _cell(
                 cell.overhead_ms.setdefault(name, []).append(round(pm - mm, 3))
 
 
-__all__ = ["LAYERS", "Cell", "LoadResults", "mock_app", "run"]
+# One k6 run: an open-loop arrival rate, so a slow answer never slows the next request, with
+# enough virtual users preallocated that none is started late for want of one. The summary
+# keeps only what the cell needs, exact percentiles of every request's duration.
+K6_SCRIPT = """
+import http from "k6/http";
+import { Counter } from "k6/metrics";
+const statuses = { s0: new Counter("s0"), s4xx: new Counter("s4xx"), s5xx: new Counter("s5xx") };
+const cfg = JSON.parse(open(__ENV.BOUNDARY_K6_CFG));
+export const options = {
+  discardResponseBodies: true,
+  summaryTrendStats: ["p(50)", "p(95)", "p(99)"],
+  scenarios: { load: {
+    executor: "constant-arrival-rate", rate: cfg.rps, timeUnit: "1s",
+    duration: cfg.duration, preAllocatedVUs: cfg.vus, maxVUs: cfg.vus * 4,
+  } },
+};
+const body = JSON.stringify(cfg.body);
+export default function () {
+  const r = http.post(cfg.url, body, { headers: cfg.headers, timeout: "30s" });
+  if (r.status === 0) statuses.s0.add(1);
+  else if (r.status >= 500) statuses.s5xx.add(1);
+  else if (r.status >= 400) statuses.s4xx.add(1);
+}
+export function handleSummary(data) {
+  const m = data.metrics;
+  const d = m.http_req_duration.values;
+  const out = {
+    p50: d["p(50)"], p95: d["p(95)"], p99: d["p(99)"],
+    requests: m.http_reqs.values.count,
+    failed: m.http_req_failed ? m.http_req_failed.values.passes : 0,
+    dropped: m.dropped_iterations ? m.dropped_iterations.values.count : 0,
+    s0: m.s0 ? m.s0.values.count : 0,
+    s4xx: m.s4xx ? m.s4xx.values.count : 0,
+    s5xx: m.s5xx ? m.s5xx.values.count : 0,
+  };
+  return { [__ENV.BOUNDARY_K6_OUT]: JSON.stringify(out) };
+}
+"""
+
+
+def _k6(
+    work: Path, url: str, *, rps: int, duration_s: float, headers: dict[str, str],
+    body: dict[str, Any],
+) -> dict[str, float]:  # fmt: skip
+    """One k6 run against `url`; its summary. k6 times each request from its send, and a
+    request it could not send on time is a dropped iteration rather than a late one."""
+    script = work / "k6.js"
+    if not script.exists():
+        script.write_text(K6_SCRIPT, encoding="utf-8")
+    cfg, out = work / "k6-cfg.json", work / "k6-out.json"
+    out.unlink(missing_ok=True)
+    cfg.write_text(
+        json.dumps(
+            {
+                "url": url,
+                "rps": rps,
+                "duration": f"{duration_s:g}s",
+                # Little's law with a wide margin: rps x (50 ms upstream + overhead) in flight.
+                "vus": max(20, rps // 2),
+                "headers": {"content-type": "application/json", **headers},
+                "body": body,
+            }
+        ),
+        encoding="utf-8",
+    )
+    subprocess.run(
+        ["k6", "run", "--quiet", "--no-usage-report", str(script)],
+        # Not K6_*: k6 reads every K6_ variable as its own option, and took K6_OUT for an
+        # output type in the first trial.
+        env={**os.environ, "BOUNDARY_K6_CFG": str(cfg), "BOUNDARY_K6_OUT": str(out)},
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    result: dict[str, float] = json.loads(out.read_text(encoding="utf-8"))
+    return result
+
+
+def _cell_k6(
+    cell: Cell,
+    port: int,
+    mock_port: int,
+    headers: dict[str, str],
+    body: dict[str, Any],
+    runs: int,
+    duration_s: float,
+    work: Path,
+) -> None:
+    """`_cell` with k6 as the generator: the same pairing of a mock run and a proxy run, the
+    same overhead per run, and a run the generator could not keep to schedule excluded."""
+    proxy_url = f"http://127.0.0.1:{port}/v1/chat/completions"
+    mock_url = f"http://127.0.0.1:{mock_port}/v1/chat/completions"
+    _k6(work, proxy_url, rps=20, duration_s=1.0, headers=headers, body=body)
+    _k6(work, mock_url, rps=20, duration_s=1.0, headers={}, body=body)
+    for _ in range(runs):
+        mock = _k6(work, mock_url, rps=cell.rps, duration_s=duration_s, headers={}, body=body)
+        proxy = _k6(
+            work, proxy_url, rps=cell.rps, duration_s=duration_s, headers=headers, body=body
+        )
+        # Dropped against the mock is the client's limit. Dropped against the proxy alone is
+        # the proxy's: its slow answers held every virtual user, so none was free on time.
+        if int(mock["dropped"]):
+            cell.dropped_iterations.append(int(mock["dropped"]))
+            continue
+        cell.dropped_iterations.append(0)
+        for kind, key in (
+            ("timeout", "s0"),
+            ("4xx", "s4xx"),
+            ("5xx", "s5xx"),
+            ("dropped", "dropped"),
+        ):
+            if int(proxy.get(key, 0)):
+                cell.failures[kind] = cell.failures.get(kind, 0) + int(proxy[key])
+        cell.requests += int(proxy["requests"]) + int(proxy["dropped"])
+        cell.errors += int(proxy["failed"]) + int(proxy["dropped"])
+        failed = int(proxy["failed"]) + int(proxy["dropped"])
+        if failed > MAX_ERROR_SHARE * max(1, int(proxy["requests"]) + int(proxy["dropped"])):
+            cell.saturated_runs += 1
+            if cell.saturated_runs >= SATURATED_STOP:
+                break
+            continue
+        for name in ("p50", "p95", "p99"):
+            pm, mm = float(proxy[name]), float(mock[name])
+            cell.proxy_ms.setdefault(name, []).append(round(pm, 3))
+            cell.mock_ms.setdefault(name, []).append(round(mm, 3))
+            cell.overhead_ms.setdefault(name, []).append(round(pm - mm, 3))
+
+
+__all__ = ["LAYERS", "Cell", "LoadResults", "mock_app", "run", "write_readme"]

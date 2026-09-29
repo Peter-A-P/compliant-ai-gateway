@@ -223,14 +223,31 @@ declaration, not a vendor's conduct, and the command says so. Detail in
 
 **Gateway (Part B)**
 
-| Layer | Load (rps) | Overhead p50 / p95 / p99 ms (95% CI) |
-|---|---|---|
-| _not yet_ | | |
+| Layer | Load (rps) | Overhead p50 / p95 / p99 ms (95% CI) | Errors |
+|---|---|---|---|
+<!-- loadtest:start -->
+| routing | 50 | 3.1 (3.0 to 3.3) / 3.6 (3.4 to 3.9) / 3.9 (3.7 to 4.1) | 0 of 2503 |
+| routing | 200 | 3.5 (3.4 to 3.5) / 4.6 (4.3 to 4.9) / 7.7 (6.8 to 9.2) | 0 of 10005 |
+| routing | 500 | saturated: the proxy cannot hold this rate | 7075 of 10001 |
+| audit | 50 | 4.9 (4.7 to 5.0) / 5.4 (5.2 to 5.6) / 6.0 (5.8 to 6.2) | 0 of 2504 |
+| audit | 200 | saturated: the proxy cannot hold this rate | 1760 of 4000 |
+| audit | 500 | saturated: the proxy cannot hold this rate | 8189 of 10001 |
+| redaction | 50 | 6.3 (6.3 to 6.4) / 7.0 (6.9 to 7.1) / 7.4 (7.1 to 7.7) | 0 of 2503 |
+| redaction | 200 | saturated: the proxy cannot hold this rate | 2151 of 4000 |
+| redaction | 500 | saturated: the proxy cannot hold this rate | 8279 of 10002 |
+<!-- loadtest:end -->
 
-The harness exists (`boundary loadtest`, `v0.19.0`) and has been run on the development
-laptop, with median overheads of 0.3 to 2.6 ms across the three layers at 50 and 200 requests
-a second ([docs/loadtest.md](docs/loadtest.md)). This table stays empty until the VPS run,
-because the overhead budget is a number about the machine it runs on, and a laptop is not it.
+Filled by `boundary loadtest --generator k6 --published --write-readme` (`v0.26.0`), run
+on the VPS that serves gateway.peterparker.ca: an OVHcloud VPS-2, 4 vCPU (AMD EPYC-Milan) and
+8 GB, in Beauharnois, with k6, a 50 ms mock upstream and the proxy on the same host. Five
+runs of 10 s per cell; overhead is the proxy's percentile minus the mock's in the same run,
+and the interval is a bootstrap over runs. **Where the proxy holds the rate, it adds 3 to 7
+ms at p99 with every layer on, inside the provisional budget of PLAN.md B4. It does not hold
+the rate everywhere: one process saturates between 200 and 500 requests a second on routing
+alone, and between 50 and 200 once the audit chain is on.** A saturated cell has no overhead
+figure, because the latencies that survive are not the proxy's cost but its queue. The
+failures are requests k6 could not start because every connection was waiting on the proxy.
+Detail, and the Python client's cross-check, in [docs/loadtest.md](docs/loadtest.md).
 
 | Residency violations through the proxy | False refusals | Refusals audited on the ledger |
 |---|---|---|
@@ -439,8 +456,12 @@ says. Dollars saved need real traffic, which is Part B's replay.
   including ones that arrived in the system prompt, which on 03's red team turned a model's
   refusals into disclosures; it now puts back only what the caller sent, so an application
   that addresses its user by a name held only in its system prompt sees a placeholder there
-  (7 of 900 ordinary answers, all 03's own word "Answer"). No latency figure for the proxy is claimed until the
-  load test on the VPS.
+  (7 of 900 ordinary answers, all 03's own word "Answer").
+- **It is one process, and it saturates at modest rates.** On the 4 vCPU VPS it holds 200
+  requests a second on routing alone and 50 with the audit chain or redaction on, but not 200
+  (`v0.26.0`, the table above). Every ledger and audit write is a synchronous SQLite commit
+  on the event loop. That is the next thing the architecture has to change, as PLAN.md B4
+  intended the first measurement to decide.
 - It does not run in more than one region. Residency here means controlling where requests
   are allowed to go, not where the proxy runs.
 - **It cannot verify residency, and no tool can.** It records what the operator declared and

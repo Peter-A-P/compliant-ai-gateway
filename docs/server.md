@@ -44,6 +44,9 @@ client.chat.completions.create(model="fast", messages=[{"role": "user", "content
 
 The hosted instance at gateway.peterparker.ca and how it is run are in docs/deploy.md.
 
+`GET /audit/head` (0.26) needs no key and returns the audit chain's head as one anchor line;
+404 when the proxy runs with `--no-audit`.
+
 `model` is a route from `boundary.yaml` (`fast`, `balanced`, ...) or the explicit
 `provider/model-id` form. `GET /v1/models` lists the routes.
 
@@ -287,14 +290,13 @@ Each of these is in PLAN.md Part B and lands in the stage it names:
 - **Redaction is rules-only and unmeasured for quality.** No detector or allow list is
   configured for the proxy, and the effect of redaction on answer quality (B2.8) has not
   been measured; PLAN.md B2.8 has the plan for it.
-- **It has not been load-tested.** The overhead budget in PLAN.md B4 is published from the
-  first measurement, on the VPS, and nothing about the proxy's overhead is claimed until
-  then. The ledger writes are synchronous SQLite inside the event loop, which is the first
-  thing that measurement will look at.
-- **The audit chain is appended as the proxy answers (0.18), and not yet anchored.**
+- **One process, and it saturates below 200 requests a second with the audit chain on**
+  (0.26, docs/loadtest.md). The ledger and audit writes are synchronous SQLite commits on
+  the event loop, which the first VPS measurement found to be the limit.
+- **The audit chain is appended as the proxy answers (0.18) and anchored daily (0.26).**
   `boundary serve` seals every call into `<ledger>.audit.sqlite` as its row completes (turn
-  it off with `--no-audit`), and record schema 2 seals `redacted`. The daily anchor that
-  makes an operator's rewrite detectable needs the proxy on an always-on host (B2.4).
+  it off with `--no-audit`). `GET /audit/head` publishes the head with no key, and an Action
+  commits it to this repository every day (docs/audit.md).
 - No semantic cache (B2.5), no injection screen (B2.6), no dashboard, SQLite rather than
   Postgres, and one process.
 - Typed tool calls are refused rather than carried (PLAN.md B11).

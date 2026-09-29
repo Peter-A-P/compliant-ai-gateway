@@ -8,7 +8,8 @@ with the VPS size, and nothing below is that number.
 ```
 uv sync --extra server
 boundary loadtest                                   # 3 layers x 50, 200, 500 rps x 5 runs x 10 s
-boundary loadtest --machine "VPS, 2 vCPU, 4 GB" --published --out bench/loadtest.json
+boundary loadtest --generator k6 --levels 50,200,500 --machine "..." --published --out bench/loadtest.json
+boundary loadtest --from bench/loadtest.json --write-readme   # fill the README from a stored run
 ```
 
 ## Method
@@ -27,6 +28,12 @@ boundary loadtest --machine "VPS, 2 vCPU, 4 GB" --published --out bench/loadtest
   and the mock's jitter are in both and cancel, up to the noise between two consecutive runs.
 - **The interval is over runs**, a bootstrap of the per-run overheads, because requests inside
   one run share whatever the machine was doing and are not independent draws.
+- **The generator** (0.26): `--generator k6` is B4's. Its constant-arrival-rate executor
+  starts each request on schedule while it has a free virtual user, and counts one it could
+  not start as a dropped iteration. So k6 times each request from its send, and a run with
+  any dropped iteration against the mock is excluded as the client's. Dropped iterations
+  against the proxy alone are the proxy's: its slow answers held every user. The default,
+  `python`, is the open-loop client below, which counts from the schedule instead.
 - **Layers, cumulative**: `routing` (team key, policy, routing, ledger; public data; no audit
   chain), `audit` (plus the chain appended as the proxy answers), `redaction` (no header, so
   personal: redacted before it leaves, rehydrated after). The cache, B4's fourth layer, does
@@ -34,6 +41,74 @@ boundary loadtest --machine "VPS, 2 vCPU, 4 GB" --published --out bench/loadtest
 
 The request is about a page of text naming a person, an email address, a phone number and a
 file number, so the redaction layer has real work to do and the echo has a realistic size.
+
+## The VPS run: the published figure (0.26)
+
+2026-09-29, boundary 0.26.0, on the host that serves gateway.peterparker.ca: OVHcloud VPS-2,
+4 vCPU (AMD EPYC-Milan), 8 GB, Beauharnois, Ubuntu 24.04 (docs/deploy.md). The generator, the
+mock and the proxy share the host, in a throwaway container beside the live proxy, which
+served no traffic during the run. `boundary loadtest --generator k6 --levels 50,200,500 --runs
+5 --duration 10 --published`, stored in `bench/loadtest.json`, milliseconds:
+
+| Layer | 50 rps p50 | 50 rps p99 | 200 rps p50 | 200 rps p99 | 500 rps |
+|---|---|---|---|---|---|
+| routing | 3.1 (3.0 to 3.3) | 3.9 (3.7 to 4.1) | 3.5 (3.4 to 3.5) | 7.7 (6.8 to 9.2) | saturated, 7,075 of 10,001 failed |
+| + audit | 4.9 (4.7 to 5.0) | 6.0 (5.8 to 6.2) | saturated, 1,760 of 4,000 failed | | saturated |
+| + redaction | 6.3 (6.3 to 6.4) | 7.4 (7.1 to 7.7) | saturated, 2,151 of 4,000 failed | | saturated |
+
+**Where the proxy holds the rate, the overhead is inside B4's provisional budget** (p99
+under 20 ms for routing plus audit, under 100 ms with redaction): 6.0 ms and 7.4 ms at 50
+requests a second. **Where it does not hold the rate, there is no overhead to report.** One
+proxy process holds 200 requests a second on routing alone, not 500, and holds 50 with the
+audit chain on, not 200. The cells stopped after two saturated runs each, as the method says,
+which is why they count 4,000 requests rather than 10,000.
+
+**What "failed" is.** Almost all are dropped iterations: k6 had every one of its virtual users
+(four times Little's law for a 50 ms upstream) waiting on the proxy, so it could not start
+the next request on time. The rest, at 500 requests a second, are requests with no answer in
+30 s. None was a 4xx or 5xx. The mock alone never dropped one at any rate, so the limit is
+the proxy's, not the client's.
+
+**Why, as far as measured.** Every ledger write and every audit append is a synchronous SQLite
+commit on the event loop. On this host a commit costs more than on the laptop, because the
+laptop's `fsync` does not reach the disk and the VPS's does (1,000-byte row, 300 commits):
+
+| Journal mode, `synchronous` | VPS p50 | VPS p99 | Laptop p50 |
+|---|---|---|---|
+| rollback journal (the audit log), FULL | 1.06 ms | 1.49 ms | 0.21 ms |
+| WAL (the ledger), FULL | 0.52 ms | 0.62 ms | 0.05 ms |
+| WAL, NORMAL | 0.01 ms | 0.04 ms | 0.01 ms |
+
+A call is at least three commits: the ledger row before the call, the ledger row after it, and
+the audit record. At 200 requests a second the audit append alone holds the loop for about
+a fifth of each second, before any of the proxy's own work. That fits audit being where the
+proxy stops holding 200, but it is a hypothesis, not a profile. The fix and its measurement
+are the next step. Two candidates: move the commits off the loop, and group-commit the audit
+record on a short timer instead of one commit per call. Either one changes what the budget
+says, so the table above stays as the first measurement, as B4 says it should.
+
+**The Python client agrees where it can hold the rate.** The same grid with the open-loop
+Python client, earlier the same day on boundary 0.25.0 (`bench/loadtest-vps-python.json`):
+routing 3.1 (3.1 to 3.2) at 50 and 4.1 (4.0 to 4.1) at 200, audit 4.8 (4.7 to 4.9) at 50,
+redaction 6.4 (6.3 to 6.5) at 50, all p50. At 500 it fell behind itself, up to 824 ms at p99.
+Its figure at 200 is 0.6 ms above k6's, which is what a client that times from the schedule
+while competing with the proxy for the same cores should show.
+
+**What the first VPS run found in the harness.** The Python run labelled audit at 200
+requests a second generator-bound, although its client never fell more than 1.3 ms behind:
+the proxy failed 9,386 of 10,000 requests, and a run with no successful latency was
+discarded as if the client had lagged. That blamed the client for the proxy. A cell whose
+proxy fails more than 1% of a run's requests while the client keeps up is now `saturated`
+(`Cell.saturated`, with a test built from that run), and says so in the table.
+
+**One observation not reproduced.** In a k6 run before the failure breakdown was added,
+redaction at 50 requests a second had 13 failed requests of 2,502, under the 1% threshold. It
+was the first cell after the audit layer's collapse at 500. A three-run rerun and the
+published run both had 0. The 13 were never classified, so the cause is unknown.
+
+**The laptop's pattern does not survive.** On the laptop, overhead was lower at 200 requests
+a second than at 50 in every layer. On the VPS, routing is 3.1 at 50 and 3.5 at 200. That is
+consistent with the power-management explanation offered below, but nothing here tests it.
 
 ## Development run
 

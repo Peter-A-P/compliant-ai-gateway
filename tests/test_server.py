@@ -883,3 +883,65 @@ def test_the_appender_holds_a_row_in_flight_until_it_completes(tmp_path: Path) -
         app.close()
     finally:
         ledger.close()
+
+
+# -- the public anchor (0.26) ---------------------------------------------------------------
+
+
+async def test_the_audit_head_is_the_anchor_for_every_completed_call(
+    repo_config: BoundaryConfig, tmp_path: Path, keys: None, upstream: respx.MockRouter
+) -> None:
+    from boundary.audit import AuditLog, verify
+    from boundary.audit.chain import Anchor, canonical
+
+    upstream.post(OPENWEIGHTS_URL).mock(return_value=completion())
+    audit = tmp_path / "proxy.audit.sqlite"
+    app = create_app(
+        repo_config,
+        teams(),
+        ledger_path=tmp_path / "proxy.sqlite",
+        policy=load_policy(CONFIG_DIR / "policy.yaml"),
+        audit_path=audit,
+        asleep=_no_sleep,
+        wall=lambda: NOW,
+    )
+    http = httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://proxy")
+    try:
+        empty = await http.get("/audit/head")
+        assert empty.status_code == 200
+        assert Anchor.from_line(empty.text).seq == 0
+        auth = {"authorization": f"Bearer {KEY}", **PUBLIC}
+        for _ in range(2):
+            r = await http.post("/v1/chat/completions", json=body(), headers=auth)
+            assert r.status_code == 200
+        r = await http.get("/audit/head")  # no key: an anchor is public by design
+        assert r.status_code == 200
+        assert r.text == canonical(json.loads(r.text)), "the exact line the Action commits"
+        assert set(json.loads(r.text)) == {"head", "seq", "ts_utc"}, "nothing from a row"
+        anchor = Anchor.from_line(r.text)
+        assert anchor.seq == 2
+        with AuditLog(audit) as log:
+            records = log.records()
+        assert anchor.head == records[-1].record_hash
+        assert verify(records, anchors=[anchor], ledger_rows=None).ok
+    finally:
+        await http.aclose()
+        await app.state.boundary.close()
+
+
+async def test_a_proxy_without_a_chain_has_no_head(
+    repo_config: BoundaryConfig, tmp_path: Path, keys: None
+) -> None:
+    app = create_app(
+        repo_config,
+        teams(),
+        ledger_path=tmp_path / "proxy.sqlite",
+        policy=load_policy(CONFIG_DIR / "policy.yaml"),
+        asleep=_no_sleep,
+    )
+    http = httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://proxy")
+    try:
+        assert (await http.get("/audit/head")).status_code == 404
+    finally:
+        await http.aclose()
+        await app.state.boundary.close()
