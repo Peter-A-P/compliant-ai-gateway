@@ -1,0 +1,18 @@
+# The build context is the checkout; only what the image copies matters, but keep secrets,
+# ledgers and the benches out of the context entirely.
+.env
+.env.*
+CLAUDE.local.md
+*.sqlite
+*.sqlite-*
+.venv/
+.git/
+.cache/
+bench/
+tests/
+docs/
+data/
+rawstore/
+loadtest/
+config/teams.yaml
+**/__pycache__

@@ -1,0 +1,24 @@
+# TLS for gateway.peterparker.ca, from Let's Encrypt, renewed by Caddy. The DNS record is
+# grey-clouded (DNS only) in Cloudflare so the certificate is this host's own and the load
+# test measures no hop but this one. No ACME contact email: none is needed, and this file
+# is public. Caddy redacts the Authorization header in its access log, and logs no bodies.
+gateway.peterparker.ca {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		-Server
+	}
+	# A chat request is a page or two of text; nothing the proxy accepts is near this.
+	request_body {
+		max_size 2MB
+	}
+	# Streaming answers are server-sent events; flush each one as it arrives.
+	reverse_proxy gateway:8080 {
+		flush_interval -1
+	}
+	log {
+		output stdout
+		format json
+	}
+}

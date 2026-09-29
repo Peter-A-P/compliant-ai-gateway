@@ -1,0 +1,45 @@
+# The gateway on the VPS (docs/deploy.md): the proxy behind Caddy, which holds the TLS
+# certificate for gateway.peterparker.ca. Run from the checkout's deploy/ directory.
+#
+# Postgres, pgvector and Redis are not here yet, on purpose: the proxy's ledger and audit
+# chain are SQLite files and its vault is in memory, so a database container would be a
+# service nothing reads. Each joins this file in the commit that makes the code use it.
+name: boundary
+
+services:
+  gateway:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: boundary-gateway:local
+    restart: unless-stopped
+    # Vendor keys, in a file outside the checkout that only the ubuntu user can read.
+    env_file: /home/ubuntu/boundary/.env
+    environment:
+      BOUNDARY_ENV: vps
+    volumes:
+      - /srv/boundary/data:/data
+      - /srv/boundary/teams.yaml:/run/boundary/teams.yaml:ro
+    # No `ports:`. Docker's published ports bypass ufw, so the only published ports on this
+    # host are Caddy's two.
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - gateway
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - /srv/boundary/caddy/data:/data
+      - /srv/boundary/caddy/config:/config

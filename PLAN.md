@@ -357,9 +357,10 @@ them turned out to be needed after all**: 0.3.0 (2026-09-19) adds streaming for
 self-hosted hosts 06 runs; section 2.8 records the amendment.
 
 **Between 0.2 and Part B (November 2026 to April 2027).** Nothing is built here. Three
-things accumulate or are decided elsewhere and matter in May: the shared VPS (needed by
-project 03's dashboard in January anyway) is where the proxy, Postgres and Redis
-will run; every month's drift run adds to the replayed-traffic corpus the semantic cache
+things accumulate or are decided elsewhere and matter in May: the VPS is where the proxy, Postgres and Redis
+will run (amended 2026-09-29: it was to be shared with project 03's dashboard, which went
+live on Azure Static Web Apps on 2026-09-28 instead, so the host serves this project alone;
+it was stood up on 2026-09-29, docs/deploy.md); every month's drift run adds to the replayed-traffic corpus the semantic cache
 is tuned on; and the monthly invoice check builds the ledger's credibility. In the last
 week of April, before Part B starts: re-check Part B's prices, Presidio's current version
 and the corpora licences (B3), and re-read B5 against what 03 Part B actually shipped in
@@ -1071,7 +1072,9 @@ loadtest/          k6 scripts; mock upstream with fixed latency; layer toggles; 
 eval/              redaction on corpora; rehydration fidelity; quality A/B via the 03 gate;
                    cache replay and false-hit labelling; injection eval; tamper test
 deploy/            docker compose: gateway, postgres with pgvector, redis, otel collector, caddy;
-                   gateway.peterparker.ca on the shared VPS next to gate.peterparker.ca
+                   gateway.peterparker.ca on its own VPS (03's gate.peterparker.ca is on
+                   Azure). Since 2026-09-29: gateway and caddy only; each other service
+                   joins when the code uses it (docs/deploy.md)
 ```
 
 ### Load-test method
@@ -1127,7 +1130,7 @@ Prices as of 2026-09-06; re-checked before Part B runs.
 | Development and conformance testing against real vendors | About 2,000 short calls | Under 1M | About US$5 |
 | Hosted demo traffic, June to August 2027, capped per key | Capped at US$10 per month | | US$30 |
 | Load tests | Against a mock; zero API cost | | 0 |
-| Redis, Postgres, pgvector, collector | On the shared VPS; the VPS line in BUDGET covers 03, 04 and 09 | | 0 new |
+| Redis, Postgres, pgvector, collector | On the VPS; the VPS line in BUDGET covers it (03 no longer uses the host) | | 0 new |
 | PII corpora, injection sets, embeddings | Free; embeddings run locally | | 0 |
 
 Part B about **CA$65**; with Part A under CA$10 the project uses about CA$75 of the
@@ -1185,7 +1188,7 @@ the ledger and the spans as its production signal.
 - [x] Per-team budgets and quotas enforced; 429 body names the limit. **Done 2026-09-25 (0.13.0)**: team monthly and per-run budgets, the gateway ceiling and the per-minute quota each refuse with zero upstream calls and a body naming the limit, its reset and a `Retry-After`. The in-memory quota and the unpriced-model gap are in B2.7
 - [ ] Load test published: p50, p95, p99 overhead by layer and load level, with CIs and the VPS size stated. **Harness built 2026-09-25 (0.19.0)** and run on the development laptop (docs/loadtest.md): median overhead 0.3 to 2.6 ms across the three layers at 50 and 200 rps; 500 rps is beyond the Python client and needs k6. Waits on the VPS
 - [ ] Observability dashboard shows every project's calls and costs live; completeness panel against local ledgers
-- [ ] Hosted demo live at gateway.peterparker.ca
+- [ ] Hosted demo live at gateway.peterparker.ca. **The proxy is live there since 2026-09-29** (docs/deploy.md): TLS, team keys, the policy and the audit chain, with one costed call on the record. The demo (the dashboard, and a key a visitor can use) is what remains
 - [x] Foundry, Bedrock and Vertex adapters each exercised with calls recorded. **Foundry and Bedrock answered live; Vertex exercised to the vendor's refusal** (Part A section 10, closed 2026-09-23). If Google grants the quota later, one smoke run adds the 200
 - [x] `boundary.redact` importable and documented for 07. **Done 2026-09-19 (0.5.0)**, docs/redact.md
 - [x] Redaction precision and recall per entity type **on public corpora and the Canadian set**, with CIs. **Half done 2026-09-20 (0.6.0)**: `boundary redact eval` measures precision, recall, type accuracy, leak rate, over-redaction, round trip and latency per entity with Wilson intervals, on a corpus this repository generates, and the README carries the table. **The Canadian identifier set landed 2026-09-20 (0.6.1)**: 1,150 cases, every claimed shape in every written form at 100% found and masked except `file_number` at 50%, no recogniser firing on any of 700 near-misses, and business numbers, driver's licences and passports masked without being detected at all. What the line still wanted was a **public corpus**, because a corpus this repository generates measures the engine against the shapes somebody here thought to generate. **Done 2026-09-23 (0.8.0) on real text**: the Text Anonymization Benchmark's test split, direct identifiers 93.3% masked with rules and 98.7% with Presidio, per entity type with bootstrap intervals, scored as TAB's own script scores it and cross-checked against it. It also measured the limitation the generated corpora hid: precision under a third and four in five safe spans touched, from a Canadian vocabulary meeting British public bodies. Ticked early, as the `boundary.redact` line above was, because nothing in it needs the proxy

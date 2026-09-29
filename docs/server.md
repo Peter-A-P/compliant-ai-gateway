@@ -42,6 +42,8 @@ client = OpenAI(base_url="http://127.0.0.1:8080/v1", api_key="bnd_...",
 client.chat.completions.create(model="fast", messages=[{"role": "user", "content": "Hi"}])
 ```
 
+The hosted instance at gateway.peterparker.ca and how it is run are in docs/deploy.md.
+
 `model` is a route from `boundary.yaml` (`fast`, `balanced`, ...) or the explicit
 `provider/model-id` form. `GET /v1/models` lists the routes.
 

@@ -5,6 +5,11 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+- **Deployed**: `deploy/` (Dockerfile, compose, Caddyfile) and docs/deploy.md. `boundary
+  serve` behind Caddy at gateway.peterparker.ca on an OVHcloud VPS in Beauharnois, Quebec;
+  one costed call through the public URL, and the policy refusing redacted personal data to a
+  provider that declares no residency, as it does on the laptop. No library change.
+
 ## 0.25.0 (2026-09-27)
 
 **The semantic cache, built and measured before the proxy uses it.** PLAN.md B2.5.
