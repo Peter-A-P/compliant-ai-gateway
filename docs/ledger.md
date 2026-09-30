@@ -85,9 +85,16 @@ hand, and inventing one would let the same call merge twice.
 The hosted proxy keeps the same columns, with the same meanings, in Postgres
 (`boundary/pg.py`; `pg.COLUMNS` is checked against `LedgerRow` at import, so the two cannot
 drift). The spend per project and month is kept by a trigger, as v9 does. The cap check and
-the row it admits are one transaction under an advisory lock, so four workers cannot pass a
-cap only one of them fits under; a test on a real Postgres sends twelve calls through two
-connections at a cap that fits three. The proxy's role can insert and update a row but not
+the row it admits are one step under an advisory lock, so four workers cannot pass a cap
+only one of them fits under; a test on a real Postgres sends twelve calls, through two
+ledgers or through one ledger's pooled connections, at a cap that fits three, and admits
+three. Since 0.29 the step is one call to a function in the database, `ledger_admit`, rather
+than a transaction driven from Python. In 0.28 the lock was held across six round trips and
+whatever else the holding worker's interpreter did between them. At 500 requests a second
+the other workers queued on it (`Lock:advisory` in `pg_stat_activity`) while the holder sat
+in `ClientRead`, with CPU to spare. The function's checks, their order and their arithmetic
+are `Admission.check`'s, and a test runs the same calls through both ledgers and gets the
+same admissions and the same refusals. The proxy's role can insert and update a row but not
 delete one. Every library caller keeps its SQLite file.
 
 ## Residency queries

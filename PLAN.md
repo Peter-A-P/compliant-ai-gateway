@@ -434,6 +434,7 @@ from October the ledger-against-invoice difference is recorded there too (sectio
 | v0.25.0 | 2026-09-27 | The semantic cache built and measured (B2.5): `boundary.semcache`, `boundary cache paraphrase` and `eval`, the `cache` extra; not yet in the proxy |
 | v0.26.0 | 2026-09-29 | Deployed at gateway.peterparker.ca (OVHcloud, Beauharnois); `GET /audit/head` and the daily anchor Action; the first VPS load test with k6, published: 3 to 7 ms at p99 where the proxy holds the rate, saturated from 200 rps with audit on |
 | v0.27.0 | 2026-09-29 | Ledger commits off the event loop and a group-committed audit chain: 200 rps held with audit on; the semantic cache in the proxy, off by default, for marked questions only, hits on the ledger (v11) and in the chain (schema 4); the load test's cache layer; the central ledger, `ledger push` and the dashboard |
+| v0.29.0 | 2026-09-30 | Every load level answered, 0 of 150,041 failed: the spend-cap step as one database function, four fixes from a profile, the semantic cache shedding under load, and an HNSW index for it |
 | v0.28.0 | 2026-09-30 | Postgres and Redis: `boundary.pg`, the `hosted` extra, `serve --hosted --workers`, `audit follow`, `db init` and `db import`; the hosted proxy as four workers with the semantic cache on; the audit chain append-only by grant; the load test re-run hosted |
 | v1.0.0 | May 23 2027 | Everything in Part B; `boundary.redact` for 07; the proxy for 13 and 14 |
 
@@ -1145,6 +1146,17 @@ requests succeed against 29%, still saturated on a 4 vCPU host that also runs th
 generator. Two departures from B2's wording. The redaction vault stays in memory, because
 a request never leaves its worker. The pgvector lookup is an exact scan, because an
 approximate index trades hits for speed, and that trade is not measured.
+
+**Amended 2026-09-30 (0.29.0): every level answered.** 0 of 150,041 requests failed in the
+published run. At 500 rps the p99 overhead is 27 ms for routing and audit. Redaction holds
+500 at a 188 ms median, which is a queue and not a budget. 0.28's reading was wrong: its
+500 rps failures were not the host but the spend-cap lock, held across round trips from
+Python. It is now one function call in Postgres. A profile found four more costs, each fixed.
+Two changes to B2.5's cache. It sheds its load, answering upstream uncached when a worker's
+embedder is backed up or its event loop late, because an embedding costs 19 ms of a core
+whatever the batch and no queue fits 500 into four cores. And its lookup uses an HNSW
+index. The index is measured where it matters: every near-duplicate in a full cache is
+found. It can only turn a hit into a miss, never serve below the threshold.
 
 ### Tests that matter
 

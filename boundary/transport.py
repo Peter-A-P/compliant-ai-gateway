@@ -6,6 +6,7 @@ the gateway, so that pass-through can never retry by accident.
 
 from __future__ import annotations
 
+import itertools
 import ssl
 import time
 from collections.abc import Awaitable, Callable, Mapping
@@ -28,6 +29,13 @@ TRANSPORT_ERRORS: tuple[type[Exception], ...] = (httpx.TimeoutException, httpx.N
 # already enough; this makes the number explicit and asserted by a test rather than
 # inherited from a default that may move.
 POOL_LIMITS = httpx.Limits(max_connections=128, max_keepalive_connections=64)
+
+# Async clients per transport in the proxy (0.29). httpcore's pool walks every connection it
+# holds, polling each idle one's socket, whenever a request joins or leaves it, so its cost
+# per request grows with the pool. At 500 requests a second that walk was 30% of a proxy
+# worker's event loop (docs/loadtest.md). Identically configured clients taken in turn each
+# hold a quarter of the connections. A library caller keeps one.
+PROXY_ASYNC_CLIENTS = 4
 
 # Called with each chunk of a streamed body and the wall time since the request was sent.
 OnChunk = Callable[[bytes, float], None]
@@ -53,6 +61,7 @@ class Transport:
         *,
         sync_client: httpx.Client | None = None,
         async_client: httpx.AsyncClient | None = None,
+        async_clients: int = 1,
     ) -> None:
         t = httpx.Timeout(
             connect=timeouts.connect_s,
@@ -66,9 +75,16 @@ class Transport:
         self._sync = sync_client or httpx.Client(
             timeout=t, follow_redirects=False, verify=ctx, limits=POOL_LIMITS
         )
-        self._async = async_client or httpx.AsyncClient(
-            timeout=t, follow_redirects=False, verify=ctx, limits=POOL_LIMITS
+        # An injected client is the only one: a test's mock is never bypassed.
+        self._asyncs = (
+            [async_client]
+            if async_client is not None
+            else [
+                httpx.AsyncClient(timeout=t, follow_redirects=False, verify=ctx, limits=POOL_LIMITS)
+                for _ in range(max(1, async_clients))
+            ]
         )
+        self._turn = itertools.count()
         # The exact bytes of the last request body handed to httpx. The pass-through
         # byte-equality test compares this with what the adapter built.
         self.last_sent_body: bytes | None = None
@@ -93,6 +109,13 @@ class Transport:
         self.last_sent_body = bytes(req.content)
         return req
 
+    @property
+    def _async(self) -> httpx.AsyncClient:
+        """The next async client in turn; the only one unless the proxy asked for more."""
+        if len(self._asyncs) == 1:
+            return self._asyncs[0]
+        return self._asyncs[next(self._turn) % len(self._asyncs)]
+
     def send(self, built: BuiltRequest) -> HttpResult:
         req = self._build(self._sync, built)
         t0 = time.perf_counter()
@@ -101,9 +124,10 @@ class Transport:
         return HttpResult(resp.status_code, dict(resp.headers.items()), resp.content, elapsed)
 
     async def asend(self, built: BuiltRequest) -> HttpResult:
-        req = self._build(self._async, built)
+        client = self._async
+        req = self._build(client, built)
         t0 = time.perf_counter()
-        resp = await self._async.send(req)
+        resp = await client.send(req)
         elapsed = (time.perf_counter() - t0) * 1000.0
         return HttpResult(resp.status_code, dict(resp.headers.items()), resp.content, elapsed)
 
@@ -134,9 +158,10 @@ class Transport:
         return HttpResult(resp.status_code, dict(resp.headers.items()), b"".join(parts), elapsed)
 
     async def astream(self, built: BuiltRequest, on_chunk: AsyncOnChunk) -> HttpResult:
-        req = self._build(self._async, built)
+        client = self._async
+        req = self._build(client, built)
         t0 = time.perf_counter()
-        resp = await self._async.send(req, stream=True)
+        resp = await client.send(req, stream=True)
         try:
             parts: list[bytes] = []
             if 200 <= resp.status_code < 300:
@@ -154,5 +179,6 @@ class Transport:
         self._sync.close()
 
     async def aclose(self) -> None:
-        await self._async.aclose()
+        for client in self._asyncs:
+            await client.aclose()
         self._sync.close()

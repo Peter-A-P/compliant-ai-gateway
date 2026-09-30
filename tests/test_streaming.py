@@ -302,6 +302,26 @@ def test_the_pool_admits_at_least_sixty_four_connections() -> None:
         t.close()
 
 
+def test_the_proxys_clients_are_taken_in_turn_and_configured_alike() -> None:
+    """0.29: the proxy spreads its calls over several async clients so that each pool httpcore
+    walks is smaller. Each must be the same pinned client, and a library caller keeps one."""
+    one = Transport(Timeouts())
+    many = Transport(Timeouts(), async_clients=4)
+    try:
+        assert len(one._asyncs) == 1 and one._async is one._async
+        seen = [many._async for _ in range(8)]
+        assert len({id(c) for c in seen}) == 4 and seen[:4] == seen[4:]
+        for c in many._asyncs:
+            assert c.follow_redirects is False
+            assert c.timeout == one._asyncs[0].timeout
+            assert c._transport._pool._max_connections == POOL_LIMITS.max_connections  # type: ignore[attr-defined]
+        injected = httpx.AsyncClient()
+        assert Transport(Timeouts(), async_client=injected, async_clients=4)._asyncs == [injected]
+    finally:
+        one.close()
+        many.close()
+
+
 # -- refusals -----------------------------------------------------------------------------
 
 

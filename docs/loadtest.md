@@ -8,7 +8,7 @@ with the VPS size, and nothing below is that number.
 ```
 uv sync --extra server
 boundary loadtest                                   # 3 layers x 50, 200, 500 rps x 5 runs x 10 s
-boundary loadtest --generator k6 --levels 50,200,500 --machine "..." --published --out bench/loadtest.json
+boundary loadtest --generator k6 --hosted --workers 4 --levels 50,200,500 --machine "..." --published --out bench/loadtest.json
 boundary loadtest --from bench/loadtest.json --write-readme   # fill the README from a stored run
 ```
 
@@ -43,13 +43,86 @@ boundary loadtest --from bench/loadtest.json --write-readme   # fill the README 
 The request is about a page of text naming a person, an email address, a phone number and a
 file number, so the redaction layer has real work to do and the echo has a realistic size.
 
-## The VPS run: the published figure (0.28, hosted)
+## The VPS run: the published figure (0.29, hosted)
+
+2026-09-30, boundary 0.29.0, the same host, generator, settings and configuration as the 0.28
+run below, against a fresh `boundary_loadtest` database. `bench/loadtest.json`, milliseconds:
+
+| Layer | 50 rps p50 | 50 rps p99 | 200 rps p50 | 200 rps p99 | 500 rps p50 | 500 rps p99 |
+|---|---|---|---|---|---|---|
+| routing | 4.0 (3.9 to 4.1) | 6.4 (5.8 to 7.0) | 4.2 (4.2 to 4.3) | 7.0 (6.6 to 7.4) | 9.0 (8.6 to 9.3) | 27.2 (22.3 to 32.4) |
+| + audit | 4.2 (4.0 to 4.4) | 6.2 (5.5 to 7.6) | 4.6 (4.4 to 4.7) | 7.9 (7.2 to 8.8) | 9.9 (9.6 to 10.1) | 27.6 (25.4 to 30.9) |
+| + redaction | 5.6 (5.4 to 5.8) | 7.7 (7.0 to 8.5) | 7.9 (7.7 to 8.0) | 16.4 (13.4 to 21.7) | 188.4 (174.3 to 200.7) | 432.0 (383.4 to 493.6) |
+| cache (miss path) | 33.1 (31.4 to 34.7) | 41.2 (39.5 to 42.7) | shedding, 4,537 of 10,003 past the cache | | shedding, 22,761 of 25,003 | |
+
+**0 of 150,041 requests failed**, in every cell. In 0.28, every layer failed at 500 and the
+cache at 200. Redaction at 500 holds, but its 188 ms median is a queue: that cell is at
+the edge of what four shared cores can redact, and it is a capacity, not a budget. A
+shedding cache cell answered every request, most of them upstream past a busy cache, so
+its latency is mostly the routing layer's and it gets no cache figure (below).
+
+**0.28 was wrong about why it saturated.** It said every layer failed at 500 "because the
+machine does". Two probes at 500 showed otherwise: each worker ran at about 50% of a core,
+and the host had CPU to spare. Postgres showed the cause. Three of the four workers' ledger
+connections waited on `Lock:advisory` while the fourth sat in `ClientRead`. The spend-cap
+check and the row it admits run under one lock for every worker. In 0.28 that lock was held
+across six round trips to Postgres driven from Python, and across whatever else the holding
+interpreter did between them. 0.29 makes the step one call to a function in the database,
+`ledger_admit`, so the lock is held only while Postgres runs it (docs/ledger.md). That alone
+took routing at 500 from 1,379 failures in a probe run to 0, at 31 ms p50 and 250 ms p99.
+
+**Then a profile, with py-spy on the workers under load, found four more costs:**
+
+| Found | Share of what it was measured in | Fix |
+|---|---|---|
+| Threads queued on each worker's one Postgres connection | a third of the worker threads' samples | `PgLedger` keeps four connections, and a thread inside the admission step keeps its own |
+| httpcore walks every pooled connection, polling each idle socket, whenever a request joins or leaves the pool | 30% of the event loop | the proxy takes four identically configured clients in turn, so each walk covers a quarter |
+| The quota's Redis round trip ran on the event loop and blocked it | 12% of the event loop | an asyncio Redis client |
+| httpcore imports `sniffio` inside every lock it creates; the image lacked it, so each import searched the filesystem and failed | 5% | `sniffio` is a dependency |
+
+The price list's fingerprint, a JSON encoding and hash of every rate, also ran twice a call;
+it is now computed once. With the connections, `sniffio` and the fingerprint fixed, routing at
+500 in a probe was 11 ms p50 and 39 ms p99; the clients and Redis took it to the published 9
+and 27. None of them touches pass-through, which still makes one attempt with the
+adapter's exact bytes, whichever client sends them.
+
+**The cache sheds rather than queues.** An embedding costs about 19 ms of a core here, and
+batching does not help: 17.3 to 19.3 ms a text at every batch size from 1 to 32. So the
+cache cannot embed much above 200 questions a second on four cores, before the proxy's own
+work, and no queue makes 500 fit. A worker with four embeddings in flight, or with its
+event loop more than 10 ms late, now answers upstream as though the cache were off and says
+`skip: busy` (docs/cache.md). The load test counts those answers. A cache cell in which more
+than 1% were shed reports how many and no overhead, because its latencies belong to the
+routing layer. The event loop condition was the third design tried:
+
+- **A cap on embeddings in flight, alone**, left 1,603 of 10,001 failing at 500. Each
+  worker's embedder kept a core busy while there was demand, and the event loops that
+  answer every call were starved.
+- **A low priority for the embedder's thread** (nice 10) stopped the failures, 3 of 10,001,
+  but put 20 ms on every miss at 50 requests a second, where nothing needed the CPU back.
+- **A budget of half a core per worker** shed 22 of 1,001 at 50. Requests do not spread
+  evenly over uvicorn's workers, so a busy worker ran out of budget while the host was idle.
+- **The event loop's own lag**, sampled every 20 ms, is what hurts the calls, so it is what
+  the cache watches. At 50 it sheds nothing.
+
+**And the cache's lookup scanned everything.** The probe database had filled to the 20,000
+entries a team's cache is capped at, and a miss cost 60 ms where 0.28 published 35. pgvector's
+exact scan took 19.6 ms a lookup at that size. An HNSW index takes 0.9 ms (docs/cache.md), and
+with it the miss path is 33 ms here, in a database that started empty. 0.28 had named this
+index and not built it, because an approximate index can miss the nearest stored answer. It
+cannot serve a worse one, because the threshold is checked against the true similarity of
+what it returns. A test now checks that in a full cache every near-duplicate is found.
+
+Every probe here was one run of 20 s at 500 against `boundary_loadtest`, stored nowhere and
+quoted only to explain the published run above.
+
+## The VPS run: the published figure (0.28, hosted), superseded
 
 2026-09-30, boundary 0.28.0, the same host, generator and settings as the runs below, with
 the proxy as it now runs in production: four workers on Postgres and Redis, and a sealer for
 every layer that keeps the chain. `boundary loadtest --generator k6 --hosted --workers 4`,
 against a database of its own (`boundary_loadtest`, created empty for the run), stored in
-`bench/loadtest.json`, milliseconds:
+`bench/loadtest-028.json`, milliseconds:
 
 | Layer | 50 rps p50 | 50 rps p99 | 200 rps p50 | 200 rps p99 | 500 rps |
 |---|---|---|---|---|---|

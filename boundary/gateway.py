@@ -52,11 +52,17 @@ from boundary.errors import (
     PassthroughViolation,
     PolicyRefused,
     ProviderError,
-    SpendCapExceeded,
     UnknownPrice,
 )
 from boundary.ledger.prices import cost_usd, estimate_usd
-from boundary.ledger.store import LedgerBackend, LedgerRow, LedgerStore, new_call_uid, utc_now
+from boundary.ledger.store import (
+    Admission,
+    LedgerBackend,
+    LedgerRow,
+    LedgerStore,
+    new_call_uid,
+    utc_now,
+)
 from boundary.providers import (
     ADAPTERS,
     BATCH_ADAPTERS,
@@ -1163,34 +1169,33 @@ class Gateway:
         entry = self._price_for(pc, ref.provider, ref.model)
         max_tokens = effective.max_tokens or 0
         estimate = estimate_usd(len(built.body), max_tokens, entry) if entry is not None else 0.0
-        # Checked and written as one step: see `LedgerStore.admission`.
-        with self.ledger.admission():
-            self._check_caps(run_id, estimate=estimate)
-            row = LedgerRow(
-                ts_utc=utc_now(),
-                boundary_version=__version__,
-                project=self.project,
-                purpose=purpose,
-                mode=mode.value,
-                provider=ref.provider,
-                model_requested=ref.explicit,
-                run_id=run_id,
-                alias=ref.alias,
-                region=ref.region,
-                residency=_residency(ref.provider_config),
-                price_list=prices.name if prices is not None else None,
-                price_sha256=prices.rates_sha256 if prices is not None else None,
-                cost_usd=estimate if entry is not None else None,
-                request_sha256=sha256_hex(built.body),
-                env=self.env,
-                data_class=declared,
-                redacted=True if redacted else None,
-                injection=True if injection else None,
-            )
-            span = self.telemetry.start("boundary.chat_stream" if stream else "boundary.chat")
-            ids = Telemetry.ids(span)
-            row.trace_id, row.span_id = ids.trace_id, ids.span_id
-            self.ledger.begin(row)
+        row = LedgerRow(
+            ts_utc=utc_now(),
+            boundary_version=__version__,
+            project=self.project,
+            purpose=purpose,
+            mode=mode.value,
+            provider=ref.provider,
+            model_requested=ref.explicit,
+            run_id=run_id,
+            alias=ref.alias,
+            region=ref.region,
+            residency=_residency(ref.provider_config),
+            price_list=prices.name if prices is not None else None,
+            price_sha256=prices.rates_sha256 if prices is not None else None,
+            cost_usd=estimate if entry is not None else None,
+            request_sha256=sha256_hex(built.body),
+            env=self.env,
+            data_class=declared,
+            redacted=True if redacted else None,
+            injection=True if injection else None,
+        )
+        span = self.telemetry.start("boundary.chat_stream" if stream else "boundary.chat")
+        ids = Telemetry.ids(span)
+        row.trace_id, row.span_id = ids.trace_id, ids.span_id
+        # The caps checked and the row written as one step (`LedgerBackend.admit`). A call
+        # refused here writes no row, and its span is never ended, so it is never exported.
+        self.ledger.admit(row, self._admission(run_id, estimate=estimate))
 
         cached: HttpResult | None = None
         # A stream never reads the cache: a cached answer has no first token to time.
@@ -1301,8 +1306,8 @@ class Gateway:
             cache_similarity=round(similarity, 6),
             cache_source=source,
         )
-        with self.ledger.admission():
-            row_id = self.ledger.begin(row)
+        # Costs nothing, so it cannot take anyone past a cap and needs no admission step.
+        row_id = self.ledger.begin(row)
         row.model_returned = model_returned
         row.input_tokens = 0
         row.output_tokens = 0
@@ -1394,25 +1399,20 @@ class Gateway:
             self.ledger.complete(row)
         raise PolicyRefused(decision.data_class, provider, decision.reason, ids[0])
 
-    def _check_caps(self, run_id: str | None, *, estimate: float) -> None:
-        month = utc_now()[:7]
+    def _admission(self, run_id: str | None, *, estimate: float) -> Admission:
         cap = self.caps.for_project(self.project)
-        spent = self.ledger.spend_usd(project=self.project, year_month=month)
-        if spent + estimate > cap.monthly_usd:
-            raise SpendCapExceeded(
-                f"project {self.project} monthly", cap.monthly_usd, spent, estimate
-            )
-        if run_id is not None and cap.per_run_usd is not None:
-            spent_run = self.ledger.spend_usd(project=self.project, run_id=run_id)
-            if spent_run + estimate > cap.per_run_usd:
-                raise SpendCapExceeded(
-                    f"project {self.project} run {run_id}", cap.per_run_usd, spent_run, estimate
-                )
-        spent_all = self.ledger.spend_usd(project=None, year_month=month)
-        if spent_all + estimate > self.caps.portfolio_monthly_usd:
-            raise SpendCapExceeded(
-                "portfolio monthly", self.caps.portfolio_monthly_usd, spent_all, estimate
-            )
+        return Admission(
+            project=self.project,
+            month=utc_now()[:7],
+            estimate=estimate,
+            project_monthly_usd=cap.monthly_usd,
+            portfolio_monthly_usd=self.caps.portfolio_monthly_usd,
+            run_id=run_id,
+            per_run_usd=cap.per_run_usd,
+        )
+
+    def _check_caps(self, run_id: str | None, *, estimate: float) -> None:
+        self._admission(run_id, estimate=estimate).check(self.ledger)
 
     def _backoff(self, attempt: int, headers: Mapping[str, str] | None) -> float:
         policy = self.config.retry

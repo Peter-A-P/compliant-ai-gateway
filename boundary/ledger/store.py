@@ -25,6 +25,8 @@ from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 from typing import Any, Protocol
 
+from boundary.errors import SpendCapExceeded
+
 SCHEMA_VERSION = 11
 _SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 
@@ -204,6 +206,51 @@ _ADMISSION: dict[str, threading.Lock] = {}
 _ADMISSION_GUARD = threading.Lock()
 
 
+@dataclass(frozen=True, slots=True)
+class Admission:
+    """The caps one call's row is admitted under (0.29): what `LedgerBackend.admit` checks
+    and writes as one step. The order of the checks is the order a refusal names: the
+    project's month, then its run, then the gateway's month."""
+
+    project: str
+    month: str
+    estimate: float
+    project_monthly_usd: float
+    portfolio_monthly_usd: float
+    run_id: str | None = None
+    per_run_usd: float | None = None
+
+    def refuse(self, scope: str, spent: float) -> SpendCapExceeded:
+        """The refusal for one of `project`, `run` or `portfolio`."""
+        if scope == "project":
+            return SpendCapExceeded(
+                f"project {self.project} monthly", self.project_monthly_usd, spent, self.estimate
+            )
+        if scope == "run":
+            assert self.per_run_usd is not None
+            return SpendCapExceeded(
+                f"project {self.project} run {self.run_id}", self.per_run_usd, spent, self.estimate
+            )
+        if scope == "portfolio":
+            return SpendCapExceeded(
+                "portfolio monthly", self.portfolio_monthly_usd, spent, self.estimate
+            )
+        raise ValueError(f"unknown cap scope {scope!r}")
+
+    def check(self, ledger: LedgerBackend) -> None:
+        """Raise the first cap this call would take past, reading spend from `ledger`."""
+        spent = ledger.spend_usd(project=self.project, year_month=self.month)
+        if spent + self.estimate > self.project_monthly_usd:
+            raise self.refuse("project", spent)
+        if self.run_id is not None and self.per_run_usd is not None:
+            spent_run = ledger.spend_usd(project=self.project, run_id=self.run_id)
+            if spent_run + self.estimate > self.per_run_usd:
+                raise self.refuse("run", spent_run)
+        spent_all = ledger.spend_usd(project=None, year_month=self.month)
+        if spent_all + self.estimate > self.portfolio_monthly_usd:
+            raise self.refuse("portfolio", spent_all)
+
+
 class LedgerBackend(Protocol):
     """What `Gateway` needs of a ledger: a SQLite `LedgerStore`, or `boundary.pg.PgLedger`."""
 
@@ -211,6 +258,8 @@ class LedgerBackend(Protocol):
     def path(self) -> Any: ...
 
     def admission(self) -> AbstractContextManager[Any]: ...
+
+    def admit(self, row: LedgerRow, caps: Admission) -> int: ...
 
     def begin(self, row: LedgerRow) -> int: ...
 
@@ -261,6 +310,13 @@ class LedgerStore:
         key = str(Path(self.path).resolve())
         with _ADMISSION_GUARD:
             return _ADMISSION.setdefault(key, threading.Lock())
+
+    def admit(self, row: LedgerRow, caps: Admission) -> int:
+        """Check `caps` and write `row` in flight, as one step for every store on this file;
+        raises `SpendCapExceeded`, writing nothing, when the call does not fit."""
+        with self.admission():
+            caps.check(self)
+            return self.begin(row)
 
     # -- schema -------------------------------------------------------------------------
 

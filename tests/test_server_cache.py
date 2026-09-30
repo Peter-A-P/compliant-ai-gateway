@@ -8,7 +8,10 @@ is bge-small, measured in docs/cache.md; what is tested here is the proxy's rule
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
+import threading
+import time
 from collections.abc import AsyncIterator, Iterator, Sequence
 from pathlib import Path
 from typing import Any
@@ -254,3 +257,96 @@ def test_the_cli_and_the_factory_share_one_threshold() -> None:
     from boundary.server import factory
 
     assert cli.SEMCACHE_THRESHOLD == factory.SEMCACHE_THRESHOLD == 0.82
+
+
+class Gated(Words):
+    """Words, held until the test lets it go, so embeddings pile up as they would under load."""
+
+    def __init__(self) -> None:
+        self.gate = threading.Event()
+        self.entered = threading.Semaphore(0)
+
+    def embed(self, texts: Sequence[str]) -> list[Vector]:
+        self.entered.release()
+        self.gate.wait(10)
+        return super().embed(texts)
+
+
+def ask(question: str) -> dict[str, Any]:
+    return body(messages=[{"role": "user", "content": question}])
+
+
+async def test_a_busy_cache_is_skipped_and_the_call_still_answered(
+    repo_config: BoundaryConfig, tmp_path: Path, keys: None, upstream: respx.MockRouter
+) -> None:
+    """0.29: past SEMCACHE_MAX_PENDING embeddings in flight on a worker, a request goes
+    upstream without the cache, saying so, rather than queueing behind them. The waiting
+    ones are still answered and stored when the embedder frees up."""
+    from boundary.server.app import SEMCACHE_MAX_PENDING
+
+    embedder = Gated()
+    a = create_app(
+        repo_config,
+        teams(),
+        ledger_path=tmp_path / "proxy.sqlite",
+        policy=load_policy(CONFIG_DIR / "policy.yaml"),
+        semantic_cache=lambda: SemanticCache(embedder, threshold=0.95),
+        asleep=_no_sleep,
+        wall=lambda: NOW,
+    )
+    p = App(a, tmp_path / "proxy.sqlite", tmp_path / "unused")
+    route = upstream.post(OPENWEIGHTS_URL).mock(return_value=completion("Hello there"))
+    try:
+        waiting = [
+            asyncio.create_task(p.post(ask(f"Question number {i}?")))
+            for i in range(SEMCACHE_MAX_PENDING)
+        ]
+        # The embedder runs them one at a time: wait until the first holds it and the rest
+        # have been handed to it, which the counter says.
+        await asyncio.to_thread(embedder.entered.acquire, True, 5)
+        for _ in range(100):
+            if a.state.boundary.embedding == SEMCACHE_MAX_PENDING:
+                break
+            await asyncio.sleep(0.01)
+        assert a.state.boundary.embedding == SEMCACHE_MAX_PENDING
+        shed = await p.post(ask("Question number 99?"))
+        assert shed.status_code == 200
+        assert shed.headers["x-boundary-cache"] == "skip: busy"
+        assert shed.json()["choices"][0]["message"]["content"] == "Hello there"
+        assert route.call_count == 1, "only the shed request has been sent"
+        embedder.gate.set()
+        done = await asyncio.gather(*waiting)
+        assert [r.headers["x-boundary-cache"] for r in done] == ["miss"] * SEMCACHE_MAX_PENDING
+        assert a.state.boundary.embedding == 0
+        again = await p.post(ask("Question number 99?"))
+        assert again.headers["x-boundary-cache"] == "miss", "a shed answer is never stored"
+    finally:
+        embedder.gate.set()
+        await p.http.aclose()
+        await a.state.boundary.close()
+
+
+async def test_a_late_event_loop_sends_past_the_cache(app: App) -> None:
+    """0.29: while the worker's event loop runs later than LOOP_LAG_SHED_S, the cache takes
+    no request, so its embeddings never starve the calls; on time again, it does. The lag is
+    measured by a task started with the first request the cache may take."""
+    from boundary.server.app import LOOP_LAG_SHED_S, LOOP_TICK_S
+
+    state = app.app.state.boundary
+    with respx.mock(assert_all_called=False) as router:
+        router.post(OPENWEIGHTS_URL).mock(return_value=completion("Hello there"))
+        first = await app.post(ask("What is the capital of Canada?"))
+        assert first.headers["x-boundary-cache"] == "miss"
+        assert state.loop_watch is not None and not state.loop_watch.done()
+        # Block the loop for well past the threshold, then let the watcher see it.
+        time.sleep(LOOP_LAG_SHED_S * 20)
+        await asyncio.sleep(LOOP_TICK_S * 2)
+        assert state.loop_lag_s >= LOOP_LAG_SHED_S
+        shed = await app.post(ask("What is the capital of France?"))
+        assert shed.status_code == 200 and shed.headers["x-boundary-cache"] == "skip: busy"
+        for _ in range(200):
+            if state.loop_lag_s < LOOP_LAG_SHED_S:
+                break
+            await asyncio.sleep(LOOP_TICK_S)
+        again = await app.post(ask("What is the capital of France?"))
+        assert again.headers["x-boundary-cache"] == "miss", "a shed answer is never stored"

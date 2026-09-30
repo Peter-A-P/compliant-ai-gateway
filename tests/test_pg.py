@@ -172,11 +172,13 @@ def test_a_redacted_flagged_row_is_written_as_the_sqlite_ledger_holds_it(db: Db)
         ledger.close()
 
 
+@pytest.mark.parametrize("processes", [2, 1])
 async def test_two_processes_cannot_pass_a_cap_together(
-    repo_config: BoundaryConfig, tmp_path: Path, keys: None, db: Db
+    repo_config: BoundaryConfig, tmp_path: Path, keys: None, db: Db, processes: int
 ) -> None:
-    """Two gateways, each with its own connection, as two workers would have: a cap that
-    fits three estimates admits three of twelve calls sent at once."""
+    """Two gateways, each with its own connections, as two workers would have, or one whose
+    threads each take one of its pooled connections (0.29): a cap that fits three estimates
+    admits three of twelve calls sent at once."""
     assert pg is not None
     from boundary.ledger.prices import estimate_usd
     from boundary.providers.anthropic import AnthropicAdapter
@@ -195,7 +197,11 @@ async def test_two_processes_cannot_pass_a_cap_together(
         projects={"ai-release-gate": ProjectCap(monthly_usd=one * 3.5)},
     )
     a = make_gateway(repo_config, tmp_path, caps=caps, ledger=pg.PgLedger(db.app))
-    b = make_gateway(repo_config, tmp_path, caps=caps, ledger=pg.PgLedger(db.app))
+    b = (
+        make_gateway(repo_config, tmp_path, caps=caps, ledger=pg.PgLedger(db.app))
+        if processes == 2
+        else a
+    )
 
     async def slow(_request: httpx.Request) -> httpx.Response:
         await asyncio.sleep(0.05)
@@ -212,7 +218,64 @@ async def test_two_processes_cannot_pass_a_cap_together(
         assert sum(isinstance(r, SpendCapExceeded) for r in results) == 9
     finally:
         a.close()
-        b.close()
+        if b is not a:
+            b.close()
+
+
+def test_admission_refuses_as_the_sqlite_ledger_does(db: Db, tmp_path: Path) -> None:
+    """0.29: the hosted admission is one call to `ledger_admit`, not Python's check under a
+    lock. The same calls against both ledgers are admitted or refused alike, naming the
+    same cap and the same spend, and a refusal writes no row."""
+    assert pg is not None
+    from boundary.ledger.store import Admission, LedgerStore
+
+    month = utc_now()[:7]
+
+    def caps(project: str, estimate: float, run_id: str | None = None) -> Admission:
+        return Admission(
+            project=project,
+            month=month,
+            estimate=estimate,
+            project_monthly_usd=1.0,
+            portfolio_monthly_usd=1.5,
+            run_id=run_id,
+            per_run_usd=0.4 if run_id else None,
+        )
+
+    calls = [
+        ("alpha", 0.3, "r1"),
+        ("alpha", 0.2, "r1"),  # the run's 0.4 would be passed
+        ("alpha", 0.6, None),
+        ("alpha", 0.2, None),  # alpha's 1.0 would be passed
+        ("beta", 0.5, None),
+        ("beta", 0.3, None),  # the gateway's 1.5 would be passed
+        ("beta", 0.0, None),
+    ]
+
+    def outcomes(ledger: Any) -> list[str]:
+        got = []
+        for project, estimate, run_id in calls:
+            try:
+                ledger.admit(
+                    _row(project, cost=estimate, run_id=run_id), caps(project, estimate, run_id)
+                )
+                got.append("admitted")
+            except SpendCapExceeded as e:
+                got.append(str(e))
+        return got
+
+    sqlite = LedgerStore(tmp_path / "l.sqlite")
+    hosted = pg.PgLedger(db.app)
+    try:
+        want = outcomes(sqlite)
+        assert outcomes(hosted) == want
+        assert [w == "admitted" for w in want] == [True, False, True, False, True, False, True]
+        assert "'project alpha run r1'" in want[1] and "'portfolio monthly'" in want[5]
+        assert hosted.count() == sqlite.count() == 4
+        assert all(r["error_type"] == "in_flight" for r in hosted.rows())
+    finally:
+        sqlite.close()
+        hosted.close()
 
 
 # -- the audit chain -------------------------------------------------------------------------
@@ -333,6 +396,52 @@ def test_the_pgvector_cache_is_per_team_and_per_scope(db: Db) -> None:
     assert alpha.store(q, "y") is None, "full at max_entries"
 
 
+def test_the_index_finds_every_near_duplicate_in_a_full_cache(db: Db) -> None:
+    """0.29: the nearest question is found by an HNSW index, which is approximate. What the
+    cache needs of it is that a question close enough to hit is found; checked on 4,000
+    random unit vectors, a tenth of them another team's, with 200 queries each at a cosine
+    of about 0.95 to one stored vector. The plan must be the index, or this checks the scan."""
+    assert pg is not None
+    import random
+
+    from boundary.semcache import scope_of
+
+    rng = random.Random(29)
+
+    def rand() -> Vector:
+        return unit([rng.gauss(0, 1) for _ in range(384)])
+
+    q = ChatRequest(model="m", messages=[{"role": "user", "content": "q"}])
+    scope = scope_of(q)
+    stored = [rand() for _ in range(4000)]
+    with pg.connect(db.admin) as conn, conn.cursor() as cur:
+        cur.executemany(
+            "INSERT INTO semcache (team, scope, embedding, answer, source, created_utc) "
+            "VALUES (%s, %s, %s::vector, %s, %s, %s)",
+            [
+                ("other" if i % 10 == 0 else "big", scope, pg._vec(v), f"a{i}", f"s{i}", "t")
+                for i, v in enumerate(stored)
+            ],
+        )
+        conn.execute("ANALYZE semcache")
+    cache = pg.PgSemanticCache(db.app, Words(), team="big", threshold=0.9)
+    targets = [i for i in range(4000) if i % 10][:200]
+    found = 0
+    for i in targets:
+        noise = rand()
+        v = unit([0.95 * a + 0.31 * b for a, b in zip(stored[i], noise, strict=True)])
+        hit = cache.lookup(q, v)
+        found += hit is not None and hit.source == f"s{i}"
+    assert found == len(targets)
+    with cache._lock:
+        plan = cache._conn.execute(
+            "EXPLAIN SELECT id FROM semcache WHERE team = %s AND scope = %s "
+            "ORDER BY embedding <=> %s::vector LIMIT 1",
+            ("big", scope, pg._vec(stored[1])),
+        ).fetchall()
+    assert "semcache_embedding_hnsw" in " ".join(str(r) for r in plan)
+
+
 # -- Redis quotas ----------------------------------------------------------------------------
 
 
@@ -346,6 +455,18 @@ def test_the_quota_is_shared_by_every_worker() -> None:
     assert [d.allowed for d in got] == [True, True, True, False, False]
     assert got[3].used == 3 and 0 < got[3].retry_after_s <= 60
     assert one.take("other", 1).allowed, "per team"
+
+
+async def test_the_proxys_quota_is_the_same_window_without_blocking() -> None:
+    """0.29: the proxy asks Redis from the event loop, through the same script and window."""
+    assert pg is not None
+    prefix = f"test:{uuid.uuid4().hex}:"
+    one = pg.RedisQuota(REDIS, prefix=prefix)
+    two = pg.RedisQuota(REDIS, prefix=prefix)
+    assert one.take("t", 3).allowed
+    got = await asyncio.gather(*(two.atake("t", 3) for _ in range(4)))
+    assert sorted(d.allowed for d in got) == [False, False, True, True]
+    assert not one.take("t", 3).allowed
 
 
 # -- the proxy, hosted -----------------------------------------------------------------------

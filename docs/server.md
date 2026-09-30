@@ -283,7 +283,11 @@ anybody reads them.
 When the semantic cache is on, every answer says what it did in `x-boundary-cache`: `hit`
 (with `x-boundary-cache-similarity` and `x-boundary-cache-source`, the call whose answer was
 reused), `miss`, or `skip: <reason>`. The reasons are `unmarked`, `class`, `redacted`,
-`injection`, `stream` and `shape`.
+`injection`, `stream` and `shape`, and since 0.29 `busy`: the worker already had
+`SEMCACHE_MAX_PENDING` (4) embeddings in flight, or its event loop was running more than
+10 ms late. A busy request is answered upstream as if the cache were off, and its answer is
+not stored. The cache is there to save calls, never to be the reason one fails
+(docs/cache.md).
 
 ## Upstream failures
 

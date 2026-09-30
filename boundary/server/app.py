@@ -29,6 +29,7 @@ rather than sealed after (B2.4), Postgres, and the layered load test.
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
 import datetime as dt
 import math
 import secrets
@@ -72,7 +73,7 @@ from boundary.server.redaction import (
     redact_request,
 )
 from boundary.server.teams import RequestQuota, TeamsConfig, hash_key
-from boundary.transport import Transport
+from boundary.transport import PROXY_ASYNC_CLIENTS, Transport
 from boundary.types import ChatResponse, DataClass, Mode
 
 # The class a request without the header is judged as. Fails closed (PLAN.md B2.2).
@@ -81,6 +82,23 @@ DEFAULT_PURPOSE = "proxy"
 # How long a completed call waits for others to share its audit commit (0.27). The window in
 # which a completed call is in the ledger and not yet in the chain.
 AUDIT_FLUSH_S = 0.05
+# Embeddings a worker holds for the semantic cache at once, running or waiting (0.29). One
+# costs about 19 ms of a core on the VPS whatever the batch (docs/loadtest.md), so a worker
+# cannot embed faster than about fifty a second, and past that a queue only grows. A request
+# that finds this many ahead of it goes upstream without the cache, and says so: the cache
+# is there to save calls, and never the reason one fails.
+SEMCACHE_MAX_PENDING = 4
+# And none while the worker's event loop is running late (0.29). At 500 requests a second
+# four workers' embedders each kept a core busy while there was demand, the loops that
+# answer every call were starved of CPU, and 16% of the calls failed although three in four
+# had been sent past the cache. Two fixes that were tried first and dropped: a low priority
+# for the embedder's thread stopped the failures but put 20 ms on every miss at 50 requests
+# a second, where nothing needed the CPU back; a fixed budget of half a core a worker shed
+# 2% at 50, because requests do not spread evenly over workers and a busy one ran out while
+# the host was idle. A late loop is the thing that hurts the calls, so it is what is watched:
+# sampled every LOOP_TICK_S, smoothed, and past LOOP_LAG_SHED_S the cache waits.
+LOOP_TICK_S = 0.02
+LOOP_LAG_SHED_S = 0.01
 _MAX_LABEL = 200
 
 
@@ -131,6 +149,29 @@ class ServerState:
     closers: list[Callable[[], None]] = field(default_factory=list)
     ingest_hashes: frozenset[str] = frozenset()
     page: tuple[float, str] | None = None
+    # The cache's embeddings in flight on this worker, and the one thread that runs them in
+    # turn (0.29): in turn, so the first in line finishes first rather than every one
+    # finishing late together.
+    embedding: int = 0
+    embedder_thread: concurrent.futures.ThreadPoolExecutor | None = None
+    # How late this worker's event loop runs, smoothed, in seconds, and the task that
+    # measures it, started with the first request the cache may take.
+    loop_lag_s: float = 0.0
+    loop_watch: asyncio.Task[None] | None = None
+
+    def embed_budget(self) -> bool:
+        """Whether the cache may embed one more request now: fewer than
+        SEMCACHE_MAX_PENDING in flight, and the event loop on time."""
+        if self.loop_watch is None:
+            self.loop_watch = asyncio.ensure_future(self._watch_loop())
+        return self.embedding < SEMCACHE_MAX_PENDING and self.loop_lag_s < LOOP_LAG_SHED_S
+
+    async def _watch_loop(self) -> None:
+        while True:
+            t = time.perf_counter()
+            await asyncio.sleep(LOOP_TICK_S)
+            late = max(0.0, time.perf_counter() - t - LOOP_TICK_S)
+            self.loop_lag_s = 0.7 * self.loop_lag_s + 0.3 * late
 
     def sealed(self) -> None:
         """Schedule the seal of every row completed since the last one."""
@@ -164,6 +205,10 @@ class ServerState:
             self.central.close()
         for close in self.closers:
             close()
+        if self.embedder_thread is not None:
+            self.embedder_thread.shutdown(wait=False)
+        if self.loop_watch is not None:
+            self.loop_watch.cancel()
         for gw in self.gateways.values():
             await gw.aclose()
 
@@ -194,7 +239,7 @@ def create_app(
                 "in boundary.yaml or --policy. It fails closed rather than start without one"
             )
         policy = load_policy(config.policy)
-    shared = transport or Transport(config.defaults.timeouts)
+    shared = transport or Transport(config.defaults.timeouts, async_clients=PROXY_ASYNC_CLIENTS)
     caps = teams.caps()
     pg_ledger = None
     if hosted is not None:
@@ -360,7 +405,11 @@ def create_app(
         purpose = _label(request, "x-boundary-purpose") or DEFAULT_PURPOSE
         run_id = _label(request, "x-boundary-run-id")
 
-        quota = state.quota.take(team, state.teams.teams[team].requests_per_minute)
+        limit = state.teams.teams[team].requests_per_minute
+        # Redis is asked without blocking the event loop (0.29): 0.28's synchronous round
+        # trip here was 12% of a worker's loop at 500 requests a second.
+        atake = getattr(state.quota, "atake", None)
+        quota = await atake(team, limit) if atake is not None else state.quota.take(team, limit)
         if not quota.allowed:
             wait = max(1, math.ceil(quota.retry_after_s))
             raise Refusal(
@@ -428,9 +477,22 @@ def create_app(
             state, team, data_class, redaction, flagged, parsed, headers, marked=marked
         )
         vector = None
+        if semcache is not None and not state.embed_budget():
+            headers["x-boundary-cache"] = "skip: busy"
+            semcache = None
         if semcache is not None:
             started = time.perf_counter()
-            vector = await asyncio.to_thread(semcache.embed, parsed.request)
+            if state.embedder_thread is None:
+                state.embedder_thread = concurrent.futures.ThreadPoolExecutor(
+                    SEMCACHE_MAX_PENDING, thread_name_prefix="boundary-embed"
+                )
+            state.embedding += 1
+            try:
+                vector = await asyncio.get_running_loop().run_in_executor(
+                    state.embedder_thread, semcache.embed, parsed.request
+                )
+            finally:
+                state.embedding -= 1
             hit = await asyncio.to_thread(semcache.lookup, parsed.request, vector)
             if hit is not None:
                 resp = await asyncio.to_thread(

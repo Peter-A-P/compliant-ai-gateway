@@ -5,6 +5,40 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.29.0 (2026-09-30)
+
+**Every load level answered: 0 of 150,041 requests failed.** PLAN.md B4; docs/loadtest.md.
+
+- **The spend-cap step is one call to a function in the database.** `Admission` and
+  `LedgerBackend.admit(row, caps)` check the caps and write the row as one step. On
+  Postgres, `ledger_admit` takes the advisory lock, sums, checks and inserts. 0.28 held the
+  lock across six round trips from Python, and at 500 rps three workers waited on it while
+  the holder sat in `ClientRead`. The result: 0.28 wrongly blamed the 4 vCPU host for its
+  500 rps failures. A test runs the same calls through the SQLite and Postgres ledgers and
+  gets the same admissions and refusals. The race test now also covers one ledger's pooled
+  connections, and it admits 8 of 12 where 3 fit if the lock is removed.
+- **Found by profiling the workers under load (py-spy):**
+  - `PgLedger(pool=4)`: threads had queued on one connection.
+  - `Transport(async_clients=)`, 4 in the proxy: httpcore walks and polls every pooled
+    connection per request, and this was 30% of the event loop.
+  - `RedisQuota.atake`: the quota round trip had blocked the loop.
+  - `sniffio` is now a dependency: httpcore imports it in every lock, and without it each
+    import searched the filesystem.
+  - `PriceList.rates_sha256` is cached.
+- **The semantic cache sheds instead of queueing.** With four embeddings in flight, or with
+  the event loop more than 10 ms late, a request goes upstream uncached and says `skip:
+  busy`. Two designs tried first are recorded with their numbers: a low-priority embedder
+  thread and a per-worker CPU budget. Embeddings run on the worker's own threads.
+- **An HNSW index on `semcache`**, searched with `hnsw.iterative_scan = strict_order`: 0.9 ms
+  a lookup at the 20,000-entry cap, against 19.6 ms for the exact scan. A test checks that
+  every near-duplicate in a full cache is found through the index.
+- **Load test**: `Cell.shed` counts answers sent past a busy cache. A cache cell that sheds
+  more than 1% gets no overhead figure. Published: p99 overhead 27 ms at 500 rps for routing
+  and audit, 16 ms for redaction at 200. Redaction at 500 holds at a 188 ms median, which is
+  a queue. `bench/loadtest.json`; 0.28's result is `bench/loadtest-028.json`.
+- `Gateway.record_cache_hit` no longer takes the admission step, because its row costs
+  nothing.
+
 ## 0.28.0 (2026-09-30)
 
 **Postgres and Redis: the hosted proxy as four workers on shared state.** PLAN.md B2 and

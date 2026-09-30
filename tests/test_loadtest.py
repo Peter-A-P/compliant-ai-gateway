@@ -186,3 +186,46 @@ def test_k6_runs_are_sorted_into_measured_stalled_dropped_and_saturated(
     cell = Cell("audit", 200)
     loadtest._cell_k6(cell, 1, 2, {}, {}, 5, 10.0, tmp_path)
     assert cell.saturated and cell.saturated_runs == 2, "stops after two"
+
+
+def test_a_cache_cell_that_sheds_is_not_reported_as_the_cache(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """0.29: a request sent upstream past a busy cache is answered, so it is not a failure;
+    but its latency is the routing layer's, so a cache cell that sheds more than 1% gets no
+    overhead figure, only how much it shed. Shedding under 1% is still a measurement."""
+    from boundary import loadtest
+
+    def shedding(n: int) -> dict[str, float]:
+        return {**_summary(55, 58), "shed": n}
+
+    few = [_summary(52, 55)] * 2 + [_summary(52, 53), shedding(3)] * 3
+    script = iter(few)
+    monkeypatch.setattr(loadtest, "_k6", lambda *a, **k: next(script))
+    cell = Cell("cache", 50)
+    loadtest._cell_k6(cell, 1, 2, {}, {}, 3, 10.0, tmp_path)
+    assert cell.shed == 9 and not cell.shedding and not cell.generator_bound
+
+    script = iter([_summary(52, 55)] * 2 + [_summary(52, 53), shedding(400)] * 3)
+    monkeypatch.setattr(loadtest, "_k6", lambda *a, **k: next(script))
+    cell = Cell("cache", 500)
+    loadtest._cell_k6(cell, 1, 2, {}, {}, 3, 10.0, tmp_path)
+    assert cell.shedding and cell.errors == 0
+    results = LoadResults("x", "t", "the VPS", True, 3, 10.0, 50.0, [cell])
+    assert "shedding: 1200 of 1500" in results.table()
+    row = results.readme_rows()
+    assert "no cache figure" in row and row.endswith("| 0 of 1500 |")
+
+
+async def test_the_python_client_counts_what_the_proxy_shed() -> None:
+    async def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={}, headers={"x-boundary-cache": "skip: busy"})
+
+    shed = [0]
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(handler), base_url="http://x"
+    ) as client:
+        lat, errors = await _drive(
+            client, "http://x/", rps=50, duration_s=0.2, headers={}, body={}, shed=shed
+        )
+    assert errors == 0 and len(lat) == 10 and shed == [10]

@@ -103,6 +103,26 @@ per team and per scope, nearest by cosine distance, and it survives a restart. T
 proxy runs with the cache on since 2026-09-30. Its first two calls were a miss and a hit
 naming that miss as its source.
 
+**The nearest is found by an HNSW index since 0.29.** At the 20,000 entries a team's cache
+is capped at, pgvector's exact scan took 19.6 ms a lookup on the VPS, and it grows with the
+table. With `USING hnsw (embedding vector_cosine_ops)` and `hnsw.iterative_scan =
+strict_order`, so the team and scope filter never leaves the index with nothing to return,
+it took 0.9 ms. An approximate index can miss the nearest stored question and answer a miss
+where the scan would have hit. It cannot serve a worse answer, because the threshold is
+checked against the true similarity of what it returns. `tests/test_pg.py` checks the part
+that matters: in 4,000 stored vectors, a tenth of them another team's, 200 queries at a
+cosine of about 0.95 to one of them each find it, through the index.
+
+**A busy cache is skipped, not queued (0.29).** An embedding costs about 19 ms of a core on
+the VPS, and batching does not help: 17.3 to 19.3 ms a text at every batch size from 1 to
+32. So four workers cannot embed much above 200 questions a second, and past that a queue
+only grows. A worker with four embeddings in flight, or an event loop running more than
+10 ms late, sends the request upstream as if the cache were off and says `skip: busy`. The
+second condition is the one that matters under load. Without it, the embedders kept every
+core busy at 500 requests a second, the event loops that answer the calls were starved, and
+16% of the calls failed. Two other fixes were tried and dropped (docs/loadtest.md). What
+shedding costs is money, not failures: a shed question that would have hit is paid for.
+
 What this cannot see: 03's questions are one domain and 100 items, the halves 50 each, and
 the paraphrases were written by a model (a floor on false hits, above). The hand-labelled 200
 hits on replayed traffic in B2.5 are still to come and will be reported beside these.

@@ -76,6 +76,10 @@ MIN_RUNS = 3
 # could not hold the rate, and its surviving latencies are not an overhead (0.26: the first
 # VPS run labelled such a cell generator-bound, which blamed the client for the proxy).
 MAX_ERROR_SHARE = 0.01
+# What the proxy says of a request it sent upstream past a busy cache (0.29). Answered, so not
+# a failure; but not a measurement of the cache either, so a cache cell that sheds more than
+# MAX_ERROR_SHARE is reported as shedding rather than given the routing layer's overhead.
+SHED = "skip: busy"
 # Saturated runs after which a cell stops: more runs only take longer to say so.
 SATURATED_STOP = 2
 # A run whose mock p99 sits this far above its own p50 had a pause on the machine while the
@@ -209,11 +213,13 @@ async def _drive(
     lags: list[float] | None = None,
     clock: Callable[[], float] = time.perf_counter,
     unique: bool = False,
+    shed: list[int] | None = None,
 ) -> tuple[list[float], int]:
     """Open loop at `rps` for `duration_s`. Latency runs from each request's scheduled time,
     so falling behind is measured rather than hidden. Returns latencies in ms and errors.
     `lags`, when given, receives how late each request was dispatched, in ms; once that
-    passes `ABANDON_LAG_S` the rest of the run is not sent."""
+    passes `ABANDON_LAG_S` the rest of the run is not sent. `shed`, when given, counts the
+    answers the proxy sent upstream past a busy cache (0.29)."""
     latencies: list[float] = []
     errors = 0
     nonce = secrets.token_hex(6)
@@ -232,6 +238,8 @@ async def _drive(
         try:
             r = await client.post(url, json=payload, headers=headers)
             ok = r.status_code == 200
+            if shed is not None and r.headers.get("x-boundary-cache") == SHED:
+                shed[0] += 1
         except httpx.HTTPError:
             ok = False
         if ok:
@@ -278,6 +286,13 @@ class Cell:
     failures: dict[str, int] = field(default_factory=dict)
     # Runs dropped because the mock's own p99 showed a pause on the host (MOCK_STALL_MS).
     mock_stalled_runs: int = 0
+    # Answers sent upstream past a busy cache (0.29), summed over the runs counted.
+    shed: int = 0
+
+    @property
+    def shedding(self) -> bool:
+        """The cache layer answered this rate by sending past the cache, not through it."""
+        return self.shed > MAX_ERROR_SHARE * max(1, self.requests)
 
     @property
     def excluded_runs(self) -> int:
@@ -361,6 +376,12 @@ class LoadResults:
             if c.saturated:
                 lines.append(f"{c.layer:<11}{c.rps:>5}  {c.bound_reason()}")
                 continue
+            if c.shedding:
+                lines.append(
+                    f"{c.layer:<11}{c.rps:>5}  shedding: {c.shed} of {c.requests} went upstream "
+                    f"past a busy cache, so no cache figure; {c.errors} failed"
+                )
+                continue
             if c.generator_bound:
                 lines.append(
                     f"{c.layer:<11}{c.rps:>5}  generator-bound: {c.bound_reason()}, so this "
@@ -410,6 +431,12 @@ class LoadResults:
                 rows.append(
                     f"| {c.layer} | {c.rps} | saturated: the proxy cannot hold this rate | "
                     f"{c.errors} of {c.requests} |"
+                )
+                continue
+            if c.shedding:
+                rows.append(
+                    f"| {c.layer} | {c.rps} | shedding: {c.shed} of {c.requests} answered past "
+                    f"a busy cache, so no cache figure | {c.errors} of {c.requests} |"
                 )
                 continue
             if c.generator_bound:
@@ -624,9 +651,10 @@ async def _cell(
                 lags=lags,
                 unique=unique,
             )
+            shed = [0]
             proxy_lat, proxy_err = await _drive(
                 client, proxy_url, rps=cell.rps, duration_s=duration_s, headers=headers,
-                body=body, lags=lags, unique=unique,
+                body=body, lags=lags, unique=unique, shed=shed,
             )  # fmt: skip
             lag = round(_p(lags, 0.99), 3) if lags else float("inf")
             cell.send_lag_p99_ms.append(lag)
@@ -638,6 +666,7 @@ async def _cell(
                 continue
             cell.requests += int(cell.rps * duration_s)
             cell.errors += proxy_err
+            cell.shed += shed[0]
             if not proxy_lat or proxy_err > MAX_ERROR_SHARE * cell.rps * duration_s:
                 cell.saturated_runs += 1
                 if cell.saturated_runs >= SATURATED_STOP:
@@ -662,7 +691,10 @@ async def _cell(
 K6_SCRIPT = """
 import http from "k6/http";
 import { Counter } from "k6/metrics";
-const statuses = { s0: new Counter("s0"), s4xx: new Counter("s4xx"), s5xx: new Counter("s5xx") };
+const statuses = {
+  s0: new Counter("s0"), s4xx: new Counter("s4xx"), s5xx: new Counter("s5xx"),
+  shed: new Counter("shed"),
+};
 const cfg = JSON.parse(open(__ENV.BOUNDARY_K6_CFG));
 export const options = {
   discardResponseBodies: true,
@@ -688,6 +720,7 @@ export default function () {
   if (r.status === 0) statuses.s0.add(1);
   else if (r.status >= 500) statuses.s5xx.add(1);
   else if (r.status >= 400) statuses.s4xx.add(1);
+  if (r.headers["X-Boundary-Cache"] === "skip: busy") statuses.shed.add(1);
 }
 export function handleSummary(data) {
   const m = data.metrics;
@@ -700,6 +733,7 @@ export function handleSummary(data) {
     s0: m.s0 ? m.s0.values.count : 0,
     s4xx: m.s4xx ? m.s4xx.values.count : 0,
     s5xx: m.s5xx ? m.s5xx.values.count : 0,
+    shed: m.shed ? m.shed.values.count : 0,
   };
   return { [__ENV.BOUNDARY_K6_OUT]: JSON.stringify(out) };
 }
@@ -799,6 +833,7 @@ def _cell_k6(
                 cell.failures[kind] = cell.failures.get(kind, 0) + int(proxy[key])
         cell.requests += int(proxy["requests"]) + int(proxy["dropped"])
         cell.errors += int(proxy["failed"]) + int(proxy["dropped"])
+        cell.shed += int(proxy.get("shed", 0))
         failed = int(proxy["failed"]) + int(proxy["dropped"])
         if failed > MAX_ERROR_SHARE * max(1, int(proxy["requests"]) + int(proxy["dropped"])):
             cell.saturated_runs += 1

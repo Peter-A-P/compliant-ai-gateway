@@ -7,7 +7,7 @@ request quota or an in-memory semantic cache. So the hosted proxy keeps them her
 | What | Where | Why there |
 |---|---|---|
 | The ledger | Postgres `ledger` | Every worker writes one ledger, and the caps read it |
-| The cap check and its row | one transaction under an advisory lock | Two workers must not both pass a cap only one of them fits under |
+| The cap check and its row | one function call under an advisory lock (0.29) | Two workers must not both pass a cap only one of them fits under |
 | The audit chain | Postgres `audit`, INSERT and SELECT only for the proxy's role | B2.4: append-only by grant, not only by trigger |
 | The central ledger | Postgres `central` and its two tables | The dashboard reads it with the ledger |
 | The semantic cache | Postgres `semcache`, a pgvector column | Every worker sees every answer stored |
@@ -30,6 +30,8 @@ only `boundary serve --database-url` and the audit sealer use Postgres.
 from __future__ import annotations
 
 import contextlib
+import os
+import queue
 import threading
 import time
 from collections.abc import Iterator, Mapping, Sequence
@@ -39,7 +41,14 @@ from typing import Any
 from boundary.audit.chain import GENESIS, Record, link
 from boundary.audit.log import Sealing
 from boundary.central import DROPPED, MAX_BATCH, IngestResult, SourceState
-from boundary.ledger.store import IN_FLIGHT, SCHEMA_VERSION, LedgerRow, MergeStats, utc_now
+from boundary.ledger.store import (
+    IN_FLIGHT,
+    SCHEMA_VERSION,
+    Admission,
+    LedgerRow,
+    MergeStats,
+    utc_now,
+)
 from boundary.semcache import Embedder, Hit, Vector, question_of, scope_of
 from boundary.server.teams import QuotaDecision
 from boundary.types import ChatRequest
@@ -92,6 +101,14 @@ assert set(COLUMNS) == {f.name for f in fields(LedgerRow)} - {"id"}, "schema.sql
 
 EMBEDDING_DIM = 384  # bge-small
 
+# Connections per `PgLedger`: one for each of the few threads a worker has writing rows at
+# once. The proxy has one ledger per worker, so four workers hold sixteen.
+POOL_SIZE = 4
+
+# Advisory lock keys: one for the caps' admission step, one for appending to the chain.
+_ADMISSION_KEY = 0x62_6E_64_01
+_AUDIT_KEY = 0x62_6E_64_02
+
 
 def _table(name: str) -> str:
     cols = ",\n    ".join(f"{c} {t}" for c, t in _COLUMNS)
@@ -131,6 +148,45 @@ END $$;
 DROP TRIGGER IF EXISTS ledger_spend_trigger ON ledger;
 CREATE TRIGGER ledger_spend_trigger AFTER INSERT OR UPDATE OF cost_usd ON ledger
 FOR EACH ROW EXECUTE FUNCTION ledger_spend_keep();
+
+-- The caps' admission step as one statement (0.29): lock, check, write the row in flight.
+-- 0.28 ran the same steps as a transaction from Python, and the lock was held across six
+-- round trips and whatever else the holding worker's interpreter was doing between them;
+-- at 500 requests a second the other three workers queued on it with CPU to spare
+-- (docs/loadtest.md). Here the lock is held only while Postgres runs this function. Each
+-- statement in a volatile function takes a fresh snapshot, so the sums after the lock see
+-- every row the previous holder committed. The checks, their order and their arithmetic are
+-- `Admission.check`'s; a refusal writes nothing and names the cap and what was spent.
+CREATE OR REPLACE FUNCTION ledger_admit(
+    r jsonb, p_project text, p_month text, p_estimate double precision,
+    p_project_cap double precision, p_portfolio_cap double precision,
+    p_run_id text, p_run_cap double precision
+) RETURNS TABLE (row_id bigint, refused text, spent double precision)
+LANGUAGE plpgsql VOLATILE AS $$
+DECLARE s double precision; new_id bigint;
+BEGIN
+    PERFORM pg_advisory_xact_lock({_ADMISSION_KEY});
+    SELECT COALESCE(SUM(cost), 0) INTO s FROM ledger_spend
+        WHERE project = p_project AND month = p_month;
+    IF s + p_estimate > p_project_cap THEN
+        RETURN QUERY SELECT NULL::bigint, 'project'::text, s; RETURN;
+    END IF;
+    IF p_run_id IS NOT NULL AND p_run_cap IS NOT NULL THEN
+        SELECT COALESCE(SUM(cost_usd), 0) INTO s FROM ledger
+            WHERE cost_usd IS NOT NULL AND project = p_project AND run_id = p_run_id;
+        IF s + p_estimate > p_run_cap THEN
+            RETURN QUERY SELECT NULL::bigint, 'run'::text, s; RETURN;
+        END IF;
+    END IF;
+    SELECT COALESCE(SUM(cost), 0) INTO s FROM ledger_spend WHERE month = p_month;
+    IF s + p_estimate > p_portfolio_cap THEN
+        RETURN QUERY SELECT NULL::bigint, 'portfolio'::text, s; RETURN;
+    END IF;
+    INSERT INTO ledger ({", ".join(COLUMNS)})
+        SELECT {", ".join(COLUMNS)} FROM jsonb_populate_record(NULL::ledger, r)
+        RETURNING id INTO new_id;
+    RETURN QUERY SELECT new_id, NULL::text, NULL::double precision;
+END $$;
 
 CREATE TABLE IF NOT EXISTS schema_version (
     version     BIGINT NOT NULL,
@@ -177,6 +233,14 @@ CREATE TABLE IF NOT EXISTS semcache (
     created_utc   TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS semcache_team_scope ON semcache (team, scope);
+-- The nearest stored question by an HNSW index (0.29), not by comparing every one: at the
+-- 20,000 entries a team's cache is capped at, the exact scan was 19.6 ms a lookup on the VPS,
+-- and 0.9 ms with the index. Approximate, so it can miss the nearest and answer a miss where
+-- the scan would have hit; it cannot serve anything below the threshold, which is checked
+-- against the similarity of what it returns. Searched with `hnsw.iterative_scan`, so the
+-- team and scope filter never leaves it with nothing to return.
+CREATE INDEX IF NOT EXISTS semcache_embedding_hnsw ON semcache
+    USING hnsw (embedding vector_cosine_ops);
 """
 
 # What the proxy's role may do, table by table. Nothing else is granted, and nothing is
@@ -192,10 +256,6 @@ GRANTS: tuple[tuple[str, str], ...] = (
     ("semcache", "SELECT, INSERT"),
 )
 SEQUENCES = ("ledger_id_seq", "central_id_seq", "semcache_id_seq")
-
-# Advisory lock keys: one for the caps' admission step, one for appending to the chain.
-_ADMISSION_KEY = 0x62_6E_64_01
-_AUDIT_KEY = 0x62_6E_64_02
 
 
 def _psycopg() -> Any:
@@ -255,42 +315,98 @@ def _pg_values(cols: Mapping[str, Any]) -> tuple[Any, ...]:
     return tuple(int(v) if isinstance(v, bool) else v for v in cols.values())
 
 
+def _jsonb(d: Mapping[str, Any]) -> Any:
+    from psycopg.types.json import Jsonb
+
+    return Jsonb(d)
+
+
 def _row(d: Mapping[str, Any]) -> dict[str, Any]:
     return {k: d[k] for k in ("id", *COLUMNS) if k in d}
 
 
 class PgLedger:
     """The ledger's write and read path on Postgres, for the proxy: what `Gateway` and the
-    audit sealer call. One connection per process, used by one thread at a time; the
-    proxy's worker threads queue on the lock, as they do on a SQLite `LedgerStore`."""
+    audit sealer call. A few connections per process (0.29), each used by one thread at a
+    time: 0.28 had one, and at 500 requests a second a worker's threads spent a third of
+    their time queued on it (docs/loadtest.md)."""
 
-    def __init__(self, dsn: str, *, table: str = "ledger") -> None:
+    def __init__(self, dsn: str, *, table: str = "ledger", pool: int = POOL_SIZE) -> None:
         self.dsn = dsn
         self.table = table
         self.path = f"postgres:{table}"
-        self._conn = connect(dsn)
-        self._lock = threading.RLock()
+        self._pool = [connect(dsn) for _ in range(max(1, pool))]
+        self._idle: queue.LifoQueue[Any] = queue.LifoQueue()
+        for conn in self._pool:
+            self._idle.put(conn)
+        self._held = threading.local()
         self.schema_version = SCHEMA_VERSION
 
     def close(self) -> None:
-        with self._lock:
-            self._conn.close()
+        for conn in self._pool:
+            conn.close()
+
+    @contextlib.contextmanager
+    def _use(self) -> Iterator[Any]:
+        """A connection for this thread: the one it already holds inside `admission`, so
+        the cap check and the row it admits share that transaction, or a free one."""
+        held = getattr(self._held, "conn", None)
+        if held is not None:
+            yield held
+            return
+        conn = self._idle.get()
+        self._held.conn = conn
+        try:
+            yield conn
+        finally:
+            self._held.conn = None
+            self._idle.put(conn)
 
     @contextlib.contextmanager
     def admission(self) -> Iterator[None]:
         """The cap check and the row it admits, as one step for every process: a transaction
         holding an advisory lock that every worker's admission takes."""
-        with self._lock, self._conn.transaction():
-            self._conn.execute("SELECT pg_advisory_xact_lock(%s)", (_ADMISSION_KEY,))
+        with self._use() as conn, conn.transaction():
+            conn.execute("SELECT pg_advisory_xact_lock(%s)", (_ADMISSION_KEY,))
             yield
+
+    def admit(self, row: LedgerRow, caps: Admission) -> int:
+        """`Admission.check` and `begin` as one call to `ledger_admit`, which holds the
+        admission lock only while Postgres runs it."""
+        if self.table != "ledger":
+            with self.admission():
+                caps.check(self)
+                return self.begin(row)
+        cols = row.as_columns()
+        cols["error_type"] = IN_FLIGHT
+        record = dict(zip(cols, _pg_values(cols), strict=True))
+        with self._use() as conn:
+            got = conn.execute(
+                "SELECT row_id, refused, spent FROM ledger_admit(%s, %s, %s, %s, %s, %s, %s, %s)",
+                (
+                    _jsonb(record),
+                    caps.project,
+                    caps.month,
+                    caps.estimate,
+                    caps.project_monthly_usd,
+                    caps.portfolio_monthly_usd,
+                    caps.run_id,
+                    caps.per_run_usd,
+                ),
+            ).fetchone()
+        if got["refused"] is not None:
+            raise caps.refuse(str(got["refused"]), float(got["spent"]))
+        row.error_type = IN_FLIGHT
+        row.id = int(got["row_id"])
+        return row.id
 
     def begin(self, row: LedgerRow) -> int:
         row.error_type = IN_FLIGHT
         cols = row.as_columns()
         names = ", ".join(cols)
         marks = ", ".join(["%s"] * len(cols))
-        with self._lock:
-            got = self._conn.execute(
+        with self._use() as conn:
+            got = conn.execute(
                 f"INSERT INTO {self.table} ({names}) VALUES ({marks}) RETURNING id",
                 _pg_values(cols),
             ).fetchone()
@@ -304,24 +420,24 @@ class PgLedger:
             row.error_type = None
         cols = row.as_columns()
         sets = ", ".join(f"{k} = %s" for k in cols)
-        with self._lock:
-            self._conn.execute(
+        with self._use() as conn:
+            conn.execute(
                 f"UPDATE {self.table} SET {sets} WHERE id = %s", (*_pg_values(cols), row.id)
             )
 
     def spend_usd(
         self, *, project: str | None, year_month: str | None = None, run_id: str | None = None
     ) -> float:
-        with self._lock:
+        with self._use() as conn:
             if year_month is not None and run_id is None:
                 if project is not None:
-                    got = self._conn.execute(
+                    got = conn.execute(
                         "SELECT COALESCE(SUM(cost), 0) AS s FROM ledger_spend "
                         "WHERE project = %s AND month = %s",
                         (project, year_month),
                     ).fetchone()
                 else:
-                    got = self._conn.execute(
+                    got = conn.execute(
                         "SELECT COALESCE(SUM(cost), 0) AS s FROM ledger_spend WHERE month = %s",
                         (year_month,),
                     ).fetchone()
@@ -337,7 +453,7 @@ class PgLedger:
             if run_id is not None:
                 where.append("run_id = %s")
                 args.append(run_id)
-            got = self._conn.execute(
+            got = conn.execute(
                 f"SELECT COALESCE(SUM(cost_usd), 0) AS s FROM {self.table} "
                 f"WHERE {' AND '.join(where)}",
                 args,
@@ -345,27 +461,23 @@ class PgLedger:
             return float(got["s"])
 
     def rows(self, *, project: str | None = None) -> list[dict[str, Any]]:
-        with self._lock:
+        with self._use() as conn:
             if project is None:
-                cur = self._conn.execute(f"SELECT * FROM {self.table} ORDER BY id")
+                cur = conn.execute(f"SELECT * FROM {self.table} ORDER BY id")
             else:
-                cur = self._conn.execute(
+                cur = conn.execute(
                     f"SELECT * FROM {self.table} WHERE project = %s ORDER BY id", (project,)
                 )
             return [_row(r) for r in cur.fetchall()]
 
     def rows_after(self, row_id: int) -> list[dict[str, Any]]:
-        with self._lock:
-            cur = self._conn.execute(
-                f"SELECT * FROM {self.table} WHERE id > %s ORDER BY id", (row_id,)
-            )
+        with self._use() as conn:
+            cur = conn.execute(f"SELECT * FROM {self.table} WHERE id > %s ORDER BY id", (row_id,))
             return [_row(r) for r in cur.fetchall()]
 
     def count(self) -> int:
-        with self._lock:
-            return int(
-                self._conn.execute(f"SELECT COUNT(*) AS n FROM {self.table}").fetchone()["n"]
-            )
+        with self._use() as conn:
+            return int(conn.execute(f"SELECT COUNT(*) AS n FROM {self.table}").fetchone()["n"])
 
     def column_names(self) -> set[str]:
         return set(COLUMNS)
@@ -376,8 +488,8 @@ class PgLedger:
         if project is not None:
             where += " AND project = %s"
             args.append(project)
-        with self._lock:
-            got = self._conn.execute(
+        with self._use() as conn:
+            got = conn.execute(
                 f"SELECT COUNT(*) AS n FROM {self.table} WHERE {where}", args
             ).fetchone()
             return int(got["n"])
@@ -388,7 +500,7 @@ class PgLedger:
         """`LedgerStore.merge_rows` on Postgres: insert a call not held, complete one held in
         flight, leave the rest. One transaction."""
         inserted = completed = skipped = 0
-        with self._lock, contextlib.suppress(_Rollback), self._conn.transaction():
+        with self._use() as conn, contextlib.suppress(_Rollback), conn.transaction():
             for row in rows:
                 uid = row.get("call_uid")
                 if not uid:
@@ -400,14 +512,14 @@ class PgLedger:
                         f"{source} has column(s) this ledger does not: "
                         f"{', '.join(sorted(unknown))}; upgrade boundary before merging"
                     )
-                held = self._conn.execute(
+                held = conn.execute(
                     f"SELECT id, error_type FROM {self.table} WHERE call_uid = %s", (uid,)
                 ).fetchone()
                 if held is None:
                     if not dry_run:
                         names = ", ".join(cols)
                         marks = ", ".join(["%s"] * len(cols))
-                        self._conn.execute(
+                        conn.execute(
                             f"INSERT INTO {self.table} ({names}) VALUES ({marks})",
                             _pg_values(cols),
                         )
@@ -415,7 +527,7 @@ class PgLedger:
                 elif held["error_type"] == IN_FLIGHT and cols.get("error_type") != IN_FLIGHT:
                     if not dry_run:
                         sets = ", ".join(f"{k} = %s" for k in cols)
-                        self._conn.execute(
+                        conn.execute(
                             f"UPDATE {self.table} SET {sets} WHERE id = %s",
                             (*_pg_values(cols), held["id"]),
                         )
@@ -504,7 +616,7 @@ class PgCentral:
     has delivered."""
 
     def __init__(self, dsn: str) -> None:
-        self.ledger = PgLedger(dsn, table="central")
+        self.ledger = PgLedger(dsn, table="central", pool=1)
         self._conn = connect(dsn)
         self._lock = threading.RLock()
 
@@ -631,6 +743,8 @@ class PgSemanticCache:
         self.max_entries = max_entries
         self._conn = conn if conn is not None else connect(dsn)
         self._lock = lock if lock is not None else threading.RLock()
+        with self._lock:
+            self._conn.execute("SET hnsw.iterative_scan = strict_order")
 
     def embed(self, request: ChatRequest) -> Vector:
         return self.embedder.embed([question_of(request)])[0]
@@ -719,17 +833,33 @@ class RedisQuota:
             import redis
         except ImportError as e:  # pragma: no cover
             raise ImportError("Redis needs the hosted extra: uv sync --extra hosted") from e
+        import redis.asyncio
+
         self._redis = redis.Redis.from_url(url)
         self._script = self._redis.register_script(_QUOTA_LUA)
+        # The proxy's path (0.29): the same script from the event loop, without blocking it.
+        self._aredis = redis.asyncio.Redis.from_url(url)
+        self._ascript = self._aredis.register_script(_QUOTA_LUA)
         self._prefix = prefix
         self._n = 0
         self._lock = threading.Lock()
 
-    def take(self, team: str, limit: int) -> QuotaDecision:
+    def _member(self) -> str:
         with self._lock:
             self._n += 1
-            member = f"{time.time_ns()}-{threading.get_ident()}-{self._n}"
-        allowed, used, wait = self._script(keys=[self._prefix + team], args=[limit, member])
+            return f"{time.time_ns()}-{os.getpid()}-{threading.get_ident()}-{self._n}"
+
+    def take(self, team: str, limit: int) -> QuotaDecision:
+        got = self._script(keys=[self._prefix + team], args=[limit, self._member()])
+        return self._decision(got, limit)
+
+    async def atake(self, team: str, limit: int) -> QuotaDecision:
+        got = await self._ascript(keys=[self._prefix + team], args=[limit, self._member()])
+        return self._decision(got, limit)
+
+    @staticmethod
+    def _decision(got: Any, limit: int) -> QuotaDecision:
+        allowed, used, wait = got
         return QuotaDecision(
             allowed=bool(int(allowed)),
             limit=limit,

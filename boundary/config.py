@@ -12,6 +12,7 @@ import hashlib
 import json
 import re
 from enum import StrEnum
+from functools import cached_property
 from pathlib import Path
 from typing import Any, Literal
 
@@ -291,7 +292,9 @@ class PriceList(_Strict):
         """The version string written into every ledger row costed with this list."""
         return self.date.isoformat()
 
-    @property
+    # Cached (0.29): the list is frozen, and the proxy's profile at 500 requests a second
+    # found the JSON encoding and hash of every rate running twice for every call.
+    @cached_property
     def rates_sha256(self) -> str:
         """A fingerprint of the rates themselves, written into every row costed with them.
 
