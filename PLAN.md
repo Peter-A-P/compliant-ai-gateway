@@ -434,6 +434,7 @@ from October the ledger-against-invoice difference is recorded there too (sectio
 | v0.25.0 | 2026-09-27 | The semantic cache built and measured (B2.5): `boundary.semcache`, `boundary cache paraphrase` and `eval`, the `cache` extra; not yet in the proxy |
 | v0.26.0 | 2026-09-29 | Deployed at gateway.peterparker.ca (OVHcloud, Beauharnois); `GET /audit/head` and the daily anchor Action; the first VPS load test with k6, published: 3 to 7 ms at p99 where the proxy holds the rate, saturated from 200 rps with audit on |
 | v0.27.0 | 2026-09-29 | Ledger commits off the event loop and a group-committed audit chain: 200 rps held with audit on; the semantic cache in the proxy, off by default, for marked questions only, hits on the ledger (v11) and in the chain (schema 4); the load test's cache layer; the central ledger, `ledger push` and the dashboard |
+| v0.28.0 | 2026-09-30 | Postgres and Redis: `boundary.pg`, the `hosted` extra, `serve --hosted --workers`, `audit follow`, `db init` and `db import`; the hosted proxy as four workers with the semantic cache on; the audit chain append-only by grant; the load test re-run hosted |
 | v1.0.0 | May 23 2027 | Everything in Part B; `boundary.redact` for 07; the proxy for 13 and 14 |
 
 03 pins `boundary>=0.1,<0.3` for Part A and moves to `>=1.0` when its Part B is built
@@ -1134,6 +1135,17 @@ because BLAS threads fought over four cores. What limits the proxy now is CPU in
 process. More than one process needs the shared ledger and quotas that Postgres and Redis
 bring, which is B2's plan and not done.
 
+**Amended 2026-09-30 (0.28.0): Postgres and Redis, hosted.** Four workers share the ledger,
+the audit chain, the central ledger and a pgvector semantic cache in Postgres, and the team
+quotas in Redis (`boundary/pg.py`, docs/deploy.md). The chain is sealed by one process of its
+own. The proxy's role has no UPDATE or DELETE on the chain, and no DELETE on the ledger.
+The published load test is now this configuration: at 200 rps, 11 ms p99 for routing and
+audit and 27 ms with redaction, which one process could not hold; at 500, 87% of routing
+requests succeed against 29%, still saturated on a 4 vCPU host that also runs the
+generator. Two departures from B2's wording. The redaction vault stays in memory, because
+a request never leaves its worker. The pgvector lookup is an exact scan, because an
+approximate index trades hits for speed, and that trade is not measured.
+
 ### Tests that matter
 
 Rehydration round-trip property test (any text, any spans, redact then rehydrate is the
@@ -1223,7 +1235,7 @@ the ledger and the spans as its production signal.
 - [x] Audit log chain verification tool included; daily anchors in the public repository; tamper test detects every injected corruption. **Daily anchors live 2026-09-29 (0.26.0)**: the hosted proxy's `GET /audit/head`, pulled daily by `.github/workflows/anchor.yml` into `anchors/gateway.jsonl`; the first anchor (seq 3) was committed by the Action the same day, and `audit verify --anchors` on the host checks the chain against it with 0 records unanchored. **Tool and tamper test done 2026-09-22 (0.7.0)**: `boundary audit verify`, and `boundary audit tamper-test` detecting 2,400 of 2,400 corruptions across twelve kinds before the last anchor with 0 false alarms, the six kinds a chain cannot see after it reported beside them (B2.4, amended). **Daily anchors in the public repository** are what remain, and they need the proxy's always-on log to anchor
 - [x] Per-team budgets and quotas enforced; 429 body names the limit. **Done 2026-09-25 (0.13.0)**: team monthly and per-run budgets, the gateway ceiling and the per-minute quota each refuse with zero upstream calls and a body naming the limit, its reset and a `Retry-After`. The in-memory quota and the unpriced-model gap are in B2.7
 - [x] Load test published: p50, p95, p99 overhead by layer and load level, with CIs and the VPS size stated. **Published 2026-09-29 (0.26.0)** from the VPS with k6 (B4, amended): every cell the proxy holds has its three percentiles and intervals, and every cell it does not is named saturated with its failure count, which is the result rather than a gap. The cache layer is added when the proxy has a cache. **Harness built 2026-09-25 (0.19.0)** and run on the development laptop (docs/loadtest.md): median overhead 0.3 to 2.6 ms across the three layers at 50 and 200 rps; 500 rps is beyond the Python client and needs k6. Waits on the VPS
-- [ ] Observability dashboard shows every project's calls and costs live; completeness panel against local ledgers
+- [ ] Observability dashboard shows every project's calls and costs live; completeness panel against local ledgers. **Built and live 2026-09-29 (0.27.0), on Postgres since 0.28.0**: https://gateway.peterparker.ca/dashboard, 140,573 rows from 95 sources (02, 03 and 04, the public projects that call models), every source complete. What remains is the word live: each project's own runs pushing after they finish, a change in each repository, and the private projects' rows once they are public
 - [ ] Hosted demo live at gateway.peterparker.ca. **The proxy is live there since 2026-09-29** (docs/deploy.md): TLS, team keys, the policy and the audit chain, with one costed call on the record. The demo (the dashboard, and a key a visitor can use) is what remains
 - [x] Foundry, Bedrock and Vertex adapters each exercised with calls recorded. **Foundry and Bedrock answered live; Vertex exercised to the vendor's refusal** (Part A section 10, closed 2026-09-23). If Google grants the quota later, one smoke run adds the 200
 - [x] `boundary.redact` importable and documented for 07. **Done 2026-09-19 (0.5.0)**, docs/redact.md

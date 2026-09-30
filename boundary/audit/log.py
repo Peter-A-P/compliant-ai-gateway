@@ -73,7 +73,38 @@ class SealStats:
         )
 
 
-class AuditLog:
+class Sealing:
+    """What sealing and anchoring need from a store: its records, its head and an append.
+    SQLite here and Postgres in `boundary.pg` (0.28) share the rest."""
+
+    def records(self) -> list[Record]:
+        raise NotImplementedError
+
+    def head(self) -> tuple[int, str]:
+        raise NotImplementedError
+
+    def append_bodies(self, bodies: Sequence[str]) -> list[Record]:
+        raise NotImplementedError
+
+    def close(self) -> None:
+        raise NotImplementedError
+
+    def seal(
+        self,
+        ledger_rows: Sequence[Mapping[str, Any]],
+        *,
+        settle_s: float = DEFAULT_SETTLE_S,
+        now: dt.datetime | None = None,
+    ) -> SealStats:
+        return _seal(self, ledger_rows, settle_s=settle_s, now=now)
+
+    def anchor(self, *, ts_utc: str | None = None) -> Anchor:
+        """The anchor for the current head. Publishing it is the caller's job."""
+        seq, head = self.head()
+        return Anchor(seq=seq, head=head, ts_utc=ts_utc or utc_now())
+
+
+class AuditLog(Sealing):
     def __init__(self, path: Path) -> None:
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -124,53 +155,49 @@ class AuditLog:
             raise
         return out
 
-    def seal(
-        self,
-        ledger_rows: Sequence[Mapping[str, Any]],
-        *,
-        settle_s: float = DEFAULT_SETTLE_S,
-        now: dt.datetime | None = None,
-    ) -> SealStats:
-        """Append a record for every ledger row that is new or has changed since last sealed.
 
-        Idempotent: sealing the same ledger twice appends nothing the second time. Rows are
-        taken in the order given, which for `LedgerStore.rows()` is the ledger's own order.
-        """
-        now = now or dt.datetime.now(dt.UTC)
-        stamp = utc_now()
-        latest = {uid: fields for uid, (_, fields) in latest_sealed(self.records()).items()}
-        bodies: list[str] = []
-        sealed = resealed = unchanged = held = no_uid = 0
-        for row in ledger_rows:
-            uid = row.get("call_uid")
-            if uid is None:
-                # A null call_uid in a v2 or later ledger was put there by hand (store.py).
-                # Sealing it would give a record nothing can be checked against later.
-                no_uid += 1
-                continue
-            fields = sealed_fields(row)
-            before = latest.get(str(uid))
-            if not needs_seal(before, row):
-                unchanged += 1
-                continue
-            if row.get("error_type") == IN_FLIGHT and _age_s(row, now) < settle_s:
-                held += 1
-                continue
-            bodies.append(ledger_body(row, sealed_utc=stamp))
-            latest[str(uid)] = fields
-            if before is None:
-                sealed += 1
-            else:
-                resealed += 1
-        if bodies:
-            self.append_bodies(bodies)
-        seq, head = self.head()
-        return SealStats(sealed, resealed, unchanged, held, no_uid, seq, head)
+def _seal(
+    log: Sealing,
+    ledger_rows: Sequence[Mapping[str, Any]],
+    *,
+    settle_s: float = DEFAULT_SETTLE_S,
+    now: dt.datetime | None = None,
+) -> SealStats:
+    """Append a record for every ledger row that is new or has changed since last sealed.
 
-    def anchor(self, *, ts_utc: str | None = None) -> Anchor:
-        """The anchor for the current head. Publishing it is the caller's job."""
-        seq, head = self.head()
-        return Anchor(seq=seq, head=head, ts_utc=ts_utc or utc_now())
+    Idempotent: sealing the same ledger twice appends nothing the second time. Rows are
+    taken in the order given, which for `LedgerStore.rows()` is the ledger's own order.
+    """
+    now = now or dt.datetime.now(dt.UTC)
+    stamp = utc_now()
+    latest = {uid: fields for uid, (_, fields) in latest_sealed(log.records()).items()}
+    bodies: list[str] = []
+    sealed = resealed = unchanged = held = no_uid = 0
+    for row in ledger_rows:
+        uid = row.get("call_uid")
+        if uid is None:
+            # A null call_uid in a v2 or later ledger was put there by hand (store.py).
+            # Sealing it would give a record nothing can be checked against later.
+            no_uid += 1
+            continue
+        fields = sealed_fields(row)
+        before = latest.get(str(uid))
+        if not needs_seal(before, row):
+            unchanged += 1
+            continue
+        if row.get("error_type") == IN_FLIGHT and _age_s(row, now) < settle_s:
+            held += 1
+            continue
+        bodies.append(ledger_body(row, sealed_utc=stamp))
+        latest[str(uid)] = fields
+        if before is None:
+            sealed += 1
+        else:
+            resealed += 1
+    if bodies:
+        log.append_bodies(bodies)
+    seq, head = log.head()
+    return SealStats(sealed, resealed, unchanged, held, no_uid, seq, head)
 
 
 def _age_s(row: Mapping[str, Any], now: dt.datetime) -> float:
@@ -201,4 +228,4 @@ def append_anchor(path: Path, anchor: Anchor) -> None:
         f.write(anchor.to_line() + "\n")
 
 
-__all__ = ["DEFAULT_SETTLE_S", "AuditLog", "SealStats", "append_anchor", "read_anchors"]
+__all__ = ["DEFAULT_SETTLE_S", "AuditLog", "SealStats", "Sealing", "append_anchor", "read_anchors"]

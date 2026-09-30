@@ -43,10 +43,55 @@ boundary loadtest --from bench/loadtest.json --write-readme   # fill the README 
 The request is about a page of text naming a person, an email address, a phone number and a
 file number, so the redaction layer has real work to do and the echo has a realistic size.
 
-## The VPS run: the published figure (0.27)
+## The VPS run: the published figure (0.28, hosted)
+
+2026-09-30, boundary 0.28.0, the same host, generator and settings as the runs below, with
+the proxy as it now runs in production: four workers on Postgres and Redis, and a sealer for
+every layer that keeps the chain. `boundary loadtest --generator k6 --hosted --workers 4`,
+against a database of its own (`boundary_loadtest`, created empty for the run), stored in
+`bench/loadtest.json`, milliseconds:
+
+| Layer | 50 rps p50 | 50 rps p99 | 200 rps p50 | 200 rps p99 | 500 rps |
+|---|---|---|---|---|---|
+| routing | 4.8 (4.7 to 4.9) | 7.0 (6.3 to 7.7) | 6.1 (5.9 to 6.3) | 11.2 (10.1 to 12.3) | saturated, 1,296 of 10,001 failed |
+| + audit | 5.1 (5.0 to 5.1) | 7.0 (6.7 to 7.3) | 6.2 (6.1 to 6.4) | 10.9 (10.3 to 11.4) | saturated, 1,372 of 10,000 |
+| + redaction | 6.6 (6.4 to 6.7) | 10.0 (8.9 to 10.8) | 10.7 (10.2 to 11.1) | 26.8 (20.4 to 34.5) | saturated, 3,114 of 10,002 |
+| cache (miss path) | 34.6 (34.1 to 35.2) | 41.3 (40.2 to 42.4) | saturated, 1,512 of 4,002 | | saturated |
+
+**Against one process on SQLite (0.27, below):**
+
+- Redaction now holds 200 requests a second, where one process failed 1,452 of 4,002.
+- At 500, 87% of routing requests succeed, against 29%, and the same holds for audit.
+- The price is about a millisecond more at the median for every call, the round trips to
+  Postgres: 4.8 against 3.7 on routing at 50.
+- The audit layer now costs nothing measurable over routing, because the chain is sealed by
+  its own process and no longer by the one that answers.
+- Every layer still saturates at 500, because the machine does. The generator, the mock,
+  four workers, the sealer, Postgres and Redis share four cores. Whether a larger host or a
+  generator on a second machine would hold 500 is not measured here.
+
+**What the first hosted run found.** Every redacted request failed with a 500. The ledger
+writes `redacted` and `injection` as Python booleans. SQLite stores one as 1 in an INTEGER
+column, and Postgres refuses one in a BIGINT. The hosted ledger now converts them, with a
+test on a real Postgres. The same fault was live on the hosted proxy for about an hour,
+where it would have failed any personal request with a 500 and sent nothing. None arrived
+in that hour. The first one after the fix was the check that confirmed it: a 403, the
+policy's refusal, as on the laptop.
+
+**Embedding threads.** With four workers each running bge-small over every core, a miss
+cost 220 ms at the median in a probe at 50 requests a second. With one ONNX thread per
+worker it cost 44 ms, so a hosted proxy with more than one worker now gives each one
+thread (`boundary.server.factory`). The published 35 ms is with that. It is still twice the
+single process's 18 ms. Four embeddings at once on four cores already busy with everything
+else is part of it. pgvector's exact scan, filtered by team and scope, is the rest: 8.8 ms
+over 9,585 stored questions in the probe's database, growing with the table. An HNSW index
+would make the lookup approximate. Here that could miss a stored answer but never return a
+worse one, because the threshold still applies. It is not built.
+
+## One process on SQLite (0.27)
 
 2026-09-29, boundary 0.27.0, the same host, generator and settings as the 0.26 run below,
-with the fourth layer added. `bench/loadtest.json`, milliseconds:
+with the fourth layer added. `bench/loadtest-027.json`, milliseconds:
 
 | Layer | 50 rps p50 | 50 rps p99 | 200 rps p50 | 200 rps p99 | 500 rps |
 |---|---|---|---|---|---|

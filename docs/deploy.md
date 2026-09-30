@@ -15,17 +15,36 @@ The files are in `deploy/`. Stood up 2026-09-29.
 
 The host is the machine the published load test names. It runs nothing else.
 
-## What runs
+## What runs (since 0.28, 2026-09-30)
 
 | Service | What | Reachable from |
 |---|---|---|
 | `caddy` | TLS from Let's Encrypt, HTTP to HTTPS, HSTS, a 2 MB body limit, server-sent events flushed as they arrive | ports 80 and 443 |
-| `gateway` | `boundary serve` on the tagged checkout, as a non-root user; the ledger, the audit chain and the central ledger (0.27, docs/central.md) are SQLite files on `/srv/boundary/data` | Caddy only: compose publishes no port for it |
+| `gateway` | `boundary serve --hosted --workers 4 --semantic-cache`, as a non-root user: four processes sharing everything below | Caddy only: compose publishes no port for it |
+| `sealer` | `boundary audit follow`: the one process that appends completed ledger rows to the audit chain, every 50 ms | nothing |
+| `postgres` | pgvector's Postgres 17: the ledger, the audit chain, the central ledger and the semantic cache (`boundary/pg.py`) | the compose network only |
+| `redis` | the team request quotas, a sliding minute per team; nothing persisted | the compose network only |
+| `init` | `boundary db init`, once per start: tables, triggers and grants, idempotently | exits |
 
-**Postgres, pgvector and Redis are not deployed yet.** PLAN.md puts them on this host, and
-they will be, but today the proxy's ledger and audit chain are SQLite and its vault is in
-memory. A database container that nothing reads would be a claim the code does not make.
-Each joins `compose.yaml` in the commit that makes the code use it.
+**Two database roles.** `init` runs as the owner, `boundary_admin`. The proxy and the sealer
+connect as `boundary_app`. That role can read and append the ledger and complete a row, but
+cannot delete one. It can read and append the audit chain, but cannot change or remove a
+record: the grant does not exist, and a trigger refuses UPDATE, DELETE and TRUNCATE on
+`audit` for the owner too. A test on a real Postgres tries each one (`tests/test_pg.py`, the
+`hosted` CI job). The owner's password is in `db-admin.env`, which only `postgres` and
+`init` read. The proxy's own is in `db-app.env`. Both are mode 600, outside the checkout.
+
+**The chain's head lags by at most one sealing interval.** The workers never seal: the
+appender's record of what it has sealed is its own, so there is exactly one sealer.
+`GET /audit/head` therefore reports the chain as the sealer last left it. A call completed
+in the 50 ms before the daily anchor is read is in the next day's anchor, not that one.
+
+**The move, 2026-09-30.** The proxy was stopped, and a copy of `/srv/boundary/data` was kept
+as `data-before-postgres`. Then `boundary db import` copied the proxy's 3 ledger rows, its
+3-record chain verbatim, and the central ledger's 140,573 rows and 95 sources into Postgres.
+`audit verify --hosted` then checked the imported chain against the anchor already
+published (seq 3): intact, 0 unanchored. The chain continued from that head: seq 4 and 5
+were the first two calls on Postgres, a miss and a cache hit naming it.
 
 ## Security
 
@@ -40,18 +59,17 @@ Each joins `compose.yaml` in the commit that makes the code use it.
 On the host, from a clone of this repository at a tag, in `/srv/boundary/repo`:
 
 ```
-cd /srv/boundary/repo && git fetch --tags && git checkout v0.26.0
+cd /srv/boundary/repo && git fetch --tags && git checkout v0.28.0
 cd deploy
-sudo docker compose build gateway
+sudo docker compose build init
 sudo docker compose up -d
-sudo docker compose exec gateway boundary --config /app/config/boundary.yaml \
-  ledger report --ledger /data/boundary.proxy.sqlite
-sudo docker compose exec gateway boundary --config /app/config/boundary.yaml \
-  audit verify --ledger /data/boundary.proxy.sqlite
+sudo docker compose run --rm --no-deps gateway boundary --config /app/config/boundary.yaml \
+  audit verify --hosted --anchors /data/anchors.jsonl
 ```
 
-The host provides three files outside the checkout: `/home/ubuntu/boundary/.env` (the
-vendor keys), `/srv/boundary/teams.yaml`, and the data directory, owned by uid 10001.
+The host provides these outside the checkout: `/home/ubuntu/boundary/.env` (the vendor
+keys), `db-admin.env` and `db-app.env` beside it, `/srv/boundary/teams.yaml`, and
+`/srv/boundary/postgres` for the database's files. The daily VPS backup covers the disk.
 
 ## First calls, 2026-09-29
 

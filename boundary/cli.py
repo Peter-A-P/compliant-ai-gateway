@@ -955,6 +955,8 @@ def cmd_loadtest(args: argparse.Namespace) -> int:
         machine=args.machine,
         published=args.published,
         generator=args.generator,
+        hosted=args.hosted,
+        workers=args.workers,
     )
     print(results.table())
     args.out.parent.mkdir(parents=True, exist_ok=True)
@@ -998,19 +1000,21 @@ def cmd_policy_eval(args: argparse.Namespace) -> int:
 
 
 PROXY_LEDGER = "boundary.proxy.sqlite"
-# The threshold `boundary cache eval` chose on the odd half and reported on the even
-# (0.25, docs/cache.md), and a bound on each team's cache for a long-running proxy.
+# The threshold `boundary cache eval` chose (0.25, docs/cache.md); boundary.server.factory
+# holds it too, and a test keeps the two equal.
 SEMCACHE_THRESHOLD = 0.82
-SEMCACHE_MAX_ENTRIES = 20_000
 
 
 def cmd_serve(args: argparse.Namespace) -> int:
     """The OpenAI-compatible proxy (0.13). Needs the `server` extra. Binds to loopback
-    unless told otherwise: a proxy holding vendor keys is not put on a network by default."""
+    unless told otherwise: a proxy holding vendor keys is not put on a network by default.
+    Every worker builds the app from the same settings (`boundary.server.factory`)."""
+    import os
+
     try:
         import uvicorn
 
-        from boundary.server import create_app, load_teams
+        from boundary.server.factory import ENV, Settings
     except ImportError:
         print(
             "error: the proxy needs the server extra: uv sync --extra server "
@@ -1018,7 +1022,6 @@ def cmd_serve(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 2
-    from boundary.enforce import load_policy
     from boundary.env import find_dotenv, load_dotenv
 
     env_file = find_dotenv(Path.cwd(), args.config.resolve().parent.parent, args.config.parent)
@@ -1038,40 +1041,51 @@ def cmd_serve(args: argparse.Namespace) -> int:
         if args.no_audit
         else (Path(args.audit) if args.audit else ledger.with_name(ledger.stem + ".audit.sqlite"))
     )
-    semantic_cache = None
+    # Read here as well as in each worker, so a missing or invalid file is refused before
+    # anything starts rather than in a worker's log.
+    from boundary.enforce import load_policy
+    from boundary.server.teams import load_teams
+
+    load_teams(teams_path)
+    load_policy(Path(policy_path))
+    if args.workers > 1 and not args.hosted:
+        # SQLite files, an in-memory quota and an in-memory cache belong to one process.
+        print("error: --workers above 1 needs --hosted (Postgres and Redis)", file=sys.stderr)
+        return 2
     if args.semantic_cache is not None:
-        try:
-            from boundary.semcache import BgeSmall, SemanticCache
-        except ImportError:
-            print("error: --semantic-cache needs the cache extra", file=sys.stderr)
-            return 2
-        try:
-            embedder = BgeSmall()
-        except ImportError:
+        import importlib.util
+
+        if importlib.util.find_spec("fastembed") is None:
             print("error: --semantic-cache needs the cache extra: uv sync --extra cache",
                   file=sys.stderr)  # fmt: skip
             return 2
-        threshold = float(args.semantic_cache)
-
-        def semantic_cache() -> SemanticCache:
-            return SemanticCache(embedder, threshold=threshold, max_entries=SEMCACHE_MAX_ENTRIES)
-
-    app = create_app(
-        cfg,
-        load_teams(teams_path),
-        ledger_path=ledger,
-        policy=load_policy(policy_path),
-        audit_path=audit,
-        semantic_cache=semantic_cache,
-        central_path=Path(args.central) if args.central else None,
+    settings = Settings(
+        config=str(args.config.resolve()),
+        teams=str(teams_path.resolve()),
+        policy=str(Path(policy_path).resolve()),
+        ledger=str(ledger.resolve()),
+        audit=None if audit is None else str(audit.resolve()),
+        central=str(Path(args.central).resolve()) if args.central else None,
+        semantic_cache=None if args.semantic_cache is None else float(args.semantic_cache),
+        hosted=bool(args.hosted),
+        workers=int(args.workers),
     )
+    os.environ[ENV] = settings.to_env()
+    where = "Postgres and Redis" if args.hosted else f"ledger {ledger}, audit {audit}"
     print(
-        f"boundary {__version__} proxy on http://{args.host}:{args.port}/v1 "
-        f"(teams {teams_path}, policy {policy_path}, ledger {ledger}, audit {audit}, "
+        f"boundary {__version__} proxy on http://{args.host}:{args.port}/v1, "
+        f"{args.workers} worker(s) (teams {teams_path}, policy {policy_path}, {where}, "
         f"semantic cache {args.semantic_cache if args.semantic_cache is not None else 'off'})",
         file=sys.stderr,
     )
-    uvicorn.run(app, host=args.host, port=args.port, log_level="info")
+    uvicorn.run(
+        "boundary.server.factory:build",
+        factory=True,
+        host=args.host,
+        port=args.port,
+        workers=args.workers,
+        log_level="info",
+    )
     return 0
 
 
@@ -1115,9 +1129,42 @@ def cmd_audit_seal(args: argparse.Namespace) -> int:
     return 0
 
 
+def _database_url(name: str = "BOUNDARY_DATABASE_URL") -> str | None:
+    import os
+
+    url = os.environ.get(name, "").strip()
+    if not url:
+        print(f"error: set {name}", file=sys.stderr)
+        return None
+    return url
+
+
 def cmd_audit_verify(args: argparse.Namespace) -> int:
     from boundary.audit import AuditLog, read_anchors, verify
 
+    if getattr(args, "hosted", False):
+        # The hosted chain and ledger in Postgres (0.28).
+        url = _database_url()
+        if url is None:
+            return 2
+        from boundary import pg
+
+        chain = pg.PgAuditLog(url)
+        try:
+            records = chain.records()
+        finally:
+            chain.close()
+        anchors = read_anchors(Path(args.anchors)) if args.anchors else []
+        rows = None
+        if not args.no_ledger:
+            ledger = pg.PgLedger(url)
+            try:
+                rows = ledger.rows()
+            finally:
+                ledger.close()
+        result = verify(records, anchors, ledger_rows=rows)
+        print(result.summary())
+        return 0 if result.ok else 1
     ledger_path, audit_path = _audit_paths(args)
     if not audit_path.is_file():
         print(f"no audit log at {audit_path}", file=sys.stderr)
@@ -1138,6 +1185,121 @@ def cmd_audit_verify(args: argparse.Namespace) -> int:
     result = verify(records, anchors, ledger_rows=rows)
     print(result.summary())
     return 0 if result.ok else 1
+
+
+def cmd_audit_follow(args: argparse.Namespace) -> int:
+    """The hosted chain's sealer (0.28): one process that appends every completed ledger row
+    to the chain in Postgres, every `--interval` seconds. One, because the appender's record
+    of what it has sealed is its own; the proxy's workers only read the head."""
+    import time
+
+    url = _database_url()
+    if url is None:
+        return 2
+    from boundary import pg
+    from boundary.audit.appender import AuditAppender
+
+    ledger = pg.PgLedger(url)
+    log = pg.PgAuditLog(url)
+    appender = AuditAppender(log, ledger)
+    seq, head = log.head()
+    print(f"sealing the hosted ledger every {args.interval:g} s; head seq {seq} {head[:16]}",
+          file=sys.stderr, flush=True)  # fmt: skip
+    try:
+        while True:
+            appender.after_call()
+            time.sleep(args.interval)
+    except KeyboardInterrupt:
+        return 0
+    finally:
+        appender.after_call()
+        log.close()
+        ledger.close()
+
+
+def cmd_db_init(args: argparse.Namespace) -> int:
+    """Create the hosted proxy's tables and grant its role what it needs (0.28). Runs as the
+    database owner, from BOUNDARY_DATABASE_ADMIN_URL; the role's password, when the role does
+    not exist yet, from BOUNDARY_APP_PASSWORD."""
+    import os
+
+    url = _database_url("BOUNDARY_DATABASE_ADMIN_URL")
+    if url is None:
+        return 2
+    from boundary import pg
+
+    role = args.app_role
+    password = os.environ.get("BOUNDARY_APP_PASSWORD", "")
+    if role:
+        with pg.connect(url) as conn:
+            have = conn.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", (role,)).fetchone()
+            if have is None:
+                if not password:
+                    print("error: set BOUNDARY_APP_PASSWORD to create the role", file=sys.stderr)
+                    return 2
+                from psycopg import sql
+
+                conn.execute(
+                    sql.SQL("CREATE ROLE {} LOGIN PASSWORD {}").format(
+                        sql.Identifier(role), sql.Literal(password)
+                    )
+                )
+                print(f"created role {role}")
+    pg.init_schema(url, app_role=role or None)
+    print(f"schema ready; {role or 'no role'} granted {', '.join(t for t, _ in pg.GRANTS)}")
+    return 0
+
+
+def cmd_db_import(args: argparse.Namespace) -> int:
+    """Move a single-process proxy's SQLite files into Postgres (0.28): the ledger's rows
+    and the central ledger's by call_uid, and the audit chain record for record, so that
+    anchors already published still name its records. Safe to run again: rows held are left
+    alone, and a chain is only ever imported into an empty table."""
+    url = _database_url()
+    if url is None:
+        return 2
+    from boundary import pg
+    from boundary.audit import AuditLog
+    from boundary.ledger.store import _read_source_rows
+
+    if args.ledger:
+        ledger = pg.PgLedger(url)
+        try:
+            print(ledger.merge_rows(_read_source_rows(Path(args.ledger)), source=args.ledger))
+        finally:
+            ledger.close()
+    if args.audit:
+        log = pg.PgAuditLog(url)
+        try:
+            with AuditLog(Path(args.audit)) as src:
+                records = src.records()
+            if log.head()[0] == 0:
+                print(f"audit: imported {log.import_records(records)} records")
+            else:
+                print(f"audit: the table already holds a chain (head {log.head()[0]}); left alone")
+        finally:
+            log.close()
+    if args.central:
+        from boundary.central import CentralLedger
+
+        src_central = CentralLedger(Path(args.central))
+        central = pg.PgCentral(url)
+        try:
+            rows = src_central.rows()
+            for i in range(0, len(rows), 1000):
+                central.ledger.merge_rows(rows[i : i + 1000], source=args.central)
+            uids = [
+                (str(a), str(b))
+                for a, b in src_central._conn.execute(
+                    "SELECT source, call_uid FROM ingest_row"
+                ).fetchall()
+            ]
+            central.import_sources(src_central.sources(), uids)
+            print(f"central: {len(rows)} rows, {len(src_central.sources())} sources")
+        finally:
+            central.close()
+            src_central.close()
+    return 0
 
 
 def cmd_audit_anchor(args: argparse.Namespace) -> int:
@@ -1564,6 +1726,16 @@ def main(argv: list[str] | None = None) -> int:
         help="keep a central ledger at this path: POST /v1/ledger/ingest accepts pushed rows "
         "(ingest keys in teams.yaml) and GET /dashboard shows them (docs/central.md)",
     )
+    serve.add_argument(
+        "--hosted",
+        action="store_true",
+        help="keep the ledger, the audit chain, the central ledger and the semantic cache in "
+        "Postgres (BOUNDARY_DATABASE_URL) and the team quotas in Redis (BOUNDARY_REDIS_URL); "
+        "the chain is sealed by `boundary audit follow` (docs/deploy.md)",
+    )
+    serve.add_argument(
+        "--workers", type=int, default=1, help="proxy processes; above 1 needs --hosted"
+    )
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", type=int, default=8080)
     serve.set_defaults(func=cmd_serve)
@@ -1581,6 +1753,13 @@ def main(argv: list[str] | None = None) -> int:
     lt.add_argument("--duration", type=float, default=10.0, help="seconds per run")
     lt.add_argument("--layers", default=",".join(loadtest_layers()))
     lt.add_argument("--machine", default=None, help="what to call the machine in the output")
+    lt.add_argument(
+        "--hosted",
+        action="store_true",
+        help="each proxy on Postgres and Redis (BOUNDARY_DATABASE_URL, BOUNDARY_REDIS_URL): a "
+        "database of its own, never the live one",
+    )
+    lt.add_argument("--workers", type=int, default=1, help="proxy processes (needs --hosted)")
     lt.add_argument(
         "--generator",
         choices=("python", "k6"),
@@ -1641,6 +1820,11 @@ def main(argv: list[str] | None = None) -> int:
         if name == "verify":
             sp.add_argument("--anchors", help="an anchor file, one JSON line per anchor")
             sp.add_argument(
+                "--hosted",
+                action="store_true",
+                help="the hosted chain and ledger in Postgres (BOUNDARY_DATABASE_URL)",
+            )
+            sp.add_argument(
                 "--no-ledger",
                 dest="no_ledger",
                 action="store_true",
@@ -1649,6 +1833,22 @@ def main(argv: list[str] | None = None) -> int:
         if name == "anchor":
             sp.add_argument("--anchors", required=True, help="the anchor file to append to")
         sp.set_defaults(func=func)
+    follow = audit.add_parser(
+        "follow", help="seal the hosted ledger into the chain in Postgres as it grows"
+    )
+    follow.add_argument("--interval", type=float, default=0.05, help="seconds between seals")
+    follow.set_defaults(func=cmd_audit_follow)
+    db = sub.add_parser("db", help="the hosted proxy's Postgres (docs/deploy.md)").add_subparsers(
+        dest="sub", required=True
+    )
+    dbi = db.add_parser("init", help="create the tables and grant the proxy's role")
+    dbi.add_argument("--app-role", dest="app_role", default="boundary_app")
+    dbi.set_defaults(func=cmd_db_init)
+    dbm = db.add_parser("import", help="move a proxy's SQLite ledger, chain and central in")
+    dbm.add_argument("--ledger")
+    dbm.add_argument("--audit")
+    dbm.add_argument("--central")
+    dbm.set_defaults(func=cmd_db_import)
     tt = audit.add_parser(
         "tamper-test", help="corrupt a generated chain every way and count detections"
     )

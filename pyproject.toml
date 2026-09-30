@@ -1,6 +1,6 @@
 [project]
 name = "boundary"
-version = "0.27.0"
+version = "0.28.0"
 description = "One library every model call in the portfolio goes through: raw-HTTP adapters, routing by configuration, a cost ledger row and a telemetry span per call, spend caps, and an inviolable pass-through mode."
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
@@ -54,6 +54,16 @@ server = [
 # and it brings onnxruntime and a model download. Below 1 because fastembed is pre-1.0 and
 # has renamed model identifiers between minors.
 cache = ["fastembed>=0.8,<1"]
+# The hosted proxy's shared state (0.28, PLAN.md B2): Postgres for the ledger, the audit
+# chain, the central ledger and the semantic cache (pgvector), and Redis for the team request
+# quotas, so that more than one proxy process can share them. Optional because a library
+# caller and a single local proxy need neither: they keep SQLite and memory. psycopg 3 below
+# 4 and its binary wheel, so no libpq build is needed; redis-py below 7 because 6.x is the
+# line tested and its Lua script API is the one the quota uses.
+hosted = [
+    "psycopg[binary]>=3.2,<4",
+    "redis>=5,<7",
+]
 
 [dependency-groups]
 dev = [
@@ -143,6 +153,12 @@ ignore_missing_imports = true
 # install; the semantic cache uses it when present (0.27).
 [[tool.mypy.overrides]]
 module = ["numpy", "numpy.*"]
+ignore_missing_imports = true
+
+# psycopg and redis are the optional `hosted` extra (0.28), which CI's main job does not
+# install; its Postgres job does, and type-checks with them present.
+[[tool.mypy.overrides]]
+module = ["psycopg", "psycopg.*", "redis", "redis.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

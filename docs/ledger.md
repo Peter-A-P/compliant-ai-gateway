@@ -80,6 +80,16 @@ hand, and inventing one would let the same call merge twice.
 | `trace_id`, `span_id` | text or null | OpenTelemetry ids, hex; null when telemetry is off |
 | `raw_path` | text or null | Pass-through only: the JSONL file holding the raw record |
 
+## The hosted ledger (0.28)
+
+The hosted proxy keeps the same columns, with the same meanings, in Postgres
+(`boundary/pg.py`; `pg.COLUMNS` is checked against `LedgerRow` at import, so the two cannot
+drift). The spend per project and month is kept by a trigger, as v9 does. The cap check and
+the row it admits are one transaction under an advisory lock, so four workers cannot pass a
+cap only one of them fits under; a test on a real Postgres sends twelve calls through two
+connections at a cap that fits three. The proxy's role can insert and update a row but not
+delete one. Every library caller keeps its SQLite file.
+
 ## Residency queries
 
 `boundary ledger residency` groups the same rows by provider, region and residency instead of

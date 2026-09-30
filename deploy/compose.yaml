@@ -1,25 +1,77 @@
 # The gateway on the VPS (docs/deploy.md): the proxy behind Caddy, which holds the TLS
-# certificate for gateway.peterparker.ca. Run from the checkout's deploy/ directory.
+# certificate for gateway.peterparker.ca, on Postgres and Redis since 0.28. Run from the
+# checkout's deploy/ directory.
 #
-# Postgres, pgvector and Redis are not here yet, on purpose: the proxy's ledger and audit
-# chain are SQLite files and its vault is in memory, so a database container would be a
-# service nothing reads. Each joins this file in the commit that makes the code use it.
+# Two secret files outside the checkout, each readable by the ubuntu user only:
+#   /home/ubuntu/boundary/db-admin.env  POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB,
+#                                       BOUNDARY_DATABASE_ADMIN_URL, BOUNDARY_APP_PASSWORD
+#   /home/ubuntu/boundary/db-app.env    BOUNDARY_DATABASE_URL (the proxy's role),
+#                                       BOUNDARY_REDIS_URL
+# The owner's password reaches only `postgres` and the one-shot `init`. The proxy and the
+# sealer connect as `boundary_app`, which cannot delete a ledger row or change an audit
+# record (boundary/pg.py).
 name: boundary
 
+x-image: &image
+  image: boundary-gateway:local
+
 services:
-  gateway:
+  postgres:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    env_file: /home/ubuntu/boundary/db-admin.env
+    volumes:
+      - /srv/boundary/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Team request quotas only, which live for a minute: nothing to persist.
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Creates the tables and grants the proxy's role, idempotently, then exits.
+  init:
+    <<: *image
     build:
       context: ..
       dockerfile: deploy/Dockerfile
-    image: boundary-gateway:local
+    env_file: /home/ubuntu/boundary/db-admin.env
+    command: ["boundary", "--config", "/app/config/boundary.yaml", "db", "init",
+              "--app-role", "boundary_app"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  gateway:
+    <<: *image
     restart: unless-stopped
-    # Vendor keys, in a file outside the checkout that only the ubuntu user can read.
-    env_file: /home/ubuntu/boundary/.env
+    # Vendor keys, and the proxy's database and Redis URLs.
+    env_file:
+      - /home/ubuntu/boundary/.env
+      - /home/ubuntu/boundary/db-app.env
     environment:
       BOUNDARY_ENV: vps
+    command: ["boundary", "--config", "/app/config/boundary.yaml", "serve", "--hosted",
+              "--workers", "4", "--semantic-cache", "--host", "0.0.0.0", "--port", "8080",
+              "--teams", "/run/boundary/teams.yaml"]
     volumes:
-      - /srv/boundary/data:/data
       - /srv/boundary/teams.yaml:/run/boundary/teams.yaml:ro
+    depends_on:
+      init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
     # No `ports:`. Docker's published ports bypass ufw, so the only published ports on this
     # host are Caddy's two.
     expose:
@@ -29,6 +81,17 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+      start_period: 120s
+
+  # The audit chain's one sealer: every completed ledger row into the chain, every 50 ms.
+  sealer:
+    <<: *image
+    restart: unless-stopped
+    env_file: /home/ubuntu/boundary/db-app.env
+    command: ["boundary", "--config", "/app/config/boundary.yaml", "audit", "follow"]
+    depends_on:
+      init:
+        condition: service_completed_successfully
 
   caddy:
     image: caddy:2

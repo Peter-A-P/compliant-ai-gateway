@@ -247,3 +247,10 @@ def test_a_full_cache_stores_nothing_more() -> None:
     assert cache.store(ChatRequest(model="m", messages=q), "a") == 0
     assert cache.store(ChatRequest(model="m", messages=q), "b") is None
     assert len(cache) == 1
+
+
+def test_the_cli_and_the_factory_share_one_threshold() -> None:
+    from boundary import cli
+    from boundary.server import factory
+
+    assert cli.SEMCACHE_THRESHOLD == factory.SEMCACHE_THRESHOLD == 0.82

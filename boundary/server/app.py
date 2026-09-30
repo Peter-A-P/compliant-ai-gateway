@@ -32,6 +32,7 @@ import asyncio
 import datetime as dt
 import math
 import secrets
+import threading
 import time
 from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
 from contextlib import asynccontextmanager
@@ -103,7 +104,7 @@ class ServerState:
     gateways: dict[str, Gateway]
     teams: TeamsConfig
     by_hash: dict[str, str]
-    quota: RequestQuota
+    quota: RequestQuota | Any
     wall: Callable[[], float]
     policy: DataPolicy
     tasks: set[asyncio.Task[ChatResponse]] = field(default_factory=set)
@@ -119,9 +120,15 @@ class ServerState:
     audit_tasks: set[asyncio.Task[int]] = field(default_factory=set)
     # The semantic cache (0.27), one per team, so a hit never hands one team another's
     # answer. None: off, which is the default.
-    semcaches: dict[str, SemanticCache] | None = None
-    # The central ledger other environments push to, and the dashboard over it (0.27).
-    central: CentralLedger | None = None
+    semcaches: dict[str, SemanticCache | Any] | None = None
+    # The central ledger other environments push to, and the dashboard over it (0.27);
+    # `boundary.pg.PgCentral` when hosted (0.28).
+    central: CentralLedger | Any | None = None
+    # The hosted proxy's chain (0.28), sealed by `boundary audit follow`, not by this
+    # process; the proxy only reads its head.
+    audit_log: Any = None
+    hosted: Hosted | None = None
+    closers: list[Callable[[], None]] = field(default_factory=list)
     ingest_hashes: frozenset[str] = frozenset()
     page: tuple[float, str] | None = None
 
@@ -155,6 +162,8 @@ class ServerState:
             self.audit.close()
         if self.central is not None:
             self.central.close()
+        for close in self.closers:
+            close()
         for gw in self.gateways.values():
             await gw.aclose()
 
@@ -170,6 +179,7 @@ def create_app(
     audit_path: Path | None = None,
     semantic_cache: Callable[[], SemanticCache] | None = None,
     central_path: Path | None = None,
+    hosted: Hosted | None = None,
     clock: Callable[[], float] = time.monotonic,
     wall: Callable[[], float] = time.time,
     sleep: Callable[[float], None] = time.sleep,
@@ -186,6 +196,11 @@ def create_app(
         policy = load_policy(config.policy)
     shared = transport or Transport(config.defaults.timeouts)
     caps = teams.caps()
+    pg_ledger = None
+    if hosted is not None:
+        from boundary import pg
+
+        pg_ledger = pg.PgLedger(hosted.database_url)
     gateways = {
         name: Gateway(
             config,
@@ -197,6 +212,7 @@ def create_app(
             policy=policy,
             sleep=sleep,
             asleep=asleep,
+            ledger=pg_ledger,
         )
         for name in teams.teams
     }
@@ -212,10 +228,12 @@ def create_app(
             {name: semantic_cache() for name in teams.teams} if semantic_cache is not None else None
         ),
     )
-    if central_path is not None:
+    if hosted is not None:
+        _host(state, hosted, teams)
+    elif central_path is not None:
         state.central = CentralLedger(central_path)
         state.ingest_hashes = frozenset(teams.ingest_key_sha256)
-    if audit_path is not None:
+    if audit_path is not None and hosted is None:
         # Every team's gateway writes the same ledger file, so any one of them reads it.
         state.audit = AuditAppender(audit_path, next(iter(gateways.values())).ledger)
 
@@ -301,11 +319,14 @@ def create_app(
         """The audit chain's head as one canonical anchor line (0.26, B2.4): what the daily
         Action commits to the public repository. No key, because an anchor is published by
         design: a count, a hash and a time, never a row. 404 when the proxy keeps no chain."""
-        if state.audit is None:
+        if state.audit is None and state.audit_log is None:
             raise Refusal(
                 404, wire.error_body("this proxy keeps no audit chain", type_="not_found")
             )
-        anchor = await asyncio.to_thread(state.audit.anchor)
+        # A chain this process seals is sealed up to date first; a hosted chain is read as
+        # its sealer left it, at most one sealing interval behind (docs/deploy.md).
+        read = state.audit.anchor if state.audit is not None else state.audit_log.anchor
+        anchor = await asyncio.to_thread(read)
         return Response(anchor.to_line(), media_type="application/json")
 
     @app.get("/v1/models")
@@ -729,6 +750,53 @@ def _budget(exc: SpendCapExceeded, *, team: str, wall: Callable[[], float]) -> R
     )
 
 
+# -- hosted: Postgres and Redis (0.28) --------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class Hosted:
+    """Where a hosted proxy keeps what its workers share (`boundary.pg`)."""
+
+    database_url: str
+    redis_url: str | None = None
+    # The semantic cache on pgvector: a threshold turns it on, as `--semantic-cache` does.
+    semantic_threshold: float | None = None
+    embedder: Any = None
+    semantic_max_entries: int | None = None
+    redis_prefix: str = "boundary:quota:"
+
+
+def _host(state: ServerState, hosted: Hosted, teams: TeamsConfig) -> None:
+    from boundary import pg
+
+    state.hosted = hosted
+    state.central = pg.PgCentral(hosted.database_url)
+    state.ingest_hashes = frozenset(teams.ingest_key_sha256)
+    log = pg.PgAuditLog(hosted.database_url)
+    state.audit_log = log
+    state.closers.append(log.close)
+    if hosted.redis_url is not None:
+        state.quota = pg.RedisQuota(hosted.redis_url, prefix=hosted.redis_prefix)
+    if hosted.semantic_threshold is not None:
+        if hosted.embedder is None:
+            raise ConfigError("a hosted semantic cache needs an embedder")
+        conn = pg.connect(hosted.database_url)
+        lock = threading.RLock()
+        state.closers.append(conn.close)
+        state.semcaches = {
+            name: pg.PgSemanticCache(
+                hosted.database_url,
+                hosted.embedder,
+                team=name,
+                threshold=hosted.semantic_threshold,
+                max_entries=hosted.semantic_max_entries,
+                conn=conn,
+                lock=lock,
+            )
+            for name in teams.teams
+        }
+
+
 # -- the dashboard ---------------------------------------------------------------------------
 
 # How long a rendered dashboard is served before it is built again. A push clears it.
@@ -737,12 +805,20 @@ DASHBOARD_TTL_S = 60.0
 
 def _render_dashboard(state: ServerState) -> str:
     assert state.central is not None
-    own = next(iter(state.gateways.values())).ledger.rows()
-    rows = union(state.central.rows(), own)
+    ledger = next(iter(state.gateways.values())).ledger
+    if state.hosted is not None:
+        from boundary import pg
+
+        rows = pg.dashboard_rows(state.hosted.database_url)
+        own_count = ledger.count()
+    else:
+        own = ledger.rows()
+        rows = union(state.central.rows(), own)
+        own_count = len(own)
     return dashboard.render(
         rows,
         state.central.sources(),
-        proxy_rows=len(own),
+        proxy_rows=own_count,
         generated_utc=dt.datetime.fromtimestamp(state.wall(), dt.UTC).isoformat(),
     )
 
@@ -760,7 +836,7 @@ def _semcache(
     headers: dict[str, str],
     *,
     marked: bool,
-) -> SemanticCache | None:
+) -> SemanticCache | Any | None:
     """The team's cache when this request may use it, else None with the reason in the
     `x-boundary-cache` header. A request is served from the cache, or stored in it, only
     when every one of these holds (0.27, B2.5):

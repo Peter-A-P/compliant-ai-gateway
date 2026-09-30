@@ -5,6 +5,37 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.28.0 (2026-09-30)
+
+**Postgres and Redis: the hosted proxy as four workers on shared state.** PLAN.md B2 and
+B2.4; docs/deploy.md, docs/loadtest.md.
+
+- **`boundary.pg`**, behind the new **`hosted`** extra (psycopg 3, redis-py):
+  - `PgLedger`: the cap check and its row are one transaction under an advisory lock, for
+    every process; the spend is kept by a trigger.
+  - `PgAuditLog`: append-only by grant, and a trigger refuses changes for the owner too.
+  - `PgCentral` and `PgSemanticCache` (pgvector).
+  - `RedisQuota`: a sliding minute per team in one Lua script.
+  - `init_schema` grants the proxy's role only what it needs.
+- **Commands**: `boundary serve --hosted --workers N` (every worker built by
+  `boundary.server.factory`), `boundary audit follow` (the one sealer), `audit verify
+  --hosted`, `boundary db init` and `db import`.
+- **`Gateway(..., ledger=)`**, the `LedgerBackend` protocol and `LedgerStore.admission`.
+  `Gateway.ledger` keeps its `LedgerStore` type for 02 and 03. `AuditAppender` takes a
+  path or a store, and sealing is shared through `Sealing`.
+- **Deployed**: postgres, redis, init, gateway (4 workers, `--semantic-cache`) and sealer.
+  The SQLite ledger, the 3-record chain and the central ledger (140,573 rows, 95 sources)
+  were imported, and the chain still verifies against the anchor already published.
+- **Load test**, `boundary loadtest --hosted --workers N`, published hosted: at 200 rps,
+  p99 overhead 10.9 ms with audit and 26.8 ms with redaction, where one process could not
+  hold redaction at 200; at 500 every layer is still saturated on the 4 vCPU host.
+- **Found by the first hosted run**: every redacted request failed with a 500, because
+  Postgres refuses a Python bool in a BIGINT column. It is now converted, with a test. And
+  a hosted proxy with more than one worker gives each one embedding thread, because four
+  workers on every core made a cache miss cost 220 ms at the median against 44 ms.
+- **CI**: a `hosted` job runs `tests/test_pg.py` against real pgvector and Redis
+  services, and fails if any of it is skipped.
+
 ## 0.27.0 (2026-09-29)
 
 **What the first VPS measurement changed, the semantic cache in the proxy, and the portfolio

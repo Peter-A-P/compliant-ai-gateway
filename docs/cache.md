@@ -96,9 +96,12 @@ and a request the rules keep out says `skip:` and which rule.
 **What it costs a request that misses** is the load test's `cache` layer (docs/loadtest.md):
 the question embedded on the proxy's CPU, looked up and stored.
 
-The store is in memory, one per team per process, bounded at 20,000 entries, and empty
-after a restart. With numpy (which the `cache` extra brings) a lookup is one matrix product.
-pgvector replaces it when the proxy runs on Postgres.
+The store is in memory for a single-process proxy: one per team, bounded at 20,000 entries,
+and empty after a restart. With numpy (which the `cache` extra brings) a lookup is one matrix
+product. **Hosted, it is pgvector (0.28):** a `semcache` table every worker reads and writes,
+per team and per scope, nearest by cosine distance, and it survives a restart. The hosted
+proxy runs with the cache on since 2026-09-30. Its first two calls were a miss and a hit
+naming that miss as its source.
 
 What this cannot see: 03's questions are one domain and 100 items, the halves 50 each, and
 the paraphrases were written by a model (a floor on false hits, above). The hand-labelled 200

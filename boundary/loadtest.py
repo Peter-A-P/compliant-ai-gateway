@@ -334,13 +334,21 @@ class LoadResults:
     cells: list[Cell]
     # `python`, the open-loop client in this module, or `k6` (0.26, B4's generator).
     generator: str = "python"
+    # Postgres and Redis, and how many proxy processes (0.28).
+    hosted: bool = False
+    workers: int = 1
 
     def table(self) -> str:
         rng = random.Random(20260925)
         lines = [
             f"boundary {self.boundary_version}, layered load test on {self.machine}: "
             f"{self.runs} runs of {self.duration_s:g} s per cell, mock upstream "
-            f"{self.mock_delay_ms:g} ms, generator {self.generator}",
+            f"{self.mock_delay_ms:g} ms, generator {self.generator}, "
+            + (
+                f"{self.workers} worker(s) on Postgres and Redis"
+                if self.hosted
+                else "one process on SQLite"
+            ),
             ""
             if self.published
             else "A DEVELOPMENT FIGURE, NOT THE OVERHEAD BUDGET: PLAN.md B4 publishes that from "
@@ -446,8 +454,17 @@ def run(
     machine: str | None = None,
     published: bool = False,
     generator: str = "python",
+    hosted: bool = False,
+    workers: int = 1,
 ) -> LoadResults:
+    """`hosted` (0.28) runs each proxy on Postgres and Redis from BOUNDARY_DATABASE_URL and
+    BOUNDARY_REDIS_URL, with `workers` processes, and a sealer (`boundary audit follow`) for
+    every layer that keeps the chain. Point it at a database of its own, never the live one:
+    its rows are the mock's."""
     from boundary import __version__
+
+    if workers > 1 and not hosted:
+        raise ValueError("more than one worker needs hosted state")
 
     if generator not in ("python", "k6"):
         raise ValueError(f"unknown generator {generator!r}")
@@ -485,8 +502,30 @@ def run(
                     cmd.append("--no-audit")
                 if layer == "cache":
                     cmd += ["--semantic-cache", CACHE_MISS_THRESHOLD]
+                if hosted:
+                    cmd += ["--hosted", "--workers", str(workers)]
                 proxy = subprocess.Popen(
                     cmd, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+                )
+                # A hosted chain is sealed by its own process, as it is in production; the
+                # routing layer keeps none, so it gets none.
+                sealer = (
+                    subprocess.Popen(
+                        [
+                            sys.executable,
+                            "-m",
+                            "boundary.cli",
+                            "--config",
+                            str(cfg),
+                            "audit",
+                            "follow",
+                        ],
+                        env=env,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                    )
+                    if hosted and layer != "routing"
+                    else None
                 )
                 try:
                     # The cache layer loads its embedding model before it answers.
@@ -534,6 +573,8 @@ def run(
                         )
                 finally:
                     _stop(proxy)
+                    if sealer is not None:
+                        _stop(sealer)
         finally:
             _stop(mock)
     return LoadResults(
@@ -546,6 +587,8 @@ def run(
         mock_delay_ms=MOCK_DELAY_S * 1000,
         cells=cells,
         generator=generator,
+        hosted=hosted,
+        workers=workers,
     )
 
 

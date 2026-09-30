@@ -20,13 +20,14 @@ import threading
 from pathlib import Path
 
 from boundary.audit.chain import Anchor, ledger_body
-from boundary.audit.log import AuditLog
-from boundary.ledger.store import IN_FLIGHT, LedgerStore, utc_now
+from boundary.audit.log import AuditLog, Sealing
+from boundary.ledger.store import IN_FLIGHT, LedgerBackend, utc_now
 
 
 class AuditAppender:
-    def __init__(self, path: Path, ledger: LedgerStore) -> None:
-        self.log = AuditLog(path)
+    def __init__(self, log: Path | Sealing, ledger: LedgerBackend) -> None:
+        # A path is a SQLite chain; the hosted sealer passes `boundary.pg.PgAuditLog` (0.28).
+        self.log: Sealing = AuditLog(log) if isinstance(log, Path) else log
         self._ledger = ledger
         self._lock = threading.Lock()
         # One full seal on open, for rows written before this process started.

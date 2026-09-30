@@ -71,8 +71,11 @@ is out.
 
 ## Not yet
 
-- SQLite, not Postgres. The ingest and the page read one file on the proxy's host, as the
-  audit chain does. Postgres replaces the file when it is deployed (docs/deploy.md).
-- Each environment pushes when it is told to. 03's drift runs on GitHub Actions, and the
-  other projects, push when their own repositories add the step; until then their rows
-  arrive when a laptop ledger holding them is pushed.
+- Hosted, the central ledger is Postgres's `central` table (0.28). A single-process proxy
+  run with `--central PATH` keeps a SQLite file instead, and the rules are the same.
+- Each environment pushes when it is told to. On 2026-09-30 the ledgers of the three public
+  projects that call models were pushed from this laptop: 02's own-run ledger, 03's 92
+  committed ledger files, each its own source, and 04's own rows. That is 140,573 rows from
+  95 sources, every one complete. The rows of projects whose repositories are still private
+  were held back with `--project`. A push from each project's own runs, so that the page is
+  live rather than as of the last push, is each repository's change to make.

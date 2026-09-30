@@ -84,3 +84,43 @@ jobs:
       # person recall. Presidio is the only reason that column exists, so it is checked
       # where Presidio is installed.
       - run: uv run boundary redact eval --pages 40 --presidio --out /tmp/redact-presidio.json
+
+  # The hosted proxy's shared state (0.28) against a real Postgres with pgvector and a real
+  # Redis: grants, triggers, advisory locks and a Lua script, which a mock could not check.
+  # tests/test_pg.py skips without BOUNDARY_TEST_DATABASE_URL, so the check below fails the
+  # job if the variables did not reach the tests rather than letting it pass having run none.
+  hosted:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: boundary_admin
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: boundary
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U boundary_admin" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s
+          --health-retries 10
+    env:
+      BOUNDARY_TEST_DATABASE_URL: postgresql://boundary_admin:ci@127.0.0.1:5432/boundary
+      BOUNDARY_TEST_REDIS_URL: redis://127.0.0.1:6379/0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+      - run: uv sync --frozen --extra server --extra hosted
+      - run: uv run python -c "import psycopg, redis, fastapi"
+      - run: uv run mypy
+      # -rs lists every skip; the second step fails the job if there is one.
+      # `shell: bash` runs with pipefail, so a failing test still fails through the tee.
+      - run: uv run pytest tests/test_pg.py -v -rs | tee /tmp/pg.log
+        shell: bash
+      - run: "! grep -q SKIPPED /tmp/pg.log"

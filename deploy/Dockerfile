@@ -21,7 +21,7 @@ COPY config ./config
 # model, bge-small, is fetched here at build time, so a running proxy never downloads one.
 # Everything world-readable, since a checkout's file modes are whatever the machine that
 # wrote them used.
-RUN uv sync --frozen --no-dev --extra server --extra cache \
+RUN uv sync --frozen --no-dev --extra server --extra cache --extra hosted \
     && python -c "from boundary.semcache import BgeSmall; BgeSmall().embed(['warm'])" \
     && chmod -R a+rX /app /opt/venv /opt/fastembed
 

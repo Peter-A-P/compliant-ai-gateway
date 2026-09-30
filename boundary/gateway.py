@@ -19,7 +19,6 @@ import asyncio
 import dataclasses
 import os
 import random
-import threading
 import time
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
@@ -57,7 +56,7 @@ from boundary.errors import (
     UnknownPrice,
 )
 from boundary.ledger.prices import cost_usd, estimate_usd
-from boundary.ledger.store import LedgerRow, LedgerStore, new_call_uid, utc_now
+from boundary.ledger.store import LedgerBackend, LedgerRow, LedgerStore, new_call_uid, utc_now
 from boundary.providers import (
     ADAPTERS,
     BATCH_ADAPTERS,
@@ -174,21 +173,6 @@ REDACTION_REFUSED = "redaction_refused"
 INJECTION_BLOCKED = "injection_blocked"
 CALLER_REFUSALS = frozenset({REDACTION_REFUSED, INJECTION_BLOCKED})
 
-# One admission lock per ledger file (0.27). A cap is checked against the ledger and the row
-# that spends against it is written straight after; the two must be one step, or two calls
-# admitted at once can both pass a cap only one of them fits under. On one event loop that
-# held without a lock, because nothing awaited between them. The async path now writes the
-# ledger from a worker thread, so the step is a lock, shared by every Gateway on the file,
-# since the proxy's team gateways all write one ledger and the ceiling spans them.
-_ADMISSION: dict[str, threading.Lock] = {}
-_ADMISSION_GUARD = threading.Lock()
-
-
-def _admission_lock(path: Path) -> threading.Lock:
-    key = str(Path(path).resolve())
-    with _ADMISSION_GUARD:
-        return _ADMISSION.setdefault(key, threading.Lock())
-
 
 class Gateway:
     def __init__(
@@ -207,6 +191,7 @@ class Gateway:
         sleep: Callable[[float], None] = time.sleep,
         asleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
         policy: DataPolicy | None = None,
+        ledger: LedgerBackend | None = None,
     ) -> None:
         self.config = config
         # The data policy (0.12): given here, or named by the configuration, or none. None
@@ -225,8 +210,15 @@ class Gateway:
         if self.self_hosted_prices is None and config.self_hosted_prices is not None:
             self.self_hosted_prices = latest_price_list(config.self_hosted_prices)
         check_price_lists(config, self.prices, self.self_hosted_prices)
-        self.ledger = LedgerStore(ledger_path or config.ledger.path)
-        self._admission = _admission_lock(self.ledger.path)
+        # A ledger given here (0.28) is the hosted proxy's Postgres one; otherwise the file.
+        # Typed as the file's store, which is what 02 and 03 read (`gw.ledger.rows()` and the
+        # rest): the public interface does not change for them, and a hosted gateway is only
+        # ever driven through the `LedgerBackend` subset, which `PgLedger` implements.
+        self.ledger: LedgerStore = (
+            cast(LedgerStore, ledger)
+            if ledger is not None
+            else LedgerStore(ledger_path or config.ledger.path)
+        )
         self.raw_store = RawStore(raw_store) if raw_store is not None else None
         self.cache = ExactMatchCache(config.cache.path) if config.cache.enabled else None
         self.transport = transport or Transport(config.defaults.timeouts)
@@ -1171,8 +1163,8 @@ class Gateway:
         entry = self._price_for(pc, ref.provider, ref.model)
         max_tokens = effective.max_tokens or 0
         estimate = estimate_usd(len(built.body), max_tokens, entry) if entry is not None else 0.0
-        # Checked and written as one step: see _ADMISSION.
-        with self._admission:
+        # Checked and written as one step: see `LedgerStore.admission`.
+        with self.ledger.admission():
             self._check_caps(run_id, estimate=estimate)
             row = LedgerRow(
                 ts_utc=utc_now(),
@@ -1309,7 +1301,7 @@ class Gateway:
             cache_similarity=round(similarity, 6),
             cache_source=source,
         )
-        with self._admission:
+        with self.ledger.admission():
             row_id = self.ledger.begin(row)
         row.model_returned = model_returned
         row.input_tokens = 0

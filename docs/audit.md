@@ -211,10 +211,14 @@ on each machine are still sealed after the fact where they were made, and are no
 - **It proves the record was not changed, not that it was complete.** A call the ledger never
   recorded is not in the chain either. That is what the ledger's own completeness figure
   (600/600 under fault injection, in the README) is for.
-- **SQLite, not Postgres.** B2.4 specifies Postgres with `UPDATE` and `DELETE` revoked from
-  the application role. The chain and the verifier are storage-independent pure functions
-  (`boundary/audit/chain.py`), so the Part B store is a different place to keep the same
-  records rather than a different design.
-- **The chain's append costs throughput.** On the VPS the audit layer is what stops the
-  proxy holding 200 requests a second (docs/loadtest.md): each call's seal is its own SQLite
-  commit on the event loop.
+- **The hosted chain is in Postgres (0.28), append-only by grant.** B2.4 asked for the
+  application's role to have no `UPDATE` or `DELETE`, and it has neither: `boundary_app`
+  may SELECT and INSERT on `audit`, and a trigger refuses UPDATE, DELETE and TRUNCATE for
+  the owner as well (`boundary/pg.py`, tested on a real Postgres). The chain and the verifier
+  are the same pure functions over either store. `boundary audit verify --hosted` checks
+  the Postgres chain, and `boundary audit follow` is its one sealer. The 3-record SQLite
+  chain was imported record for record, and still verifies against the anchor already
+  published (docs/deploy.md). A library caller's chain stays SQLite.
+- **The owner can still rewrite, and only the anchors stop that.** Revoking a grant stops the
+  proxy and whoever takes it over. It does not stop whoever holds the database's owner
+  password, which is why the anchors are committed where the host cannot reach.

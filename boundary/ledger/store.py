@@ -20,9 +20,10 @@ import tempfile
 import threading
 import uuid
 from collections.abc import Mapping, Sequence
+from contextlib import AbstractContextManager
 from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 SCHEMA_VERSION = 11
 _SCHEMA_PATH = Path(__file__).with_name("schema.sql")
@@ -192,6 +193,46 @@ class MergeStats:
         )
 
 
+# One admission lock per ledger file (0.27). A cap is checked against the ledger and the row
+# that spends against it is written straight after; the two must be one step, or two calls
+# admitted at once can both pass a cap only one of them fits under. On one event loop that
+# held without a lock, because nothing awaited between them. The async path writes the ledger
+# from a worker thread, so the step is a lock, shared by every store on the file, since the
+# proxy's team gateways all write one ledger and the ceiling spans them. The Postgres ledger
+# (0.28) makes the same step a transaction under an advisory lock, for every process.
+_ADMISSION: dict[str, threading.Lock] = {}
+_ADMISSION_GUARD = threading.Lock()
+
+
+class LedgerBackend(Protocol):
+    """What `Gateway` needs of a ledger: a SQLite `LedgerStore`, or `boundary.pg.PgLedger`."""
+
+    @property
+    def path(self) -> Any: ...
+
+    def admission(self) -> AbstractContextManager[Any]: ...
+
+    def begin(self, row: LedgerRow) -> int: ...
+
+    def complete(self, row: LedgerRow) -> None: ...
+
+    def spend_usd(
+        self, *, project: str | None, year_month: str | None = None, run_id: str | None = None
+    ) -> float: ...
+
+    def rows(self, *, project: str | None = None) -> list[dict[str, Any]]: ...
+
+    def rows_after(self, row_id: int) -> list[dict[str, Any]]: ...
+
+    def count(self) -> int: ...
+
+    def rows_for_batch(self, batch_id: str) -> list[dict[str, Any]]: ...
+
+    def set_batch_id(self, ids: Sequence[int], batch_id: str) -> None: ...
+
+    def close(self) -> None: ...
+
+
 class LedgerStore:
     def __init__(self, path: Path, *, display_path: Path | None = None) -> None:
         self.path = path
@@ -214,6 +255,12 @@ class LedgerStore:
             # clear error about one ledger into a confusing one about another.
             self._conn.close()
             raise
+
+    def admission(self) -> threading.Lock:
+        """The lock that makes a cap check and its row one step (see `_ADMISSION`)."""
+        key = str(Path(self.path).resolve())
+        with _ADMISSION_GUARD:
+            return _ADMISSION.setdefault(key, threading.Lock())
 
     # -- schema -------------------------------------------------------------------------
 

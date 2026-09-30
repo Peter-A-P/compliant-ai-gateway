@@ -232,36 +232,39 @@ declaration, not a vendor's conduct, and the command says so. Detail in
 | Layer | Load (rps) | Overhead p50 / p95 / p99 ms (95% CI) | Errors |
 |---|---|---|---|
 <!-- loadtest:start -->
-| routing | 50 | 3.7 (3.5 to 3.8) / 4.1 (3.8 to 4.5) / 4.8 (4.3 to 5.6) | 0 of 2505 |
-| routing | 200 | 4.0 (3.9 to 4.2) / 6.4 (6.1 to 6.8) / 9.7 (7.7 to 12.4) | 0 of 10004 |
-| routing | 500 | saturated: the proxy cannot hold this rate | 7145 of 10001 |
-| audit | 50 | 3.6 (3.5 to 3.7) / 4.0 (3.7 to 4.2) / 4.5 (4.2 to 4.8) | 0 of 2505 |
-| audit | 200 | 4.4 (4.2 to 4.6) / 7.7 (7.2 to 8.4) / 13.2 (9.3 to 20.1) | 0 of 10003 |
-| audit | 500 | saturated: the proxy cannot hold this rate | 7245 of 10000 |
-| redaction | 50 | 5.2 (5.1 to 5.3) / 5.5 (5.3 to 5.7) / 5.9 (5.6 to 6.3) | 0 of 2503 |
-| redaction | 200 | saturated: the proxy cannot hold this rate | 1452 of 4002 |
-| redaction | 500 | saturated: the proxy cannot hold this rate | 7707 of 10000 |
-| cache | 50 | 17.9 (17.3 to 18.6) / 28.8 (21.0 to 41.9) / 54.7 (27.5 to 94.6) | 0 of 2504 |
-| cache | 200 | saturated: the proxy cannot hold this rate | 2315 of 4001 |
-| cache | 500 | saturated: the proxy cannot hold this rate | 7974 of 10001 |
+| routing | 50 | 4.8 (4.7 to 4.9) / 5.8 (5.5 to 6.0) / 7.0 (6.3 to 7.7) | 0 of 2502 |
+| routing | 200 | 6.1 (5.9 to 6.3) / 8.5 (7.9 to 9.0) / 11.2 (10.1 to 12.3) | 0 of 10003 |
+| routing | 500 | saturated: the proxy cannot hold this rate | 1296 of 10001 |
+| audit | 50 | 5.1 (5.0 to 5.1) / 6.0 (5.8 to 6.2) / 7.0 (6.7 to 7.3) | 0 of 2505 |
+| audit | 200 | 6.2 (6.1 to 6.4) / 9.0 (8.6 to 9.3) / 10.9 (10.3 to 11.4) | 0 of 10003 |
+| audit | 500 | saturated: the proxy cannot hold this rate | 1372 of 10000 |
+| redaction | 50 | 6.6 (6.4 to 6.7) / 7.7 (7.4 to 8.0) / 10.0 (8.9 to 10.8) | 0 of 2504 |
+| redaction | 200 | 10.7 (10.2 to 11.1) / 17.9 (16.1 to 19.7) / 26.8 (20.4 to 34.5) | 0 of 10004 |
+| redaction | 500 | saturated: the proxy cannot hold this rate | 3114 of 10002 |
+| cache | 50 | 34.6 (34.1 to 35.2) / 39.3 (38.6 to 40.1) / 41.3 (40.2 to 42.4) | 0 of 2505 |
+| cache | 200 | saturated: the proxy cannot hold this rate | 1512 of 4002 |
+| cache | 500 | saturated: the proxy cannot hold this rate | 7351 of 10000 |
 <!-- loadtest:end -->
 
-Filled by `boundary loadtest --generator k6 --published --write-readme` (`v0.27.0`), run
-on the VPS that serves gateway.peterparker.ca: an OVHcloud VPS-2, 4 vCPU (AMD EPYC-Milan) and
-8 GB, in Beauharnois, with k6, a 50 ms mock upstream and the proxy on the same host. Five
-runs of 10 s per cell; overhead is the proxy's percentile minus the mock's in the same run,
-and the interval is a bootstrap over runs. **Where the proxy holds the rate, routing, the
-audit chain and redaction add 4.5 to 13 ms at p99, inside the provisional budget of PLAN.md
+Filled by `boundary loadtest --generator k6 --hosted --workers 4 --published --write-readme`
+(`v0.28.0`), run on the VPS that serves gateway.peterparker.ca: an OVHcloud VPS-2, 4 vCPU (AMD
+EPYC-Milan) and 8 GB, in Beauharnois. The proxy runs as four workers on Postgres and Redis,
+as it does in production, with k6, a 50 ms mock upstream and the databases on the same host.
+Five runs of 10 s per cell; overhead is the proxy's percentile minus the mock's in the same
+run, and the interval is a bootstrap over runs. **At 200 requests a second, routing and the
+audit chain add 11 ms at p99 and redaction 27 ms, inside the provisional budget of PLAN.md
 B4.** A saturated cell has no overhead figure, because the latencies that survive are not the
 proxy's cost but its queue; the failures are requests k6 could not start because every
-connection was waiting on the proxy. **The first measurement changed the architecture, as B4
-meant it to.** In `v0.26.0` the audit chain stopped the proxy holding 200 requests a second.
-Moving the ledger commits off the event loop and group-committing the chain (`v0.27.0`)
-holds it there at 13.2 ms p99. The cache layer is the price of a miss with the semantic
-cache on: the question embedded on the proxy's own CPU, about 14 ms more than the audit
-layer at the median. One process still saturates at 500 requests a second on every layer,
-and at 200 with redaction or the cache on. Detail, the `v0.26.0` table and the Python
-client's cross-check are in [docs/loadtest.md](docs/loadtest.md).
+connection was waiting on the proxy. **Each measurement has changed the architecture, as B4
+meant it to.** In `v0.26.0` the audit chain stopped one process at 200 requests a second.
+Moving the commits off the event loop fixed that in `v0.27.0`. Moving to four workers on
+shared state in `v0.28.0` let redaction hold 200 as well, and at 500 about 87% of routing
+and audit requests now succeed, against 29% for one process. On four cores shared with the
+generator, the mock and the databases, 500 is still past this machine. Each worker's round
+trips to Postgres cost about a millisecond at the median over SQLite. A miss with the
+semantic cache on costs 35 ms at the median: the question embedded on one core per worker,
+then an exact nearest-neighbour scan in pgvector. The single-process tables, and the Python
+client's cross-check, are in [docs/loadtest.md](docs/loadtest.md).
 
 | Residency violations through the proxy | False refusals | Refusals audited on the ledger |
 |---|---|---|
@@ -471,12 +474,10 @@ says. Dollars saved need real traffic, which is Part B's replay.
   refusals into disclosures; it now puts back only what the caller sent, so an application
   that addresses its user by a name held only in its system prompt sees a placeholder there
   (7 of 900 ordinary answers, all 03's own word "Answer").
-- **It is one process, and it saturates at modest rates.** On the 4 vCPU VPS it holds 200
-  requests a second with routing and the audit chain, and 50 with redaction or the semantic
-  cache on, but not 500 on any layer (`v0.27.0`, the table above). What is left is CPU in
-  one Python process: redaction's recognisers and the cache's embedding run on the cores the
-  proxy has. More than one process needs the shared ledger and quotas that Postgres and
-  Redis bring (PLAN.md B2).
+- **One 4 vCPU host is its ceiling.** Hosted as four workers on Postgres and Redis
+  (`v0.28.0`), it holds 200 requests a second on every layer but the semantic cache, and
+  500 on none. What is left is CPU on one machine that also runs the load generator in the
+  published test. It runs in one region on one host (below).
 - It does not run in more than one region. Residency here means controlling where requests
   are allowed to go, not where the proxy runs.
 - **It cannot verify residency, and no tool can.** It records what the operator declared and

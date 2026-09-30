@@ -771,8 +771,15 @@ def test_serve_keeps_its_own_ledger_and_refuses_without_teams(
     )
     config = str(CONFIG_DIR / "boundary.yaml")
     assert main(["--config", config, "serve", "--teams", str(teams_file)]) == 0
-    ((app, kw),) = started
-    assert kw == {"host": "127.0.0.1", "port": 8080, "log_level": "info"}
+    ((target, kw),) = started
+    # 0.28: every worker builds the app from the settings `serve` wrote to the environment.
+    assert target == "boundary.server.factory:build"
+    assert kw == {
+        "factory": True, "host": "127.0.0.1", "port": 8080, "workers": 1, "log_level": "info",
+    }  # fmt: skip
+    from boundary.server.factory import build
+
+    app = build()
     gw = app.state.boundary.gateways["t"]
     assert gw.ledger.path == tmp_path / PROXY_LEDGER
     assert gw.policy is not None

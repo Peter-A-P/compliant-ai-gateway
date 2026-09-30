@@ -181,8 +181,11 @@ identifies nobody; with enough of it, a person may be recognisable, which is the
 quasi-identifier problem docs/redact.md measures on real text.
 
 **The vault is the request's policy, in memory for the life of the request**, and is written
-nowhere: not the ledger, not a span, not a log, not the response headers. The Redis vault
-under a per-team key that B2.3 describes is for a proxy with more than one process.
+nowhere: not the ledger, not a span, not a log, not the response headers. B2.3 described a Redis vault
+under a per-team key for a proxy with more than one process. The hosted proxy has four
+(0.28), and still keeps the vault in memory, because a request is redacted, sent and
+rehydrated inside one worker and never needs another's. Redis holds the team quotas, which
+do span workers.
 
 **Measured end to end, 0.17.** `boundary redact eval --proxy` sends all 200 pages of the
 generated corpus through the proxy over HTTP as personal requests, plain and streamed, to an
@@ -296,13 +299,14 @@ Each of these is in PLAN.md Part B and lands in the stage it names:
 - **Redaction is rules-only and unmeasured for quality.** No detector or allow list is
   configured for the proxy, and the effect of redaction on answer quality (B2.8) has not
   been measured; PLAN.md B2.8 has the plan for it.
-- **One process, and it saturates below 200 requests a second with the audit chain on**
-  (0.26, docs/loadtest.md). The ledger and audit writes are synchronous SQLite commits on
-  the event loop, which the first VPS measurement found to be the limit.
+- **Hosted mode (0.28).** `--hosted --workers N` runs N processes on Postgres and Redis
+  (`boundary/pg.py`, docs/deploy.md): one ledger, one chain sealed by `boundary audit
+  follow`, a pgvector cache and Redis quotas, all shared. Without `--hosted` the proxy is
+  one process on SQLite, as before, and `--workers` above 1 is refused.
 - **The audit chain is appended as the proxy answers (0.18) and anchored daily (0.26).**
   `boundary serve` seals every call into `<ledger>.audit.sqlite` as its row completes (turn
   it off with `--no-audit`). `GET /audit/head` publishes the head with no key, and an Action
   commits it to this repository every day (docs/audit.md).
-- No dashboard, SQLite rather than Postgres, and one process. The semantic cache (0.27) is
-  in memory, per process, and empty after a restart.
+- A single-process proxy's semantic cache (0.27) is in memory and empty after a restart;
+  a hosted one's is pgvector.
 - Typed tool calls are refused rather than carried (PLAN.md B11).
