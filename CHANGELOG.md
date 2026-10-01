@@ -5,6 +5,20 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.34.0 (2026-10-01)
+
+- **October's price list, `boundary/prices/2026-10-01.yaml`.** The monthly re-check: every
+  vendor page re-read, and no rate carried over from 2026-09-27 changed. Three Anthropic
+  models are added so their first call is costed (Opus 5.5, Sonnet 5.5, Fable 5.1, with
+  their own cache-read rates). Google's page announces Gemini 3.6 to 3.8 Flash doubling on
+  2027-01-01; the file says so, and January needs its own. Bedrock's rates are still not
+  readable from AWS's page, so Bedrock stays uncosted until they come from the bill.
+- **The website reads the anchors from GitHub.** The audit chain drawing now loads
+  `anchors/gateway.jsonl` from the public repository as the page loads, so the anchors it
+  draws are the ones a stranger can check, and never a deploy behind. The content security
+  policy allows that one host for connections and nothing else; if it cannot be reached,
+  the page draws the copy it was built with.
+
 ## 0.33.4 (2026-10-01)
 
 - Each of the four top figures is in its card's colour as a whole ("0 of 550"), as on the

@@ -22,14 +22,15 @@ from committed files only:
 | The load test chart | The README's load test rows, which `boundary loadtest --write-readme` wrote from `bench/loadtest.json` |
 | The residency grid | `config/boundary.yaml` and `config/policy.yaml`, decided by `boundary.enforce.decide`, the function the proxy calls |
 | The redaction example | A fictional request, redacted at build time by `boundary.redact.Policy`, the engine the proxy uses. The vendor's reply in it is written by the builder, since no model is called; every placeholder in it is the engine's, and so is the text the caller gets back |
-| The audit chain drawing | `anchors/gateway.jsonl`, and at run time `GET /audit/head`, the live chain's head, the one request the page makes to the proxy |
+| The audit chain drawing | `anchors/gateway.jsonl`, and at run time `GET /audit/head`, the live chain's head, the one request the page makes to the proxy. Since 0.34 the browser also reads `anchors/gateway.jsonl` from the public repository on GitHub as the page loads, so the anchors drawn are the ones a stranger can check and are never a deploy behind; if GitHub cannot be reached the page draws the copy it was built with |
 | Tests, lines of code, releases | Counted from `tests/`, `boundary/` and the changelog |
 
 ## How it is served
 
 Caddy serves it at the root of gateway.peterparker.ca, beside the proxy's own `/demo` and
 `/dashboard` (deploy/Caddyfile). The site's paths are its files and nothing else, and they
-carry a content security policy that allows nothing inline and nothing from another host;
+carry a content security policy that allows nothing inline and nothing from another host
+except one read, the anchors file on `raw.githubusercontent.com`;
 every other path goes to the proxy as before. The one-shot `site` service in
 `deploy/compose.yaml` builds the page from the checkout into `/srv/boundary/site/current`
 on every start. A build that fails leaves the previous page up and the proxy unaffected.

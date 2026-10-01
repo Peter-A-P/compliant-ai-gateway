@@ -46,7 +46,7 @@ DATA = "data/site.json"
 HEADERS: dict[str, str] = {
     "Content-Security-Policy": (
         "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; "
-        "font-src 'self'; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; "
+        "font-src 'self'; connect-src 'self' https://raw.githubusercontent.com; object-src 'none'; frame-ancestors 'none'; "
         "base-uri 'none'; form-action 'none'"
     ),
     "X-Content-Type-Options": "nosniff",

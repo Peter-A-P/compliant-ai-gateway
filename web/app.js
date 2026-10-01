@@ -3,9 +3,14 @@
    peterparker.ca: SVG built with the DOM API, every colour a class in style.css, every
    piece of text set with textContent.
 
-   Two requests, both to this server: data/site.json, written by `boundary site` from the
+   Two requests to this server: data/site.json, written by `boundary site` from the
    README's tables, and /audit/head, the proxy's live chain head. If the second fails, the
-   page says so and draws the chain from the last published anchor instead. */
+   page says so and draws the chain from the last published anchor instead.
+
+   And one to GitHub (0.34): the anchors file as the public repository holds it now, so the
+   anchors drawn are the ones a stranger can check rather than the ones this server was
+   built with, which lag by a day until it is redeployed. If GitHub cannot be reached, the
+   anchors in data/site.json are drawn and the caption keeps saying so. */
 
 "use strict";
 
@@ -35,6 +40,23 @@ function fail(message) {
   const box = document.getElementById("failure");
   box.textContent = message;
   box.hidden = false;
+}
+
+const ANCHORS_URL =
+  "https://raw.githubusercontent.com/Peter-A-P/compliant-ai-gateway/main/anchors/gateway.jsonl";
+
+/* The repository's anchors, one JSON object a line. Anything not shaped like an anchor
+   throws, and the page falls back to the anchors it was built with. */
+async function getAnchors() {
+  const r = await fetch(ANCHORS_URL, { credentials: "omit", cache: "no-cache" });
+  if (!r.ok) throw new Error(`anchors: ${r.status}`);
+  const rows = (await r.text()).split("\n").filter((line) => line.trim()).map((line) => JSON.parse(line));
+  for (const a of rows) {
+    if (!Number.isInteger(a.seq) || !/^[0-9a-f]{64}$/.test(a.head) || typeof a.ts_utc !== "string") {
+      throw new Error("anchors: a line is not an anchor");
+    }
+  }
+  return rows;
 }
 
 async function getJson(path) {
@@ -198,8 +220,17 @@ async function main() {
   } catch (e) {
     head = null;
   }
-  describeLive(head, data.anchors || []);
-  drawChain(head, data.anchors || []);
+  let anchors = data.anchors || [];
+  try {
+    anchors = await getAnchors();
+    const caption = document.getElementById("chain-caption");
+    const first = anchors.length ? anchors[0].ts_utc.slice(0, 10) : "none yet";
+    caption.textContent = `The chain as it stands on this server now, and the anchors published so far (${anchors.length} since ${first}), read from the public repository as this page loaded.`;
+  } catch (e) {
+    anchors = data.anchors || [];
+  }
+  describeLive(head, anchors);
+  drawChain(head, anchors);
 }
 
 main();

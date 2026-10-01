@@ -51,6 +51,15 @@ def test_nothing_inline_and_nothing_off_this_server(built: site.Built) -> None:
             assert src in built.files, src
     js = (built.out / "app.js").read_text(encoding="utf-8")
     assert sorted(set(re.findall(r'getJson\("([^"]+)"\)', js))) == ["/audit/head", site.DATA]
+    # The one read from another host: the anchors as the public repository holds them, and
+    # the policy allows that host for connections and nothing else.
+    off = re.findall(r'"(https://[^"]+)"', js)
+    assert off == [
+        "https://raw.githubusercontent.com/Peter-A-P/compliant-ai-gateway/main/anchors/gateway.jsonl"
+    ]
+    csp = site.HEADERS["Content-Security-Policy"]
+    assert "connect-src 'self' https://raw.githubusercontent.com;" in csp
+    assert csp.count("https://") == 1
     assert "innerHTML" not in js and not re.search(r"\.style\b", js)
 
 
