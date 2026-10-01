@@ -107,7 +107,10 @@ h1, h2, h3 {
   letter-spacing: -0.012em;
 }
 
-h1 { font-size: clamp(2.1rem, 4.6vw, 3rem); line-height: 1.1; margin: 0 0 1rem; text-wrap: balance; }
+h1 { font-size: clamp(2.1rem, 4.6vw, 3rem); line-height: 1.1; margin: 0 0 1rem; }
+/* A headline breaks between its phrases, never inside one; a phrase too wide for the screen
+   breaks between the phrases inside it. */
+h1 .phrase { display: inline-block; }
 h2 { font-size: clamp(1.55rem, 2.6vw, 2rem); line-height: 1.2; margin: 0 0 0.7rem; }
 h3 { font-size: 1.2rem; line-height: 1.25; margin: 0 0 0.45rem; }
 p { margin: 0 0 0.85rem; }
@@ -208,7 +211,7 @@ strong { font-weight: 600; }
 
 .point-figure.up { color: var(--good); }
 .point-figure.down { color: var(--warn); }
-/* The "of" between two figures, in the text colour, so the figures carry the colour. */
+/* "of" and the total after it, in the text colour, so only the count carries the colour. */
 .point-figure .of { color: var(--ink); }
 
 .point-unit {

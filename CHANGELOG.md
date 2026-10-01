@@ -5,6 +5,13 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.33.2 (2026-10-01)
+
+- The headline breaks between its phrases ("What would it take / to say yes to AI on
+  customer data?"), and on a phone between the smaller phrases inside them, never in the
+  middle of one. In the four top figures only the count is green; "of" and the total are
+  in the text colour.
+
 ## 0.33.1 (2026-10-01)
 
 - The website's headline is shorter ("What would it take to say yes to AI on customer
