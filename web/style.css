@@ -85,6 +85,7 @@
 html { font-size: 18px; -webkit-text-size-adjust: 100%; }
 
 body {
+  overflow-x: clip;
   margin: 0;
   background: var(--paper);
   color: var(--ink);
@@ -108,9 +109,6 @@ h1, h2, h3 {
 }
 
 h1 { font-size: clamp(2.1rem, 4.6vw, 3rem); line-height: 1.1; margin: 0 0 1rem; }
-/* A headline breaks between its phrases, never inside one; a phrase too wide for the screen
-   breaks between the phrases inside it. */
-h1 .phrase { display: inline-block; }
 h2 { font-size: clamp(1.55rem, 2.6vw, 2rem); line-height: 1.2; margin: 0 0 0.7rem; }
 h3 { font-size: 1.2rem; line-height: 1.25; margin: 0 0 0.45rem; }
 p { margin: 0 0 0.85rem; }
@@ -171,7 +169,28 @@ strong { font-weight: 600; }
 
 /* ---------------------------------------------------------------- hero */
 
-.hero { padding: 3.25rem 0 2.25rem; border-bottom: 1px solid var(--line); }
+.hero { position: relative; padding: 3.25rem 0 2.25rem; border-bottom: 1px solid var(--line); }
+
+/* A wash of the accent behind the first screen, full width, fading into the page, as on the
+   release gate's site (03): the one place colour is used for its own sake. */
+.hero::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 100vw;
+  margin-left: -50vw;
+  background:
+    radial-gradient(60rem 22rem at 85% 0%, color-mix(in srgb, var(--alt) 14%, transparent), transparent 70%),
+    linear-gradient(180deg, var(--accent-soft), var(--paper) 85%);
+}
+.hero h1 .hl { color: var(--accent); }
+.hero .eyebrow { color: var(--accent-ink); }
+.hero .point { border-top: 3px solid var(--accent); box-shadow: var(--shadow); }
+.hero .point.good { border-top-color: var(--good); }
+.hero .point.violet { border-top-color: var(--alt); }
 
 .eyebrow {
   text-transform: uppercase;
@@ -209,8 +228,9 @@ strong { font-weight: 600; }
   color: var(--ink);
 }
 
-.point-figure.up { color: var(--good); }
-.point-figure.down { color: var(--warn); }
+.point .point-figure { color: var(--accent-ink); }
+.point.good .point-figure { color: var(--good); }
+.point.violet .point-figure { color: var(--alt); }
 /* "of" and the total after it, in the text colour, so only the count carries the colour. */
 .point-figure .of { color: var(--ink); }
 

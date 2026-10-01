@@ -5,6 +5,14 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.33.3 (2026-10-01)
+
+- **The first screen in the release gate's colours (03).** A wash of the accent behind the
+  hero, the eyebrow in the accent, "say yes to AI" highlighted in the headline, and the four
+  figures as cards with a coloured top edge (teal, green, violet, green), each count in its
+  card's colour. The headline wraps naturally again, with "on customer data?" kept together
+  so it never leaves one word on a line. The demo and dashboard heroes get the same wash.
+
 ## 0.33.2 (2026-10-01)
 
 - The headline breaks between its phrases ("What would it take / to say yes to AI on
