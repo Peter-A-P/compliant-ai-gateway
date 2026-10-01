@@ -60,8 +60,10 @@ in `/srv/boundary/teams.yaml`:
 | `max_tokens` | 300 | Bounds each call's worst case, which is what the budget check estimates |
 
 The private test team, `demo`, went down to US$4 a month, and the gateway's ceiling up to
-US$10, so the two fit under it with US$1 to spare. That ceiling is still the server's own
-vendor key limits of US$10 each. The key is in `/home/ubuntu/boundary/demo.env`
+US$10, so the two fit under it with US$1 to spare. Behind that ceiling, the vendor
+projects the server's keys belong to are capped at CA$20 a month each, about US$15. The
+caps refuse requests, not only alert, checked in the consoles on 2026-10-01. So the
+proxy's own ceiling binds first, and the vendors' would stop a fault in it. The key is in `/home/ubuntu/boundary/demo.env`
 (`BOUNDARY_DEMO_KEY`, mode 600), and only its hash is in `teams.yaml`. Rotating it is a new
 key and hash in place of the old, and a restart of `gateway`. The proxy refuses to start
 with a demo key that is not the team's, or for a team without all three of `daily_usd`,
@@ -73,7 +75,7 @@ with a demo key that is not the team's, or for a team without all three of `dail
 - **Firewall:** ufw denies all inbound traffic except 22 (rate limited), 80 and 443. Docker's published ports bypass ufw, which is why the gateway publishes none.
 - **Updates:** unattended security upgrades are on.
 - **Vendor keys:** server-only Anthropic and OpenAI keys with their own vendor-side monthly limits, in a mode-600 file outside the checkout, passed in as environment variables.
-- **Team keys:** `teams.yaml` holds hashes only. The gateway ceiling (US$5 a month) sits under the vendor limits, so the proxy's own caps are the ones that bind.
+- **Team keys:** `teams.yaml` holds hashes only. The gateway ceiling (US$10 a month since 0.30) sits under the vendor projects' blocking caps of CA$20 a month each, so the proxy's own caps are the ones that bind.
 
 ## Running it
 
