@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import asyncio
 import concurrent.futures
+import dataclasses
 import datetime as dt
 import math
 import secrets
@@ -64,6 +65,7 @@ from boundary.routes import ModelRef
 from boundary.screen import rules_fired, screen_request
 from boundary.semcache import SemanticCache
 from boundary.server import dashboard, wire
+from boundary.server import demo as demo_page
 from boundary.server.redaction import (
     Redacted,
     RedactionRefused,
@@ -72,7 +74,7 @@ from boundary.server.redaction import (
     leak_counts,
     redact_request,
 )
-from boundary.server.teams import RequestQuota, TeamsConfig, hash_key
+from boundary.server.teams import RequestQuota, Team, TeamsConfig, hash_key
 from boundary.transport import PROXY_ASYNC_CLIENTS, Transport
 from boundary.types import ChatResponse, DataClass, Mode
 
@@ -149,6 +151,9 @@ class ServerState:
     closers: list[Callable[[], None]] = field(default_factory=list)
     ingest_hashes: frozenset[str] = frozenset()
     page: tuple[float, str] | None = None
+    # The hosted demo (0.30): its key and team, and the page as last rendered.
+    demo: Demo | None = None
+    demo_page: tuple[float, str] | None = None
     # The cache's embeddings in flight on this worker, and the one thread that runs them in
     # turn (0.29): in turn, so the first in line finishes first rather than every one
     # finishing late together.
@@ -225,6 +230,7 @@ def create_app(
     semantic_cache: Callable[[], SemanticCache] | None = None,
     central_path: Path | None = None,
     hosted: Hosted | None = None,
+    demo: Demo | None = None,
     clock: Callable[[], float] = time.monotonic,
     wall: Callable[[], float] = time.time,
     sleep: Callable[[float], None] = time.sleep,
@@ -239,6 +245,8 @@ def create_app(
                 "in boundary.yaml or --policy. It fails closed rather than start without one"
             )
         policy = load_policy(config.policy)
+    if demo is not None:
+        demo_page.check(teams, demo.team, demo.key)
     shared = transport or Transport(config.defaults.timeouts, async_clients=PROXY_ASYNC_CLIENTS)
     caps = teams.caps()
     pg_ledger = None
@@ -281,6 +289,7 @@ def create_app(
     if audit_path is not None and hosted is None:
         # Every team's gateway writes the same ledger file, so any one of them reads it.
         state.audit = AuditAppender(audit_path, next(iter(gateways.values())).ledger)
+    state.demo = demo
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
@@ -308,6 +317,29 @@ def create_app(
     @app.get("/")
     async def root() -> Response:
         return Response(status_code=307, headers={"location": "/dashboard"})
+
+    @app.get("/demo")
+    async def demo_html(request: Request) -> Response:
+        """The public demo key, its limits and how to call it (0.30)."""
+        d = state.demo
+        if d is None:
+            raise Refusal(404, wire.error_body("no demo on this proxy", type_="not_found"))
+        now = state.wall()
+        if state.demo_page is None or now - state.demo_page[0] > DEMO_TTL_S:
+            gw = state.gateways[d.team]
+            day = dt.datetime.fromtimestamp(now, dt.UTC).date().isoformat()
+            spent = await asyncio.to_thread(gw.ledger.spend_usd, project=d.team, day=day)
+            state.demo_page = (
+                now,
+                demo_page.render(
+                    base_url=d.base_url or str(request.base_url),
+                    key=d.key,
+                    team=d.team,
+                    t=state.teams.teams[d.team],
+                    spent_today=spent,
+                ),
+            )
+        return Response(state.demo_page[1], media_type="text/html; charset=utf-8")
 
     @app.get("/dashboard")
     async def dashboard_page() -> Response:
@@ -428,6 +460,7 @@ def create_app(
 
         gw = state.gateways[team]
         ref = _resolve(gw, parsed.request.model)
+        parsed = _team_limits(state.teams.teams[team], team, parsed, ref)
         headers = {
             "x-boundary-data-class": data_class.value,
             "x-boundary-data-class-source": source,
@@ -780,11 +813,47 @@ def refusal_for(exc: BaseException, *, team: str, wall: Callable[[], float]) -> 
     raise exc
 
 
+def _team_limits(t: Team, team: str, parsed: wire.Parsed, ref: ModelRef) -> wire.Parsed:
+    """A team's model list and answer length (0.30), checked before anything is sent or
+    written: a refusal here is the caller's request, not a call."""
+    if t.models is not None and not {parsed.request.model, ref.explicit} & set(t.models):
+        raise Refusal(
+            403,
+            wire.error_body(
+                f"team {team} may use {', '.join(t.models)}; not {parsed.request.model!r}",
+                type_="invalid_request_error",
+                code="model_not_allowed",
+                param="model",
+            ),
+        )
+    if t.max_tokens is None:
+        return parsed
+    asked = parsed.request.max_tokens
+    if asked is None:
+        return dataclasses.replace(
+            parsed, request=dataclasses.replace(parsed.request, max_tokens=t.max_tokens)
+        )
+    if asked > t.max_tokens:
+        raise Refusal(
+            400,
+            wire.error_body(
+                f"team {team} may ask for at most {t.max_tokens} tokens; this asked for {asked}",
+                type_="invalid_request_error",
+                code="max_tokens_too_large",
+                param="max_tokens",
+            ),
+        )
+    return parsed
+
+
 def _budget(exc: SpendCapExceeded, *, team: str, wall: Callable[[], float]) -> Refusal:
     now = dt.datetime.fromtimestamp(wall(), dt.UTC)
     if exc.scope.startswith("portfolio"):
         code, what = "gateway_monthly_budget", "the gateway's monthly ceiling"
         resets: dt.datetime | None = _next_month(now)
+    elif exc.scope.endswith(" daily"):
+        code, what = "team_daily_budget", f"team {team}'s daily budget"
+        resets = dt.datetime.combine(now.date() + dt.timedelta(days=1), dt.time(), dt.UTC)
     elif " run " in exc.scope:
         code, what = "team_run_budget", f"team {team}'s per-run budget"
         resets = None
@@ -863,6 +932,19 @@ def _host(state: ServerState, hosted: Hosted, teams: TeamsConfig) -> None:
 
 # How long a rendered dashboard is served before it is built again. A push clears it.
 DASHBOARD_TTL_S = 60.0
+# The demo page shows what is left of today's budget, so it is rendered more often.
+DEMO_TTL_S = 15.0
+
+
+@dataclass(frozen=True)
+class Demo:
+    """A key the proxy publishes on `/demo` (0.30), and the team it belongs to, which must
+    have a daily budget, a model list and an answer length (`demo.check`). `base_url` is
+    what the page tells a caller to use; unset, the request's own."""
+
+    key: str
+    team: str
+    base_url: str | None = None
 
 
 def _render_dashboard(state: ServerState) -> str:
@@ -882,6 +964,7 @@ def _render_dashboard(state: ServerState) -> str:
         state.central.sources(),
         proxy_rows=own_count,
         generated_utc=dt.datetime.fromtimestamp(state.wall(), dt.UTC).isoformat(),
+        demo=state.demo is not None,
     )
 
 

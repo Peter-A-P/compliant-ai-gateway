@@ -60,6 +60,11 @@ def legacy_call_uid(
     return uuid.uuid5(_LEGACY_NAMESPACE, key).hex
 
 
+def next_day(day: str) -> str:
+    """The UTC date after `day`, both `YYYY-MM-DD`."""
+    return (dt.date.fromisoformat(day) + dt.timedelta(days=1)).isoformat()
+
+
 def utc_now() -> str:
     return dt.datetime.now(dt.UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
@@ -219,12 +224,20 @@ class Admission:
     portfolio_monthly_usd: float
     run_id: str | None = None
     per_run_usd: float | None = None
+    # A day's cap (0.30), checked after the month's: the public demo's key.
+    day: str | None = None
+    project_daily_usd: float | None = None
 
     def refuse(self, scope: str, spent: float) -> SpendCapExceeded:
-        """The refusal for one of `project`, `run` or `portfolio`."""
+        """The refusal for one of `project`, `day`, `run` or `portfolio`."""
         if scope == "project":
             return SpendCapExceeded(
                 f"project {self.project} monthly", self.project_monthly_usd, spent, self.estimate
+            )
+        if scope == "day":
+            assert self.project_daily_usd is not None
+            return SpendCapExceeded(
+                f"project {self.project} daily", self.project_daily_usd, spent, self.estimate
             )
         if scope == "run":
             assert self.per_run_usd is not None
@@ -242,6 +255,10 @@ class Admission:
         spent = ledger.spend_usd(project=self.project, year_month=self.month)
         if spent + self.estimate > self.project_monthly_usd:
             raise self.refuse("project", spent)
+        if self.day is not None and self.project_daily_usd is not None:
+            spent_day = ledger.spend_usd(project=self.project, day=self.day)
+            if spent_day + self.estimate > self.project_daily_usd:
+                raise self.refuse("day", spent_day)
         if self.run_id is not None and self.per_run_usd is not None:
             spent_run = ledger.spend_usd(project=self.project, run_id=self.run_id)
             if spent_run + self.estimate > self.per_run_usd:
@@ -266,7 +283,12 @@ class LedgerBackend(Protocol):
     def complete(self, row: LedgerRow) -> None: ...
 
     def spend_usd(
-        self, *, project: str | None, year_month: str | None = None, run_id: str | None = None
+        self,
+        *,
+        project: str | None,
+        year_month: str | None = None,
+        run_id: str | None = None,
+        day: str | None = None,
     ) -> float: ...
 
     def rows(self, *, project: str | None = None) -> list[dict[str, Any]]: ...
@@ -467,6 +489,7 @@ class LedgerStore:
         project: str | None,
         year_month: str | None = None,
         run_id: str | None = None,
+        day: str | None = None,
     ) -> float:
         """Sum of cost_usd for the scope. In-flight rows count at their estimate. Uncosted
         rows have no cost and cannot count; the uncosted count is reported separately.
@@ -475,7 +498,7 @@ class LedgerStore:
         which triggers keep equal to the sum over the rows; that is the query the caps make
         before every call, and it no longer grows with the ledger. Any other scope sums the
         rows, as it always did."""
-        if year_month is not None and run_id is None:
+        if year_month is not None and run_id is None and day is None:
             with self._lock:
                 if project is not None:
                     cur = self._conn.execute(
@@ -500,6 +523,10 @@ class LedgerStore:
         if run_id is not None:
             where.append("run_id = ?")
             args.append(run_id)
+        if day is not None:
+            # A range on ts_utc rather than substr, so (project, ts_utc) serves it.
+            where.append("ts_utc >= ? AND ts_utc < ?")
+            args += [day, next_day(day)]
         with self._lock:
             cur = self._conn.execute(
                 f"SELECT COALESCE(SUM(cost_usd), 0) FROM ledger WHERE {' AND '.join(where)}", args

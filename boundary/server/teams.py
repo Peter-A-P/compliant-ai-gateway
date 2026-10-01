@@ -71,11 +71,26 @@ class Team(_Strict):
     monthly_usd: float = Field(gt=0)
     per_run_usd: float | None = Field(default=None, gt=0)
     requests_per_minute: int = Field(gt=0)
+    # For a key anybody may hold (0.30, the hosted demo): a UTC day's budget, so a month's
+    # cannot be spent on its first day; the models it may name, as a caller writes them or
+    # as they resolve (`provider/model-id`); and the longest answer it may ask for, which is
+    # also what it gets when it asks for none. Unset, a team has none of these limits.
+    daily_usd: float | None = Field(default=None, gt=0)
+    models: list[str] | None = Field(default=None, min_length=1)
+    max_tokens: int | None = Field(default=None, gt=0)
 
     @field_validator("key_sha256")
     @classmethod
     def _hashes(cls, v: list[str]) -> list[str]:
         return _check_hashes(v)
+
+    @model_validator(mode="after")
+    def _day_within_month(self) -> Self:
+        if self.daily_usd is not None and self.daily_usd > self.monthly_usd:
+            raise ValueError(
+                f"daily_usd US${self.daily_usd:g} is above monthly_usd US${self.monthly_usd:g}"
+            )
+        return self
 
 
 class TeamsConfig(_Strict):
@@ -130,7 +145,9 @@ class TeamsConfig(_Strict):
             version=1,
             portfolio_monthly_usd=self.gateway_monthly_usd,
             projects={
-                name: ProjectCap(monthly_usd=t.monthly_usd, per_run_usd=t.per_run_usd)
+                name: ProjectCap(
+                    monthly_usd=t.monthly_usd, per_run_usd=t.per_run_usd, daily_usd=t.daily_usd
+                )
                 for name, t in self.teams.items()
             },
             default=None,

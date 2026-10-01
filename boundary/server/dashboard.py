@@ -108,6 +108,7 @@ def render(
     *,
     proxy_rows: int,
     generated_utc: str,
+    demo: bool = False,
 ) -> str:
     total = group_by(rows)
     t = total[0] if total else Group(())
@@ -156,7 +157,9 @@ sends them all. A source short of its own count shows how many are missing.</p>
 <footer>boundary {_e(__version__)}, generated {_e(generated_utc[:19].replace("T", " "))} UTC.
 Cost is computed from the usage each vendor returned and a dated price file; an uncosted row
 is one whose price was unknown, never estimated. Latency is over answered, uncached calls.
-<a href="https://github.com/Peter-A-P/compliant-ai-gateway">Source and method</a>.</footer>
+<a href="https://github.com/Peter-A-P/compliant-ai-gateway">Source and method</a>.{
+        ' <a href="/demo">Try it with the demo key</a>.' if demo else ""
+    }</footer>
 </main></body></html>
 """
 

@@ -636,7 +636,8 @@ def test_budgets_cannot_exceed_the_ceiling() -> None:
 
 def test_the_example_teams_file_loads_and_admits_nobody() -> None:
     cfg = load_teams(CONFIG_DIR / "teams.example.yaml")
-    assert set(cfg.teams) == {"demo", "analytics"}
+    assert set(cfg.teams) == {"demo", "analytics", "public"}
+    assert cfg.teams["public"].daily_usd == 0.25, "the example shows a published key's limits"
     for _ in range(20):
         assert hash_key(new_key()) not in cfg.by_hash()
 

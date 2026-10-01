@@ -6,7 +6,9 @@ by importing it. So `serve` writes its settings to `BOUNDARY_SERVE` as JSON and 
 way, so there is one path, not two.
 
 Secrets never go through `BOUNDARY_SERVE`: the vendor keys, `BOUNDARY_DATABASE_URL` and
-`BOUNDARY_REDIS_URL` are read from the environment, which is where compose puts them.
+`BOUNDARY_REDIS_URL` are read from the environment, which is where compose puts them. So is
+`BOUNDARY_DEMO_KEY` (0.30), the key `/demo` publishes, with `BOUNDARY_DEMO_TEAM` (default
+`public`) and `BOUNDARY_PUBLIC_URL`, the base URL the page tells a caller to use.
 """
 
 from __future__ import annotations
@@ -67,7 +69,7 @@ def build_from(s: Settings) -> FastAPI:
     from boundary.enforce import load_policy
     from boundary.errors import ConfigError
     from boundary.semcache import SemanticCache
-    from boundary.server.app import Hosted, create_app
+    from boundary.server.app import Demo, Hosted, create_app
     from boundary.server.teams import load_teams
 
     cfg = load_config(Path(s.config))
@@ -91,6 +93,16 @@ def build_from(s: Settings) -> FastAPI:
         def semantic_cache() -> SemanticCache:
             return SemanticCache(embedder, threshold=threshold, max_entries=SEMCACHE_MAX_ENTRIES)
 
+    demo_key = os.environ.get("BOUNDARY_DEMO_KEY", "").strip()
+    demo = (
+        Demo(
+            key=demo_key,
+            team=os.environ.get("BOUNDARY_DEMO_TEAM", "").strip() or "public",
+            base_url=os.environ.get("BOUNDARY_PUBLIC_URL", "").strip() or None,
+        )
+        if demo_key
+        else None
+    )
     return create_app(
         cfg,
         load_teams(Path(s.teams)),
@@ -100,6 +112,7 @@ def build_from(s: Settings) -> FastAPI:
         semantic_cache=semantic_cache,
         central_path=Path(s.central) if s.central else None,
         hosted=hosted,
+        demo=demo,
     )
 
 

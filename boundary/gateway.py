@@ -1401,14 +1401,17 @@ class Gateway:
 
     def _admission(self, run_id: str | None, *, estimate: float) -> Admission:
         cap = self.caps.for_project(self.project)
+        now = utc_now()
         return Admission(
             project=self.project,
-            month=utc_now()[:7],
+            month=now[:7],
             estimate=estimate,
             project_monthly_usd=cap.monthly_usd,
             portfolio_monthly_usd=self.caps.portfolio_monthly_usd,
             run_id=run_id,
             per_run_usd=cap.per_run_usd,
+            day=now[:10],
+            project_daily_usd=cap.daily_usd,
         )
 
     def _check_caps(self, run_id: str | None, *, estimate: float) -> None:

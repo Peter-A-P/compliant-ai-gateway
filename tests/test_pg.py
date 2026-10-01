@@ -240,6 +240,8 @@ def test_admission_refuses_as_the_sqlite_ledger_does(db: Db, tmp_path: Path) -> 
             portfolio_monthly_usd=1.5,
             run_id=run_id,
             per_run_usd=0.4 if run_id else None,
+            day=utc_now()[:10],
+            project_daily_usd=0.08 if project == "gamma" else None,
         )
 
     calls = [
@@ -247,6 +249,8 @@ def test_admission_refuses_as_the_sqlite_ledger_does(db: Db, tmp_path: Path) -> 
         ("alpha", 0.2, "r1"),  # the run's 0.4 would be passed
         ("alpha", 0.6, None),
         ("alpha", 0.2, None),  # alpha's 1.0 would be passed
+        ("gamma", 0.05, None),
+        ("gamma", 0.05, None),  # gamma's day, 0.08, would be passed (0.30)
         ("beta", 0.5, None),
         ("beta", 0.3, None),  # the gateway's 1.5 would be passed
         ("beta", 0.0, None),
@@ -269,9 +273,12 @@ def test_admission_refuses_as_the_sqlite_ledger_does(db: Db, tmp_path: Path) -> 
     try:
         want = outcomes(sqlite)
         assert outcomes(hosted) == want
-        assert [w == "admitted" for w in want] == [True, False, True, False, True, False, True]
-        assert "'project alpha run r1'" in want[1] and "'portfolio monthly'" in want[5]
-        assert hosted.count() == sqlite.count() == 4
+        assert [w == "admitted" for w in want] == [
+            True, False, True, False, True, False, True, False, True,
+        ]  # fmt: skip
+        assert "'project alpha run r1'" in want[1] and "'project gamma daily'" in want[5]
+        assert "'portfolio monthly'" in want[7]
+        assert hosted.count() == sqlite.count() == 5
         assert all(r["error_type"] == "in_flight" for r in hosted.rows())
     finally:
         sqlite.close()

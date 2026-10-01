@@ -5,6 +5,29 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.30.0 (2026-10-01)
+
+**The hosted demo: a key anybody may use, and what bounds it.** PLAN.md B10; docs/server.md,
+docs/deploy.md.
+
+- **A day's budget.** `ProjectCap.daily_usd` and the team's `daily_usd` are checked in the
+  same admission step as the month's, after it, through `Admission` on SQLite and through
+  `ledger_admit` on Postgres. The function gains two arguments, and the 0.29 signature is
+  dropped. A spent day is a 429 `team_daily_budget` that resets at midnight UTC.
+  `spend_usd(day=)` sums a UTC day on a `ts_utc` range. The parity test now covers a day on
+  both ledgers.
+- **A team's `models` and `max_tokens`.** A model it may not name is a 403
+  `model_not_allowed`. A longer answer than it may ask for is a 400 `max_tokens_too_large`.
+  A request that asks for no length gets the team's. None of these writes a row.
+- **`GET /demo`**, with `BOUNDARY_DEMO_KEY`, `BOUNDARY_DEMO_TEAM` and `BOUNDARY_PUBLIC_URL`
+  (`boundary.server.demo`, `create_app(..., demo=Demo(...))`). It shows the key, the limits,
+  what is left today, and a call, a refusal and a cached repeat to copy. The proxy refuses to
+  start with a key that is not the team's, or for a team missing any of the three limits.
+  The dashboard links to it.
+- **Deployed**: team `public` at US$0.25 a day and US$5 a month, 10 requests a minute,
+  Haiku 4.5 only, 300 tokens. The private `demo` team went to US$4 and the ceiling to
+  US$10.
+
 ## 0.29.0 (2026-09-30)
 
 **Every load level answered: 0 of 150,041 requests failed.** PLAN.md B4; docs/loadtest.md.

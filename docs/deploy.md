@@ -46,6 +46,27 @@ as `data-before-postgres`. Then `boundary db import` copied the proxy's 3 ledger
 published (seq 3): intact, 0 unanchored. The chain continued from that head: seq 4 and 5
 were the first two calls on Postgres, a miss and a cache hit naming it.
 
+## The demo (0.30)
+
+https://gateway.peterparker.ca/demo publishes a key anybody may use, for the team `public`
+in `/srv/boundary/teams.yaml`:
+
+| Limit | Value | Why |
+|---|---|---|
+| `daily_usd` | US$0.25 | A key that is published will be found and scripted, so what it can spend in a day is the bill for any month: about US$7.50 at worst |
+| `monthly_usd` | US$5 | The backstop under the daily budget |
+| `requests_per_minute` | 10 | One visitor cannot spend the day in seconds |
+| `models` | `anthropic/claude-haiku-4-5-20251001` only | About US$0.002 a call at 300 tokens, so about 125 calls a day |
+| `max_tokens` | 300 | Bounds each call's worst case, which is what the budget check estimates |
+
+The private test team, `demo`, went down to US$4 a month, and the gateway's ceiling up to
+US$10, so the two fit under it with US$1 to spare. That ceiling is still the server's own
+vendor key limits of US$10 each. The key is in `/home/ubuntu/boundary/demo.env`
+(`BOUNDARY_DEMO_KEY`, mode 600), and only its hash is in `teams.yaml`. Rotating it is a new
+key and hash in place of the old, and a restart of `gateway`. The proxy refuses to start
+with a demo key that is not the team's, or for a team without all three of `daily_usd`,
+`models` and `max_tokens` (docs/server.md).
+
 ## Security
 
 - **SSH:** key only, for `ubuntu` only. Password and root login are off, with at most three attempts per connection. fail2ban bans an address for an hour after five failures.

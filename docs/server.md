@@ -209,6 +209,7 @@ quality measurement through the 03 gate, which has not been run.
 | `code` | What bound | `resets_at` and `Retry-After` |
 |---|---|---|
 | `team_monthly_budget` | The team's `monthly_usd` | The first of next month, 00:00 UTC |
+| `team_daily_budget` | The team's `daily_usd` (0.30), a UTC day | The next 00:00 UTC |
 | `team_run_budget` | The team's `per_run_usd`, for calls carrying `X-Boundary-Run-Id` | None: a new run id starts a new count |
 | `gateway_monthly_budget` | `gateway_monthly_usd`, over every team | The first of next month |
 | `team_requests_per_minute` | The team's `requests_per_minute`, a sliding sixty-second window | `retry_after_s`, the seconds until one more fits |
@@ -227,6 +228,27 @@ Two properties of the limits, stated rather than left to be found:
 - **The request quota is in memory and per process.** It resets when the proxy restarts. The
   budget is the limit that protects money and it lives in the ledger; the quota protects the
   upstream from a runaway loop, and a restart is not a loop.
+
+## A key anybody may use: the demo (0.30)
+
+Three more team settings, all optional, exist for a key that is published:
+
+| Setting | What it does | Refusal |
+|---|---|---|
+| `daily_usd` | A UTC day's budget, checked in the same admission step as the month's, so a month's budget cannot be spent on its first day | 429 `team_daily_budget`, resetting at midnight UTC |
+| `models` | The only models the team may name, written as a caller would (an alias) or as one resolves (`provider/model-id`) | 403 `model_not_allowed` |
+| `max_tokens` | The longest answer the team may ask for, and what a request that asks for no length gets | 400 `max_tokens_too_large` |
+
+A refusal for a model or a length writes no row, like a refusal for a key or a quota: the
+request was the caller's mistake and never became a call.
+
+**`GET /demo`** publishes a key: the proxy started with `BOUNDARY_DEMO_KEY` (and
+`BOUNDARY_DEMO_TEAM`, default `public`) serves a page with the key, its limits, what is left
+of today's budget, and a call, a refusal and a cached repeat to copy. It refuses to start if
+the key is not one of that team's, or if the team lacks any of the three settings above, so
+the page can never go up in front of a team without a ceiling on what the key can spend.
+The dashboard links to it. The vendor console limits on the server's own keys stay behind
+it as the last line.
 
 ## Nothing a client sent is dropped silently
 

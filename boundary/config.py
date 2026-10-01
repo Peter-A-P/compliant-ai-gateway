@@ -248,6 +248,9 @@ class BoundaryConfig(_Strict):
 class ProjectCap(_Strict):
     monthly_usd: float = Field(gt=0)
     per_run_usd: float | None = Field(default=None, gt=0)
+    # A UTC day's spend (0.30), for a key anybody may use: the hosted demo's. Without it a
+    # month's budget could be spent on the first day and the demo shut for the rest.
+    daily_usd: float | None = Field(default=None, gt=0)
 
 
 class CapsConfig(_Strict):

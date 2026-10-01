@@ -27,3 +27,14 @@ teams:
       - "1111111111111111111111111111111111111111111111111111111111111111"
     monthly_usd: 5
     requests_per_minute: 30
+  # A key that is published (0.30, docs/server.md): a UTC day's budget, one model, a ceiling
+  # on the answer. `boundary serve` with BOUNDARY_DEMO_KEY publishes it on /demo, and only for
+  # a team with all three.
+  public:
+    key_sha256:
+      - "2222222222222222222222222222222222222222222222222222222222222222"
+    monthly_usd: 5
+    daily_usd: 0.25
+    requests_per_minute: 10
+    models: ["anthropic/claude-haiku-4-5-20251001"]
+    max_tokens: 300

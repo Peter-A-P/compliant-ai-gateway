@@ -56,12 +56,16 @@ services:
   gateway:
     <<: *image
     restart: unless-stopped
-    # Vendor keys, and the proxy's database and Redis URLs.
+    # Vendor keys, and the proxy's database and Redis URLs. demo.env holds BOUNDARY_DEMO_KEY,
+    # the key /demo publishes (0.30); without it there is no demo page.
     env_file:
       - /home/ubuntu/boundary/.env
       - /home/ubuntu/boundary/db-app.env
+      - path: /home/ubuntu/boundary/demo.env
+        required: false
     environment:
       BOUNDARY_ENV: vps
+      BOUNDARY_PUBLIC_URL: https://gateway.peterparker.ca
     command: ["boundary", "--config", "/app/config/boundary.yaml", "serve", "--hosted",
               "--workers", "4", "--semantic-cache", "--host", "0.0.0.0", "--port", "8080",
               "--teams", "/run/boundary/teams.yaml"]

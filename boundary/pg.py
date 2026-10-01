@@ -47,6 +47,7 @@ from boundary.ledger.store import (
     Admission,
     LedgerRow,
     MergeStats,
+    next_day,
     utc_now,
 )
 from boundary.semcache import Embedder, Hit, Vector, question_of, scope_of
@@ -157,10 +158,15 @@ FOR EACH ROW EXECUTE FUNCTION ledger_spend_keep();
 -- statement in a volatile function takes a fresh snapshot, so the sums after the lock see
 -- every row the previous holder committed. The checks, their order and their arithmetic are
 -- `Admission.check`'s; a refusal writes nothing and names the cap and what was spent.
+-- 0.30 adds the day's cap, and with it two arguments; the 0.29 signature is dropped.
+DROP FUNCTION IF EXISTS ledger_admit(
+    jsonb, text, text, double precision, double precision, double precision, text,
+    double precision
+);
 CREATE OR REPLACE FUNCTION ledger_admit(
     r jsonb, p_project text, p_month text, p_estimate double precision,
     p_project_cap double precision, p_portfolio_cap double precision,
-    p_run_id text, p_run_cap double precision
+    p_run_id text, p_run_cap double precision, p_day text, p_day_cap double precision
 ) RETURNS TABLE (row_id bigint, refused text, spent double precision)
 LANGUAGE plpgsql VOLATILE AS $$
 DECLARE s double precision; new_id bigint;
@@ -170,6 +176,14 @@ BEGIN
         WHERE project = p_project AND month = p_month;
     IF s + p_estimate > p_project_cap THEN
         RETURN QUERY SELECT NULL::bigint, 'project'::text, s; RETURN;
+    END IF;
+    IF p_day IS NOT NULL AND p_day_cap IS NOT NULL THEN
+        SELECT COALESCE(SUM(cost_usd), 0) INTO s FROM ledger
+            WHERE cost_usd IS NOT NULL AND project = p_project
+              AND ts_utc >= p_day AND ts_utc < to_char(p_day::date + 1, 'YYYY-MM-DD');
+        IF s + p_estimate > p_day_cap THEN
+            RETURN QUERY SELECT NULL::bigint, 'day'::text, s; RETURN;
+        END IF;
     END IF;
     IF p_run_id IS NOT NULL AND p_run_cap IS NOT NULL THEN
         SELECT COALESCE(SUM(cost_usd), 0) INTO s FROM ledger
@@ -382,7 +396,8 @@ class PgLedger:
         record = dict(zip(cols, _pg_values(cols), strict=True))
         with self._use() as conn:
             got = conn.execute(
-                "SELECT row_id, refused, spent FROM ledger_admit(%s, %s, %s, %s, %s, %s, %s, %s)",
+                "SELECT row_id, refused, spent "
+                "FROM ledger_admit(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                 (
                     _jsonb(record),
                     caps.project,
@@ -392,6 +407,8 @@ class PgLedger:
                     caps.portfolio_monthly_usd,
                     caps.run_id,
                     caps.per_run_usd,
+                    caps.day,
+                    caps.project_daily_usd,
                 ),
             ).fetchone()
         if got["refused"] is not None:
@@ -426,10 +443,15 @@ class PgLedger:
             )
 
     def spend_usd(
-        self, *, project: str | None, year_month: str | None = None, run_id: str | None = None
+        self,
+        *,
+        project: str | None,
+        year_month: str | None = None,
+        run_id: str | None = None,
+        day: str | None = None,
     ) -> float:
         with self._use() as conn:
-            if year_month is not None and run_id is None:
+            if year_month is not None and run_id is None and day is None:
                 if project is not None:
                     got = conn.execute(
                         "SELECT COALESCE(SUM(cost), 0) AS s FROM ledger_spend "
@@ -453,6 +475,9 @@ class PgLedger:
             if run_id is not None:
                 where.append("run_id = %s")
                 args.append(run_id)
+            if day is not None:
+                where.append("ts_utc >= %s AND ts_utc < %s")
+                args += [day, next_day(day)]
             got = conn.execute(
                 f"SELECT COALESCE(SUM(cost_usd), 0) AS s FROM {self.table} "
                 f"WHERE {' AND '.join(where)}",

@@ -27,7 +27,10 @@ spend. **Since `v0.26.0` the proxy is live at gateway.peterparker.ca** on a VPS 
 day and its overhead measured there. `v0.27.0` adds the semantic cache to the proxy, off by
 default ([docs/cache.md](docs/cache.md)), and the portfolio dashboard at
 [gateway.peterparker.ca/dashboard](https://gateway.peterparker.ca/dashboard), read from the
-ledger rows each project pushes ([docs/central.md](docs/central.md)). Release by release,
+ledger rows each project pushes ([docs/central.md](docs/central.md)). `v0.30.0` publishes a
+key anybody may call it with, at
+[gateway.peterparker.ca/demo](https://gateway.peterparker.ca/demo), bounded at US$0.25 a day.
+Release by release,
 with the evidence for each: [CHANGELOG.md](CHANGELOG.md).
 Part B, the full gateway, is planned for May 2027 in [PLAN.md](PLAN.md).
 

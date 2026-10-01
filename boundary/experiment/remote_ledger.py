@@ -122,9 +122,10 @@ class _RemoteLedger(LedgerStore):
         project: str | None,
         year_month: str | None = None,
         run_id: str | None = None,
+        day: str | None = None,
     ) -> float:
         if self._network():
-            return super().spend_usd(project=project, year_month=year_month, run_id=run_id)
+            return super().spend_usd(project=project, year_month=year_month, run_id=run_id, day=day)
         if self.strict:
             self._fail()
         # Best effort: the cap cannot be checked, and the call is made regardless.
