@@ -1180,3 +1180,7 @@ pre.code {
   margin: 0.6rem 0; padding: 0.9rem 1rem; background: var(--paper-soft); border: 1px solid var(--line);
   border-radius: var(--radius); overflow-x: auto; font: 0.82rem/1.5 var(--mono); color: var(--ink);
 }
+
+/* Six figures as two rows of three, not five and an orphan. */
+.headline.six { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 40rem) { .headline.six { grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); } }

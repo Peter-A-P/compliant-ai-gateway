@@ -5,6 +5,11 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.32.1 (2026-10-01)
+
+- The dashboard's six figures sit in two rows of three (`.headline.six`) rather than five
+  and one left over.
+
 ## 0.32.0 (2026-10-01)
 
 **The demo and dashboard pages share the website's look, and the page speaks to every

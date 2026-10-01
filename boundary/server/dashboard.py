@@ -114,7 +114,7 @@ def render(
       library, and pushes its ledger here. A row holds hashes, counts and identifiers, never a
       prompt or an answer, so this page can be public. Since {_e(first or "-")}.
     </p>
-    <div class="headline">{card_html}</div>
+    <div class="headline six">{card_html}</div>
     <p class="hero-note">
       Cost is computed from the usage each vendor returned and a dated price file. An
       uncosted row is one whose price was unknown, never estimated. Latency is over answered,
