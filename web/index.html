@@ -18,7 +18,7 @@
 
   <header class="hero">
     <p class="eyebrow">Measured results, reproducible from one command</p>
-    <h1>What would it take for your organisation to say yes to AI on its customers' data?</h1>
+    <h1>What would it take to say yes to AI on customer data?</h1>
     <p class="lead">
       Banks, insurers, retailers, telecoms, hospitals and governments all want the same AI
       models, and are stopped by the same three questions: where does the personal
@@ -32,22 +32,22 @@
     </p>
     <div class="hero-points">
       <div class="point">
-        <span class="point-figure up">{{wire_leaked}} of {{wire_values}}</span>
+        <span class="point-figure up">{{wire_leaked}} <span class="of">of</span> {{wire_values}}</span>
         <span class="point-unit">personal details reached the AI vendor</span>
         <span class="point-label">names, numbers and addresses planted in 200 documents sent through the gateway; 95% interval {{wire_ci}}</span>
       </div>
       <div class="point">
-        <span class="point-figure up">{{policy_sent}} of {{policy_forbidden}}</span>
+        <span class="point-figure up">{{policy_sent}} <span class="of">of</span> {{policy_forbidden}}</span>
         <span class="point-unit">requests sent where the policy forbids</span>
         <span class="point-label">every provider, every class of data, every way of calling it; and {{policy_false}}</span>
       </div>
       <div class="point">
-        <span class="point-figure up">{{tamper_found}} of {{tamper_tried}}</span>
+        <span class="point-figure up">{{tamper_found}} <span class="of">of</span> {{tamper_tried}}</span>
         <span class="point-unit">attempts to rewrite the record caught</span>
         <span class="point-label">{{tamper_kinds}} kinds of tampering, up to a forger who recomputes every fingerprint, before the last daily anchor</span>
       </div>
       <div class="point">
-        <span class="point-figure up">{{load_failed}} of {{load_requests}}</span>
+        <span class="point-figure up">{{load_failed}} <span class="of">of</span> {{load_requests}}</span>
         <span class="point-unit">requests failed under load</span>
         <span class="point-label">up to 500 a second; at 500 the record-keeping layer adds {{audit500_p99}} ms at the 99th percentile ({{audit500_ci}})</span>
       </div>

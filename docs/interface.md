@@ -40,6 +40,7 @@ listed here; nothing any earlier version offered has changed shape.
 | 0.11.0 | 2026-09-23 | `Policy.released` and `RELEASABLE`: a caller's `allow` terms also release a detector's LOCATION or ORGANISATION span that is one of them. A caller who passes no `allow` sees no change |
 | 0.12.0 | 2026-09-23 | The data policy (section 14): `Gateway(..., policy=)`, the `policy` configuration key, `PolicyRefused`, `boundary.enforce` and `boundary policy eval`. Opt-in: a gateway with no policy behaves as before |
 | 0.13.0 | 2026-09-25 | The OpenAI-compatible proxy (section 15): `boundary.server`, the `server` extra, `boundary serve` and `boundary teams key`. `on_text` on `chat_stream` and `achat_stream`. Nothing a library caller already uses changed |
+| 0.33.1 | 2026-10-01 | No interface change: the website's headline and its top figures' styling |
 | 0.33.0 | 2026-10-01 | No interface change: bar charts on `/dashboard`, drawn by `boundary.server.dashboard` |
 | 0.32.1 | 2026-10-01 | No interface change: the dashboard's figures laid out in two rows of three |
 | 0.32.0 | 2026-10-01 | `boundary.server.chrome` (`page`, `WEB`); `GET /style.css` and `GET /fonts/{name}` on the proxy, from `web/` when it is present; `dashboard.render` and `demo.render` keep their signatures. No library behaviour changed |

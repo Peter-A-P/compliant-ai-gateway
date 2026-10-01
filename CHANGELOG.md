@@ -5,6 +5,12 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.33.1 (2026-10-01)
+
+- The website's headline is shorter ("What would it take to say yes to AI on customer
+  data?") and balanced across its lines, and the "of" in each of the four top figures is in
+  the text colour, so the numbers carry the green.
+
 ## 0.33.0 (2026-10-01)
 
 - **The dashboard draws its figures.** Above each of the project and model tables, two bar
