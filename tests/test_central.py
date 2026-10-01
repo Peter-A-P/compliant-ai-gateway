@@ -178,4 +178,8 @@ def test_push_never_writes_to_the_file_it_reads(
             return_value=httpx.Response(200, json=ok)
         )
         assert main(["ledger", "push", "--url", "https://g.example", "--ledger", str(path)]) == 0
+        # Another project pushes with no configuration of this library's at all.
+        missing = str(tmp_path / "no-such" / "boundary.yaml")
+        assert main(["--config", missing, "ledger", "push", "--url", "https://g.example",
+                     "--ledger", str(path), "--source", "other-repo:runs/a.sqlite"]) == 0  # fmt: skip
     assert hashlib.sha256(path.read_bytes()).hexdigest() == before

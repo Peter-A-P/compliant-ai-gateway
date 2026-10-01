@@ -28,6 +28,25 @@ completed is completed. So a push is safe to repeat, and repeating it is how a p
 failed half way is finished. The key comes from the environment, never from a flag, so it
 stays out of shell history.
 
+### From another project's own runs (0.34.1)
+
+A project pushes its own ledgers after it runs, so the page is live rather than as of the
+last push from this laptop. It need not upgrade the `boundary` it pins: `push` reads every
+schema from v1 on, so the project runs a current library as a tool beside its pin, with no
+configuration:
+
+```
+BOUNDARY_INGEST_KEY=bnd_... uvx --from "git+https://github.com/Peter-A-P/compliant-ai-gateway@v0.34.1" \
+  boundary ledger push --url https://gateway.peterparker.ca \
+  --ledger runs/2026-10/arm/ledger.sqlite --source my-repo:runs/2026-10/arm/ledger.sqlite \
+  --project my-repo
+```
+
+Name the source `<repository>:<path from its root>`, which is how the first pushes were
+named, so a later push of the same file adds to that source rather than starting another.
+Pass `--project` with the project's own name, so only its rows leave even if a file holds
+someone else's. Each repository gets its own ingest key, so one can be revoked alone.
+
 ## Completeness, measured
 
 B1 asks for "rows in the central ledger against rows in every environment's local ledger".

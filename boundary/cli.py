@@ -470,8 +470,9 @@ def cmd_ledger_push(args: argparse.Namespace) -> int:
     if not key:
         print("error: set BOUNDARY_INGEST_KEY to an ingest key", file=sys.stderr)
         return 2
-    cfg = load_config(args.config)
-    path = Path(args.ledger) if args.ledger else cfg.ledger.path
+    # A named ledger needs no configuration (0.34.1): another project pushes its own files
+    # with this library installed as a tool, and has no boundary.yaml of this library's.
+    path = Path(args.ledger) if args.ledger else load_config(args.config).ledger.path
     if not path.is_file():
         print(f"no ledger at {path}", file=sys.stderr)
         return 1

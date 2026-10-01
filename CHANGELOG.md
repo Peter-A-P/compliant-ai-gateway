@@ -5,6 +5,12 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.34.1 (2026-10-01)
+
+- `boundary ledger push --ledger PATH` no longer reads a configuration, so another project can
+  push its own ledgers with this library run as a tool (`uvx --from git+...@v0.34.1
+  boundary ledger push`) and no `boundary.yaml` of this library's. docs/central.md says how.
+
 ## 0.34.0 (2026-10-01)
 
 - **October's price list, `boundary/prices/2026-10-01.yaml`.** The monthly re-check: every
