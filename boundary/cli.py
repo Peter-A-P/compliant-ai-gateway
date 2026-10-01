@@ -1089,6 +1089,23 @@ def cmd_serve(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_site(args: argparse.Namespace) -> int:
+    """The project's website (docs/site.md): `web/` filled from the README's tables and the
+    stored results into `--out`, and with `--serve` shown on localhost under the headers
+    Caddy sends."""
+    from boundary import site
+
+    try:
+        built = site.build(args.root, args.out)
+    except site.SiteError as e:
+        print(f"site not built: {e}", file=sys.stderr)
+        return 1
+    print(f"site built in {built.out}: {built.tokens} figures filled, {len(built.files)} files")
+    if args.serve is not None:
+        site.serve(built.out, args.serve)
+    return 0
+
+
 def cmd_teams_key(args: argparse.Namespace) -> int:
     """Mint a key for a team. The key is printed once and stored nowhere; the hash is what
     goes into teams.yaml."""
@@ -1786,6 +1803,12 @@ def main(argv: list[str] | None = None) -> int:
         help="a stored run's JSON to report instead of running, e.g. the VPS run",
     )
     lt.set_defaults(func=cmd_loadtest)
+
+    st = sub.add_parser("site", help="build the project's website from the README's tables")
+    st.add_argument("--root", type=Path, default=Path("."), help="the repository checkout")
+    st.add_argument("--out", type=Path, default=Path("site"))
+    st.add_argument("--serve", type=int, default=None, metavar="PORT", help="then serve it")
+    st.set_defaults(func=cmd_site)
 
     teams = sub.add_parser("teams", help="proxy team commands").add_subparsers(
         dest="sub", required=True

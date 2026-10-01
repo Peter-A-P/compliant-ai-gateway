@@ -29,7 +29,9 @@ default ([docs/cache.md](docs/cache.md)), and the portfolio dashboard at
 [gateway.peterparker.ca/dashboard](https://gateway.peterparker.ca/dashboard), read from the
 ledger rows each project pushes ([docs/central.md](docs/central.md)). `v0.30.0` publishes a
 key anybody may call it with, at
-[gateway.peterparker.ca/demo](https://gateway.peterparker.ca/demo), bounded at US$0.25 a day.
+[gateway.peterparker.ca/demo](https://gateway.peterparker.ca/demo), bounded at US$0.25 a day,
+and `v0.31.0` puts this project's page, every figure read from the tables below, at
+[gateway.peterparker.ca](https://gateway.peterparker.ca/) ([docs/site.md](docs/site.md)).
 Release by release,
 with the evidence for each: [CHANGELOG.md](CHANGELOG.md).
 Part B, the full gateway, is planned for May 2027 in [PLAN.md](PLAN.md).
@@ -479,10 +481,11 @@ says. Dollars saved need real traffic, which is Part B's replay.
   refusals into disclosures; it now puts back only what the caller sent, so an application
   that addresses its user by a name held only in its system prompt sees a placeholder there
   (7 of 900 ordinary answers, all 03's own word "Answer").
-- **One 4 vCPU host is its ceiling.** Hosted as four workers on Postgres and Redis
-  (`v0.28.0`), it holds 200 requests a second on every layer but the semantic cache, and
-  500 on none. What is left is CPU on one machine that also runs the load generator in the
-  published test. It runs in one region on one host (below).
+- **One 4 vCPU host is its ceiling.** Hosted as four workers on Postgres and Redis, it
+  answers every request at 500 a second since `v0.29.0`, but redaction at 500 is a queue (a
+  188 ms median) and the semantic cache sheds its load past about 50 a second, answering
+  those requests uncached. What is left is CPU on one machine that also runs the load
+  generator in the published test. It runs in one region on one host (below).
 - It does not run in more than one region. Residency here means controlling where requests
   are allowed to go, not where the proxy runs.
 - **It cannot verify residency, and no tool can.** It records what the operator declared and

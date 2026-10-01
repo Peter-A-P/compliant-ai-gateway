@@ -5,6 +5,27 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.31.0 (2026-10-01)
+
+**The project's website, at the root of gateway.peterparker.ca.** docs/site.md.
+
+- **`boundary site`** (`boundary/site.py`) builds `web/` into a static page in the style of
+  projects 01, 02, 08 and 12. It copies their stylesheet and fonts, and sets no framework,
+  no inline style or script, and no off-site request. Every figure is a cell of a README
+  table, read by its marker, so a missing table fails the build and the page cannot
+  disagree with the README.
+- The page draws three things from the repository: the load test chart, a residency grid
+  decided by `boundary.enforce.decide` from the live configuration, and a fictional request
+  redacted at build time by the proxy's own engine. At run time it reads the audit chain's
+  live head from `/audit/head`. `--serve PORT` previews it under the live headers.
+- **Served by Caddy** at `/` with a strict content security policy on the site's paths only.
+  The proxy keeps every other path. The one-shot compose service `site` builds it from the
+  checkout on every start.
+- `tests/test_site.py` checks the tokens, the policy rules, the figures against the README
+  and `bench/loadtest.json`, the example, plain punctuation, and that the Caddyfile serves
+  exactly the builder's files.
+- README: the one-host limitation is updated for `v0.29.0`.
+
 ## 0.30.0 (2026-10-01)
 
 **The hosted demo: a key anybody may use, and what bounds it.** PLAN.md B10; docs/server.md,

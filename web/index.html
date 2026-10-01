@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inside the Boundary, On the Record: frontier AI without personal data leaving</title>
+<meta name="description" content="An AI gateway that lets a bank, insurer, hospital or government department use frontier AI models without personal data leaving the boundary, with a tamper-evident record of every call and a hard cap on every team's spend. Every number measured and reproducible.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="top-inner">
+    <a class="brand" href="https://peterparker.ca"><span class="mono-mark" aria-hidden="true">P</span>Peter Parker</a>
+    <p class="top-nav"><a href="{{project_page}}">Project 04: Inside the Boundary, On the Record</a></p>
+  </div>
+</header>
+<main>
+
+  <header class="hero">
+    <p class="eyebrow">Measured results, reproducible from one command</p>
+    <h1>Can a hospital use frontier AI without sending a single patient's name to the vendor?</h1>
+    <p class="lead">
+      Most regulated organisations want the same AI models everybody else uses, and are
+      stopped by three questions: where does the personal information go, who can prove
+      what was sent, and what stops a team overspending. This gateway answers all three in
+      the one place every request passes through. It <strong>replaces personal details with
+      placeholders before a request leaves</strong> and puts them back in the answer, it
+      <strong>refuses to send data where the policy says it may not go</strong>, it
+      <strong>writes every call into a record that cannot be quietly changed</strong>, and it
+      <strong>enforces each team's budget before the call, not after the invoice</strong>.
+      Every one of those costs time, so the cost is measured and published too.
+    </p>
+    <div class="hero-points">
+      <div class="point">
+        <span class="point-figure up">{{wire_leaked}} of {{wire_values}}</span>
+        <span class="point-unit">personal details reached the AI vendor</span>
+        <span class="point-label">names, numbers and addresses planted in 200 documents sent through the gateway; 95% interval {{wire_ci}}</span>
+      </div>
+      <div class="point">
+        <span class="point-figure up">{{policy_sent}} of {{policy_forbidden}}</span>
+        <span class="point-unit">requests sent where the policy forbids</span>
+        <span class="point-label">every provider, every class of data, every way of calling it; and {{policy_false}}</span>
+      </div>
+      <div class="point">
+        <span class="point-figure up">{{tamper_found}} of {{tamper_tried}}</span>
+        <span class="point-unit">attempts to rewrite the record caught</span>
+        <span class="point-label">{{tamper_kinds}} kinds of tampering, up to a forger who recomputes every fingerprint, before the last daily anchor</span>
+      </div>
+      <div class="point">
+        <span class="point-figure up">{{load_failed}} of {{load_requests}}</span>
+        <span class="point-unit">requests failed under load</span>
+        <span class="point-label">up to 500 a second; at 500 the record-keeping layer adds {{audit500_p99}} ms at the 99th percentile ({{audit500_ci}})</span>
+      </div>
+    </div>
+    <div class="cta">
+      <a class="button" href="/demo">Call it yourself with the public key</a>
+      <a class="button ghost" href="/dashboard">See every call on the record</a>
+    </div>
+    <p class="live" id="live" aria-live="polite">The live record: reading the audit chain's head from this server.</p>
+    <p class="hero-note">
+      Nothing is modelled in your browser: every number on this page was measured in advance,
+      is a cell of a table the measurement commands write into
+      <a href="{{repository}}">the public repository</a>'s README, and carries a 95%
+      confidence interval there. The two buttons above are the live gateway itself.
+    </p>
+  </header>
+
+  <nav class="toc" aria-label="On this page">
+    <p class="eyebrow">On this page</p>
+    <ol>
+      <li><a href="#meeting">The meeting that stops AI adoption</a></li>
+      <li><a href="#picture">One request, in eight steps</a></li>
+      <li><a href="#redaction">Personal details stay inside</a></li>
+      <li><a href="#residency">Where a request may go</a></li>
+      <li><a href="#record">A record nobody can quietly change</a></li>
+      <li><a href="#budgets">Budgets that refuse before the call</a></li>
+      <li><a href="#speed">What it costs in time</a></li>
+      <li><a href="#quality">Does redaction make the answers worse?</a></li>
+      <li><a href="#cache">Answers from memory, with the risk beside the saving</a></li>
+      <li><a href="#rejected">What did not work</a></li>
+      <li><a href="#limits">What this does not do</a></li>
+      <li><a href="#engineering">How it is engineered</a></li>
+      <li><a href="#built">How this was built</a></li>
+    </ol>
+  </nav>
+
+  <noscript>
+    <p class="warning">
+      The chart and the live record on this page are drawn in the browser, so they need
+      JavaScript. The words and every number work without it, and every number is also in
+      the repository's README as a table.
+    </p>
+  </noscript>
+
+  <p class="warning" id="failure" hidden></p>
+
+  <!-- ============================================================== the problem -->
+
+  <section class="section" id="meeting">
+    <h2>The meeting that stops AI adoption</h2>
+    <p class="section-lead">
+      The technology is rarely what stops a hospital, a bank or a government department from
+      using AI. A meeting is. Privacy, audit and finance each ask a question, and in most
+      organisations nobody can answer, because the plumbing to answer it was never built.
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th scope="col">The question asked</th><th scope="col">The usual answer</th><th scope="col">What the gateway does, measured</th></tr></thead>
+        <tbody>
+          <tr><th scope="row" class="wrap">Where does personal information go?</th><td class="wrap">A contract, and a rule telling staff not to paste anything sensitive</td><td class="wrap">Replaces it with placeholders before it leaves: {{wire_leaked}} of {{wire_values}} planted details reached the vendor</td></tr>
+          <tr><th scope="row" class="wrap">Which country does it travel to?</th><td class="wrap">A region chosen once, at sign-up</td><td class="wrap">Checks every request against a policy and refuses what may not go: {{policy_sent}} of {{policy_forbidden}} forbidden requests sent</td></tr>
+          <tr><th scope="row" class="wrap">What exactly was sent, and when?</th><td class="wrap">Application logs, if somebody added them</td><td class="wrap">A chained record, published daily: {{tamper_found}} of {{tamper_tried}} rewrites caught</td></tr>
+          <tr><th scope="row" class="wrap">What did it cost, and who spent it?</th><td class="wrap">The vendor's invoice, weeks later, as one number</td><td class="wrap">Every call costed and counted against its team before it is sent: {{caps_reached}} of {{caps_attempted}} calls past a cap reached the vendor</td></tr>
+          <tr><th scope="row" class="wrap">How much slower does all that make it?</th><td class="wrap">"Negligible"</td><td class="wrap">Measured per control, at three loads: {{audit500_p99}} ms at the 99th percentile at 500 requests a second</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">
+      It speaks the same protocol as the AI vendors, so an existing application moves onto it
+      by changing one address and one key, and every project in this portfolio that calls a
+      model already calls it through this gateway's library.
+    </p>
+  </section>
+
+  <section class="section" id="picture">
+    <h2>One request, in eight steps</h2>
+    <p class="section-lead">
+      The order is the design. The record is written before anything leaves, so a call that
+      crashes halfway is still on the books, and every refusal happens before the network is
+      touched.
+    </p>
+    <ol class="pipeline eight">
+      <li><span class="step">1</span><strong>Declare</strong><span>The caller says what class of data this is. Saying nothing counts as personal.</span></li>
+      <li><span class="step">2</span><strong>Screen</strong><span>Flag text that looks like an attempt to hijack the model.</span></li>
+      <li><span class="step">3</span><strong>Redact</strong><span>Swap names and numbers for placeholders, and refuse if any is left.</span></li>
+      <li><span class="step">4</span><strong>Route</strong><span>Send only to a provider and region the policy allows for this data.</span></li>
+      <li><span class="step">5</span><strong>Budget</strong><span>Refuse if the worst-case cost would pass the team's limit.</span></li>
+      <li><span class="step">6</span><strong>Record</strong><span>Write the ledger row, before anything is sent.</span></li>
+      <li><span class="step">7</span><strong>Send</strong><span>Call the vendor, and put the real values back into the answer.</span></li>
+      <li><span class="step">8</span><strong>Seal</strong><span>Chain the finished row into the audit record, anchored daily in public.</span></li>
+    </ol>
+  </section>
+
+  <!-- ============================================================== the controls -->
+
+  <div class="part">
+    <p class="eyebrow">How it works, control by control</p>
+    <h2 class="part-title">Four controls, each with its number and the limit of that number</h2>
+    <p class="lead">
+      Each part starts in plain language. Where there is more to say for someone who builds
+      these systems for a living, it is folded away under <strong>For the technical
+      reader</strong>, so a reader who only wants the idea can skip it and a reader who wants
+      the detail loses nothing.
+    </p>
+  </div>
+
+  <section class="section" id="redaction">
+    <h2>Personal details stay inside</h2>
+    <p class="section-lead">
+      This is a real run of the gateway's redaction engine, the one the live server uses, on
+      a made-up request. The vendor receives placeholders, writes its answer in placeholders,
+      and the person asking gets the real values back. Nobody here exists.
+    </p>
+    <div class="flow">
+      <figure class="pane">
+        <figcaption><span class="pane-step">1</span>What a member of staff writes</figcaption>
+        <p>{{example_sent}}</p>
+      </figure>
+      <figure class="pane vendor">
+        <figcaption><span class="pane-step">2</span>What the AI vendor receives</figcaption>
+        <p>{{example_vendor}}</p>
+      </figure>
+      <figure class="pane vendor">
+        <figcaption><span class="pane-step">3</span>What the vendor answers</figcaption>
+        <p>{{example_answer}}</p>
+      </figure>
+      <figure class="pane">
+        <figcaption><span class="pane-step">4</span>What the member of staff gets back</figcaption>
+        <p>{{example_returned}}</p>
+      </figure>
+    </div>
+    <p class="note">
+      {{example_placeholders}} placeholders were minted for this request. {{example_overmasked}}
+      The answer in step 3 is written here for the example, since no model is called when
+      this page is built; steps 2 and 4 are the engine's own output.
+    </p>
+    <div class="headline">
+      <div class="stat up"><span class="figure">{{wire_leaked}} of {{wire_values}}</span><span class="caption">planted personal details that reached the vendor through the proxy, 95% interval {{wire_ci}}</span></div>
+      <div class="stat"><span class="figure">{{round_trip_pct}}</span><span class="caption">of documents came back to the caller exactly as sent ({{round_trip_ci}})</span></div>
+      <div class="stat"><span class="figure">{{over_redaction}}</span><span class="caption">of ordinary words masked that did not need it, on the generated documents</span></div>
+      <div class="stat down"><span class="figure">{{tab_safe}}</span><span class="caption">of safe words touched on real court judgments: the honest limit, below</span></div>
+    </div>
+    <div class="verdict">
+      <p><strong>It fails closed.</strong> Without a language model it recognises only
+      {{recall_rules}} of the details on its own, and still nothing leaks, because a second
+      pass masks whatever it cannot vouch for and the gateway refuses to send text it cannot
+      vouch for. The price is masking too much, and on real text that price is high.</p>
+    </div>
+    <details class="disclose">
+      <summary>For the technical reader: two passes, three corpora, and the limitation measured</summary>
+      <ul>
+        <li><strong>Detection, then a guard.</strong> Rule-based recognisers (Canadian SIN with its checksum, provincial health numbers, postal codes, phone numbers, email, file numbers) find spans; a second pass masks capitalised runs and identifier-shaped tokens the vocabulary does not excuse; <code>outbound</code> refuses any text in which a value or a shape survives. Detector recall alone is {{recall_rules}}; the leak rate after the guard is {{leak_rate}}.</li>
+        <li><strong>Through the proxy, over HTTP.</strong> 200 generated pages holding {{wire_values}} planted values, sent as <code>personal</code>, plain and streamed, to an upstream that parses what it received. A value counts as leaked if it is there whole or any three of its digits are. The run is repeated with redaction off and must find every value, so the zero could have said otherwise.</li>
+        <li><strong>On real text.</strong> On the Text Anonymization Benchmark's court judgments it masks {{tab_direct}} of direct identifiers, but its precision is {{tab_precision}} and it touches {{tab_safe}} of the spans annotators marked safe, because its vocabulary is Canadian and knows nothing of British courts. An allow list derived from the benchmark's training split takes that to {{tab_safe_allow}}. A deployment in another jurisdiction has to supply its own.</li>
+        <li><strong>Reversible, and scoped.</strong> Placeholders are consistent within a request and put back on the way out, tolerant of the ways models rewrite them. Only values the caller's own messages carried are put back, for the reason in <a href="#rejected">What did not work</a>.</li>
+        <li>Every figure, per entity type, with Wilson intervals: <a href="{{repository}}/blob/main/docs/redact.md">docs/redact.md</a>.</li>
+      </ul>
+    </details>
+  </section>
+
+  <section class="section" id="residency">
+    <h2>Where a request may go</h2>
+    <p class="section-lead">
+      Every request carries a class: public, internal, personal or sensitive. The policy says
+      which providers and regions each class may reach, and the gateway refuses the rest
+      before anything is sent. This grid is computed from the live configuration by the same
+      function the gateway calls; point at a cell for the reason.
+    </p>
+    {{residency_grid}}
+    <p class="note">
+      The policy is the Canadian worked example, written to show the refusal. Unredacted
+      personal data may go only where single-region processing in Canada can be declared, and
+      no hosted vendor here can declare it, so only the local model qualifies. Once the
+      gateway has redacted it, a personal request is judged as internal data and may reach a
+      provider with a declared residency, such as Claude on Amazon Bedrock in Canada.
+    </p>
+    <div class="headline">
+      <div class="stat up"><span class="figure">{{policy_sent}} of {{policy_forbidden}}</span><span class="caption">forbidden requests sent, on the adversarial suite through every way of calling the library, 95% interval {{policy_ci}}</span></div>
+      <div class="stat up"><span class="figure">{{policy_refused_n}}</span><span class="caption">allowed requests wrongly refused; a policy that refused everything would score perfectly on the first number, so this one stands beside it</span></div>
+      <div class="stat"><span class="figure">{{policy_audited_n}}</span><span class="caption">refusals on the record: a refusal is a call, so it is written down too</span></div>
+    </div>
+    <details class="disclose">
+      <summary>For the technical reader: declared, never inferred, and never measured</summary>
+      <ul>
+        <li><strong>The class is declared by the caller and never guessed from content.</strong> A gateway that classified data itself would be making a compliance judgement no human signed. An absent declaration is <code>personal</code>, so a forgetful caller is refused rather than exposed.</li>
+        <li><strong>Residency is the operator's declaration on each provider entry.</strong> Not one of the vendors reports where a request was actually processed, so the gateway enforces a declaration and says so, rather than presenting it as a measurement.</li>
+        <li><strong>The expected answer comes from an oracle</strong> that reads the policy file as plain data and shares no code with the engine. Through the proxy over HTTP: {{policy_proxy}}.</li>
+        <li><a href="{{repository}}/blob/main/docs/policy.md">docs/policy.md</a> and <a href="{{repository}}/blob/main/config/policy.yaml">the policy file</a>.</li>
+      </ul>
+    </details>
+  </section>
+
+  <section class="section" id="record">
+    <h2>A record nobody can quietly change</h2>
+    <p class="section-lead">
+      Every call is written into a chain: each record carries a fingerprint of the one before
+      it, so changing any old record breaks every record after it. Once a day the chain's
+      newest fingerprint is published in the public repository, so even the organisation
+      running the gateway cannot rewrite its own history without it showing.
+    </p>
+    <figure class="chart-figure">
+      <div id="chain" class="chart"></div>
+      <figcaption id="chain-caption">The chain as it stands on this server now, and the anchors published so far ({{anchors}} since {{first_anchor}}).</figcaption>
+    </figure>
+    <div class="headline">
+      <div class="stat up"><span class="figure">{{tamper_found}} of {{tamper_tried}}</span><span class="caption">rewrites caught before the last anchor, across {{tamper_kinds}} kinds, 95% interval {{tamper_ci}}</span></div>
+      <div class="stat up"><span class="figure">{{false_alarms_n}}</span><span class="caption">false alarms on records nobody touched, 95% interval {{false_alarms_ci}}</span></div>
+      <div class="stat"><span class="figure">{{verify_ms}}</span><span class="caption">to check a {{verify_records}}-record chain from end to end</span></div>
+    </div>
+    <div class="verdict">
+      <p><strong>After the last anchor, a competent forger wins, and the page says so.</strong>
+      Of rewrites made after the last published fingerprint, {{after_anchor}}. No hash chain
+      can do better: there is nothing yet to disagree with. That window is one day, which is
+      why the anchor is published daily.</p>
+    </div>
+    <details class="disclose">
+      <summary>For the technical reader: what the chain proves, and what it cannot</summary>
+      <ul>
+        <li><strong>The tamper test</strong> corrupts a 500-record chain anchored every 50 records, 200 times per kind, from a careless edit to a forger who owns every file, recomputes every hash and edits the ledger to agree.</li>
+        <li><strong>Append-only by grant, not only by trigger.</strong> On the live server the proxy's database role can add records and cannot change or delete one, and a trigger refuses changes for the owner too.</li>
+        <li><strong>The anchor is a GitHub Action</strong> that reads <code>/audit/head</code> every morning and commits it to <a href="{{repository}}/blob/main/anchors/gateway.jsonl">anchors/gateway.jsonl</a>, refusing a sequence that goes backwards or a sequence whose fingerprint changed.</li>
+        <li>An intact chain does not prove the ledger recorded every call; the completeness test in <a href="#budgets">Budgets</a> is that claim. <a href="{{repository}}/blob/main/docs/audit.md">docs/audit.md</a>.</li>
+      </ul>
+    </details>
+  </section>
+
+  <section class="section" id="budgets">
+    <h2>Budgets that refuse before the call</h2>
+    <p class="section-lead">
+      Each team has a monthly budget, and the public demo key a daily one. Before a request is
+      sent, the gateway adds a deliberately pessimistic estimate of its cost to what the team
+      has spent, and refuses if the total would pass the limit. Cost comes from the token
+      counts the vendor returns and a dated price list; a model with no known price is
+      recorded as uncosted, never guessed.
+    </p>
+    <div class="headline">
+      <div class="stat up"><span class="figure">{{caps_reached}} of {{caps_attempted}}</span><span class="caption">calls attempted past a spending cap that reached the vendor</span></div>
+      <div class="stat up"><span class="figure">{{fidelity_n}}</span><span class="caption">measurement calls sent byte for byte as built, with no retry, cache or rewrite</span></div>
+      <div class="stat"><span class="figure">{{lib_p50}}</span><span class="caption">the library's own cost per call at the median ({{lib_p50_ci}}), against a vendor that answers instantly</span></div>
+    </div>
+    <p class="note"><strong>The record survives a crash.</strong> {{complete_n}} calls left a ledger row under fault injection, {{complete_across}}.</p>
+    <details class="disclose">
+      <summary>For the technical reader: why the row is written before the call</summary>
+      <ul>
+        <li><strong>The usual order loses exactly the calls that matter.</strong> Logging after the reply means the only calls that go unrecorded are the ones that crashed, timed out or were killed. Here the row is written before sending, holding its estimate against the budget, and completed after.</li>
+        <li><strong>One step for every worker.</strong> The hosted gateway runs four processes; the cap check and the row it admits are one call to a function in Postgres under an advisory lock, so two workers cannot both pass a cap only one fits under. A test sends twelve calls at once at a cap that fits three, and three go through.</li>
+        <li><strong>The vendor's own console cap is the first line of defence</strong>, outside this code. A budget whose only enforcement is the code that might have the bug is not a budget.</li>
+      </ul>
+    </details>
+  </section>
+
+  <section class="section" id="speed">
+    <h2>What it costs in time</h2>
+    <p class="section-lead">
+      Every control adds delay. Measured on the server that runs the gateway, against a
+      stand-in vendor that always takes 50 ms, with the controls switched on one at a time, at
+      50, 200 and 500 requests a second: the extra time the gateway adds, five runs each,
+      with a 95% interval across runs.
+    </p>
+    <div class="controls">
+      <div class="control">
+        <label for="pct">Percentile
+          <span class="hint">the median request, or the slow ones</span>
+        </label>
+        <select id="pct">
+          <option value="p50">Median (p50)</option>
+          <option value="p95">95th percentile</option>
+          <option value="p99" selected>99th percentile</option>
+        </select>
+      </div>
+    </div>
+    <figure class="chart-figure">
+      <div id="load-chart" class="chart"></div>
+      <div class="legend" id="load-legend"></div>
+      <figcaption id="load-caption">Extra milliseconds per request, by control and load. A layer includes the ones before it.</figcaption>
+    </figure>
+    <div class="headline">
+      <div class="stat up"><span class="figure">{{load_failed}} of {{load_requests}}</span><span class="caption">requests failed, across every layer and load</span></div>
+      <div class="stat"><span class="figure">{{audit500_p99}} ms</span><span class="caption">at the 99th percentile at 500 a second, with the record on ({{audit500_ci}})</span></div>
+      <div class="stat"><span class="figure">{{red200_p99}} ms</span><span class="caption">with redaction too, at 200 a second ({{red200_ci}})</span></div>
+      <div class="stat down"><span class="figure">{{red500_p50}} ms</span><span class="caption">median with redaction at 500 a second: a queue, at the edge of what four shared cores can redact</span></div>
+    </div>
+    <div class="verdict">
+      <p><strong>Each measurement changed the design.</strong> The first run stopped at 200
+      requests a second because the record was written on the request path; moving it off
+      fixed that. A later run blamed the server for failures at 500, and was wrong: the
+      workers had processor time to spare and were queued on the budget check's lock. That
+      check is now a single call inside the database, and every request is answered.</p>
+    </div>
+    <details class="disclose">
+      <summary>For the technical reader: method, and what the profile found</summary>
+      <ul>
+        <li><strong>Method.</strong> k6 at a constant arrival rate, so a slow answer never slows the next request; overhead is the gateway's percentile minus the stand-in's in the same run; a run whose baseline shows a pause on the host is dropped and counted. The server is a 4 vCPU, 8 GB VPS in Beauharnois, Quebec, shared by the generator, the stand-in, four gateway workers, Postgres and Redis.</li>
+        <li><strong>The lock.</strong> Postgres showed three workers waiting on the admission lock while the fourth held it idle between round trips. One function call in the database took routing at 500 a second from about 13% failed to none.</li>
+        <li><strong>A profile under load found four more costs</strong>: threads queued on one database connection, the HTTP client's pool walking every connection on each request, a Redis call blocking the event loop, and a missing package that turned an import inside every lock into a search of the disk.</li>
+        <li><strong>The cache sheds rather than queues.</strong> Embedding a question costs about 19 ms of a core whatever the batch, so past what the server can embed, a request goes upstream as if the cache were off, and says so. Those cells report how many were shed instead of a figure.</li>
+        <li><a href="{{repository}}/blob/main/docs/loadtest.md">docs/loadtest.md</a>, with every run since the first.</li>
+      </ul>
+    </details>
+  </section>
+
+  <section class="section" id="quality">
+    <h2>Does redaction make the answers worse?</h2>
+    <p class="section-lead">
+      The question a buyer asks second, and almost never hears answered. Measured with
+      project 03's release gate, the portfolio's measuring instrument: the same questions
+      with and without redaction, paired, across three models, and judged by 03's own
+      calibrated judge.
+    </p>
+    <div class="headline">
+      <div class="stat"><span class="figure">{{quality_effect}}</span><span class="caption">points of complete answers, redacted against raw, over {{quality_pairs}} pairs; no loss on any answerable question</span></div>
+      <div class="stat down"><span class="figure">{{distractor_effect}}</span><span class="caption">points less often does a redacted request say "this page does not cover that" when handed the wrong page</span></div>
+      <div class="stat up"><span class="figure">{{redteam_vendor}}</span><span class="caption">confidential values reaching the vendor under attack, where one model leaked {{redteam_llama_raw}} unredacted</span></div>
+    </div>
+    <p class="note">
+      <strong>The real cost is in retrieval.</strong> Given a page that cannot answer the
+      question, a redacted model is more likely to answer from memory than to say so. For a
+      pipeline that sometimes fetches the wrong document, that is the case that matters, and
+      it is reported as the result rather than averaged away.
+    </p>
+  </section>
+
+  <section class="section" id="cache">
+    <h2>Answers from memory, with the risk beside the saving</h2>
+    <p class="section-lead">
+      Repeated questions can be answered from a store of earlier answers, at no cost. The risk
+      is answering a slightly different question with the confidence of an exact match, so
+      the false-hit rate is published beside the hit rate, and the cache is switched off for
+      personal and sensitive data entirely.
+    </p>
+    <div class="headline">
+      <div class="stat up"><span class="figure">{{cache_hits_n}}</span><span class="caption">reworded questions found in the cache, {{cache_hits_rest}}</span></div>
+      <div class="stat up"><span class="figure">{{cache_false_n}}</span><span class="caption">of those hits were the wrong question, {{cache_false_rest}}</span></div>
+      <div class="stat down"><span class="figure">{{cache_retrieval_false}}</span><span class="caption">wrong hits when a question sits inside a long retrieved page, so those are never cached</span></div>
+      <div class="stat down"><span class="figure">{{cache_redacted_false}}</span><span class="caption">wrong hits on redacted requests, whose placeholders make every customer look alike</span></div>
+    </div>
+    <details class="disclose">
+      <summary>For the technical reader: what goes in, and the injection screen beside it</summary>
+      <ul>
+        <li><strong>Only a bare question the caller marks</strong> (<code>X-Boundary-Cache: question</code>), one store per team, never personal, sensitive, redacted, flagged or streamed, and only a complete answer is stored. The threshold, 0.82, was chosen on one half of the questions and committed before the other half ran.</li>
+        <li><strong>The injection screen</strong> catches {{screen_train}} of attacks on the set its rules were written on and {{screen_heldout}} on held-out ones; it caught {{screen_templated}} of project 03's templated attacks and flagged {{screen_overrefusal}} ordinary prompts. It flags by default rather than blocking, because blocking's false-positive cost belongs to the policy owner. <a href="{{repository}}/blob/main/docs/screen.md">docs/screen.md</a>, <a href="{{repository}}/blob/main/docs/cache.md">docs/cache.md</a>.</li>
+      </ul>
+    </details>
+  </section>
+
+  <section class="section" id="rejected">
+    <h2>What did not work</h2>
+    <p class="section-lead">
+      <strong>Putting every value back into the answer.</strong> The first design restored
+      every placeholder in the vendor's reply, including values that came from the
+      application's own instructions rather than from the person asking. Under 03's red
+      team, one model refused every attempt to extract a confidential record, listing the
+      placeholders it would not share, and the gateway then helpfully filled them in:
+      {{redteam_haiku_full}} attacks succeeded through the gateway that had failed against
+      the model. Restoring only the values the caller sent took that to
+      {{redteam_haiku_scoped}}, and it is now the default.
+    </p>
+  </section>
+
+  <section class="section" id="try">
+    <h2>Try it yourself</h2>
+    <p class="section-lead">
+      The gateway on this server takes the same requests as OpenAI's API. The
+      <a href="/demo">demo page</a> has a public key, limited to US$0.25 a day and one
+      inexpensive model, with a request to copy, a request it refuses, and a repeated question
+      answered from the cache. Every call it makes appears on the
+      <a href="/dashboard">dashboard</a> beside the rest of the portfolio's.
+    </p>
+  </section>
+
+  <section class="section" id="limits">
+    <h2>What this does not do</h2>
+    <div class="cards">
+      <div class="card-note"><h3>It does not decide what is sensitive</h3><p>The caller declares the class and the gateway enforces the policy for that declaration. Guessing would be a compliance judgement nobody signed.</p></div>
+      <div class="card-note"><h3>It cannot verify where a vendor processed a request</h3><p>No vendor reports it. The gateway enforces the operator's declaration and says that is what it is.</p></div>
+      <div class="card-note"><h3>Redaction over-masks on real text</h3><p>{{tab_safe}} of safe words touched on court judgments with its Canadian vocabulary. A deployment elsewhere supplies its own allow list.</p></div>
+      <div class="card-note"><h3>Text only</h3><p>Images and audio cannot be redacted here, so they are refused for anything but public data.</p></div>
+      <div class="card-note"><h3>One server, one region</h3><p>Residency here controls where requests may go, not where the gateway runs. It is one 4 vCPU host, and redaction at 500 a second is at its edge.</p></div>
+      <div class="card-note"><h3>The cache's saving is not yet measured</h3><p>What it saves depends on how often real traffic repeats, which needs a replay of real traffic with hand-labelled hits.</p></div>
+    </div>
+  </section>
+
+  <section class="section" id="engineering">
+    <h2>How it is engineered</h2>
+    <div class="headline">
+      <div class="stat"><span class="figure">{{tests}}</span><span class="caption">automated tests, including byte-for-byte checks of measurement calls, real Postgres and Redis, and the content policy of this page</span></div>
+      <div class="stat"><span class="figure">{{code_lines}}</span><span class="caption">lines of typed Python, strict type checking and linting clean on every push</span></div>
+      <div class="stat"><span class="figure">{{releases}}</span><span class="caption">releases, each with its evidence in the changelog</span></div>
+      <div class="stat"><span class="figure">{{providers}}</span><span class="caption">provider entries, including the three big clouds' model platforms</span></div>
+    </div>
+    <ul class="chips" aria-label="Tools and techniques">
+      <li>Python 3.13</li><li>FastAPI</li><li>httpx</li><li>Postgres 17</li><li>pgvector</li><li>Redis</li>
+      <li>OpenTelemetry</li><li>Presidio</li><li>bge-small embeddings</li><li>k6</li><li>py-spy</li>
+      <li>Hash chains</li><li>Wilson and Newcombe intervals</li><li>Bootstrap</li>
+      <li>mypy --strict</li><li>ruff</li><li>pytest</li><li>uv</li><li>Docker Compose</li><li>Caddy</li>
+      <li>GitHub Actions</li><li>OVHcloud</li><li>Cloudflare</li>
+    </ul>
+    <details class="disclose">
+      <summary>For the technical reader: the rules the code enforces on itself</summary>
+      <ul>
+        <li><strong>Pass-through mode is inviolable.</strong> No retries, no cache, no rewriting; a test compares the bytes handed to the HTTP client with the bytes the adapter built.</li>
+        <li><strong>No content in telemetry.</strong> The fields a span may carry are listed in code, and attaching anything else raises.</li>
+        <li><strong>No vendor SDKs.</strong> Plain HTTP with pinned API version headers, because an SDK's changed default is a silent edit to a measurement.</li>
+        <li><strong>Never guess a price.</strong> An unknown price writes an uncosted row; it never writes an estimate.</li>
+        <li><strong>Every reported number carries an interval</strong>, and every table is written by the command that measured it. This page reads those tables, so it cannot disagree with them.</li>
+      </ul>
+    </details>
+  </section>
+
+  <section class="section" id="built">
+    <h2>How this was built</h2>
+    <p>
+      Design, methodology, evaluation choices and judgement are Peter Parker's, from years of
+      production machine learning in government, where the questions on this page are the
+      ones asked before anything ships. AI coding assistants (Claude Code) were used for
+      implementation and drafting, the way a senior engineer uses them in 2026. Every number
+      on this page is reproducible from <a href="{{repository}}">the repository</a>.
+    </p>
+    <details class="disclose">
+      <summary>Glossary</summary>
+      <dl class="glossary">
+        <dt>Anchor</dt><dd>The newest fingerprint of the audit chain, published somewhere the operator cannot edit, here a public repository, once a day.</dd>
+        <dt>Confidence interval</dt><dd>The range a measured rate would plausibly fall in if the measurement were repeated. A bare number without one is treated as a defect here.</dd>
+        <dt>Data class</dt><dd>What a request says it carries: public, internal, personal or sensitive. It decides where the request may go.</dd>
+        <dt>Hash chain</dt><dd>A list of records in which each carries a fingerprint of the one before, so changing an old record breaks every later fingerprint.</dd>
+        <dt>Percentile</dt><dd>The 99th percentile is the delay that 99 requests in 100 stay under: it describes the slow requests, which the median hides.</dd>
+        <dt>Placeholder</dt><dd>A typed stand-in such as &lt;PHONE_1&gt; that replaces a personal detail on the way out and is swapped back on the way in.</dd>
+        <dt>Residency</dt><dd>Where a provider declares it processes data: in one region, in a group of countries, or anywhere.</dd>
+        <dt>SHA-256</dt><dd>A fingerprint of a piece of data. Change one character and the fingerprint changes completely.</dd>
+      </dl>
+    </details>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <div class="foot-inner">
+    <p>
+      Source, methods and every measurement:
+      <a href="{{repository}}">github.com/Peter-A-P/compliant-ai-gateway</a>.
+      Part of <a href="https://peterparker.ca">Peter Parker's portfolio</a>, where every project
+      ends in a number a stranger can check.
+    </p>
+    <ul>
+      <li>Served by the gateway's own host; this page sets no cookie and makes no request off this server</li>
+      <li>Type: Newsreader and Inter, SIL Open Font License, served from this host</li>
+      <li>boundary {{version}}, built {{built}}</li>
+    </ul>
+  </div>
+</footer>
+<script src="app.js"></script>
+</body>
+</html>

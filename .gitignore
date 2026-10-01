@@ -47,3 +47,4 @@ Thumbs.db
 # A deployment's teams file. It holds key hashes, never keys, so it is safe to publish, but
 # it is per deployment; config/teams.example.yaml is the checked-in shape.
 config/teams.yaml
+/site/

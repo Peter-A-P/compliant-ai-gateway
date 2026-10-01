@@ -97,6 +97,18 @@ services:
       init:
         condition: service_completed_successfully
 
+  # The website at the root of the host (0.31, docs/site.md), built once per start from the
+  # checkout this file is in, into /srv/boundary/site/current, then exits. Caddy serves it
+  # without waiting: a failed build leaves the previous page up and the proxy unaffected.
+  site:
+    <<: *image
+    working_dir: /repo
+    command: ["boundary", "site", "--root", "/repo", "--out", "/out/current"]
+    volumes:
+      - ..:/repo:ro
+      - /srv/boundary/site:/out
+    restart: "no"
+
   caddy:
     image: caddy:2
     restart: unless-stopped
@@ -108,5 +120,6 @@ services:
       - "443:443/udp"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - /srv/boundary/site:/srv/site:ro
       - /srv/boundary/caddy/data:/data
       - /srv/boundary/caddy/config:/config

@@ -53,6 +53,9 @@ jobs:
       # copied from one.
       - run: uv run boundary redact eval --identifiers --per-family 20
       - run: uv run boundary redact eval --rehydration --pages 40
+      # The website, built from the README's tables on every push: a table the page reads
+      # that was renamed or reshaped fails here, not on the live host.
+      - run: uv run boundary site --out /tmp/site
 
   # The `redact` extra and its spaCy model are deliberately absent from the job above, so
   # the suite there runs with Presidio missing and exercises the import guard. They are
