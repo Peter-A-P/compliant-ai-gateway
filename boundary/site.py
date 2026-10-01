@@ -62,9 +62,10 @@ ASSETS = ("style.css", "app.js")
 # usual placeholder pair, the sample social insurance number the federal government
 # publishes for testing, a reserved 555 telephone number and an example.com address.
 EXAMPLE_REQUEST = (
-    "Draft a short reply to Jane Roe about her access request, file ATIPP-2024-1749. "
+    "Draft a short reply to Jane Roe about her disputed card charge, claim CLM-2024-1749. "
     "Her SIN is 046 454 286 and she asked us to call 709-555-0142 or write to "
-    "jane.roe@example.com. Confirm we received it and that we will answer within 30 days."
+    "jane.roe@example.com. Confirm we received it and that we will answer within 10 "
+    "business days."
 )
 
 
@@ -313,13 +314,13 @@ def redaction_example() -> Example:
     person = first("PERSON", "NAME_LIKE")
     file_no = first("FILE_NUMBER", "ID_LIKE")
     answer = (
-        f"Dear {person}, thank you for your access request, file {file_no}. We have "
-        "received it and will answer within 30 days."
+        f"Dear {person}, thank you for your message about claim {file_no}. We have "
+        "received it and will answer within 10 business days."
     )
     returned = policy.rehydrate(answer)
     if "Jane" not in returned or "1749" not in returned:
         raise SiteError(f"the example's reply did not come back whole: {returned!r}")
-    planted = ("Jane Roe", "046 454 286", "709-555-0142", "jane.roe@example.com", "ATIPP-2024-1749")
+    planted = ("Jane Roe", "046 454 286", "709-555-0142", "jane.roe@example.com", "CLM-2024-1749")
     for value in planted:
         if any(part in vendor for part in re.split(r"[ @.-]", value) if len(part) > 2):
             raise SiteError(f"the example sent part of {value!r} to the vendor")

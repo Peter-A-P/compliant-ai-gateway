@@ -12,17 +12,9 @@ from __future__ import annotations
 import html
 from typing import Any
 
-from boundary import __version__
 from boundary.errors import ConfigError
-from boundary.server.dashboard import _CSS
+from boundary.server.chrome import page
 from boundary.server.teams import Team, TeamsConfig, hash_key
-
-_CODE_CSS = """
-pre { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px;
-  overflow-x:auto; font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; }
-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
-ul { padding-left: 20px; } li { margin: 4px 0; }
-"""
 
 
 def check(teams: TeamsConfig, team: str, key: str) -> Team:
@@ -79,54 +71,64 @@ r = client.chat.completions.with_raw_response.create(
 )
 print(r.headers["x-boundary-cache"], r.headers["x-boundary-call-uid"])
 print(r.parse().choices[0].message.content)"""
-    return f"""<!doctype html>
-<html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Gateway Demo Key</title>
-<style>{_CSS}{_CODE_CSS}</style></head>
-<body><main>
-<h1>Call a model through the gateway</h1>
-<p class="lede">An OpenAI-compatible endpoint: any client works by changing its base URL and
-key. Every call is checked against a data policy, written to the ledger before it returns,
-sealed into the audit chain, and counted on the <a href="/dashboard">dashboard</a>.</p>
+    models = ", ".join(t.models)
+    body = f"""
+  <header class="hero">
+    <p class="eyebrow">The live gateway, with a public key</p>
+    <h1>Call a model through the gateway</h1>
+    <p class="lead">
+      The gateway speaks the same protocol as OpenAI's API, so any client works by changing
+      its base address and key. Every call below is checked against the data policy, written
+      to the ledger before it returns, sealed into the audit chain, and counted on the
+      <a href="/dashboard">dashboard</a>.
+    </p>
+    <div class="headline">
+      <div class="stat up"><span class="figure">US${left:.2f}</span><span class="caption">left today of US${t.daily_usd:g}, resetting at midnight UTC</span></div>
+      <div class="stat"><span class="figure">{t.requests_per_minute}</span><span class="caption">requests a minute</span></div>
+      <div class="stat"><span class="figure">{t.max_tokens}</span><span class="caption">tokens an answer, at most</span></div>
+      <div class="stat"><span class="figure">{len(t.models)}</span><span class="caption">model{"s" if len(t.models) != 1 else ""}: {_e(models)}</span></div>
+    </div>
+  </header>
 
-<div class="cards">
-<div class="card"><b>US${left:.2f}</b><span>left today of US${t.daily_usd:g} (UTC)</span></div>
-<div class="card"><b>{t.requests_per_minute}</b><span>requests a minute</span></div>
-<div class="card"><b>{t.max_tokens}</b><span>tokens an answer, at most</span></div>
-<div class="card"><b>{len(t.models)}</b><span>model{"s" if len(t.models) != 1 else ""}:
-{_e(", ".join(t.models))}</span></div>
-</div>
+  <section class="section" id="key">
+    <h2>The key</h2>
+    <pre class="code">{_e(key)}</pre>
+    <p class="note">Public on purpose, so do not send anything private with it. A prompt goes to
+    the model's vendor; the gateway keeps hashes, counts and identifiers of it, never the text.
+    When today's budget is spent, calls are refused with a 429 that says when it resets.</p>
+  </section>
 
-<h2>The key</h2>
-<pre>{_e(key)}</pre>
-<p class="note">Public on purpose, so do not send anything private with it. A prompt goes to
-the model's vendor. The gateway keeps hashes, counts and identifiers of it, never the text.
-When today's budget is spent, calls are refused with a 429 that says when it resets.</p>
+  <section class="section" id="call">
+    <h2>A call</h2>
+    <pre class="code">{_e(curl)}</pre>
+    <p class="note">The response headers say what the gateway did: <code>x-boundary-data-class</code>,
+    <code>x-boundary-redacted</code> and <code>x-boundary-call-uid</code>, the row's id in the
+    ledger.</p>
+  </section>
 
-<h2>A call</h2>
-<pre>{_e(curl)}</pre>
-<p class="note">The response headers say what the gateway did: <code>x-boundary-data-class</code>,
-<code>x-boundary-redacted</code> and <code>x-boundary-call-uid</code>, the row's id in the
-ledger.</p>
+  <section class="section" id="refusal">
+    <h2>A refusal</h2>
+    <pre class="code">{_e(refused)}</pre>
+    <p class="note">No <code>X-Data-Class</code> header means <code>personal</code>, and the
+    policy lets personal data go only where processing in Canada can be declared. No hosted
+    vendor here can declare it, so the call is refused with a 403 before anything is sent, and
+    the refusal is on the ledger too.</p>
+  </section>
 
-<h2>A refusal</h2>
-<pre>{_e(refused)}</pre>
-<p class="note">No <code>X-Data-Class</code> header means <code>personal</code>, and the policy
-lets personal data go only where processing in Canada can be declared. No hosted vendor
-here can declare it, so the call is refused with a 403 before anything is sent, and the
-refusal is on the ledger too.</p>
-
-<h2>From Python, with the cache</h2>
-<pre>{_e(python)}</pre>
-<p class="note"><code>X-Boundary-Cache: question</code> marks a bare question the semantic
-cache may answer. Ask the same thing twice and the second answer says <code>hit</code>, costs
-nothing, and names the call it came from.</p>
-
-<footer>boundary {_e(__version__)}. Team <code>{_e(team)}</code>, US${t.monthly_usd:g} a month.
-<a href="https://github.com/Peter-A-P/compliant-ai-gateway">Source and method</a>.</footer>
-</main></body></html>
+  <section class="section" id="cache">
+    <h2>From Python, with the cache</h2>
+    <pre class="code">{_e(python)}</pre>
+    <p class="note"><code>X-Boundary-Cache: question</code> marks a bare question the semantic
+    cache may answer. Ask the same thing twice and the second answer says <code>hit</code>,
+    costs nothing, and names the call it came from.</p>
+  </section>
 """
+    return page(
+        title="Gateway Demo Key",
+        description="A public key for the gateway at gateway.peterparker.ca, its limits, and a call, a refusal and a cached repeat to copy.",
+        body=body,
+        note=f"Team <code>{_e(team)}</code>, US${t.monthly_usd:g} a month",
+    )
 
 
 __all__ = ["check", "render"]

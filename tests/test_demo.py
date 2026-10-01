@@ -194,7 +194,8 @@ async def test_the_page_publishes_the_key_and_whats_left_today(app: App) -> None
     assert r.status_code == 200 and r.headers["content-type"].startswith("text/html")
     page = r.text
     assert DEMO in page and "https://gateway.example/v1/chat/completions" in page
-    assert "US$0.20</b><span>left today of US$0.25" in page
+    assert '"figure">US$0.20</span><span class="caption">left today of US$0.25' in page
+    assert '<link rel="stylesheet" href="/style.css">' in page and "<style" not in page
     assert KEY not in page and OTHER not in page
     assert "/demo" in (await app.http.get("/dashboard")).text
 
@@ -226,3 +227,14 @@ async def test_no_demo_no_page(repo_config: BoundaryConfig, tmp_path: Path) -> N
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=a), base_url="http://p") as c:
         assert (await c.get("/demo")).status_code == 404
     await a.state.boundary.close()
+
+
+async def test_the_pages_share_the_websites_stylesheet_and_fonts(app: App) -> None:
+    """0.32: /demo and /dashboard link the website's stylesheet. Behind Caddy it serves it;
+    from a checkout the proxy serves `web/` itself, and nothing else under those paths."""
+    css = await app.http.get("/style.css")
+    assert css.status_code == 200 and css.headers["content-type"].startswith("text/css")
+    font = await app.http.get("/fonts/inter-latin.woff2")
+    assert font.status_code == 200 and font.headers["content-type"] == "font/woff2"
+    for path in ("/fonts/..%2Fapp.js", "/fonts/LICENSE.txt"):
+        assert (await app.http.get(path)).status_code == 404

@@ -5,6 +5,20 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.32.0 (2026-10-01)
+
+**The demo and dashboard pages share the website's look, and the page speaks to every
+industry.** docs/site.md.
+
+- **`boundary.server.chrome`** is one frame for the proxy's own pages: the website's header,
+  footer and stylesheet. `/demo` and `/dashboard` are rebuilt on it with the website's
+  hero, figures and tables, and with no inline style. They link `/style.css`, which Caddy
+  serves; a proxy run from a checkout serves `web/`'s stylesheet and fonts itself.
+- **The headline**: "What would it take for your organisation to say yes to AI on its
+  customers' data?", with banks, insurers, retailers, telecoms, hospitals and governments
+  in the lead, in place of a question about one hospital. The redaction example is now a
+  customer's disputed card charge rather than a records request.
+
 ## 0.31.0 (2026-10-01)
 
 **The project's website, at the root of gateway.peterparker.ca.** docs/site.md.

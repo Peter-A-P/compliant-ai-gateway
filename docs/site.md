@@ -39,6 +39,13 @@ by decision on 2026-10-01: the page and the gateway it describes are one host, t
 on it are the live gateway, and there is nothing else to set up. The cost is that the page
 is down when the VPS is.
 
+## The proxy's pages in the same frame (0.32)
+
+`/demo` and `/dashboard` are rendered by the proxy, because they show live state: the demo
+key's spend today, and the ledger. They use `boundary.server.chrome`, the website's header
+and footer, and link the website's `/style.css`, so the three pages are one site. A proxy
+started from a checkout without Caddy serves that stylesheet and the fonts from `web/`.
+
 ## Rules it keeps
 
 `tests/test_site.py` checks each one:

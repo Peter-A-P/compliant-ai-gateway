@@ -33,6 +33,7 @@ import concurrent.futures
 import dataclasses
 import datetime as dt
 import math
+import re
 import secrets
 import threading
 import time
@@ -64,7 +65,7 @@ from boundary.redact.policy import Policy
 from boundary.routes import ModelRef
 from boundary.screen import rules_fired, screen_request
 from boundary.semcache import SemanticCache
-from boundary.server import dashboard, wire
+from boundary.server import chrome, dashboard, wire
 from boundary.server import demo as demo_page
 from boundary.server.redaction import (
     Redacted,
@@ -317,6 +318,18 @@ def create_app(
     @app.get("/")
     async def root() -> Response:
         return Response(status_code=307, headers={"location": "/dashboard"})
+
+    @app.get("/style.css")
+    async def stylesheet() -> Response:
+        """The website's stylesheet, which `/demo` and `/dashboard` share (0.32). Behind Caddy
+        this path never reaches the proxy; from a checkout without it, this serves `web/`."""
+        return _web_file("style.css", "text/css; charset=utf-8")
+
+    @app.get("/fonts/{name}")
+    async def font(name: str) -> Response:
+        if not re.fullmatch(r"[a-z-]+\.woff2", name):
+            raise Refusal(404, wire.error_body("no such font", type_="not_found"))
+        return _web_file(f"fonts/{name}", "font/woff2")
 
     @app.get("/demo")
     async def demo_html(request: Request) -> Response:
@@ -811,6 +824,13 @@ def refusal_for(exc: BaseException, *, team: str, wall: Callable[[], float]) -> 
     if isinstance(exc, ConfigError):
         return Refusal(500, wire.error_body(f"gateway configuration: {exc}", type_="server_error"))
     raise exc
+
+
+def _web_file(name: str, media_type: str) -> Response:
+    path = chrome.WEB / name
+    if not path.is_file():
+        raise Refusal(404, wire.error_body(f"no {name} on this proxy", type_="not_found"))
+    return Response(path.read_bytes(), media_type=media_type)
 
 
 def _team_limits(t: Team, team: str, parsed: wire.Parsed, ref: ModelRef) -> wire.Parsed:

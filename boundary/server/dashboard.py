@@ -16,36 +16,8 @@ import html
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from boundary import __version__
 from boundary.central import Group, SourceState, days_ago, group_by
-
-_CSS = """
-:root { --bg:#fbfbf9; --fg:#1d1f21; --muted:#5f6368; --line:#e2e2dc; --accent:#1f5f8b;
-  --warn:#9a3412; --ok:#166534; --card:#ffffff; }
-@media (prefers-color-scheme: dark) { :root { --bg:#141517; --fg:#e8e8e3; --muted:#a0a3a8;
-  --line:#2b2d31; --accent:#7fb3d9; --warn:#f0a070; --ok:#7cc79a; --card:#1b1c1f; } }
-* { box-sizing: border-box; }
-body { margin:0; background:var(--bg); color:var(--fg);
-  font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-main { max-width: 1080px; margin: 0 auto; padding: 24px 16px 64px; }
-h1 { font-size: 22px; margin: 0 0 4px; }
-h2 { font-size: 16px; margin: 32px 0 8px; }
-p.lede, p.note { color: var(--muted); margin: 4px 0 0; }
-.cards { display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:12px;
-  margin-top: 20px; }
-.card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; }
-.card b { display:block; font-size: 20px; font-variant-numeric: tabular-nums; }
-.card span { color: var(--muted); font-size: 13px; }
-.scroll { overflow-x: auto; }
-table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
-th, td { text-align: right; padding: 6px 10px; border-bottom: 1px solid var(--line);
-  white-space: nowrap; }
-th:first-child, td:first-child, th.l, td.l { text-align: left; }
-th { color: var(--muted); font-weight: 600; font-size: 13px; }
-.warn { color: var(--warn); } .ok { color: var(--ok); }
-footer { color: var(--muted); font-size: 13px; margin-top: 40px; }
-a { color: var(--accent); }
-"""
+from boundary.server.chrome import page
 
 
 def _e(v: Any) -> str:
@@ -61,45 +33,49 @@ def _ms(v: float | None) -> str:
 
 
 def _group_table(groups: Sequence[Group], heads: Sequence[str]) -> str:
-    cols = "".join(f'<th class="l">{_e(h)}</th>' for h in heads)
+    cols = "".join(f'<th scope="col">{_e(h)}</th>' for h in heads)
     head = (
-        f"<tr>{cols}<th>Calls</th><th>Errors</th><th>Refused</th><th>Cached</th>"
-        "<th>Uncosted</th><th>US$</th><th>p50 ms</th><th>p95 ms</th></tr>"
+        f'<thead><tr>{cols}<th class="num">Calls</th><th class="num">Errors</th>'
+        '<th class="num">Refused</th><th class="num">Cached</th><th class="num">Uncosted</th>'
+        '<th class="num">US$</th><th class="num">p50 ms</th><th class="num">p95 ms</th>'
+        "</tr></thead>"
     )
     body = []
     for g in groups:
-        keys = "".join(f'<td class="l">{_e(k)}</td>' for k in g.key)
-        unc = f'<span class="warn">{g.uncosted}</span>' if g.uncosted else "0"
+        keys = "".join(f"<td>{_e(k)}</td>" for k in g.key)
+        unc = f'<span class="worse">{g.uncosted}</span>' if g.uncosted else "0"
         body.append(
-            f"<tr>{keys}<td>{g.calls:,}</td><td>{g.errors:,}</td><td>{g.refused:,}</td>"
-            f"<td>{g.cached:,}</td><td>{unc}</td><td>{_usd(g.cost_usd)}</td>"
-            f"<td>{_ms(g.p50_ms)}</td><td>{_ms(g.p95_ms)}</td></tr>"
+            f'<tr>{keys}<td class="num">{g.calls:,}</td><td class="num">{g.errors:,}</td>'
+            f'<td class="num">{g.refused:,}</td><td class="num">{g.cached:,}</td>'
+            f'<td class="num">{unc}</td><td class="num">{_usd(g.cost_usd)}</td>'
+            f'<td class="num">{_ms(g.p50_ms)}</td><td class="num">{_ms(g.p95_ms)}</td></tr>'
         )
-    return f'<div class="scroll"><table>{head}{"".join(body)}</table></div>'
+    return f'<div class="table-wrap"><table>{head}<tbody>{"".join(body)}</tbody></table></div>'
 
 
 def _sources_table(sources: Sequence[SourceState], proxy_rows: int) -> str:
     head = (
-        '<tr><th class="l">Source</th><th class="l">Environment</th><th>Rows it holds</th>'
-        '<th>Rows held here</th><th class="l">State</th><th class="l">Last push (UTC)</th></tr>'
+        '<thead><tr><th scope="col">Source</th><th scope="col">Environment</th>'
+        '<th class="num">Rows it holds</th><th class="num">Rows held here</th>'
+        '<th scope="col">State</th><th scope="col">Last push (UTC)</th></tr></thead>'
     )
     body = [
-        f'<tr><td class="l">the proxy\'s own ledger</td><td class="l">vps</td>'
-        f'<td>{proxy_rows:,}</td><td>{proxy_rows:,}</td><td class="l ok">read live</td>'
-        '<td class="l">-</td></tr>'
+        "<tr><td>the proxy's own ledger</td><td>vps</td>"
+        f'<td class="num">{proxy_rows:,}</td><td class="num">{proxy_rows:,}</td>'
+        '<td><span class="better">read live</span></td><td>-</td></tr>'
     ]
     for s in sources:
         state = (
-            '<span class="ok">complete</span>'
+            '<span class="better">complete</span>'
             if s.complete
-            else f'<span class="warn">{s.local_rows - s.held:,} missing</span>'
+            else f'<span class="worse">{s.local_rows - s.held:,} missing</span>'
         )
         body.append(
-            f'<tr><td class="l">{_e(s.source)}</td><td class="l">{_e(s.env or "-")}</td>'
-            f'<td>{s.local_rows:,}</td><td>{s.held:,}</td><td class="l">{state}</td>'
-            f'<td class="l">{_e(s.last_utc[:19].replace("T", " "))}</td></tr>'
+            f"<tr><td>{_e(s.source)}</td><td>{_e(s.env or '-')}</td>"
+            f'<td class="num">{s.local_rows:,}</td><td class="num">{s.held:,}</td><td>{state}</td>'
+            f"<td>{_e(s.last_utc[:19].replace('T', ' '))}</td></tr>"
         )
-    return f'<div class="scroll"><table>{head}{"".join(body)}</table></div>'
+    return f'<div class="table-wrap"><table>{head}<tbody>{"".join(body)}</tbody></table></div>'
 
 
 def render(
@@ -124,44 +100,62 @@ def render(
         (f"{held:,} of {claimed:,}", "rows held of rows reported"),
     ]
     card_html = "".join(
-        f'<div class="card"><b>{_e(a)}</b><span>{_e(b)}</span></div>' for a, b in cards
+        f'<div class="stat"><span class="figure">{_e(a)}</span><span class="caption">{_e(b)}</span></div>'
+        for a, b in cards
     )
     recent = days_ago(30)
     by_day = [g for g in group_by(rows, "day") if g.key[0] >= recent]
-    return f"""<!doctype html>
-<html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Portfolio Calls Dashboard</title>
-<style>{_CSS}</style></head>
-<body><main>
-<h1>Every model call in the portfolio, on the record</h1>
-<p class="lede">Read from the ledger rows each project's environment pushed to this gateway,
-and the gateway's own. A row holds hashes, counts and identifiers, never a prompt or an
-answer. Since {_e(first or "-")}.</p>
-<div class="cards">{card_html}</div>
+    body = f"""
+  <header class="hero">
+    <p class="eyebrow">The portfolio's model calls, read from the record</p>
+    <h1>Every model call in the portfolio, on the record</h1>
+    <p class="lead">
+      Every project in this portfolio that calls an AI model does it through this gateway's
+      library, and pushes its ledger here. A row holds hashes, counts and identifiers, never a
+      prompt or an answer, so this page can be public. Since {_e(first or "-")}.
+    </p>
+    <div class="headline">{card_html}</div>
+    <p class="hero-note">
+      Cost is computed from the usage each vendor returned and a dated price file. An
+      uncosted row is one whose price was unknown, never estimated. Latency is over answered,
+      uncached calls; its percentiles describe the calls there were, so they carry no interval.
+    </p>
+  </header>
 
-<h2>By project</h2>
-{_group_table(group_by(rows, "project"), ["Project"])}
+  <section class="section" id="projects">
+    <h2>By project</h2>
+    {_group_table(group_by(rows, "project"), ["Project"])}
+  </section>
 
-<h2>By provider and model</h2>
-{_group_table(group_by(rows, "provider", "model_requested"), ["Provider", "Model"])}
+  <section class="section" id="models">
+    <h2>By provider and model</h2>
+    {_group_table(group_by(rows, "provider", "model_requested"), ["Provider", "Model"])}
+  </section>
 
-<h2>By day, last 30 days</h2>
-{_group_table(by_day, ["Day (UTC)"])}
+  <section class="section" id="days">
+    <h2>By day, the last 30 days</h2>
+    {_group_table(by_day, ["Day (UTC)"])}
+  </section>
 
-<h2>Completeness</h2>
-<p class="note">Each source says how many rows its own ledger holds when it pushes, and
-sends them all. A source short of its own count shows how many are missing.</p>
-{_sources_table(sources, proxy_rows)}
-
-<footer>boundary {_e(__version__)}, generated {_e(generated_utc[:19].replace("T", " "))} UTC.
-Cost is computed from the usage each vendor returned and a dated price file; an uncosted row
-is one whose price was unknown, never estimated. Latency is over answered, uncached calls.
-<a href="https://github.com/Peter-A-P/compliant-ai-gateway">Source and method</a>.{
-        ' <a href="/demo">Try it with the demo key</a>.' if demo else ""
-    }</footer>
-</main></body></html>
+  <section class="section" id="completeness">
+    <h2>Is the record complete?</h2>
+    <p class="section-lead">
+      A dashboard is usually shown to be full; this one is shown to be complete. Each source
+      says how many rows its own ledger holds when it pushes, and sends them all, so a source
+      short of its own count shows here how many are missing.
+    </p>
+    {_sources_table(sources, proxy_rows)}
+  </section>
 """
+    note = f"Generated {_e(generated_utc[:19].replace('T', ' '))} UTC" + (
+        '. <a href="/demo">Try the gateway with the demo key</a>' if demo else ""
+    )
+    return page(
+        title="Portfolio Calls Dashboard",
+        description="Every AI model call in Peter Parker's portfolio: calls, cost, errors and latency by project, model and day, and whether the record is complete.",
+        body=body,
+        note=note,
+    )
 
 
 __all__ = ["render"]

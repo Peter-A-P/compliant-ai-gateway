@@ -79,7 +79,7 @@ def test_the_example_sends_no_planted_value_and_gets_every_one_back() -> None:
     e = site.redaction_example()
     for value in ("Jane", "Roe", "046 454 286", "555-0142", "jane.roe@example.com", "1749"):
         assert value not in e.vendor, value
-    assert "Jane Roe" in e.returned and "ATIPP-2024-1749" in e.returned
+    assert "Jane Roe" in e.returned and "CLM-2024-1749" in e.returned
     assert "<" not in e.returned
 
 
