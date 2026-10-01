@@ -90,6 +90,12 @@ sudo docker compose run --rm --no-deps gateway boundary --config /app/config/bou
   audit verify --hosted --anchors /data/anchors.jsonl
 ```
 
+**A release that changes `deploy/Caddyfile` also needs `sudo docker compose restart caddy`.**
+The Caddyfile is mounted as a single file, and `git checkout` replaces the file rather than
+writing into it, so the running container keeps reading the old one; `caddy reload` reloads
+that old copy too. Found on 0.34.0, whose new content security policy was not served until
+Caddy was restarted.
+
 The host provides these outside the checkout: `/home/ubuntu/boundary/.env` (the vendor
 keys), `db-admin.env` and `db-app.env` beside it, `/srv/boundary/teams.yaml`, and
 `/srv/boundary/postgres` for the database's files. The daily VPS backup covers the disk.
