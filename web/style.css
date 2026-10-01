@@ -231,8 +231,6 @@ strong { font-weight: 600; }
 .point .point-figure { color: var(--accent-ink); }
 .point.good .point-figure { color: var(--good); }
 .point.violet .point-figure { color: var(--alt); }
-/* "of" and the total after it, in the text colour, so only the count carries the colour. */
-.point-figure .of { color: var(--ink); }
 
 .point-unit {
   display: block;

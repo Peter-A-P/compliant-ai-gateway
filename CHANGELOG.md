@@ -5,6 +5,11 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.33.4 (2026-10-01)
+
+- Each of the four top figures is in its card's colour as a whole ("0 of 550"), as on the
+  release gate's site, now that the cards have colours of their own.
+
 ## 0.33.3 (2026-10-01)
 
 - **The first screen in the release gate's colours (03).** A wash of the accent behind the
