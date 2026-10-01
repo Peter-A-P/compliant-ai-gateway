@@ -5,6 +5,13 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.33.0 (2026-10-01)
+
+- **The dashboard draws its figures.** Above each of the project and model tables, two bar
+  charts show calls and spend, largest first, with anything past the top ten summed into
+  one bar. They are SVG drawn on the server with the website's classes, with no script and
+  nothing inline. The tables stay underneath.
+
 ## 0.32.1 (2026-10-01)
 
 - The dashboard's six figures sit in two rows of three (`.headline.six`) rather than five

@@ -13,7 +13,7 @@ they carry no interval. Every other figure is a count or a sum.
 from __future__ import annotations
 
 import html
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
 from boundary.central import Group, SourceState, days_ago, group_by
@@ -53,6 +53,53 @@ def _group_table(groups: Sequence[Group], heads: Sequence[str]) -> str:
     return f'<div class="table-wrap"><table>{head}<tbody>{"".join(body)}</tbody></table></div>'
 
 
+def _bars(
+    groups: Sequence[Group],
+    value: Callable[[Group], float],
+    fmt: Callable[[float], str],
+    *,
+    title: str,
+    label: Callable[[Group], str] = lambda g: " / ".join(g.key),
+    top: int = 10,
+) -> str:
+    """A horizontal bar chart of `groups` by `value`, largest first, as SVG drawn here (0.33):
+    no script, every colour a class in the website's stylesheet, every label escaped. More
+    than `top` groups are summed into one bar, so a long tail cannot crowd the chart."""
+    ranked = sorted((g for g in groups if value(g) > 0), key=value, reverse=True)
+    if not ranked:
+        return ""
+    bars = [(label(g), value(g)) for g in ranked[:top]]
+    rest = ranked[top:]
+    if rest:
+        bars.append((f"{len(rest)} more", sum(value(g) for g in rest)))
+    width, label_w, value_w, row = 440, 172, 78, 26
+    height = row * len(bars) + 8
+    biggest = max(v for _, v in bars)
+    span = width - label_w - value_w
+    parts = []
+    for i, (name, v) in enumerate(bars):
+        y = 4 + i * row
+        w = max(2.0, span * v / biggest)
+        shown = name if len(name) <= 25 else name[:22] + "..."
+        cls = "bar lv2" if rest and i == len(bars) - 1 else "bar lv0"
+        parts.append(
+            f'<text class="row-label faint" x="{label_w - 8}" y="{y + 16}" text-anchor="end">'
+            f"<title>{_e(name)}</title>{_e(shown)}</text>"
+            f'<rect class="{cls}" x="{label_w}" y="{y + 3}" width="{w:.1f}" height="{row - 8}"'
+            f' rx="3"><title>{_e(name)}: {_e(fmt(v))}</title></rect>'
+            f'<text class="bar-value" x="{label_w + w + 6:.1f}" y="{y + 16}">{_e(fmt(v))}</text>'
+        )
+    svg = (
+        f'<svg viewBox="0 0 {width} {height}" role="img" aria-label="{_e(title)}">'
+        + "".join(parts)
+        + "</svg>"
+    )
+    return (
+        f'<figure class="chart-figure"><div class="chart">{svg}</div>'
+        f"<figcaption>{_e(title)}</figcaption></figure>"
+    )
+
+
 def _sources_table(sources: Sequence[SourceState], proxy_rows: int) -> str:
     head = (
         '<thead><tr><th scope="col">Source</th><th scope="col">Environment</th>'
@@ -76,6 +123,27 @@ def _sources_table(sources: Sequence[SourceState], proxy_rows: int) -> str:
             f"<td>{_e(s.last_utc[:19].replace('T', ' '))}</td></tr>"
         )
     return f'<div class="table-wrap"><table>{head}<tbody>{"".join(body)}</tbody></table></div>'
+
+
+def _calls(g: Group) -> float:
+    return float(g.calls)
+
+
+def _cost(g: Group) -> float:
+    return g.cost_usd
+
+
+def _count(v: float) -> str:
+    return f"{v:,.0f}"
+
+
+def _dollars(v: float) -> str:
+    return "US$" + _usd(v)
+
+
+def _model(g: Group) -> str:
+    """The model's own name, the last part of its id; the table below carries the rest."""
+    return g.key[1].rsplit("/", 1)[-1]
 
 
 def render(
@@ -105,6 +173,8 @@ def render(
     )
     recent = days_ago(30)
     by_day = [g for g in group_by(rows, "day") if g.key[0] >= recent]
+    projects = group_by(rows, "project")
+    models = group_by(rows, "provider", "model_requested")
     body = f"""
   <header class="hero">
     <p class="eyebrow">The portfolio's model calls, read from the record</p>
@@ -124,12 +194,20 @@ def render(
 
   <section class="section" id="projects">
     <h2>By project</h2>
-    {_group_table(group_by(rows, "project"), ["Project"])}
+    <div class="two-col">
+      {_bars(projects, _calls, _count, title="Calls, by project")}
+      {_bars(projects, _cost, _dollars, title="Spend in US$, by project")}
+    </div>
+    {_group_table(projects, ["Project"])}
   </section>
 
   <section class="section" id="models">
     <h2>By provider and model</h2>
-    {_group_table(group_by(rows, "provider", "model_requested"), ["Provider", "Model"])}
+    <div class="two-col">
+      {_bars(models, _calls, _count, title="Calls, by model", label=_model)}
+      {_bars(models, _cost, _dollars, title="Spend in US$, by model", label=_model)}
+    </div>
+    {_group_table(models, ["Provider", "Model"])}
   </section>
 
   <section class="section" id="days">

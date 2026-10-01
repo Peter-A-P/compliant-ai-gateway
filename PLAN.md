@@ -434,6 +434,7 @@ from October the ledger-against-invoice difference is recorded there too (sectio
 | v0.25.0 | 2026-09-27 | The semantic cache built and measured (B2.5): `boundary.semcache`, `boundary cache paraphrase` and `eval`, the `cache` extra; not yet in the proxy |
 | v0.26.0 | 2026-09-29 | Deployed at gateway.peterparker.ca (OVHcloud, Beauharnois); `GET /audit/head` and the daily anchor Action; the first VPS load test with k6, published: 3 to 7 ms at p99 where the proxy holds the rate, saturated from 200 rps with audit on |
 | v0.27.0 | 2026-09-29 | Ledger commits off the event loop and a group-committed audit chain: 200 rps held with audit on; the semantic cache in the proxy, off by default, for marked questions only, hits on the ledger (v11) and in the chain (schema 4); the load test's cache layer; the central ledger, `ledger push` and the dashboard |
+| v0.33.0 | 2026-10-01 | Bar charts of calls and spend by project and by model on the dashboard, above the tables |
 | v0.32.0 | 2026-10-01 | The demo and dashboard pages in the website's frame; a headline for every industry rather than one hospital |
 | v0.31.0 | 2026-10-01 | The project's website at gateway.peterparker.ca, every figure read from the README's tables, in the style of projects 01, 02, 08 and 12, served by the gateway's own host |
 | v0.30.0 | 2026-10-01 | The hosted demo: a published key at /demo, bounded by a day's budget (US$0.25), one model and a 300-token ceiling |

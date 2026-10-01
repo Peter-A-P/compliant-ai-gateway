@@ -76,6 +76,9 @@ async def test_the_dashboard_shows_pushed_rows_and_no_content(
     assert "1 missing" in page.text, "the source said 4 and sent 3"
     assert "/Users/somebody" not in page.text
     assert '<link rel="stylesheet" href="/style.css">' in page.text and "<style" not in page.text
+    # 0.33: bar charts above the tables, drawn on the server with the site's classes only.
+    assert page.text.count("<svg") == 4 and 'aria-label="Calls, by project"' in page.text
+    assert "style=" not in page.text and "<script" not in page.text
     assert rows[0]["request_sha256"] is None or rows[0]["request_sha256"] not in page.text
     assert (await http.get("/")).headers["location"] == "/dashboard"
 
