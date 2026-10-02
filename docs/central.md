@@ -80,7 +80,7 @@ should not be able to do the other. `teams.yaml` lists ingest key hashes under
 Server-rendered, no script, no key. It shows only counts, sums and percentiles of rows:
 
 - calls, errors, refusals, cache hits, uncosted calls and spend, by project, by provider and
-  model, and by day for the last 30 days;
+  model, and by day for the last 30 days, newest first;
 - latency p50 and p95 over answered, uncached calls.
 
 The percentiles are descriptive, over the calls there were, not estimates, so they carry no

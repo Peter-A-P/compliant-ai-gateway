@@ -172,7 +172,10 @@ def render(
         for a, b in cards
     )
     recent = days_ago(30)
-    by_day = [g for g in group_by(rows, "day") if g.key[0] >= recent]
+    # Newest day first (0.34.2): the question the table answers is what happened lately.
+    by_day = sorted(
+        (g for g in group_by(rows, "day") if g.key[0] >= recent), key=lambda g: g.key[0], reverse=True
+    )
     projects = group_by(rows, "project")
     models = group_by(rows, "provider", "model_requested")
     body = f"""

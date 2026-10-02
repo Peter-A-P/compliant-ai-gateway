@@ -5,6 +5,10 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.34.2 (2026-10-02)
+
+- The dashboard's "By day, the last 30 days" table lists the newest day first.
+
 ## 0.34.1 (2026-10-01)
 
 - `boundary ledger push --ledger PATH` no longer reads a configuration, so another project can

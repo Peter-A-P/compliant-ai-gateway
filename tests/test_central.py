@@ -183,3 +183,20 @@ def test_push_never_writes_to_the_file_it_reads(
         assert main(["--config", missing, "ledger", "push", "--url", "https://g.example",
                      "--ledger", str(path), "--source", "other-repo:runs/a.sqlite"]) == 0  # fmt: skip
     assert hashlib.sha256(path.read_bytes()).hexdigest() == before
+
+
+def test_the_days_table_is_newest_first(tmp_path: Path) -> None:
+    import datetime as dt
+
+    from boundary.server.dashboard import render
+
+    today = dt.datetime.now(dt.UTC).date()
+    days = [(today - dt.timedelta(days=d)).isoformat() for d in (3, 0, 1)]
+    rows = _rows(tmp_path, 3)
+    for r, day in zip(rows, days, strict=True):
+        r["ts_utc"] = f"{day}T12:00:00.000Z"
+    page = render(rows, [], proxy_rows=0, generated_utc="now")
+    days_section = page[page.index('id="days"') :]
+    shown = [d for d in sorted(days, reverse=True) if d in days_section]
+    assert shown == sorted(days, reverse=True)
+    assert [days_section.index(d) for d in shown] == sorted(days_section.index(d) for d in shown)
