@@ -256,8 +256,14 @@ holds, on four Pacific days.
 
 That is US$2.51 of the 2.49, the rest being the ledger slightly above the report on the
 matched days, which is the rate's spread. 09-27 and 09-28 are the gate's checks in
-`regulated-qa-demo`'s CI, the same calls that are missing from Anthropic's side; whether
-09-22 and 09-30 are the same or another machine's is asked of 03 and 06.
+`regulated-qa-demo`'s CI, the same calls that are missing from Anthropic's side: every check
+calls Haiku 4.5 for answers and Gemini 3.8 Flash as judge (03, 2026-10-02). **09-30 is now on
+the record**: three gate checks cancelled a minute or two in, 178 Gemini judge calls for
+US$0.167, whose rows were only in each artifact's `-wal` file, which 03's harvest did not
+unpack. 03 fixed the harvest and committed the three ledgers the same day; the WAL trap, a
+third time. 09-22 is open: Google's 09-23 already matches 03's committed calibration run of
+that morning, so 09-22's US$1.55 is a second one, and the gold runs inside that Pacific day,
+two of which failed, are being checked.
 
 ### The other vendors
 
