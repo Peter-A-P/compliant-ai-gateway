@@ -93,14 +93,14 @@ September, is not this library's and is outside the check.
 
 Inside the 5% line. **The rates are right**: the console's own token counts, priced from the
 price files, give the console's bill to the cent. **And every token is accounted for**: the
-ledger and the console agree exactly on 28 of 41 day, model and kind cells, and the other 13
+ledger and the console agree exactly on 24 of 39 day, model and kind cells, and the other 15
 are each one of three things.
 
 | What | Cells | Effect on the ledger |
 |---|---:|---:|
 | Batches 02 submitted and never collected: 250 Haiku requests on 2026-09-14, and 100 of an Opus batch on 2026-09-18. Their rows are still in flight and carry the cap's pessimistic estimate, US$2.0511, where Anthropic billed US$0.2225 | 2 | +1.8286 |
 | Calls the ledger never held: the gate's checks in `regulated-qa-demo`'s CI on 2026-09-27 and 09-28, 625,033 Haiku input and 89,576 output tokens. Their ledger was uploaded as an artifact **without its `-wal` file, so the copy holds 0 rows** while the run's answers file holds every answer: the WAL trap below, a second time | 2 | -1.0729 |
-| Smoke calls from GitHub Actions, whose ledgers are not kept, and one call either side of midnight UTC | 9 | -0.0016 |
+| Smoke calls from GitHub Actions, whose ledgers are not kept, and one call either side of midnight UTC | 11 | -0.0016 |
 
 87.7982 - 1.8286 + 1.0729 + 0.0016 = 87.0441, against the console's 87.0440.
 
@@ -114,7 +114,7 @@ Two things follow, both in other repositories:
   or upload the `-wal` and `-shm` files with it. Without that, every gate check spends money
   the record does not hold.
 
-One more thing the export showed: 129 rows on 2026-09-15 are development-cache hits that
+One more thing the export showed: 107 rows on 2026-09-15 are development-cache hits that
 carry the token counts of the call they repeat, at zero cost. That is the cache's design, and
 it is why the comparison above is of answered, uncached rows. A token total from `ledger
 report` would count them twice.
