@@ -221,7 +221,9 @@ for ca-central-1, published 2026-09-30: Haiku 4.5 is US$1.10 input and 5.50 outp
 through the `us.` (Geo) profile this route uses, and 1.00 and 5.00 through `global.`, the 10%
 regional premium Anthropic's page describes. Both are in the 2026-10-01 price list (0.35.2),
 keyed by profile, never by the bare model id the response returns, which is the same for both.
-The September row stays uncosted, as written; the next Bedrock call is costed.
+The September row stays uncosted, as written. The next Bedrock call was made on 2026-10-02 to
+show it: ledger row 8411, 14 tokens in and 4 out, costed at US$0.0000374, which is 14 at 1.10
+plus 4 at 5.50 a million.
 
 ### The other vendors
 
