@@ -225,6 +225,40 @@ The September row stays uncosted, as written. The next Bedrock call was made on 
 show it: ledger row 8411, 14 tokens in and 4 out, costed at US$0.0000374, which is 14 at 1.10
 plus 4 at 5.50 a million.
 
+### Google
+
+The Cloud Billing report gives a cost per day and model, with a "($)" in every column
+heading, and a total of 44.5649.
+
+**The report is in Canadian dollars, whatever its headings say.** On nine days the report and
+the ledger cover the same calls, and on all nine the report is the ledger times 1.386, to
+three places (1.3823 to 1.3864, median 1.3862): the exchange rate, which Azure's export of
+the same month states as 1.38605. The billing account is billed in CAD. Read as dollars, the
+report would have put the ledger 33% short; read as what it is, US$32.1489 at the median rate.
+**The report's days are Pacific time**, not UTC: grouped by UTC day, no day matches; grouped
+by Pacific day, nine do, and 2026-09-17 is zero on both sides.
+
+| Route | US$ |
+|---|---:|
+| Report, CA$44.5649 at 1.3862 | 32.1489 |
+| Merged ledger | 29.6541 |
+| **Ledger against report** | **-2.49, -7.8%** |
+
+Above the 5% line, and the cause is not the rate or the arithmetic: it is calls no ledger here
+holds, on four Pacific days.
+
+| Pacific day | Report, US$ | Ledger, US$ | Short |
+|---|---:|---:|---:|
+| 2026-09-22 | 1.5605 | 0.0141 | 1.5464 |
+| 2026-09-27 | 1.9940 | 1.3707 | 0.6233 |
+| 2026-09-28 | 0.2085 | 0.0317 | 0.1768 |
+| 2026-09-30 | 0.1587 | 0.0000 | 0.1587 |
+
+That is US$2.51 of the 2.49, the rest being the ledger slightly above the report on the
+matched days, which is the rate's spread. 09-27 and 09-28 are the gate's checks in
+`regulated-qa-demo`'s CI, the same calls that are missing from Anthropic's side; whether
+09-22 and 09-30 are the same or another machine's is asked of 03 and 06.
+
 ### The other vendors
 
 | Vendor | Ledger US$ | Console US$ | Difference |
@@ -233,7 +267,7 @@ plus 4 at 5.50 a million.
 | OpenAI | 57.0241 | 69.1211 | -12.10, -17.5%, explained above |
 | Together | 7.8910 | 7.8925 | -0.0015, -0.02% |
 | Foundry (Azure) | 0.0000, one row uncosted | 0.0003604 | the one row matches to the token; rate now known |
-| Google | pending | pending | pending |
+| Google | 29.6541 | 32.1489 (CA$44.5649) | -2.49, -7.8%, four days of calls no ledger here holds |
 | Bedrock | one row, uncosted (US$0.0005 at the rate now known) | 0.00 | agrees at the bill's resolution |
 
 ### Against 03's own accounting
