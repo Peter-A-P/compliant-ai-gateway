@@ -164,7 +164,7 @@ the unit price. One project carries every call.
 | Merged ledger | 7.8910 |
 | **Ledger against console** | **-0.0015, -0.02%** |
 
-Fifteen of 22 day and model cells agree to the token. Of the 0.0015: **US$0.0011 is the nine
+Eleven of 20 day and model cells agree to the token, and the other nine differ by under a thousand tokens each. Of the 0.0015: **US$0.0011 is the nine
 gpt-oss-120b rows of 2026-09-12 written uncosted** (above), which is the whole of that model's
 bill that day. The bound this document set for them on 2026-09-14, about US$0.0025 from the
 same model's costed rows, was high by a little over half, which is what a bound should be. The
