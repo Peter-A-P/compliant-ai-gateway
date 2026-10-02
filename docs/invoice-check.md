@@ -99,7 +99,7 @@ are each one of three things.
 | What | Cells | Effect on the ledger |
 |---|---:|---:|
 | Batches 02 submitted and never collected: 250 Haiku requests on 2026-09-14, and 100 of an Opus batch on 2026-09-18. Their rows are still in flight and carry the cap's pessimistic estimate, US$2.0511, where Anthropic billed US$0.2225 | 2 | +1.8286 |
-| Calls the ledger never held: the gate's checks in `regulated-qa-demo`'s CI on 2026-09-27 and 09-28, 625,033 Haiku input and 89,576 output tokens. Their ledger was uploaded as an artifact **without its `-wal` file, so the copy holds 0 rows** while the run's answers file holds every answer: the WAL trap below, a second time | 2 | -1.0729 |
+| Calls the ledger never held: the gate's checks in `regulated-qa-demo`'s CI on 2026-09-27 and 09-28, 625,033 Haiku input and 89,576 output tokens. **They ran before the gate's action kept any artifact** (it began keeping them at 2026-09-28 20:46 UTC), so their ledgers went with their runners. A first reading here blamed the WAL trap, because the one artifact from those days holds a 0-row ledger; 03 checked, and that run was answered from its development cache and paid for nothing, so 0 rows is right | 2 | -1.0729 |
 | Smoke calls from GitHub Actions, whose ledgers are not kept, and one call either side of midnight UTC | 11 | -0.0016 |
 
 87.7982 - 1.8286 + 1.0729 + 0.0016 = 87.0441, against the console's 87.0440.
@@ -110,9 +110,10 @@ Two things follow, both in other repositories:
   results (29 days, so before 2026-10-13 for the first). The rows then complete from returned
   usage and the estimate leaves the ledger. Until then they are what the design says they are:
   in flight, counted against caps at the pessimistic estimate.
-- **The gate's CI keeps its ledger whole**: checkpoint it (`PRAGMA wal_checkpoint(TRUNCATE)`)
-  or upload the `-wal` and `-shm` files with it. Without that, every gate check spends money
-  the record does not hold.
+- **The gate's CI keeps its ledger.** Done by 03 on 2026-10-02 (ai-release-gate 2de26f6):
+  `gate check` checkpoints its ledger and writes its row count against its paid calls, the
+  action fails a step when they differ, and the nightly harvest commits each run's ledger
+  so it reaches the central ledger. The first run since holds 400 rows for 400 paid calls.
 
 One more thing the export showed: 107 rows on 2026-09-15 are development-cache hits that
 carry the token counts of the call they repeat, at zero cost. That is the cache's design, and
@@ -136,7 +137,7 @@ carry all but two cents of it.
 | What | Effect on the ledger |
 |---|---:|
 | **GPT-5.6 cache writes priced as ordinary input.** From GPT-5.6, OpenAI bills a token written to the prompt cache at 1.25x input (US$5.00 a million for sol against 4.00, 0.25 for luna against 0.20). The usage reports them as `cache_write_tokens` inside `prompt_tokens`, and the adapter read only `cached_tokens`, so 7,045,179 sol and 11,044,654 luna writes were costed at the input rate. Nearly all of it is 06's runs of 2026-09-20 and 21, whose prompts were written to the cache almost whole | -7.5974 |
-| **4,332 gpt-5.6-luna calls on 2026-09-30 that no ledger on this laptop holds**, 12.5 million input tokens. Their shape matches 06's runs of 09-20 and 21, and 06's ledger here ends on 09-21; where they ran is asked of Peter | -4.4816 |
+| **4,332 gpt-5.6-luna calls on 2026-09-30 that no ledger on this laptop holds**, 12.5 million input tokens. Not 03's, which never calls luna. Their shape matches 06's runs of 09-20 and 21, and 06's ledger here ends on 09-21, so 06 is asked | -4.4816 |
 | One gpt-5.6-sol call on 2026-09-15 that the console counts and the ledger does not | -0.0149 |
 | Five gpt-5.4-mini rows of 2026-09-27 written uncosted, before that dated id had a rate (the price file of that day says so) | -0.0030 |
 | Twelve gpt-5-nano smoke calls from GitHub Actions, whose ledgers are not kept | -0.0001 |
