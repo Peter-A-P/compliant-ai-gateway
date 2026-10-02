@@ -434,6 +434,7 @@ from October the ledger-against-invoice difference is recorded there too (sectio
 | v0.25.0 | 2026-09-27 | The semantic cache built and measured (B2.5): `boundary.semcache`, `boundary cache paraphrase` and `eval`, the `cache` extra; not yet in the proxy |
 | v0.26.0 | 2026-09-29 | Deployed at gateway.peterparker.ca (OVHcloud, Beauharnois); `GET /audit/head` and the daily anchor Action; the first VPS load test with k6, published: 3 to 7 ms at p99 where the proxy holds the rate, saturated from 200 rps with audit on |
 | v0.27.0 | 2026-09-29 | Ledger commits off the event loop and a group-committed audit chain: 200 rps held with audit on; the semantic cache in the proxy, off by default, for marked questions only, hits on the ledger (v11) and in the chain (schema 4); the load test's cache layer; the central ledger, `ledger push` and the dashboard |
+| v0.36.0 | 2026-10-02 | The semantic cache replayed on 03's drift traffic (B2.5): `boundary cache replay`; 6 of 37 distinct semantic pairs false at 0.82, nearly all savings exact repeats |
 | v0.33.0 | 2026-10-01 | Bar charts of calls and spend by project and by model on the dashboard, above the tables |
 | v0.32.0 | 2026-10-01 | The demo and dashboard pages in the website's frame; a headline for every industry rather than one hospital |
 | v0.31.0 | 2026-10-01 | The project's website at gateway.peterparker.ca, every figure read from the README's tables, in the style of projects 01, 02, 08 and 12, served by the gateway's own host |
@@ -839,6 +840,23 @@ answers. A hit is a ledger row (`cached`, cost zero, ledger v11 `cache_similarit
 hits can be drawn from the ledger with their sources. In memory, not pgvector, until Postgres
 is deployed. Its cost on a miss is the load test's fourth layer. Still to do: the replay on
 real traffic and the labelling.
+
+**Amended 2026-10-02: replayed on real traffic (0.36.0)**, `boundary cache replay`, offline:
+all 66,000 calls of 03's twelve drift runs (US$81.04), in order, through one cache at 0.82,
+labelled by construction from 03's suite (same item, its paraphrase, or the same text).
+As marked, 94.6% of lookups hit and 94.7% of the spend would have been saved, but 93% of the
+hits are byte-identical repeats that a drift run makes on purpose, so that figure describes
+this workload and nothing else. The semantic hits saved US$3.05, and **6 of their 37 distinct
+pairs were false** (16.2%, 7.7 to 31.1): 0.82 does not carry from customer questions to
+mathematics, where tan 45 degrees meets tan 135 degrees at 0.917. With the document blocks
+looked up as well, every one of 28 document pairs was false, which confirms the marking
+rule on traffic it was not derived from. **The labelling changed shape:** the replay has 65
+distinct semantic pairs, each recurring, not 200 hits worth sampling, so every pair was
+checked against its label instead (docs/cache.md). Redacted against raw cannot be compared
+on this traffic, which holds no personal data; the gold-question measurement above stands
+for it. The proxy's threshold is unchanged: on this traffic only 0.97 keeps false pairs
+under 2%, at the cost of 22 of 31 good pairs, and choosing it here would be choosing on the
+set it is reported on.
 
 ### B2.6 Injection screening is advisory by default
 
@@ -1246,7 +1264,7 @@ the ledger and the spans as its production signal.
 - [x] Reversible redaction round-trips under property tests; rehydration fidelity and mutation rate reported. **Mutation rate done 2026-09-25 (0.14.0)**: `boundary redact mutation`, 480 calls over three models, two tasks and two arms, US$0.24, stored and re-scored from `bench/mutation.json`. Without the preserve line Llama 3.3 70B mutates 37.0% of placeholders and Haiku 6.8%, nearly all recoverably; with it 0.6% and 0.0%; Gemini 0.0% either way (docs/redact.md). It did not need the proxy after all, only a model; the proxy is where the line will be sent. **Property tests and fidelity done 2026-09-21 (0.6.4)**: the round trip is a property test over generated documents, and `boundary redact eval --rehydration` reports resolution per mutation form with intervals, 14 of 15 at 100% and 0 fabrications. The **mutation rate** is what remains, and it needs the proxy: which of those forms a model actually produces, sampled from real answers
 - [x] Redaction precision and recall per entity type on public corpora and the Canadian set, with CIs. **Done 2026-09-23 (0.8.0)**; detail on the annotated line below
 - [x] Quality effect of redaction measured through the 03 gate, two-sided, with interval. **Done 2026-09-27 (v0.20.0, US$3.33)**: no loss in 264 answerable pairs under any arm; 4 of 300 pooled under the proxy's redaction, -1.5 points (-3.8 to +0.2, Newcombe), all on unanswerable questions; the red team found full rehydration handing the caller values the model refused, and `caller_scoped` removing it offline (B2.8, docs/redact.md)
-- [ ] Semantic cache hit rate, dollars saved and false-hit rate on replayed traffic
+- [x] Semantic cache hit rate, dollars saved and false-hit rate on replayed traffic. **Done 2026-10-02 (0.36.0)**: 03's twelve drift runs replayed offline, 66,000 calls; as marked, 94.6% (94.1 to 95.0) of lookups hit and US$50.54 of US$53.38 saved, nearly all of it byte-identical repeats; the semantic hits saved US$3.05 and 6 of 37 distinct pairs were false, 16.2% (7.7 to 31.1), every pair checked against its label (B2.5, docs/cache.md)
 - [x] Injection screen detection and false-positive rates reported (unless dropped, and then said so). **Done 2026-09-27 (0.22.0)**: rules only, 43.3% (31.6 to 55.9) on deepset held-out against 80.8% on the train split it was written on, 200 of 200 of 03's injections, 0 of 150 over-refusal prompts flagged (docs/screen.md)
 - [x] Audit log chain verification tool included; daily anchors in the public repository; tamper test detects every injected corruption. **Daily anchors live 2026-09-29 (0.26.0)**: the hosted proxy's `GET /audit/head`, pulled daily by `.github/workflows/anchor.yml` into `anchors/gateway.jsonl`; the first anchor (seq 3) was committed by the Action the same day, and `audit verify --anchors` on the host checks the chain against it with 0 records unanchored. **Tool and tamper test done 2026-09-22 (0.7.0)**: `boundary audit verify`, and `boundary audit tamper-test` detecting 2,400 of 2,400 corruptions across twelve kinds before the last anchor with 0 false alarms, the six kinds a chain cannot see after it reported beside them (B2.4, amended). **Daily anchors in the public repository** are what remain, and they need the proxy's always-on log to anchor
 - [x] Per-team budgets and quotas enforced; 429 body names the limit. **Done 2026-09-25 (0.13.0)**: team monthly and per-run budgets, the gateway ceiling and the per-minute quota each refuse with zero upstream calls and a body naming the limit, its reset and a `Retry-After`. The in-memory quota and the unpriced-model gap are in B2.7

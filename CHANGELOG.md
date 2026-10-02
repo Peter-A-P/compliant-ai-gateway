@@ -5,6 +5,15 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.36.0 (2026-10-02)
+
+- **The semantic cache on real traffic.** `boundary cache replay` (`boundary.semcache_replay`)
+  replays every call of 03's drift runs from their raw stores through one cache, in order,
+  with the proxy's rules, labelled by construction from 03's suite, and writes
+  `bench/cache-replay.json` and the README's table. Offline: 66,000 calls, US$81.04 on
+  record. At 0.82, 93% of hits are exact repeats; the semantic hits saved US$3.05 and 6 of
+  their 37 distinct pairs were false (docs/cache.md). The proxy's threshold is unchanged.
+
 ## 0.35.2 (2026-10-02)
 
 - **Bedrock is priced.** `boundary/prices/2026-10-01.yaml` carries Claude Haiku 4.5 through

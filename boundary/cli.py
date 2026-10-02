@@ -924,6 +924,28 @@ def cmd_cache_eval(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_cache_replay(args: argparse.Namespace) -> int:
+    """The semantic cache replayed on 03's drift traffic (0.36). Offline: every answer and
+    cost is already on record."""
+    import dataclasses
+
+    from boundary import semcache_replay
+    from boundary.semcache import BgeSmall
+
+    results = semcache_replay.run(args.drift, BgeSmall())
+    print(results.table())
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    args.out.write_text(
+        json.dumps(dataclasses.asdict(results), indent=1, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    if args.write_readme:
+        readme = args.config.resolve().parent.parent / "README.md"
+        semcache_replay.write_readme(readme, results)
+        print(f"README rows written to {readme}")
+    return 0
+
+
 def loadtest_layers() -> tuple[str, ...]:
     """The load test's layers, from the harness itself, so the default can never miss one
     (0.27: the first run with a cache layer skipped it, because this default was a copy)."""
@@ -1705,6 +1727,14 @@ def main(argv: list[str] | None = None) -> int:
     ce.add_argument("--out", type=Path, default=Path("bench/cache.json"))
     ce.add_argument("--write-readme", dest="write_readme", action="store_true")
     ce.set_defaults(func=cmd_cache_eval)
+    cr = cache_p.add_parser(
+        "replay",
+        help="replay 03's drift traffic through the cache, labelled by construction; offline",
+    )
+    cr.add_argument("--drift", type=Path, default=Path("../03-ai-release-gate/drift"))
+    cr.add_argument("--out", type=Path, default=Path("bench/cache-replay.json"))
+    cr.add_argument("--write-readme", dest="write_readme", action="store_true")
+    cr.set_defaults(func=cmd_cache_replay)
 
     serve = sub.add_parser("serve", help="run the OpenAI-compatible proxy (server extra)")
     serve.add_argument("--teams", help="the teams file (default: teams.yaml beside the config)")

@@ -451,7 +451,40 @@ the hit rate, as project 07 predicted, and the false-hit rate with it**: a custo
 replaced by placeholders make every customer's preamble identical, and half the hits were
 the wrong question. So the proxy's cache, when it is wired in, embeds bare questions only and
 never a redacted payload, which the data policy's `cache: false` for `personal` already
-says. Dollars saved need real traffic, which is Part B's replay.
+says. Dollars saved need real traffic, which is the replay below.
+
+**The semantic cache on real traffic** (`v0.36.0`, PLAN.md B2.5): every call of 03's twelve
+drift runs, 2026-09-12 to 2026-10-01, replayed in order through one cache at the proxy's
+threshold
+
+| Requests looked up | Threshold | Hits, of lookups | Exact hits | Semantic hits | False, of semantic hits | False, of distinct semantic pairs | Saved, of what the calls cost | Saved by semantic hits alone |
+|---|---|---|---|---|---|---|---|---|
+<!-- cache-replay:start -->
+| as marked | 0.82 | 55,802 of 59,000, 94.6% (94.1% to 95.0%) | 51,885 | 3,917 | 640 of 3,917, 16.3% (4.6% to 32.1%) | 6 of 37, 16.2% (7.7% to 31.1%) | US$50.54 of US$53.38, 94.7% (94.2% to 95.0%) | US$3.05 |
+| every block marked | 0.82 | 60,578 of 63,920, 94.8% (94.3% to 95.1%) | 54,385 | 6,193 | 2,916 of 6,193, 47.1% (31.0% to 62.8%) | 34 of 65, 52.3% (40.4% to 64.0%) | US$63.63 of US$81.04, 78.5% (70.3% to 86.8%) | US$13.29 |
+<!-- cache-replay:end -->
+
+Filled by `boundary cache replay --write-readme`, offline: every answer and cost was already
+in 03's raw stores and records. A hit is labelled by construction: correct when the stored
+question is the same suite item, a paraphrase of it, or the same text. "As marked" looks up
+only what a caller would mark a bare question, decided before the replay ran; "every block
+marked" also looks up the two blocks whose message carries a document. Hit rates and
+savings carry 95% intervals from resampling question families, because each question is
+asked hundreds of times; the distinct pairs carry Wilson intervals.
+
+**Nearly all of the saving is repeats, and the semantic part is where the risk is.** 03 asks
+each of its 400 distinct questions five times a run, in twelve runs, so 51,885 of the 55,802 hits are
+byte-identical repeats an exact cache would also have answered; the drift record exists to
+measure those repeats, which is why pass-through never caches. The hits only a semantic
+cache makes saved US$3.05, and 6 of their 37 distinct pairs were a different question
+answered with another's answer, at the threshold that had none in 49 on 03's gold
+questions: "Compute tan 45 degrees" answered as "Compute tan 135 degrees" at a cosine of
+0.92, and two different group-theory statements at 0.967. The 31 right ones were the suite's
+own paraphrases. So 0.82 does not carry from customer questions to mathematics, where one
+symbol changes the answer; no threshold below 0.97 kept false pairs under 2% here, and 0.97
+kept 9 of the 31 good ones. Marking still matters most: with the two document blocks looked
+up too, 52% of distinct semantic pairs were false, every one of the 28 document pairs among
+them, as the gold-question measurement predicted. Detail in [docs/cache.md](docs/cache.md).
 
 | Audit tamper detection with daily anchors |
 |---|
