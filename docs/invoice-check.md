@@ -68,14 +68,67 @@ zero-cost rows from the TLS-proxy attempt, which stay on the record, and three l
 
 ### Against the vendor consoles
 
+The table above is the 2026-09-14 snapshot. September closed on 2026-09-30, and the check
+against the consoles is in "September, closed" below.
+
+## September, closed
+
+**Snapshot taken 2026-10-02.** Sources: every ledger file on this laptop (03's 100 committed
+ledgers, 02's own-run ledger, 06's, and this repository's two), merged into one file kept
+outside git, 166,313 rows in all; and the hosted proxy's own rows, read from its Postgres.
+
+### Anthropic
+
+The console exports usage per day, model, key and kind (standard or batch) as tokens, and cost
+per line rounded to the cent. Two keys carry the portfolio's calls: `POC`, which every project
+uses through this library, and `vps`, the hosted proxy's. A third, `General-Key`, US$3.23 in
+September, is not this library's and is outside the check.
+
+| Route | US$ |
+|---|---:|
+| Console, `POC` and `vps` keys, sum of the daily lines | 87.02 |
+| Console tokens priced at this library's rates | 87.0440 |
+| Merged ledger | 87.7982 |
+| **Ledger against console** | **+0.78, +0.9%** |
+
+Inside the 5% line. **The rates are right**: the console's own token counts, priced from the
+price files, give the console's bill to the cent. **And every token is accounted for**: the
+ledger and the console agree exactly on 28 of 41 day, model and kind cells, and the other 13
+are each one of three things.
+
+| What | Cells | Effect on the ledger |
+|---|---:|---:|
+| Batches 02 submitted and never collected: 250 Haiku requests on 2026-09-14, and 100 of an Opus batch on 2026-09-18. Their rows are still in flight and carry the cap's pessimistic estimate, US$2.0511, where Anthropic billed US$0.2225 | 2 | +1.8286 |
+| Calls the ledger never held: the gate's checks in `regulated-qa-demo`'s CI on 2026-09-27 and 09-28, 625,033 Haiku input and 89,576 output tokens. Their ledger was uploaded as an artifact **without its `-wal` file, so the copy holds 0 rows** while the run's answers file holds every answer: the WAL trap below, a second time | 2 | -1.0729 |
+| Smoke calls from GitHub Actions, whose ledgers are not kept, and one call either side of midnight UTC | 9 | -0.0016 |
+
+87.7982 - 1.8286 + 1.0729 + 0.0016 = 87.0441, against the console's 87.0440.
+
+Two things follow, both in other repositories:
+
+- **02 collects its two batches** with `batch_results`, while Anthropic still holds their
+  results (29 days, so before 2026-10-13 for the first). The rows then complete from returned
+  usage and the estimate leaves the ledger. Until then they are what the design says they are:
+  in flight, counted against caps at the pessimistic estimate.
+- **The gate's CI keeps its ledger whole**: checkpoint it (`PRAGMA wal_checkpoint(TRUNCATE)`)
+  or upload the `-wal` and `-shm` files with it. Without that, every gate check spends money
+  the record does not hold.
+
+One more thing the export showed: 129 rows on 2026-09-15 are development-cache hits that
+carry the token counts of the call they repeat, at zero cost. That is the cache's design, and
+it is why the comparison above is of answered, uncached rows. A token total from `ledger
+report` would count them twice.
+
+### The other vendors
+
 | Vendor | Ledger US$ | Console US$ | Difference |
 |---|---:|---:|---:|
-| Anthropic | 32.3254 | pending | pending |
-| Google | 14.6984 | pending | pending |
-| OpenAI | 10.0011 | pending | pending |
-| Together | 4.3302 | pending | pending |
-
-To be filled between Oct 1 and Oct 3, against a re-taken snapshot once September has closed.
+| Anthropic | 87.7982 | 87.02 | +0.78, +0.9% |
+| OpenAI | pending | pending | pending |
+| Google | pending | pending | pending |
+| Together | pending | pending | pending |
+| Bedrock | uncosted | pending | pending |
+| Foundry | uncosted | pending | pending |
 
 ### Against 03's own accounting
 
