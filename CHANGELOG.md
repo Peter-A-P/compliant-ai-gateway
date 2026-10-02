@@ -5,6 +5,19 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.35.0 (2026-10-02)
+
+- **GPT-5.6 cache writes are costed at their own rate.** OpenAI bills a token written to the
+  prompt cache at 1.25x input from GPT-5.6, and reports the writes as
+  `prompt_tokens_details.cache_write_tokens` inside `prompt_tokens`. The OpenAI-compatible
+  adapter read only `cached_tokens`, so writes were priced as ordinary input: September's
+  invoice check found US$7.60 of them (docs/invoice-check.md). The adapter now separates them,
+  and `boundary/prices/2026-10-01.yaml` carries the write rates for luna, terra and sol. A
+  write on a model with no write rate makes the row uncosted. **Behaviour change for
+  importers**: on GPT-5.6, `Usage.input_tokens` no longer includes cache writes, which are in
+  `Usage.cache_write_tokens`; a project's cost for such calls rises to what OpenAI bills.
+- docs/invoice-check.md: September against Anthropic's and OpenAI's consoles.
+
 ## 0.34.2 (2026-10-02)
 
 - The dashboard's "By day, the last 30 days" table lists the newest day first.

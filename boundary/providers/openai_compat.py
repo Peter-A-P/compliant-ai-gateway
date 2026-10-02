@@ -7,13 +7,17 @@ Request shape (POST {base_url}/chat/completions):
 Response shape:
     {"id", "model", "choices": [{"message": {"role", "content"}, "finish_reason"}],
      "usage": {"prompt_tokens", "completion_tokens",
-     "prompt_tokens_details": {"cached_tokens"}?}}
+     "prompt_tokens_details": {"cached_tokens"?, "cache_write_tokens"?}?}}
 Error shape:
     {"error": {"message", "type", "code"}}
 
-Usage note: OpenAI's prompt_tokens includes cached tokens. The adapter reports
-input_tokens = prompt_tokens - cached_tokens and cache_read_tokens = cached_tokens, so the
-cost arithmetic is the same for every provider.
+Usage note: OpenAI's prompt_tokens includes cached tokens and, from GPT-5.6, the tokens
+written to the cache, which are billed at 1.25x input. Each input token is one of the
+three. The adapter reports input_tokens = prompt_tokens - cached_tokens -
+cache_write_tokens, cache_read_tokens = cached_tokens and cache_write_tokens as returned,
+so the cost arithmetic is the same for every provider. Until 0.35.0 the writes were read
+as ordinary input, and September's GPT-5.6 rows are under-costed by the premium
+(docs/invoice-check.md).
 """
 
 from __future__ import annotations
@@ -167,12 +171,15 @@ class OpenAICompatAdapter:
             return Usage()
         prompt = int(u.get("prompt_tokens") or 0)
         details = u.get("prompt_tokens_details")
-        cached = int(details.get("cached_tokens") or 0) if isinstance(details, dict) else 0
+        if not isinstance(details, dict):
+            details = {}
+        cached = int(details.get("cached_tokens") or 0)
+        written = int(details.get("cache_write_tokens") or 0)
         return Usage(
-            input_tokens=max(prompt - cached, 0),
+            input_tokens=max(prompt - cached - written, 0),
             output_tokens=int(u.get("completion_tokens") or 0),
             cache_read_tokens=cached,
-            cache_write_tokens=0,
+            cache_write_tokens=written,
         )
 
     def parse_error(
@@ -293,10 +300,15 @@ class OpenAIStreamParser:
             "assembled_from_stream_events": self._events,
         }
         if self.usage_seen:
+            u = self._usage
+            # The vendor's shape, so parse_usage reads this back to the same Usage.
             raw["usage"] = {
-                "prompt_tokens": self._usage.input_tokens + self._usage.cache_read_tokens,
-                "completion_tokens": self._usage.output_tokens,
-                "prompt_tokens_details": {"cached_tokens": self._usage.cache_read_tokens},
+                "prompt_tokens": u.input_tokens + u.cache_read_tokens + u.cache_write_tokens,
+                "completion_tokens": u.output_tokens,
+                "prompt_tokens_details": {
+                    "cached_tokens": u.cache_read_tokens,
+                    "cache_write_tokens": u.cache_write_tokens,
+                },
             }
         return ParsedResponse(
             text=text if self._text else None,

@@ -220,7 +220,10 @@ def usage_body(usage: Usage) -> dict[str, Any]:
         "prompt_tokens": prompt,
         "completion_tokens": usage.output_tokens,
         "total_tokens": prompt + usage.output_tokens,
-        "prompt_tokens_details": {"cached_tokens": usage.cache_read_tokens},
+        "prompt_tokens_details": {
+            "cached_tokens": usage.cache_read_tokens,
+            "cache_write_tokens": usage.cache_write_tokens,
+        },
     }
 
 

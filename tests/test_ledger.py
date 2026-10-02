@@ -398,3 +398,20 @@ def test_a_v10_ledger_gains_the_cache_columns_empty(tmp_path: Path) -> None:
         assert old["cache_similarity"] is None and old["cache_source"] is None
     finally:
         store.close()
+
+
+def test_gpt_5_6_cache_writes_cost_their_own_rate() -> None:
+    """OpenAI's September invoice: a GPT-5.6 cache write is 1.25x input, and the ledger had
+    priced it as input. The rate is in the 2026-10-01 list, and without it a write is
+    uncosted rather than guessed."""
+    from boundary.config import PriceEntry, latest_price_list
+    from boundary.ledger.prices import cost_usd
+    from boundary.types import Usage
+
+    prices = latest_price_list(Path(__file__).resolve().parents[1] / "boundary" / "prices")
+    entry = prices.lookup("openai", "gpt-5.6-sol")
+    assert entry is not None and entry.cache_write == 5.00
+    u = Usage(input_tokens=100, output_tokens=50, cache_read_tokens=200, cache_write_tokens=2700)
+    assert cost_usd(u, entry) == pytest.approx((100 * 4 + 200 * 0.4 + 2700 * 5 + 50 * 20) / 1e6)
+    no_write = PriceEntry(input=4.0, output=20.0, cache_read=0.4)
+    assert cost_usd(u, no_write) is None

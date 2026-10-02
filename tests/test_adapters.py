@@ -165,6 +165,26 @@ def test_openai_golden_response_and_cached_tokens() -> None:
     assert parsed.usage.output_tokens == 3
 
 
+def test_openai_cache_writes_are_their_own_tokens() -> None:
+    """GPT-5.6 bills a cache write at 1.25x input, and reports the writes inside
+    prompt_tokens alongside the reads. Read as ordinary input, they priced 06's September
+    runs US$7.60 under OpenAI's invoice (docs/invoice-check.md)."""
+    body = json.dumps(
+        {
+            "model": "gpt-5.6-sol",
+            "choices": [{"message": {"content": "ok"}, "finish_reason": "stop"}],
+            "usage": {
+                "prompt_tokens": 3000,
+                "completion_tokens": 50,
+                "prompt_tokens_details": {"cached_tokens": 200, "cache_write_tokens": 2700},
+            },
+        }
+    ).encode()
+    u = OpenAICompatAdapter().parse_response(200, {}, body).usage
+    assert (u.input_tokens, u.cache_read_tokens, u.cache_write_tokens) == (100, 200, 2700)
+    assert u.total_tokens == 3050
+
+
 def test_openai_content_parts_and_null_content() -> None:
     parts = {"choices": [{"message": {"content": [{"type": "text", "text": "P"}]}}], "model": "m"}
     assert OpenAICompatAdapter().parse_response(200, {}, json.dumps(parts).encode()).text == "P"

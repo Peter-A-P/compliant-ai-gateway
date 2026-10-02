@@ -12,6 +12,20 @@
 # costed rather than uncosted. Two of them break the 0.1x cache-read rule the others follow:
 # Opus 5.5 reads its cache at 0.05x input and Fable 5.1 at 0.025x, as the page's footnotes say.
 #
+# Added 2026-10-02, to this file rather than a new one because nothing costed against it
+# changes (docs/prices.md): `cache_write` for gpt-5.6-luna, terra and sol, 0.25, 2.50 and
+# 5.00, from https://developers.openai.com/api/docs/pricing read 2026-10-02 ("Short context
+# cache writes"), which is 1.25x input as https://developers.openai.com/api/docs/guides/prompt-caching
+# says for GPT-5.6 and later. September's invoice check found it: OpenAI billed US$7.60 of
+# cache writes that the ledger had priced as ordinary input, because the adapter did not read
+# `cache_write_tokens` until 0.35.0 and these rates were not here. Earlier OpenAI models charge
+# nothing extra for a write.
+#
+# NOT EXPRESSIBLE HERE: the GPT-5.6 long-context tier. Above 272K input tokens a call is
+# billed at double input, cache and write rates and 1.5x output. A rate here is one number a
+# model, so such a call would be priced at the short-context rate. No call in this portfolio
+# comes near 272K; a project that sends one needs a rate field for it first, not a guess.
+#
 # Known in advance, 2026-10-01: Google's page says gemini-3.6-flash, 3.7-flash and 3.8-flash
 # cost 0.75/3.75 (cache 0.075) through 2026-12-31 and 1.50/7.50 (cache 0.15) from 2027-01-01.
 # A price file holds one rate per model, so January's needs a file dated 2027-01-01 with the
@@ -162,16 +176,19 @@ per_million_tokens:
       input: 0.20
       output: 1.20
       cache_read: 0.02
+      cache_write: 0.25
       batch_multiplier: 0.5
     gpt-5.6-terra:
       input: 2.00
       output: 12.00
       cache_read: 0.20
+      cache_write: 2.50
       batch_multiplier: 0.5
     gpt-5.6-sol:
       input: 4.00
       output: 20.00
       cache_read: 0.40
+      cache_write: 5.00
       batch_multiplier: 0.5
     gpt-4o-mini:
       input: 0.15

@@ -119,12 +119,46 @@ carry the token counts of the call they repeat, at zero cost. That is the cache'
 it is why the comparison above is of answered, uncached rows. A token total from `ledger
 report` would count them twice.
 
+### OpenAI
+
+The console exports cost per day, and usage per day and model with input split into uncached,
+cached and cache-write tokens. One project and one key carry every call.
+
+| Route | US$ |
+|---|---:|
+| Console, cost export | 69.1211 |
+| Merged ledger | 57.0241 |
+| **Ledger against console** | **-12.10, -17.5%** |
+
+**Above the 5% line, so investigated, and it found a defect in this library.** Two causes
+carry all but two cents of it.
+
+| What | Effect on the ledger |
+|---|---:|
+| **GPT-5.6 cache writes priced as ordinary input.** From GPT-5.6, OpenAI bills a token written to the prompt cache at 1.25x input (US$5.00 a million for sol against 4.00, 0.25 for luna against 0.20). The usage reports them as `cache_write_tokens` inside `prompt_tokens`, and the adapter read only `cached_tokens`, so 7,045,179 sol and 11,044,654 luna writes were costed at the input rate. Nearly all of it is 06's runs of 2026-09-20 and 21, whose prompts were written to the cache almost whole | -7.5974 |
+| **4,332 gpt-5.6-luna calls on 2026-09-30 that no ledger on this laptop holds**, 12.5 million input tokens. Their shape matches 06's runs of 09-20 and 21, and 06's ledger here ends on 09-21; where they ran is asked of Peter | -4.4816 |
+| One gpt-5.6-sol call on 2026-09-15 that the console counts and the ledger does not | -0.0149 |
+| Five gpt-5.4-mini rows of 2026-09-27 written uncosted, before that dated id had a rate (the price file of that day says so) | -0.0030 |
+| Twelve gpt-5-nano smoke calls from GitHub Actions, whose ledgers are not kept | -0.0001 |
+
+57.0241 + 7.5974 + 4.4816 + 0.0149 + 0.0030 + 0.0001 = 69.1211, the console's figure. Every
+other day and model agrees with the console to the token, once the ledger's input is read as
+it is recorded: uncached only, with cache reads in their own column.
+
+**Fixed in 0.35.0**: the adapter separates `cache_write_tokens`, and the 2026-10-01 price list
+carries GPT-5.6's write rates. A write with no rate makes the row uncosted, never an estimate.
+**The September rows stay as written.** They do not hold the write count, so there is nothing
+to recompute them from, and changing a costed row is what this ledger does not do. They are
+under-costed by the figure above, and this section is where that is said. A project gets the
+fix by moving its `boundary` pin to 0.35.0 or later; 02 and 06, the two that call GPT-5.6, are
+told so.
+
 ### The other vendors
 
 | Vendor | Ledger US$ | Console US$ | Difference |
 |---|---:|---:|---:|
 | Anthropic | 87.7982 | 87.02 | +0.78, +0.9% |
-| OpenAI | pending | pending | pending |
+| OpenAI | 57.0241 | 69.1211 | -12.10, -17.5%, explained above |
 | Google | pending | pending | pending |
 | Together | pending | pending | pending |
 | Bedrock | uncosted | pending | pending |
