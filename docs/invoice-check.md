@@ -153,14 +153,34 @@ under-costed by the figure above, and this section is where that is said. A proj
 fix by moving its `boundary` pin to 0.35.0 or later; 02 and 06, the two that call GPT-5.6, are
 told so.
 
+### Together (openweights)
+
+The cost export lists each day's tokens per model and kind, in millions to six places, with
+the unit price. One project carries every call.
+
+| Route | US$ |
+|---|---:|
+| Console, quantity times unit price | 7.8925 |
+| Merged ledger | 7.8910 |
+| **Ledger against console** | **-0.0015, -0.02%** |
+
+Fifteen of 22 day and model cells agree to the token. Of the 0.0015: **US$0.0011 is the nine
+gpt-oss-120b rows of 2026-09-12 written uncosted** (above), which is the whole of that model's
+bill that day. The bound this document set for them on 2026-09-14, about US$0.0025 from the
+same model's costed rows, was high by a little over half, which is what a bound should be. The
+rest is smoke calls from GitHub Actions (44 or 88 tokens each), one Llama call either side of
+midnight UTC on 09-16 and 09-17, and a 921-token difference in gpt-oss-120b on 09-15, where the
+ledger's cost is US$0.0003 higher than the console's: the console splits that day's tokens
+between input and output differently from the rows, by a few calls. Nothing here needs fixing.
+
 ### The other vendors
 
 | Vendor | Ledger US$ | Console US$ | Difference |
 |---|---:|---:|---:|
 | Anthropic | 87.7982 | 87.02 | +0.78, +0.9% |
 | OpenAI | 57.0241 | 69.1211 | -12.10, -17.5%, explained above |
+| Together | 7.8910 | 7.8925 | -0.0015, -0.02% |
 | Google | pending | pending | pending |
-| Together | pending | pending | pending |
 | Bedrock | uncosted | pending | pending |
 | Foundry | uncosted | pending | pending |
 
