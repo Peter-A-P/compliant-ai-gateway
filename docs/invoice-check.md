@@ -261,9 +261,42 @@ calls Haiku 4.5 for answers and Gemini 3.8 Flash as judge (03, 2026-10-02). **09
 the record**: three gate checks cancelled a minute or two in, 178 Gemini judge calls for
 US$0.167, whose rows were only in each artifact's `-wal` file, which 03's harvest did not
 unpack. 03 fixed the harvest and committed the three ledgers the same day; the WAL trap, a
-third time. 09-22 is open: Google's 09-23 already matches 03's committed calibration run of
-that morning, so 09-22's US$1.55 is a second one, and the gold runs inside that Pacific day,
-two of which failed, are being checked.
+third time. **09-22 is 03's too**: Google's 09-23 matches 03's
+committed calibration run of that morning, so 09-22's US$1.55 had to be a second one, and it
+was. Gold run 35808982881 judged 1,440 items with the Gemini judge from 02:18 to 02:49 UTC on
+09-23, which is still 09-22 in Pacific time, then lost its push to another gold run racing on
+the same binary ledger, before the workflow kept artifacts. The run redone at 08:26 is the
+committed one. A second failed run made six probe calls, about US$0.01. Neither can be
+recovered as rows. 03 had already fixed the race (queued runs, artifacts before commit).
+
+### September, in one table
+
+| Vendor | Ledger US$ | Billed US$ | Ledger against bill | Explained by |
+|---|---:|---:|---:|---|
+| Anthropic | 85.9807 | 87.0440 | -1.2% | Gate checks with no ledger (1.07), smoke calls |
+| OpenAI | 57.0241 | 69.1211 | -17.5% | GPT-5.6 cache writes priced as input (7.60, fixed in 0.35.0); 06's run on the other laptop (4.48, on its ledger there) |
+| Google | 29.8211 | 32.1489 | -7.2% | Gate checks with no ledger (0.80); a gold run whose ledger was lost (1.56) |
+| Together | 7.8910 | 7.8925 | -0.02% | Nine rows written before their rate existed |
+| Azure | uncosted | 0.0004 | the one row matches to the token | Rate now known (0.35.1) |
+| Bedrock | uncosted | 0.00 | agrees at the bill's resolution | Rate now known (0.35.2) |
+| **Total** | **180.7169** | **196.2069** | **-7.9%** | |
+
+Every cent of the difference is accounted for, and it is three kinds of thing. **Rates the
+library had wrong**: one, the GPT-5.6 cache write, found here and fixed. **Calls that ran
+where no ledger was kept**: the gate's CI before it kept artifacts, a CI run that lost its
+push, and GitHub Actions smoke calls; each is fixed except the smoke calls, whose cost is a
+fraction of a cent a month. **A ledger this merge did not have**: 06's, on the other laptop.
+Nothing the vendors billed is unexplained, and the library's pricing, everywhere it had the
+rates, reproduced the bills to the cent.
+
+**Known spend with no ledger rows**, kept here so October's check does not rediscover it:
+
+| When (UTC) | What | Vendor | US$ |
+|---|---|---|---:|
+| 2026-09-23 01:59 to 02:49 | 03 gold runs 35808550301 and 35808982881, lost their push | Google | 1.56 |
+| 2026-09-27 and 09-28 | 03's gate checks in `regulated-qa-demo` CI, before artifacts | Anthropic and Google | 1.87 |
+| September | GitHub Actions smoke calls | All | about 0.002 |
+| 2026-09-18 | A Foundry test call | Azure | 0.00002 |
 
 ### The other vendors
 
@@ -273,7 +306,7 @@ two of which failed, are being checked.
 | OpenAI | 57.0241 | 69.1211 | -12.10, -17.5%, explained above |
 | Together | 7.8910 | 7.8925 | -0.0015, -0.02% |
 | Foundry (Azure) | 0.0000, one row uncosted | 0.0003604 | the one row matches to the token; rate now known |
-| Google | 29.6541 | 32.1489 (CA$44.5649) | -2.49, -7.8%, four days of calls no ledger here holds |
+| Google | 29.8211 | 32.1489 (CA$44.5649) | -2.33, -7.2%, explained above |
 | Bedrock | one row, uncosted (US$0.0005 at the rate now known) | 0.00 | agrees at the bill's resolution |
 
 ### Against 03's own accounting
