@@ -174,6 +174,29 @@ midnight UTC on 09-16 and 09-17, and a 921-token difference in gpt-oss-120b on 0
 ledger's cost is US$0.0003 higher than the console's: the console splits that day's tokens
 between input and output differently from the rows, by a few calls. Nothing here needs fixing.
 
+### Azure (Foundry)
+
+The Azure cost export lists every meter on the billing account for September, most of it
+other projects' storage and functions at zero. Four lines are this library's: input and
+output tokens of the `gpt-5.6-luna` deployment on the Canadian Foundry resource, on two days.
+No Claude line appears, which is right: Claude on Foundry was refused by quota and never ran.
+
+| Day | Tokens in / out, invoice | Tokens in / out, ledger | US$, invoice |
+|---|---:|---:|---:|
+| 2026-09-18 | 39 / 12 | none | 0.0000222 |
+| 2026-09-25 | 113 / 263 | 113 / 263, uncosted | 0.0003382 |
+| **Total** | | | **0.0003604** |
+
+The 2026-09-25 call matches to the token. The 2026-09-18 call is in no ledger here. Its
+size, 39 tokens in and 12 out, is that of a test call, and where it was made is not recorded.
+
+**Two things the invoice settles.** First, the rate: the meters price luna at US$0.20 input and
+1.20 output a million, OpenAI's own, so `foundry-canada` gets a price entry (2026-10-01 list,
+0.35.1) and its next call is costed. The 09-25 row stays uncosted, as written. Second, the
+residency: the meter is named "Std Gl", Global Standard, which is exactly the `residency:
+global` the route declares beside `region: canadacentral`. The invoice is the first evidence
+from outside the configuration that the declaration was the true one.
+
 ### The other vendors
 
 | Vendor | Ledger US$ | Console US$ | Difference |
@@ -181,9 +204,9 @@ between input and output differently from the rows, by a few calls. Nothing here
 | Anthropic | 87.7982 | 87.02 | +0.78, +0.9% |
 | OpenAI | 57.0241 | 69.1211 | -12.10, -17.5%, explained above |
 | Together | 7.8910 | 7.8925 | -0.0015, -0.02% |
+| Foundry (Azure) | 0.0000, one row uncosted | 0.0003604 | the one row matches to the token; rate now known |
 | Google | pending | pending | pending |
 | Bedrock | uncosted | pending | pending |
-| Foundry | uncosted | pending | pending |
 
 ### Against 03's own accounting
 

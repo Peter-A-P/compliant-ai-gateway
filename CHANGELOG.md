@@ -5,6 +5,13 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.35.1 (2026-10-02)
+
+- `boundary/prices/2026-10-01.yaml` prices the Canadian Foundry GPT deployment
+  (`foundry-canada` gpt-5.6-luna, 0.20 and 1.20), read from September's Azure invoice, whose
+  meter also confirms the route's declared `residency: global`. docs/invoice-check.md gains
+  Together and Azure.
+
 ## 0.35.0 (2026-10-02)
 
 - **GPT-5.6 cache writes are costed at their own rate.** OpenAI bills a token written to the

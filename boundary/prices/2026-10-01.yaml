@@ -26,6 +26,13 @@
 # model, so such a call would be priced at the short-context rate. No call in this portfolio
 # comes near 272K; a project that sends one needs a rate field for it first, not a guess.
 #
+# Added 2026-10-02: `foundry-canada` gpt-5.6-luna, the GPT deployment on the Canadian Foundry
+# resource, at 0.20 input and 1.20 output. Source: the Azure cost export for September 2026,
+# whose meters "5.6 luna ShortCo Inp Std Gl" and "5.6 luna ShortCo Opt Std Gl" show unit
+# prices of USD 0.2 and 1.2 per 1M tokens. They are OpenAI's own rates for the model. No cache
+# rates: the export shows no cache meter, so a call that reads or writes the cache stays
+# uncosted until one appears on an invoice.
+#
 # Known in advance, 2026-10-01: Google's page says gemini-3.6-flash, 3.7-flash and 3.8-flash
 # cost 0.75/3.75 (cache 0.075) through 2026-12-31 and 1.50/7.50 (cache 0.15) from 2027-01-01.
 # A price file holds one rate per model, so January's needs a file dated 2027-01-01 with the
@@ -309,3 +316,12 @@ per_million_tokens:
       output: 5.00
       cache_read: 0.10
       cache_write: 1.25
+
+  # The Canadian Foundry resource's GPT deployment (config/boundary.yaml `foundry-canada`),
+  # added 2026-10-02 from September's Azure invoice; see the note at the top of this file.
+  # "Std Gl" is the Global Standard deployment type, which is the `residency: global` the
+  # route declares: sent to Canada, processed wherever Azure chooses.
+  foundry-canada:
+    gpt-5.6-luna:
+      input: 0.20
+      output: 1.20
