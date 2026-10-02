@@ -267,7 +267,8 @@ was. Gold run 35808982881 judged 1,440 items with the Gemini judge from 02:18 to
 09-23, which is still 09-22 in Pacific time, then lost its push to another gold run racing on
 the same binary ledger, before the workflow kept artifacts. The run redone at 08:26 is the
 committed one. A second failed run made six probe calls, about US$0.01. Neither can be
-recovered as rows. 03 had already fixed the race (queued runs, artifacts before commit).
+recovered as rows. 03 had already fixed the race (queued runs, artifacts before commit). 06, the other machine's project,
+made no Gemini calls in September (06, 2026-10-02), so Google's side has no other source.
 
 ### September, in one table
 
