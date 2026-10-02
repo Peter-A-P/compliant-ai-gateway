@@ -5,6 +5,14 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.35.2 (2026-10-02)
+
+- **Bedrock is priced.** `boundary/prices/2026-10-01.yaml` carries Claude Haiku 4.5 through
+  the `us.` and `global.` inference profiles from ca-central-1, read from AWS's public Price
+  List API (the web page does not show them): 1.10 and 5.50 Geo, 1.00 and 5.00 Global, with
+  cache and batch rates. Keyed by profile, because the bare id the response returns is the
+  same for both. docs/invoice-check.md gains Bedrock.
+
 ## 0.35.1 (2026-10-02)
 
 - `boundary/prices/2026-10-01.yaml` prices the Canadian Foundry GPT deployment

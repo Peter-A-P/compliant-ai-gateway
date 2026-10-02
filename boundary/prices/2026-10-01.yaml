@@ -33,6 +33,19 @@
 # rates: the export shows no cache meter, so a call that reads or writes the cache stays
 # uncosted until one appears on an invoice.
 #
+# Added 2026-10-02: `bedrock`, Claude Haiku 4.5 through the two cross-region inference
+# profiles, from AWS's public Price List API, offer AmazonBedrockFoundationModels,
+# ca-central-1, publication 2026-09-30T00:19:12Z
+# (https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonBedrockFoundationModels/current/ca-central-1/index.json),
+# product "Claude Haiku 4.5 (Amazon Bedrock Edition)", sold through AWS Marketplace. AWS's
+# web pricing page does not show these, which is why Bedrock stayed uncosted until now; the
+# Price List API is the same source the bill is computed from. "Regional" usage types are the
+# us. (Geo) profile, which carries the 10% premium Anthropic's page describes for regional
+# and multi-region endpoints; "Global" is global.. Keys are the PROFILE ids, never the bare
+# model id the response returns, because the bare id is the same for both and the price is
+# not: the ledger prices by the returned id first, finds none, and falls back to the
+# requested profile, which is the one that says which rate applies.
+#
 # Known in advance, 2026-10-01: Google's page says gemini-3.6-flash, 3.7-flash and 3.8-flash
 # cost 0.75/3.75 (cache 0.075) through 2026-12-31 and 1.50/7.50 (cache 0.15) from 2027-01-01.
 # A price file holds one rate per model, so January's needs a file dated 2027-01-01 with the
@@ -325,3 +338,20 @@ per_million_tokens:
     gpt-5.6-luna:
       input: 0.20
       output: 1.20
+
+  # Claude on Amazon Bedrock from ca-central-1, added 2026-10-02 from AWS's Price List API;
+  # see the note at the top of this file. September's bill shows the Marketplace line at
+  # USD 0.00, which is what one Haiku call of 117 tokens in and 69 out rounds to.
+  bedrock:
+    us.anthropic.claude-haiku-4-5-20251001-v1:0:
+      input: 1.10
+      output: 5.50
+      cache_read: 0.11
+      cache_write: 1.375
+      batch_multiplier: 0.5
+    global.anthropic.claude-haiku-4-5-20251001-v1:0:
+      input: 1.00
+      output: 5.00
+      cache_read: 0.10
+      cache_write: 1.25
+      batch_multiplier: 0.5

@@ -349,9 +349,10 @@ def test_the_ledger_row_records_the_region_and_the_declared_residency(gw: Gatewa
     # How far it was allowed to travel, which only the configuration knows.
     assert row["residency"] == "geo"
     assert row["model_requested"] == f"bedrock/{GEO_MODEL}"
-    # And the row is uncosted, because AWS's rates are not in the price files.
-    assert row["costed"] == 0
-    assert row["cost_usd"] is None
+    # And the row is costed at the Geo profile's rate (0.35.2, from AWS's Price List API):
+    # 13 tokens in at 1.10 and 4 out at 5.50 a million. Until 0.35.2 it was uncosted.
+    assert row["costed"] == 1
+    assert row["cost_usd"] == pytest.approx((13 * 1.10 + 4 * 5.50) / 1e6)
     assert row["error_type"] is None and row["http_status"] == 200
 
 

@@ -415,3 +415,17 @@ def test_gpt_5_6_cache_writes_cost_their_own_rate() -> None:
     assert cost_usd(u, entry) == pytest.approx((100 * 4 + 200 * 0.4 + 2700 * 5 + 50 * 20) / 1e6)
     no_write = PriceEntry(input=4.0, output=20.0, cache_read=0.4)
     assert cost_usd(u, no_write) is None
+
+
+def test_bedrock_is_priced_by_profile_never_by_the_bare_id() -> None:
+    """The us. (Geo) and global. profiles return the same bare model id and cost different
+    amounts, so only the profile, which the request names, may carry a price."""
+    from boundary.config import latest_price_list
+
+    prices = latest_price_list(Path(__file__).resolve().parents[1] / "boundary" / "prices")
+    bare = "anthropic.claude-haiku-4-5-20251001-v1:0"
+    assert prices.lookup("bedrock", bare) is None
+    geo = prices.lookup("bedrock", f"us.{bare}")
+    glo = prices.lookup("bedrock", f"global.{bare}")
+    assert geo is not None and glo is not None
+    assert (geo.input, geo.output) == (1.10, 5.50) and (glo.input, glo.output) == (1.00, 5.00)

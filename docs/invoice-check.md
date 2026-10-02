@@ -206,6 +206,23 @@ residency: the meter is named "Std Gl", Global Standard, which is exactly the `r
 global` the route declares beside `region: canadacentral`. The invoice is the first evidence
 from outside the configuration that the declaration was the true one.
 
+### Amazon Bedrock
+
+September's bill for the account is USD 0.00 on both of its lines, AWS Canada and AWS
+Marketplace. Claude on Bedrock is sold through the Marketplace as "Claude Haiku 4.5 (Amazon
+Bedrock Edition)", and the ledger's one Bedrock row of the month, 117 tokens in and 69 out on
+2026-09-25, comes to US$0.0005 at the rate below: the bill and the ledger agree, at the
+resolution the bill has. Cost Explorer's export did not list the Marketplace line at all.
+
+**The rate, at last, and not from the bill.** AWS's web pricing page does not show Claude's
+rates for Canada, which is why Bedrock had stayed uncosted since its first call on
+2026-09-16. AWS's public Price List API does, in the offer `AmazonBedrockFoundationModels`
+for ca-central-1, published 2026-09-30: Haiku 4.5 is US$1.10 input and 5.50 output a million
+through the `us.` (Geo) profile this route uses, and 1.00 and 5.00 through `global.`, the 10%
+regional premium Anthropic's page describes. Both are in the 2026-10-01 price list (0.35.2),
+keyed by profile, never by the bare model id the response returns, which is the same for both.
+The September row stays uncosted, as written; the next Bedrock call is costed.
+
 ### The other vendors
 
 | Vendor | Ledger US$ | Console US$ | Difference |
@@ -215,7 +232,7 @@ from outside the configuration that the declaration was the true one.
 | Together | 7.8910 | 7.8925 | -0.0015, -0.02% |
 | Foundry (Azure) | 0.0000, one row uncosted | 0.0003604 | the one row matches to the token; rate now known |
 | Google | pending | pending | pending |
-| Bedrock | uncosted | pending | pending |
+| Bedrock | one row, uncosted (US$0.0005 at the rate now known) | 0.00 | agrees at the bill's resolution |
 
 ### Against 03's own accounting
 
