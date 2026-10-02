@@ -109,8 +109,9 @@ Two things follow, both in other repositories:
 - **02 collects its two batches.** Done by 02 on 2026-10-02, with `batch_results` under the
   version that submitted them: all 350 requests succeeded, and the rows now cost US$0.222450
   from returned usage at the batch rate, against the US$0.2225 Anthropic billed and in place
-  of the US$2.0511 estimate. Recomputed, the merged ledger is US$85.9695 against the
-  console's 87.02, the remaining -1.07 being the gate's unrecorded checks. Nine standard rows
+  of the US$2.0511 estimate. Re-merged, the ledger is US$85.9807 against the console's
+  87.0440 from its own tokens: the gate's unrecorded checks (1.0729) and the smoke calls
+  (0.0016), less the estimates still on the nine rows below (0.0145), close it to US$0.003. Nine standard rows
   of 02's from 09-15 to 09-18 stay in flight, calls that never returned (US$0.0145 of
   estimate across three vendors), because there is nothing to collect them from.
 - **The gate's CI keeps its ledger.** Done by 03 on 2026-10-02 (ai-release-gate 2de26f6):
@@ -140,7 +141,7 @@ carry all but two cents of it.
 | What | Effect on the ledger |
 |---|---:|
 | **GPT-5.6 cache writes priced as ordinary input.** From GPT-5.6, OpenAI bills a token written to the prompt cache at 1.25x input (US$5.00 a million for sol against 4.00, 0.25 for luna against 0.20). The usage reports them as `cache_write_tokens` inside `prompt_tokens`, and the adapter read only `cached_tokens`, so 7,045,179 sol and 11,044,654 luna writes were costed at the input rate. Nearly all of it is 06's runs of 2026-09-20 and 21, whose prompts were written to the cache almost whole | -7.5974 |
-| **4,332 gpt-5.6-luna calls on 2026-09-30 that no ledger on this laptop holds**, 12.5 million input tokens. Not 03's, which never calls luna. Their shape matches 06's runs of 09-20 and 21, and 06's ledger here ends on 09-21, so 06 is asked | -4.4816 |
+| **4,332 gpt-5.6-luna calls on 2026-09-30 that no ledger on this laptop holds**, 12.5 million input tokens. They are 06's distillation run, made from the other laptop, and they are on the ledger there (ids 6224 to 11334, US$3.86 as costed); 06's checkout here is a week behind. So the record exists and this merge did not have it, and the difference to the invoice, US$0.62, is the same cache-write premium as above | -4.4816 |
 | One gpt-5.6-sol call on 2026-09-15 that the console counts and the ledger does not | -0.0149 |
 | Five gpt-5.4-mini rows of 2026-09-27 written uncosted, before that dated id had a rate (the price file of that day says so) | -0.0030 |
 | Twelve gpt-5-nano smoke calls from GitHub Actions, whose ledgers are not kept | -0.0001 |
@@ -148,6 +149,11 @@ carry all but two cents of it.
 57.0241 + 7.5974 + 4.4816 + 0.0149 + 0.0030 + 0.0001 = 69.1211, the console's figure. Every
 other day and model agrees with the console to the token, once the ledger's input is read as
 it is recorded: uncached only, with cache reads in their own column.
+
+**The check's own lesson: it merges every machine, not every repository.** Two laptops run
+model calls in this portfolio, and a ledger is a file on the machine that wrote it. October's
+merge collects 06's from the other machine, or 06 pushes it to the central ledger once its
+repository is public.
 
 **Fixed in 0.35.0**: the adapter separates `cache_write_tokens`, and the 2026-10-01 price list
 carries GPT-5.6's write rates. A write with no rate makes the row uncosted, never an estimate.
