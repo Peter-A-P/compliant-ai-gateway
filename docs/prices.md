@@ -51,7 +51,10 @@ For project 02, whose `mselect/config/prices/` is the copy this consolidated:
 1. Bump the `boundary` pin to a version that carries `2026-09-12.yaml` or later.
 2. Set `prices: builtin` in `mselect/config/boundary.yaml`.
 3. Delete `mselect/config/prices/`.
-4. Run `boundary prices check` and confirm every route still has a rate.
+4. Find any code of the project's own that reads its price folder directly (route checks,
+   suite commands, tests). `builtin` is a word, not a path, so such code breaks; point it at
+   `boundary.config.PACKAGED_PRICES`. Found by 02 on 2026-10-02.
+5. Run `boundary prices check` and confirm every route still has a rate.
 
 Nothing 02 has already costed changes: `2026-09-12.yaml` moved here byte for byte, so a row
 citing that price list resolves to the same numbers it always did.

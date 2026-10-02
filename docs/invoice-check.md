@@ -106,10 +106,13 @@ are each one of three things.
 
 Two things follow, both in other repositories:
 
-- **02 collects its two batches** with `batch_results`, while Anthropic still holds their
-  results (29 days, so before 2026-10-13 for the first). The rows then complete from returned
-  usage and the estimate leaves the ledger. Until then they are what the design says they are:
-  in flight, counted against caps at the pessimistic estimate.
+- **02 collects its two batches.** Done by 02 on 2026-10-02, with `batch_results` under the
+  version that submitted them: all 350 requests succeeded, and the rows now cost US$0.222450
+  from returned usage at the batch rate, against the US$0.2225 Anthropic billed and in place
+  of the US$2.0511 estimate. Recomputed, the merged ledger is US$85.9695 against the
+  console's 87.02, the remaining -1.07 being the gate's unrecorded checks. Nine standard rows
+  of 02's from 09-15 to 09-18 stay in flight, calls that never returned (US$0.0145 of
+  estimate across three vendors), because there is nothing to collect them from.
 - **The gate's CI keeps its ledger.** Done by 03 on 2026-10-02 (ai-release-gate 2de26f6):
   `gate check` checkpoints its ledger and writes its row count against its paid calls, the
   action fails a step when they differ, and the nightly harvest commits each run's ledger
