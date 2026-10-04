@@ -486,9 +486,10 @@ kept 9 of the 31 good ones. Marking still matters most: with the two document bl
 up too, 52% of distinct semantic pairs were false, every one of the 28 document pairs among
 them, as the gold-question measurement predicted. Detail in [docs/cache.md](docs/cache.md).
 
-| Audit tamper detection with daily anchors |
-|---|
-| _not yet_; the chain is measured above, the published anchors are Part B |
+**Daily anchors** have been live since `v0.26.0`: the hosted proxy's chain head is committed
+to [anchors/gateway.jsonl](anchors/gateway.jsonl) by a scheduled Action whenever it has
+moved, and `boundary audit verify --anchors` checks the chain against them
+([docs/audit.md](docs/audit.md)).
 
 ## What this does not do
 

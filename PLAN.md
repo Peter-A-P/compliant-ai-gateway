@@ -857,6 +857,8 @@ on this traffic, which holds no personal data; the gold-question measurement abo
 for it. The proxy's threshold is unchanged: on this traffic only 0.97 keeps false pairs
 under 2%, at the cost of 22 of 31 good pairs, and choosing it here would be choosing on the
 set it is reported on.
+**Decided 2026-10-04 (Peter): 0.82 stays**, stated as tuned for customer-style bare questions;
+docs/cache.md says what a caller marking mathematics should know.
 
 ### B2.6 Injection screening is advisory by default
 
@@ -1258,7 +1260,7 @@ the ledger and the spans as its production signal.
 
 ## B10. Definition of done, Part B
 
-- [ ] Everything in Part A's definition of done
+- [x] Everything in Part A's definition of done. **Checked 2026-10-04**: every Part A line is ticked, the last of them the costed Bedrock row (2026-10-02)
 - [x] OpenAI-compatible: a real client library works by changing only the base URL and key, streaming included. **Done 2026-09-25 (0.13.0)** with OpenAI's own Python client against mocked vendors, in process and over a real socket to uvicorn, streamed and not; the socket test fails for a proxy that buffers. **Live 2026-09-25**: four calls through `boundary serve` with OpenAI's client, Anthropic and Together, streamed native, streamed whole and not streamed, all 200 and all costed, plus a header-less request refused as `personal`; US$0.00025 (docs/server.md)
 - [x] Data classification header enforced, absent means `personal`; residency violations zero on the adversarial suite, with correct refusals. **Engine and adversarial suite done 2026-09-23 (0.12.0)**: 0 of 550 forbidden cases sent, 0 false refusals, every refusal audited, absent judged as `personal`. The header itself is the proxy's. **Header done 2026-09-25 (0.13.0)**: absent becomes `personal` at the door and is written as a declaration, an unknown word is a 400, and the proxy refuses to start without a policy. **Through the proxy 2026-09-25 (0.13.1)**: `boundary policy eval --proxy`, 338 cases over HTTP with thirteen header values, 0 of 262 forbidden sent, 0 of 76 allowed refused, 210 of 210 refusals on the ledger; run in CI on every push
 - [x] Reversible redaction round-trips under property tests; rehydration fidelity and mutation rate reported. **Mutation rate done 2026-09-25 (0.14.0)**: `boundary redact mutation`, 480 calls over three models, two tasks and two arms, US$0.24, stored and re-scored from `bench/mutation.json`. Without the preserve line Llama 3.3 70B mutates 37.0% of placeholders and Haiku 6.8%, nearly all recoverably; with it 0.6% and 0.0%; Gemini 0.0% either way (docs/redact.md). It did not need the proxy after all, only a model; the proxy is where the line will be sent. **Property tests and fidelity done 2026-09-21 (0.6.4)**: the round trip is a property test over generated documents, and `boundary redact eval --rehydration` reports resolution per mutation form with intervals, 14 of 15 at 100% and 0 fabrications. The **mutation rate** is what remains, and it needs the proxy: which of those forms a model actually produces, sampled from real answers

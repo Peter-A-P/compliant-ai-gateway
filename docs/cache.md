@@ -212,6 +212,13 @@ What it says:
   personal data, so nothing was redacted. The comparison is the gold-question measurement
   above, and the data policy keeps redacted payloads out of the cache.
 
+**The threshold stays at 0.82, Peter's decision on 2026-10-04.** Moving it to 0.97, the only
+point that met the 2% rule here, would be choosing on the set it is reported on, and would
+give up 22 of the 31 good pairs. 0.82 was chosen on held-out customer questions, which is the
+traffic a support assistant marks as bare questions, and it is stated as tuned for that. A
+caller sending mathematics or formal statements through the cache should know that one
+symbol can change the answer without moving the cosine much, and should not mark them.
+
 What this cannot see: one project's evaluation traffic, 400 distinct questions in seven
 blocks, at temperature 0. The false pairs are few (6 of 37), so the interval on them is
 wide. A support or retrieval workload would repeat less exactly and paraphrase more.
