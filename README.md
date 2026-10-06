@@ -34,7 +34,11 @@ and `v0.31.0` puts this project's page, every figure read from the tables below,
 [gateway.peterparker.ca](https://gateway.peterparker.ca/) ([docs/site.md](docs/site.md)).
 Release by release,
 with the evidence for each: [CHANGELOG.md](CHANGELOG.md).
-Part B, the full gateway, is planned for May 2027 in [PLAN.md](PLAN.md).
+**`v1.0.0` (2026-10-06) completes Part B**, the full gateway planned for May 2027 in
+[PLAN.md](PLAN.md): every line of its definition of done is met, the last being the semantic
+cache replayed on real traffic (`v0.36.0`, below) and every public project pushing its own
+ledgers to the dashboard. The interface is unchanged from `v0.36.1`; from here a removal or
+rename is `v2.0.0`.
 
 Four things worth knowing before the tables.
 

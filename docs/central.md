@@ -97,5 +97,7 @@ is out.
   projects that call models were pushed from this laptop: 02's own-run ledger, 03's 92
   committed ledger files, each its own source, and 04's own rows. That is 140,573 rows from
   95 sources, every one complete. The rows of projects whose repositories are still private
-  were held back with `--project`. A push from each project's own runs, so that the page is
-  live rather than as of the last push, is each repository's change to make.
+  were held back with `--project`. **Since 2026-10-02 each project pushes its own**: 03 from
+  the workflow that commits its runs, 02 from its own machine, and 04 from this laptop
+  (2026-10-06), each with a key of its own. A private project's rows arrive when it is
+  public and pushes them.

@@ -5,6 +5,13 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 1.0.0 (2026-10-06)
+
+- **Part B is complete.** Every line of PLAN.md B10 is met: the cache replay (0.36.0) was
+  the last measurement, and the dashboard is live, with 02, 03 and 04 each pushing their own
+  ledgers under their own ingest keys. No interface change from 0.36.1; the major version
+  marks the definition of done, and from here anything removed or renamed is 2.0.
+
 ## 0.36.1 (2026-10-06)
 
 - `boundary ledger push` reads a `.env` in the current directory, as `serve` does, so an
