@@ -128,6 +128,8 @@ def test_push_sends_every_row_in_batches_and_fails_on_a_short_count(
         )  # fmt: skip
 
     monkeypatch.delenv("BOUNDARY_INGEST_KEY", raising=False)
+    # Away from the repository's own .env, which push reads (0.36.1) and may hold a real key.
+    monkeypatch.chdir(tmp_path)
     args = [
         "ledger",
         "push",
@@ -165,6 +167,7 @@ def test_push_never_writes_to_the_file_it_reads(
         store.close()
     before = hashlib.sha256(path.read_bytes()).hexdigest()
     monkeypatch.setenv("BOUNDARY_INGEST_KEY", "bnd_k")
+    monkeypatch.chdir(tmp_path)
     ok = {
         "inserted": 2,
         "completed": 0,
@@ -200,3 +203,37 @@ def test_the_days_table_is_newest_first(tmp_path: Path) -> None:
     shown = [d for d in sorted(days, reverse=True) if d in days_section]
     assert shown == sorted(days, reverse=True)
     assert [days_section.index(d) for d in shown] == sorted(days_section.index(d) for d in shown)
+
+
+def test_push_reads_the_key_from_a_dotenv_in_the_current_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import httpx
+    import respx
+
+    from boundary.cli import main
+
+    rows = _rows(tmp_path, 1)
+    path = tmp_path / "local.sqlite"
+    store = LedgerStore(path)
+    try:
+        store.merge_rows(rows, source="t")
+    finally:
+        store.close()
+    monkeypatch.delenv("BOUNDARY_INGEST_KEY", raising=False)
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".env").write_text("BOUNDARY_INGEST_KEY=bnd_from_file\n", encoding="utf-8")
+    sent: list[str] = []
+
+    def reply(request: httpx.Request) -> httpx.Response:
+        sent.append(request.headers["authorization"])
+        return httpx.Response(
+            200,
+            json={"inserted": 1, "completed": 0, "already_held": 0, "source": "s",
+                  "local_rows": 1, "held": 1},
+        )  # fmt: skip
+
+    with respx.mock() as mock:
+        mock.post("https://g.example/v1/ledger/ingest").mock(side_effect=reply)
+        assert main(["ledger", "push", "--url", "https://g.example", "--ledger", str(path)]) == 0
+    assert sent == ["Bearer bnd_from_file"]

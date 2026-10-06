@@ -26,7 +26,8 @@ where such a project should first appear. The source file is read from a tempora
 The proxy merges the rows by `call_uid`, exactly as `ledger merge` does. A row it holds is left alone, and a row it holds in flight that has since
 completed is completed. So a push is safe to repeat, and repeating it is how a push that
 failed half way is finished. The key comes from the environment, never from a flag, so it
-stays out of shell history.
+stays out of shell history. Since 0.36.1 a `.env` in the directory `push` is run from fills
+it, so a key kept there as `BOUNDARY_INGEST_KEY=...` needs no export.
 
 ### From another project's own runs (0.34.1)
 

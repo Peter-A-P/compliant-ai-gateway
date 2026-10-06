@@ -5,6 +5,11 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 0.36.1 (2026-10-06)
+
+- `boundary ledger push` reads a `.env` in the current directory, as `serve` does, so an
+  ingest key kept there needs no export. A variable already set wins.
+
 ## 0.36.0 (2026-10-02)
 
 - **The semantic cache on real traffic.** `boundary cache replay` (`boundary.semcache_replay`)

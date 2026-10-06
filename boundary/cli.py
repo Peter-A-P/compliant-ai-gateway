@@ -460,12 +460,19 @@ def cmd_ledger_push(args: argparse.Namespace) -> int:
     """Copy this ledger's rows to a central ledger (0.27). Every row, every time: the far
     side merges by call_uid, so a push is safe to repeat, and the count it reports is what
     the dashboard's completeness panel compares against. The ingest key is read from
-    BOUNDARY_INGEST_KEY and never from a flag, so it stays out of shell history."""
+    BOUNDARY_INGEST_KEY and never from a flag, so it stays out of shell history; since
+    0.36.1 a `.env` in the current directory fills it, as `serve` reads one, so a key kept
+    there needs no export."""
     import collections
     import os
 
     import httpx
 
+    from boundary.env import find_dotenv, load_dotenv
+
+    env_file = find_dotenv(Path.cwd())
+    if env_file is not None:
+        load_dotenv(env_file)
     key = os.environ.get("BOUNDARY_INGEST_KEY", "").strip()
     if not key:
         print("error: set BOUNDARY_INGEST_KEY to an ingest key", file=sys.stderr)
