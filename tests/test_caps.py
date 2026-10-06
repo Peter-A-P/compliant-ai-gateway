@@ -136,17 +136,31 @@ async def test_concurrent_calls_cannot_pass_a_cap_together(
     a = make_gateway(repo_config, tmp_path, caps=caps)
     b = make_gateway(repo_config, tmp_path, caps=caps)
 
+    # Every admitted call is held upstream until each of the twelve has been admitted or
+    # refused. A call that finished early would replace its estimate with its far smaller
+    # real cost and make room for another, which is the cap working, not failing: a slow CI
+    # runner once admitted a fourth that way when this was a fixed 50 ms sleep.
+    arrived = 0
+    release = asyncio.Event()
+
     async def slow(_request: httpx.Request) -> httpx.Response:
-        await asyncio.sleep(0.05)
+        nonlocal arrived
+        arrived += 1
+        await asyncio.wait_for(release.wait(), 10)
         return anthropic_ok(input_tokens=10, output_tokens=2)
 
     try:
         with respx.mock(assert_all_called=False) as mock:
             route = mock.post(ANTHROPIC_URL).mock(side_effect=slow)
-            results = await asyncio.gather(
-                *((a if i % 2 else b).achat(_req(), purpose="dev") for i in range(12)),
-                return_exceptions=True,
-            )
+            tasks = [
+                asyncio.ensure_future((a if i % 2 else b).achat(_req(), purpose="dev"))
+                for i in range(12)
+            ]
+            async with asyncio.timeout(10):
+                while sum(t.done() for t in tasks) + arrived < len(tasks):
+                    await asyncio.sleep(0.01)
+            release.set()
+            results = await asyncio.gather(*tasks, return_exceptions=True)
         refused = [r for r in results if isinstance(r, SpendCapExceeded)]
         assert route.call_count == 3
         assert len(refused) == 9
