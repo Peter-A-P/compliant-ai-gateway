@@ -39,7 +39,9 @@ version: 1
 # 450, from 400 later the same day, for the same reason: 07's line below takes the named
 # total to 430. Both raises confirmed by Peter 2026-09-19 with the 06 and 07 amounts. The
 # vendor console caps above are unchanged by this.
-portfolio_monthly_usd: 450
+# 500, from 450 on 2026-10-07, for the same reason again: 14's line below takes the named
+# total to 490. Asked for by Peter with 14's line on 2026-10-07.
+portfolio_monthly_usd: 500
 
 projects:
   # 03 drift runs: about US$9 per full run; two dry runs plus the Sep 27 official run.
@@ -79,6 +81,17 @@ projects:
   access-to-information-redaction:
     monthly_usd: 50
     per_run_usd: 12
+  # 14 department news digest (package clippings). A daily Cloud Run job re-ranks and
+  # summarises four audiences; the first deployed run on 2026-10-07 cost US$0.23 for all
+  # four, so a month of them is about US$7, with development reruns on top. The per-day cap
+  # bounds a scheduler retry loop, which the monthly cap alone would let run for weeks.
+  # Mirrors 14's own clippings/config/gateway/caps.yaml, which its job enforces; confirmed
+  # by Peter 2026-10-07. Raise them here, deliberately, in a commit if they bind; never
+  # bypass a cap in code.
+  clippings:
+    monthly_usd: 60
+    per_run_usd: 2
+    daily_usd: 5
 
 default:
   monthly_usd: 10
