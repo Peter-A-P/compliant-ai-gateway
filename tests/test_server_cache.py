@@ -107,6 +107,7 @@ async def test_a_repeat_is_answered_from_the_cache_and_the_row_names_its_source(
     second = await app.post(body())
     assert second.status_code == 200
     assert second.headers["x-boundary-cache"] == "hit"
+    assert second.headers["x-boundary-cache-match"] == "exact"
     assert float(second.headers["x-boundary-cache-similarity"]) >= 0.95
     assert second.json()["choices"][0]["message"]["content"] == "Hello there"
     assert second.json()["usage"]["total_tokens"] == 0
@@ -324,6 +325,40 @@ async def test_a_busy_cache_is_skipped_and_the_call_still_answered(
         embedder.gate.set()
         await p.http.aclose()
         await a.state.boundary.close()
+
+
+async def test_an_exact_repeat_is_answered_while_the_cache_sheds(
+    app: App, upstream: respx.MockRouter
+) -> None:
+    """1.1.0: the same question in the same scope is found by its fingerprint before the
+    shedding rule is read, so a busy worker still answers it from the cache. A question that
+    needs an embedding is shed as before, and one that differs only in case or punctuation is
+    a semantic hit, however similar."""
+    from boundary.server.app import SEMCACHE_MAX_PENDING
+
+    route = upstream.post(OPENWEIGHTS_URL).mock(return_value=completion("Ottawa"))
+    first = await app.post(ask("What is the capital of Canada?"))
+    assert first.headers["x-boundary-cache"] == "miss"
+    state = app.app.state.boundary
+    state.embedding = SEMCACHE_MAX_PENDING
+    try:
+        repeat = await app.post(ask("What is the capital of Canada?"))
+        assert repeat.headers["x-boundary-cache"] == "hit"
+        assert repeat.headers["x-boundary-cache-match"] == "exact"
+        assert repeat.headers["x-boundary-cache-similarity"] == "1.0000"
+        assert repeat.headers["x-boundary-cache-source"] == first.headers["x-boundary-call-uid"]
+        assert repeat.json()["choices"][0]["message"]["content"] == "Ottawa"
+        near = await app.post(ask("what is the capital of canada"))
+        assert near.headers["x-boundary-cache"] == "skip: busy"
+    finally:
+        state.embedding = 0
+    near = await app.post(ask("what is the capital of canada"))
+    assert near.headers["x-boundary-cache"] == "hit"
+    assert near.headers["x-boundary-cache-match"] == "semantic"
+    assert route.call_count == 2, "the first, and the one shed"
+    rows = app.rows()
+    assert [r["cached"] for r in rows] == [0, 1, 0, 1]
+    assert rows[1]["cache_similarity"] == 1.0
 
 
 async def test_a_late_event_loop_sends_past_the_cache(app: App) -> None:

@@ -5,6 +5,20 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 1.1.0 (2026-10-07)
+
+- **An exact repeat is found before anything is embedded.** The proxy's semantic cache
+  looks the question up by its sha256, within its team and scope, before it embeds it. A
+  repeat costs a hash and one indexed read instead of about 19 ms of a core, is answered
+  even while the cache is shedding (`skip: busy` used to send it upstream and pay for it),
+  and can never be missed by the approximate HNSW index. Anything else is embedded and
+  looked up as before, with the same threshold.
+- `SemanticCache.exact` and `PgSemanticCache.exact`, `boundary.semcache.question_sha256`,
+  `Hit.exact`. A hit's response says `x-boundary-cache-match: exact` or `semantic`.
+- The hosted `semcache` table gains `question_sha256` and an index on it, added by
+  `boundary db init`. Entries stored before 1.1.0 have none, and are found by embedding
+  only, as before.
+
 ## 1.0.0 (2026-10-06)
 
 - **Part B is complete.** Every line of PLAN.md B10 is met: the cache replay (0.36.0) was

@@ -523,23 +523,29 @@ def create_app(
             state, team, data_class, redaction, flagged, parsed, headers, marked=marked
         )
         vector = None
-        if semcache is not None and not state.embed_budget():
+        hit = None
+        started = time.perf_counter()
+        if semcache is not None:
+            # The same question in the same scope first, by its fingerprint (1.1.0): no
+            # embedding, so it is answered even while the cache sheds, and no index to miss it.
+            hit = await asyncio.to_thread(semcache.exact, parsed.request)
+        if semcache is not None and hit is None and not state.embed_budget():
             headers["x-boundary-cache"] = "skip: busy"
             semcache = None
         if semcache is not None:
-            started = time.perf_counter()
-            if state.embedder_thread is None:
-                state.embedder_thread = concurrent.futures.ThreadPoolExecutor(
-                    SEMCACHE_MAX_PENDING, thread_name_prefix="boundary-embed"
-                )
-            state.embedding += 1
-            try:
-                vector = await asyncio.get_running_loop().run_in_executor(
-                    state.embedder_thread, semcache.embed, parsed.request
-                )
-            finally:
-                state.embedding -= 1
-            hit = await asyncio.to_thread(semcache.lookup, parsed.request, vector)
+            if hit is None:
+                if state.embedder_thread is None:
+                    state.embedder_thread = concurrent.futures.ThreadPoolExecutor(
+                        SEMCACHE_MAX_PENDING, thread_name_prefix="boundary-embed"
+                    )
+                state.embedding += 1
+                try:
+                    vector = await asyncio.get_running_loop().run_in_executor(
+                        state.embedder_thread, semcache.embed, parsed.request
+                    )
+                finally:
+                    state.embedding -= 1
+                hit = await asyncio.to_thread(semcache.lookup, parsed.request, vector)
             if hit is not None:
                 resp = await asyncio.to_thread(
                     gw.record_cache_hit,
@@ -556,6 +562,7 @@ def create_app(
                 )
                 state.sealed()
                 headers["x-boundary-cache"] = "hit"
+                headers["x-boundary-cache-match"] = "exact" if hit.exact else "semantic"
                 headers["x-boundary-cache-similarity"] = f"{hit.similarity:.4f}"
                 headers["x-boundary-cache-source"] = hit.source or ""
                 headers["x-boundary-call-uid"] = resp.call_uid or ""

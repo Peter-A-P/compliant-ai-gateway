@@ -99,6 +99,12 @@ def question_of(request: ChatRequest) -> str:
     return str(request.messages[-1]["content"])
 
 
+def question_sha256(request: ChatRequest) -> str:
+    """The question's fingerprint, for the exact match (1.1.0). Compared only within one
+    scope, so equal fingerprints mean the whole request is the same."""
+    return hashlib.sha256(question_of(request).encode()).hexdigest()
+
+
 @dataclass(frozen=True, slots=True)
 class Hit:
     entry: int
@@ -109,6 +115,9 @@ class Hit:
     source: str | None = None
     model: str | None = None
     finish_reason: str | None = None
+    # Found by the question's fingerprint rather than by its embedding (1.1.0): the same
+    # question in the same scope, so similarity 1.0 by definition.
+    exact: bool = False
 
 
 def _numpy() -> Any:
@@ -127,6 +136,8 @@ class _Scope:
     answers: list[str] = field(default_factory=list)
     ids: list[int] = field(default_factory=list)
     meta: list[tuple[str | None, str | None, str | None]] = field(default_factory=list)
+    # Each question's fingerprint to the first entry stored for it (1.1.0).
+    exact: dict[str, int] = field(default_factory=dict)
     # The vectors again as one float32 matrix, grown by doubling, when numpy is present
     # (0.27): a proxy's scope can hold thousands of entries, and scoring them in pure Python
     # costs tens of milliseconds a lookup where a matrix product costs well under one.
@@ -182,6 +193,21 @@ class SemanticCache:
         twice."""
         return self.embedder.embed([question_of(request)])[0]
 
+    def exact(self, request: ChatRequest) -> Hit | None:
+        """The entry stored for this very question in this scope, without embedding it; None
+        when there is none (1.1.0). The proxy asks this first: a repeat then costs a hash
+        rather than an embedding, is answered while the embedder is busy, and is never lost
+        to an approximate index."""
+        key = scope_of(request)
+        h = question_sha256(request)
+        with self._lock:
+            scope = self._scopes.get(key)
+            i = scope.exact.get(h) if scope is not None else None
+            if scope is None or i is None:
+                return None
+            source, model, finish = scope.meta[i]
+            return Hit(scope.ids[i], 1.0, scope.answers[i], source, model, finish, exact=True)
+
     def nearest(self, request: ChatRequest, vector: Vector | None = None) -> Hit | None:
         """The nearest stored request in scope, whatever its similarity; None when the scope
         is empty. `lookup` applies the threshold; the measurement reads this."""
@@ -213,11 +239,13 @@ class SemanticCache:
     ) -> int | None:
         """The new entry's id, or None when the cache is full."""
         key = scope_of(request)
+        h = question_sha256(request)
         v = vector if vector is not None else self.embed(request)
         with self._lock:
             if self.max_entries is not None and self._next >= self.max_entries:
                 return None
             scope = self._scopes.setdefault(key, _Scope())
+            scope.exact.setdefault(h, len(scope.vectors))
             scope.add(v, self._np)
             scope.answers.append(answer)
             scope.meta.append((source, model, finish_reason))
@@ -239,6 +267,7 @@ __all__ = [
     "Vector",
     "cosine",
     "question_of",
+    "question_sha256",
     "scope_of",
     "unit",
 ]

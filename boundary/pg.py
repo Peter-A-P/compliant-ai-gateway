@@ -50,7 +50,7 @@ from boundary.ledger.store import (
     next_day,
     utc_now,
 )
-from boundary.semcache import Embedder, Hit, Vector, question_of, scope_of
+from boundary.semcache import Embedder, Hit, Vector, question_of, question_sha256, scope_of
 from boundary.server.teams import QuotaDecision
 from boundary.types import ChatRequest
 
@@ -247,6 +247,11 @@ CREATE TABLE IF NOT EXISTS semcache (
     created_utc   TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS semcache_team_scope ON semcache (team, scope);
+-- The question's sha256, so a repeat is found by equality before anything is embedded
+-- (1.1.0). Added to a table that already holds entries, which keep NULL and are found only
+-- by embedding, as before.
+ALTER TABLE semcache ADD COLUMN IF NOT EXISTS question_sha256 TEXT;
+CREATE INDEX IF NOT EXISTS semcache_exact ON semcache (team, scope, question_sha256);
 -- The nearest stored question by an HNSW index (0.29), not by comparing every one: at the
 -- 20,000 entries a team's cache is capped at, the exact scan was 19.6 ms a lookup on the VPS,
 -- and 0.9 ms with the index. Approximate, so it can miss the nearest and answer a miss where
@@ -774,6 +779,26 @@ class PgSemanticCache:
     def embed(self, request: ChatRequest) -> Vector:
         return self.embedder.embed([question_of(request)])[0]
 
+    def exact(self, request: ChatRequest) -> Hit | None:
+        """The entry stored for this very question in this scope, by its sha256 (1.1.0)."""
+        with self._lock:
+            got = self._conn.execute(
+                "SELECT id, answer, source, model, finish_reason FROM semcache "
+                "WHERE team = %s AND scope = %s AND question_sha256 = %s ORDER BY id LIMIT 1",
+                (self.team, scope_of(request), question_sha256(request)),
+            ).fetchone()
+        if got is None:
+            return None
+        return Hit(
+            int(got["id"]),
+            1.0,
+            str(got["answer"]),
+            got["source"],
+            got["model"],
+            got["finish_reason"],
+            exact=True,
+        )
+
     def nearest(self, request: ChatRequest, vector: Vector | None = None) -> Hit | None:
         v = vector if vector is not None else self.embed(request)
         with self._lock:
@@ -814,10 +839,10 @@ class PgSemanticCache:
                 return None
             got = self._conn.execute(
                 "INSERT INTO semcache (team, scope, embedding, answer, source, model, "
-                "finish_reason, created_utc) VALUES (%s, %s, %s::vector, %s, %s, %s, %s, %s) "
-                "RETURNING id",
+                "finish_reason, created_utc, question_sha256) "
+                "VALUES (%s, %s, %s::vector, %s, %s, %s, %s, %s, %s) RETURNING id",
                 (self.team, scope_of(request), _vec(v), answer, source, model, finish_reason,
-                 utc_now()),
+                 utc_now(), question_sha256(request)),
             ).fetchone()  # fmt: skip
         return int(got["id"])
 

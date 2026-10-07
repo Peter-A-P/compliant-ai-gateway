@@ -399,6 +399,9 @@ def test_the_pgvector_cache_is_per_team_and_per_scope(db: Db) -> None:
     assert hit.similarity == pytest.approx(1.0, abs=1e-5)
     assert beta.lookup(q) is None, "never another team's answer"
     assert alpha.lookup(other_scope) is None, "never another scope's"
+    exact = alpha.exact(q)
+    assert exact is not None and exact.exact and exact.source == "uid-1"
+    assert beta.exact(q) is None and alpha.exact(other_scope) is None
     alpha.store(other_scope, "x")
     assert alpha.store(q, "y") is None, "full at max_entries"
 

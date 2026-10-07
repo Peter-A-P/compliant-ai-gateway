@@ -442,6 +442,7 @@ from October the ledger-against-invoice difference is recorded there too (sectio
 | v0.29.0 | 2026-09-30 | Every load level answered, 0 of 150,041 failed: the spend-cap step as one database function, four fixes from a profile, the semantic cache shedding under load, and an HNSW index for it |
 | v0.28.0 | 2026-09-30 | Postgres and Redis: `boundary.pg`, the `hosted` extra, `serve --hosted --workers`, `audit follow`, `db init` and `db import`; the hosted proxy as four workers with the semantic cache on; the audit chain append-only by grant; the load test re-run hosted |
 | v1.0.0 | 2026-10-06 (planned May 23 2027) | Everything in Part B; `boundary.redact` for 07; the proxy for 13 and 14. No interface change from 0.36.1: the major version says the definition of done is met, and from here a removal or rename is 2.0 |
+| v1.1.0 | 2026-10-07 | An exact repeat found by the question's sha256 before anything is embedded (B2.5): answered while the cache sheds, never missed by the index |
 
 03 pins `boundary>=0.1,<0.3` for Part A and moves to `>=1.0` when its Part B is built
 against the proxy's ledger ingestion. 02 pins `>=0.2,<1`. Interface changes are additive
@@ -1181,6 +1182,12 @@ embedder is backed up or its event loop late, because an embedding costs 19 ms o
 whatever the batch and no queue fits 500 into four cores. And its lookup uses an HNSW
 index. The index is measured where it matters: every near-duplicate in a full cache is
 found. It can only turn a hit into a miss, never serve below the threshold.
+
+**Amended 2026-10-07 (1.1.0): an exact repeat skips the embedding.** The replay (0.36.0)
+found 93% of hits were byte-identical repeats, each one paying for an embedding, each one
+shed under load and paid for upstream, and each one at the mercy of an approximate index.
+The question's sha256 within its scope is now looked up first, and only a question not
+stored as written is embedded. What a semantic hit is, and its threshold, are unchanged.
 
 ### Tests that matter
 

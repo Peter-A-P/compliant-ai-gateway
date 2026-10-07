@@ -47,6 +47,38 @@ def test_scope_keeps_system_prompts_models_and_settings_apart() -> None:
     assert scope_of(_req("q1", system="A")) == scope_of(_req("q2", system="A"))
 
 
+class _Counting(_Words):
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def embed(self, texts: Sequence[str]) -> list[Vector]:
+        self.calls += 1
+        return super().embed(texts)
+
+
+def test_the_same_question_is_found_by_its_fingerprint_without_embedding() -> None:
+    """1.1.0: an exact repeat is found by the question's sha256 within its scope, before and
+    without an embedding; anything else, however near, is left to the embedding."""
+    embedder = _Counting()
+    cache = SemanticCache(embedder, threshold=0.7, max_entries=2)
+    q = _req("how long can a bank hold my cheque", system="A")
+    assert cache.exact(q) is None
+    cache.store(q, "up to 8 days", source="uid-1")
+    cache.store(q, "a second answer")
+    embedded = embedder.calls
+    hit = cache.exact(q)
+    assert hit is not None and hit.exact and hit.similarity == 1.0
+    assert (hit.answer, hit.source) == ("up to 8 days", "uid-1"), "the first stored is kept"
+    assert embedder.calls == embedded, "nothing was embedded"
+    assert cache.exact(_req("how long can a bank hold my cheque", system="B")) is None
+    near = _req("How long can a bank hold my cheque?", system="A")
+    assert cache.exact(near) is None
+    found = cache.lookup(near)
+    assert found is not None and not found.exact
+    assert cache.store(_req("full now", system="A"), "x") is None
+    assert cache.exact(_req("full now", system="A")) is None
+
+
 def test_the_threshold_is_checked() -> None:
     with pytest.raises(ValueError):
         SemanticCache(_Words(), threshold=0.0)

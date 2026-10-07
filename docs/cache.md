@@ -90,8 +90,9 @@ stored, only when every one of these holds:
 **A hit is on the record like any call.** It writes a ledger row with `cached = 1`, zero
 tokens, a cost of zero, `cache_similarity` and `cache_source`, the `call_uid` of the call
 whose answer it reused (ledger v11). The audit chain seals both (record schema 4). The
-response says `x-boundary-cache: hit` with the similarity and the source; a miss says `miss`,
-and a request the rules keep out says `skip:` and which rule.
+response says `x-boundary-cache: hit` with the similarity, the source and, since 1.1.0,
+whether the match was exact; a miss says `miss`, and a request the rules keep out says
+`skip:` and which rule.
 
 **What it costs a request that misses** is the load test's `cache` layer (docs/loadtest.md):
 the question embedded on the proxy's CPU, looked up and stored.
@@ -122,6 +123,18 @@ second condition is the one that matters under load. Without it, the embedders k
 core busy at 500 requests a second, the event loops that answer the calls were starved, and
 16% of the calls failed. Two other fixes were tried and dropped (docs/loadtest.md). What
 shedding costs is money, not failures: a shed question that would have hit is paid for.
+
+**An exact repeat is found before anything is embedded (1.1.0).** Every stored entry keeps
+the sha256 of its question, and the proxy looks that up first, within the team and scope.
+Only a question not stored as written is embedded and searched for. The replay below is why:
+93% of its hits were byte-identical repeats, and each of them paid for an embedding, was
+shed when the embedder was busy (and then paid for upstream), and depended on an
+approximate index finding it. Now a repeat costs a hash and one indexed read, is answered
+while the cache sheds, and cannot be missed. The response says which kind of hit it was,
+`x-boundary-cache-match: exact` or `semantic`; an exact hit's similarity is 1.0. A question
+that differs only in case or punctuation is not exact: it is embedded, and usually a semantic
+hit at a similarity near 1. Nothing about a semantic hit or its threshold changed. Entries
+stored before 1.1.0 have no fingerprint and are found by embedding only, as before.
 
 What this cannot see: 03's questions are one domain and 100 items, the halves 50 each, and
 the paraphrases were written by a model (a floor on false hits, above). The replay below is
