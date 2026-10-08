@@ -169,7 +169,7 @@ strong { font-weight: 600; }
 
 /* ---------------------------------------------------------------- hero */
 
-.hero { position: relative; padding: 2.5rem 0 2.25rem; border-bottom: 1px solid var(--line); }
+.hero { position: relative; padding: 1.5rem 0 2.25rem; border-bottom: 1px solid var(--line); }
 
 /* A wash of the accent behind the first screen, full width, fading into the page, as on the
    release gate's site (03): the one place colour is used for its own sake. */

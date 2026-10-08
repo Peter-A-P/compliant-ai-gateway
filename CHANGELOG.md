@@ -5,10 +5,10 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
-- The website: less space above the headline, the hero's top padding 3.25rem to 2.5rem.
-
 ## 1.2.0 (2026-10-08)
 
+- The website: less space between the header and the first line of text, the hero's top
+  padding from 3.25rem to 1.5rem.
 - **Prices by the length of the prompt.** A price entry may carry a `long_prompt` block
   (`LongPromptRates`): rates for every token of a call whose prompt, input plus cache reads
   plus cache writes, is over `above_tokens`. The pre-call estimate takes them from half the
