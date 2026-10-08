@@ -41,7 +41,10 @@ version: 1
 # vendor console caps above are unchanged by this.
 # 500, from 450 on 2026-10-07, for the same reason again: 14's line below takes the named
 # total to 490. Asked for by Peter with 14's line on 2026-10-07.
-portfolio_monthly_usd: 500
+# 525, from 500 on 2026-10-09, for the same reason a third time: 13's line (firstdraft, added
+# 2026-10-08) takes the named total to 515, and the cap keeps US$10 of room as 500 did over
+# 490. Confirmed by Peter 2026-10-09.
+portfolio_monthly_usd: 525
 
 projects:
   # 03 drift runs: about US$9 per full run; two dry runs plus the Sep 27 official run.
