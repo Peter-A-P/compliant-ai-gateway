@@ -5,6 +5,20 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 1.2.0 (2026-10-08)
+
+- **Prices by the length of the prompt.** A price entry may carry a `long_prompt` block
+  (`LongPromptRates`): rates for every token of a call whose prompt, input plus cache reads
+  plus cache writes, is over `above_tokens`. The pre-call estimate takes them from half the
+  threshold. An entry without the block is priced as before and keeps its fingerprint.
+- **`boundary/prices/2026-10-08.yaml`** adds Claude Haiku 5.5, released 2026-10-07: US$0.10
+  in and US$0.50 out up to 100,000 prompt tokens, US$0.50 and US$2.50 over. Every other rate
+  carried over; Haiku 4.5 is unchanged.
+- **A route may carry fixed vendor fields**, `extra` in `routes`, merged under the caller's own.
+  Standard mode only, as every alias is.
+- **The demo key's model is the alias `demo`**: Claude Haiku 5.5 at low effort, about a tenth
+  of Haiku 4.5's cost a call. The page names the model behind the alias.
+
 ## 1.1.0 (2026-10-07)
 
 - **An exact repeat is found before anything is embedded.** The proxy's semantic cache

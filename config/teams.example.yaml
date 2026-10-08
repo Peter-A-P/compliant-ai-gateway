@@ -36,5 +36,5 @@ teams:
     monthly_usd: 5
     daily_usd: 0.25
     requests_per_minute: 10
-    models: ["anthropic/claude-haiku-4-5-20251001"]
+    models: ["demo"]
     max_tokens: 300

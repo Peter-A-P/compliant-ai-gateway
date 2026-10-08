@@ -10,6 +10,7 @@ stay behind it as the last line.
 from __future__ import annotations
 
 import html
+from collections.abc import Mapping
 from typing import Any
 
 from boundary.errors import ConfigError
@@ -45,7 +46,17 @@ def _e(v: Any) -> str:
     return html.escape(str(v))
 
 
-def render(*, base_url: str, key: str, team: str, t: Team, spent_today: float) -> str:
+def render(
+    *,
+    base_url: str,
+    key: str,
+    team: str,
+    t: Team,
+    spent_today: float,
+    targets: Mapping[str, str] | None = None,
+) -> str:
+    """The page. `targets` names what each of the team's aliases resolves to (1.2.0), so a
+    visitor sees the model behind `demo` and not only the alias."""
     assert t.daily_usd is not None and t.models is not None and t.max_tokens is not None
     model = t.models[0]
     left = max(0.0, t.daily_usd - spent_today)
@@ -71,7 +82,8 @@ r = client.chat.completions.with_raw_response.create(
 )
 print(r.headers["x-boundary-cache"], r.headers["x-boundary-call-uid"])
 print(r.parse().choices[0].message.content)"""
-    models = ", ".join(t.models)
+    targets = targets or {}
+    models = ", ".join(f"{m} ({targets[m]})" if m in targets else m for m in t.models)
     body = f"""
   <header class="hero">
     <p class="eyebrow">The live gateway, with a public key</p>

@@ -350,6 +350,10 @@ def create_app(
                     team=d.team,
                     t=state.teams.teams[d.team],
                     spent_today=spent,
+                    targets={
+                        alias: f"{route.provider}/{route.model}"
+                        for alias, route in gw.config.routes.items()
+                    },
                 ),
             )
         return Response(state.demo_page[1], media_type="text/html; charset=utf-8")

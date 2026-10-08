@@ -180,6 +180,15 @@ routes:
   fast:
     provider: anthropic
     model: claude-haiku-4-5-20251001
+  # The public demo key's model (1.2.0, docs/deploy.md). Haiku 5.5 thinks by default and its
+  # thinking counts against max_tokens, so under the demo's 300-token ceiling it is asked for
+  # low effort, or a question that set it thinking could end before any answer.
+  demo:
+    provider: anthropic
+    model: claude-haiku-5-5
+    extra:
+      output_config:
+        effort: low
   balanced:
     provider: anthropic
     model: claude-sonnet-5

@@ -160,6 +160,11 @@ class Route(_Strict):
     model: str = Field(min_length=1)
     api_version: str | None = None
     region: str | None = None
+    # Vendor request fields this alias always sends (1.2.0), merged into the body under the
+    # caller's own `extra`: for example `{"output_config": {"effort": "low"}}`, so a model
+    # that thinks by default answers inside a short `max_tokens`. An alias is standard mode
+    # only, so a pass-through call never carries them.
+    extra: dict[str, Any] = Field(default_factory=dict)
 
 
 class Timeouts(_Strict):
@@ -272,6 +277,20 @@ class CapsConfig(_Strict):
         return cap
 
 
+class LongPromptRates(_Strict):
+    """The rates for a call whose prompt is over `above_tokens` (1.2.0): Claude Haiku 5.5
+    costs five times as much, on every token of the call, once its prompt passes 100,000
+    tokens. The prompt is counted as input plus cache reads plus cache writes, all the
+    tokens the model read; were the vendor to count fewer, a call would be costed at the
+    higher rate a little early, never at the lower one late."""
+
+    above_tokens: int = Field(gt=0)
+    input: float = Field(ge=0)
+    output: float = Field(ge=0)
+    cache_read: float | None = Field(default=None, ge=0)
+    cache_write: float | None = Field(default=None, ge=0)
+
+
 class PriceEntry(_Strict):
     """USD per million tokens. A missing cache or batch rate means calls that use that
     feature are written uncosted; the library never fills a rate in."""
@@ -281,6 +300,21 @@ class PriceEntry(_Strict):
     cache_read: float | None = Field(default=None, ge=0)
     cache_write: float | None = Field(default=None, ge=0)
     batch_multiplier: float | None = Field(default=None, gt=0, le=1)
+    long_prompt: LongPromptRates | None = None
+
+    def for_prompt(self, prompt_tokens: float) -> PriceEntry:
+        """This entry, or its long-prompt rates when the prompt is over the threshold. The
+        batch multiplier is the same at either length."""
+        tier = self.long_prompt
+        if tier is None or prompt_tokens <= tier.above_tokens:
+            return self
+        return PriceEntry(
+            input=tier.input,
+            output=tier.output,
+            cache_read=tier.cache_read,
+            cache_write=tier.cache_write,
+            batch_multiplier=self.batch_multiplier,
+        )
 
 
 class PriceList(_Strict):
@@ -315,10 +349,7 @@ class PriceList(_Strict):
         changed every row's fingerprint would make the column noise rather than evidence.
         """
         canonical = {
-            provider: {
-                model: entry.model_dump(mode="json", exclude_none=False)
-                for model, entry in sorted(models.items())
-            }
+            provider: {model: _fingerprinted(entry) for model, entry in sorted(models.items())}
             for provider, models in sorted(self.per_million_tokens.items())
         }
         payload = json.dumps(canonical, sort_keys=True, separators=(",", ":"))
@@ -326,6 +357,15 @@ class PriceList(_Strict):
 
     def lookup(self, provider: str, model: str) -> PriceEntry | None:
         return self.per_million_tokens.get(provider, {}).get(model)
+
+
+def _fingerprinted(entry: PriceEntry) -> dict[str, Any]:
+    """An entry as `rates_sha256` hashes it. `long_prompt` (1.2.0) is left out when it is
+    not set, so every price list written before it keeps the fingerprint its rows carry."""
+    out = entry.model_dump(mode="json", exclude_none=False)
+    if out.get("long_prompt") is None:
+        out.pop("long_prompt", None)
+    return out
 
 
 def _read_yaml(path: Path) -> dict[str, Any]:

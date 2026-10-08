@@ -113,6 +113,43 @@ cited. The pre-call estimate the caps refuse on uses the overlay too, so with in
 is `max_tokens` at the measured output rate. `boundary prices check` validates and prints
 the overlay when the configuration names one, and applies the same refusals.
 
+## Rates that depend on the prompt's length (1.2.0)
+
+Claude Haiku 5.5, released 2026-10-07, is the first model priced by the length of the prompt:
+every token of a call whose prompt is over 100,000 tokens costs five times the rate of a
+shorter one. An entry can carry those rates in a `long_prompt` block:
+
+```yaml
+claude-haiku-5-5:
+  input: 0.10
+  output: 0.50
+  cache_read: 0.01
+  cache_write: 0.125
+  batch_multiplier: 0.5
+  long_prompt:
+    above_tokens: 100000
+    input: 0.50
+    output: 2.50
+    cache_read: 0.05
+    cache_write: 0.625
+```
+
+- **The prompt is everything the model read**: input plus cache reads plus cache writes.
+  Anthropic's page says "prompts over 100,000 tokens" and does not name the fields; counting
+  all three means a call is never costed at the lower rate when it may have been billed at the
+  higher one.
+- **The pre-call estimate takes the higher rates from half the threshold.** It counts 3.5
+  characters a token, which is pessimistic for the older tokenizers and not for the one Claude
+  4.7 and later use (about 30% more tokens for the same text), so a prompt estimated just under
+  100,000 can be over it. The caps refuse on the estimate, so it errs high.
+- **An entry without the block is priced as before, and keeps its fingerprint.** `rates_sha256`
+  leaves `long_prompt` out when it is not set, so no row costed before 1.2.0 cites a list whose
+  fingerprint has since moved; `tests/test_long_prompt.py` pins 2026-10-01's.
+
+GPT-5.6's long-context tier (above 272K tokens, at double input and 1.5x output) is a
+different shape, a different multiplier for input and output, and is not in a file yet; no
+call in this portfolio comes near it.
+
 ## What is deliberately absent
 
 `vertex`. Claude on Google Cloud is partner-operated and Google publishes its own rates, which

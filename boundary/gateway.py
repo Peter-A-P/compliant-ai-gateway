@@ -82,7 +82,7 @@ from boundary.providers.base import (
 )
 from boundary.providers.sse import SSEDecoder
 from boundary.rawstore import RawStore, sha256_hex
-from boundary.routes import ModelRef, resolve, split_explicit
+from boundary.routes import ModelRef, resolve, split_explicit, with_route_extra
 from boundary.telemetry import Telemetry
 from boundary.transport import TRANSPORT_ERRORS, HttpResult, Transport
 from boundary.types import (
@@ -583,10 +583,11 @@ class Gateway:
         rows: list[LedgerRow] = []
         total_estimate = 0.0
         for ref, request in zip(refs, requests, strict=True):
-            effective = (
+            effective = with_route_extra(
                 request
                 if request.max_tokens is not None
-                else dataclasses.replace(request, max_tokens=self.config.defaults.max_tokens)
+                else dataclasses.replace(request, max_tokens=self.config.defaults.max_tokens),
+                ref,
             )
             # Built as a single request too, so the row's request hash is the same whether a
             # prompt was sent alone or in a batch, and so the estimate is measured against
@@ -1153,10 +1154,11 @@ class Gateway:
                 )
             effective = request
         else:
-            effective = (
+            effective = with_route_extra(
                 request
                 if request.max_tokens is not None
-                else dataclasses.replace(request, max_tokens=self.config.defaults.max_tokens)
+                else dataclasses.replace(request, max_tokens=self.config.defaults.max_tokens),
+                ref,
             )
         adapter = self._adapter(pc)
         api_key = self._api_key(ref.provider, pc)

@@ -238,3 +238,21 @@ async def test_the_pages_share_the_websites_stylesheet_and_fonts(app: App) -> No
     assert font.status_code == 200 and font.headers["content-type"] == "font/woff2"
     for path in ("/fonts/..%2Fapp.js", "/fonts/LICENSE.txt"):
         assert (await app.http.get(path)).status_code == 404
+
+
+def test_the_page_names_the_model_behind_an_alias() -> None:
+    """1.2.0: the demo team's model is the alias `demo`, and the page says what it is."""
+    from boundary.server import demo as demo_page
+
+    t = demo_teams(models=["demo"]).teams["public"]
+    html = demo_page.render(
+        base_url="https://gateway.example",
+        key=DEMO,
+        team="public",
+        t=t,
+        spent_today=0.0,
+        targets={"demo": "anthropic/claude-haiku-5-5", "fast": "anthropic/claude-haiku-4-5"},
+    )
+    assert "demo (anthropic/claude-haiku-5-5)" in html
+    assert "claude-haiku-4-5" not in html
+    assert "&quot;model&quot;: &quot;demo&quot;" in html

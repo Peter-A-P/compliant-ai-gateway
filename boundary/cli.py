@@ -222,7 +222,13 @@ def _print_rates(pl: PriceList) -> None:
                 else ""
             )
             batch = f", batch x{e.batch_multiplier}" if e.batch_multiplier is not None else ""
-            print(f"  {provider}/{model}: in {e.input} out {e.output}{cache}{batch}")
+            long = (
+                f", over {e.long_prompt.above_tokens:,} prompt tokens in {e.long_prompt.input} "
+                f"out {e.long_prompt.output}"
+                if e.long_prompt is not None
+                else ""
+            )
+            print(f"  {provider}/{model}: in {e.input} out {e.output}{cache}{batch}{long}")
 
 
 def _self_hosted_check(cfg: BoundaryConfig) -> PriceList | None:

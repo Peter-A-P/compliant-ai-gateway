@@ -56,7 +56,7 @@ in `/srv/boundary/teams.yaml`:
 | `daily_usd` | US$0.25 | A key that is published will be found and scripted, so what it can spend in a day is the bill for any month: about US$7.50 at worst |
 | `monthly_usd` | US$5 | The backstop under the daily budget |
 | `requests_per_minute` | 10 | One visitor cannot spend the day in seconds |
-| `models` | `anthropic/claude-haiku-4-5-20251001` only | About US$0.002 a call at 300 tokens, so about 125 calls a day |
+| `models` | `demo` only, the alias for `anthropic/claude-haiku-5-5` at low effort (since 1.2.0; Haiku 4.5 before) | At most about US$0.00015 a call at 300 tokens, so the day's budget covers about 1,600 calls at the worst; the request limit binds first |
 | `max_tokens` | 300 | Bounds each call's worst case, which is what the budget check estimates |
 
 The private test team, `demo`, went down to US$4 a month, and the gateway's ceiling up to
@@ -68,6 +68,21 @@ proxy's own ceiling binds first, and the vendors' would stop a fault in it. The 
 key and hash in place of the old, and a restart of `gateway`. The proxy refuses to start
 with a demo key that is not the team's, or for a team without all three of `daily_usd`,
 `models` and `max_tokens` (docs/server.md).
+
+**The model moved to Claude Haiku 5.5 on 2026-10-08 (1.2.0).** Haiku 4.5 cost about
+US$0.0015 for a 300-token answer, Haiku 5.5 about US$0.00015, so the same US$0.25 a day covers
+about ten times as many calls. Two things about the new model shaped how it is offered:
+
+- **It thinks by default, and thinking counts against `max_tokens`.** Under a 300-token
+  ceiling a question that set it thinking could stop before any answer. So the team names an
+  alias, `demo`, whose route sends `output_config: {effort: low}` with every call
+  (`config/boundary.yaml`); an explicit `anthropic/claude-haiku-5-5` is not on the team's list.
+  Three live calls at the ceiling on 2026-10-08, US$0.0002 in all, each answered in text.
+- **It refuses a `temperature` other than 1.** A visitor who sends one gets Anthropic's 400
+  back, with its message; the gateway does not drop a field the caller set.
+
+The switch is `models: ["demo"]` for the team `public` in `/srv/boundary/teams.yaml` and a
+restart of `gateway` on a release that has the route.
 
 ## Security
 

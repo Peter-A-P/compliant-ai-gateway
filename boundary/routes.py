@@ -6,11 +6,14 @@ passes "provider/model-id" is never redirected, and pass-through mode requires t
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import dataclasses
+from collections.abc import Mapping
+from dataclasses import dataclass, field
+from typing import Any
 
 from boundary.config import BoundaryConfig, ProviderConfig
 from boundary.errors import ConfigError, PassthroughViolation, UnknownAlias
-from boundary.types import Mode
+from boundary.types import ChatRequest, Mode
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,6 +27,8 @@ class ModelRef:
     api_version: str | None = None
     region: str | None = None
     alias: str | None = None
+    # The route's fixed vendor fields (1.2.0); empty for an explicit model.
+    extra: Mapping[str, Any] = field(default_factory=dict)
 
     @property
     def explicit(self) -> str:
@@ -81,4 +86,14 @@ def resolve(model: str, config: BoundaryConfig, mode: Mode) -> ModelRef:
         api_version=route.api_version or pc.api_version,
         region=route.region or pc.region,
         alias=model,
+        extra=route.extra,
     )
+
+
+def with_route_extra(request: ChatRequest, ref: ModelRef) -> ChatRequest:
+    """The request with its route's fixed fields under its own (1.2.0): the caller's `extra`
+    wins a key both set. Unchanged when the route has none, and always for an explicit
+    model, so a pass-through request is never touched."""
+    if not ref.extra:
+        return request
+    return dataclasses.replace(request, extra={**ref.extra, **request.extra})
