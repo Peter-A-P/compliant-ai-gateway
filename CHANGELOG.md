@@ -5,6 +5,8 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+- The website: less space above the headline, the hero's top padding 3.25rem to 2.5rem.
+
 ## 1.2.0 (2026-10-08)
 
 - **Prices by the length of the prompt.** A price entry may carry a `long_prompt` block
