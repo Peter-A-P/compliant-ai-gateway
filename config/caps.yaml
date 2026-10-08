@@ -92,6 +92,15 @@ projects:
     monthly_usd: 60
     per_run_usd: 2
     daily_usd: 5
+  # 13 grounded email response drafting (package firstdraft). The first paid run generates
+  # the 750 evaluation enquiries on Sonnet 5.5, estimated at about US$6; the per-run cap
+  # leaves room for a retry pass, the monthly one for one rerun. Drafting and judge runs
+  # come later and raise these, deliberately, in a commit. Mirrors firstdraft's own
+  # config/gateway/caps.yaml, which its runs enforce; confirmed by Peter 2026-10-08.
+  firstdraft:
+    monthly_usd: 25
+    per_run_usd: 10
+    daily_usd: 15
 
 default:
   monthly_usd: 10
