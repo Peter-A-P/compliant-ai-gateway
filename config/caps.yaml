@@ -44,7 +44,9 @@ version: 1
 # 525, from 500 on 2026-10-09, for the same reason a third time: 13's line (firstdraft, added
 # 2026-10-08) takes the named total to 515, and the cap keeps US$10 of room as 500 did over
 # 490. Confirmed by Peter 2026-10-09.
-portfolio_monthly_usd: 525
+# 560, from 525 on 2026-10-11: 13's line below goes to 60 from 25, which takes the named
+# total to 550, and the cap keeps its US$10 of room. Confirmed by Peter 2026-10-11.
+portfolio_monthly_usd: 560
 
 projects:
   # 03 drift runs: about US$9 per full run; two dry runs plus the Sep 27 official run.
@@ -100,8 +102,10 @@ projects:
   # leaves room for a retry pass, the monthly one for one rerun. Drafting and judge runs
   # come later and raise these, deliberately, in a commit. Mirrors firstdraft's own
   # config/gateway/caps.yaml, which its runs enforce; confirmed by Peter 2026-10-08.
+  # Monthly to 60 from 25 on 2026-10-11, confirmed by Peter: the drafting run with 05's
+  # retrieval and the judge work to follow.
   firstdraft:
-    monthly_usd: 25
+    monthly_usd: 60
     per_run_usd: 10
     daily_usd: 15
 
