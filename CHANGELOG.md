@@ -5,6 +5,13 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 1.4.0 (2026-10-16)
+
+- **`boundary/prices/2026-10-16.yaml`** adds OpenAI's GPT-6.1 Sol, read from OpenAI's pricing
+  page that day: US$2.00 in, US$0.10 a cached read, US$2.50 a cache write and US$10.00 out up to
+  272,000 prompt tokens, US$4.00, US$0.20, US$5.00 and US$15.00 over, batch at half. Every other
+  rate carried over unchanged. For project 16 (legible), whose OpenAI arm it is.
+
 ## 1.3.0 (2026-10-16)
 
 - **The website's architecture page**, `/architecture.html`: the four diagrams from
