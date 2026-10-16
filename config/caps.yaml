@@ -46,7 +46,9 @@ version: 1
 # 490. Confirmed by Peter 2026-10-09.
 # 560, from 525 on 2026-10-11: 13's line below goes to 60 from 25, which takes the named
 # total to 550, and the cap keeps its US$10 of room. Confirmed by Peter 2026-10-11.
-portfolio_monthly_usd: 560
+# 650, from 560 on 2026-10-16: 16's line below (legible, US$90) takes the named total to
+# 640, and the cap keeps its US$10 of room. Approved by Peter 2026-10-16.
+portfolio_monthly_usd: 650
 
 projects:
   # 03 drift runs: about US$9 per full run; two dry runs plus the Sep 27 official run.
@@ -108,6 +110,18 @@ projects:
     monthly_usd: 60
     per_run_usd: 10
     daily_usd: 15
+  # 16 Forms That Read Themselves (package legible). Its plan (PLAN.md section 7, prices of
+  # 2026-10-16) puts the frontier and OCR-to-LLM arms at about US$58 for some 4,100 page
+  # calls per arm, Anthropic batched, against an API line of CA$60 to 120. The monthly cap is
+  # the top of that line (about US$90), since the three-week build falls in one month. The
+  # largest single run is the Anthropic quality model over every test set, about US$18, so
+  # the per-run cap allows it with room for retries and stops a run going wrong well before
+  # the line is gone; the per-day cap bounds a retry loop. Approved by Peter 2026-10-16.
+  # Raise them here, deliberately, in a commit if they bind; never bypass a cap in code.
+  legible:
+    monthly_usd: 90
+    per_run_usd: 25
+    daily_usd: 40
 
 default:
   monthly_usd: 10
