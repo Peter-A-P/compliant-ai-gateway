@@ -40,6 +40,7 @@ listed here; nothing any earlier version offered has changed shape.
 | 0.11.0 | 2026-09-23 | `Policy.released` and `RELEASABLE`: a caller's `allow` terms also release a detector's LOCATION or ORGANISATION span that is one of them. A caller who passes no `allow` sees no change |
 | 0.12.0 | 2026-09-23 | The data policy (section 14): `Gateway(..., policy=)`, the `policy` configuration key, `PolicyRefused`, `boundary.enforce` and `boundary policy eval`. Opt-in: a gateway with no policy behaves as before |
 | 0.13.0 | 2026-09-25 | The OpenAI-compatible proxy (section 15): `boundary.server`, the `server` extra, `boundary serve` and `boundary teams key`. `on_text` on `chat_stream` and `achat_stream`. Nothing a library caller already uses changed |
+| 1.3.0 | 2026-10-16 | `boundary.server.chrome.MENU` and `menu`, `page(..., current=)`; `boundary.site.PAGES` and `architecture_sections`; `/architecture.html` and `/architecture/` among the site's files. No library behaviour changed |
 | 1.2.0 | 2026-10-08 | `PriceEntry.long_prompt` and `LongPromptRates`, `PriceEntry.for_prompt`; `Route.extra` and `ModelRef.extra`, `routes.with_route_extra`; `ledger.prices.prompt_tokens`; `demo.render(..., targets=)`. Additive: an entry or route without the new fields behaves as before |
 | 1.1.0 | 2026-10-07 | `SemanticCache.exact`, `PgSemanticCache.exact`, `semcache.question_sha256` and `Hit.exact` (default False); the proxy's `x-boundary-cache-match` header. Additive |
 | 1.0.0 | 2026-10-06 | No interface change: Part B complete. From here a removal or rename is 2.0.0 |

@@ -5,6 +5,8 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 1.3.0 (2026-10-16)
+
 - **The website's architecture page**, `/architecture.html`: the four diagrams from
   docs/architecture.md with its text, rendered from that file by `boundary.site` so the two
   cannot differ, and the diagrams served from `/architecture/`. Caddy serves both as the
