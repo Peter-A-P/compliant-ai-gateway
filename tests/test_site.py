@@ -19,15 +19,16 @@ def built(tmp_path_factory: pytest.TempPathFactory) -> site.Built:
     return site.build(ROOT, tmp_path_factory.mktemp("site") / "out")
 
 
-def page(b: site.Built) -> str:
-    return (b.out / "index.html").read_text(encoding="utf-8")
+def page(b: site.Built, name: str = "index.html") -> str:
+    return (b.out / name).read_text(encoding="utf-8")
 
 
 def test_every_token_is_filled_and_every_file_is_written(built: site.Built) -> None:
-    text = page(built)
-    assert "{{" not in text and "}}" not in text
+    for name in site.PAGES:
+        text = page(built, name)
+        assert "{{" not in text and "}}" not in text, name
     assert built.tokens > 50
-    for name in ("index.html", "style.css", "app.js", site.DATA, "fonts/inter-latin.woff2"):
+    for name in (*site.PAGES, "style.css", "app.js", site.DATA, "fonts/inter-latin.woff2"):
         assert name in built.files, name
 
 
@@ -35,20 +36,21 @@ def test_nothing_inline_and_nothing_off_this_server(built: site.Built) -> None:
     """The host's content security policy refuses inline styles and scripts and any
     off-origin load; a page that relied on one would look fine from a plain file server and
     break live."""
-    text = page(built)
-    assert not re.search(r"<style|style=|<script(?![^>]*\bsrc=)", text)
-    assert not re.search(r"\son[a-z]+=", text)
-    for src in re.findall(r'(?:src|href)="([^"]+)"', text):
-        if src.startswith(("http://", "https://")):
-            assert src.startswith(
-                ("https://peterparker.ca", "https://github.com/Peter-A-P/compliant-ai-gateway")
-            ), src
-        elif src.startswith("#"):
-            assert f'id="{src[1:]}"' in text, f"no section {src}"
-        elif src.startswith("/"):
-            assert src in ("/demo", "/dashboard"), src
-        else:
-            assert src in built.files, src
+    for name in site.PAGES:
+        text = page(built, name)
+        assert not re.search(r"<style|style=|<script(?![^>]*\bsrc=)", text), name
+        assert not re.search(r"\son[a-z]+=", text), name
+        for src in re.findall(r'(?:src|href)="([^"]+)"', text):
+            if src.startswith(("http://", "https://")):
+                assert src.startswith(
+                    ("https://peterparker.ca", "https://github.com/Peter-A-P/compliant-ai-gateway")
+                ), src
+            elif src.startswith("#"):
+                assert f'id="{src[1:]}"' in text, f"no section {src}"
+            elif src.startswith("/"):
+                assert src in ("/", "/demo", "/dashboard", "/architecture.html"), src
+            else:
+                assert src in built.files, src
     js = (built.out / "app.js").read_text(encoding="utf-8")
     assert sorted(set(re.findall(r'getJson\("([^"]+)"\)', js))) == ["/audit/head", site.DATA]
     # The one read from another host: the anchors as the public repository holds them, and
@@ -77,6 +79,33 @@ def test_the_figures_are_the_readmes(built: site.Built) -> None:
     assert len(data["load"]) == len(tables["loadtest"])
 
 
+def test_the_architecture_page_shows_every_diagram_as_committed(built: site.Built) -> None:
+    """Rendered from docs/architecture.md, so every diagram in docs/ is on it, copied as is."""
+    text = page(built, "architecture.html")
+    docs = ROOT / "docs" / "architecture"
+    shown = set(re.findall(r'<img src="architecture/([^"]+)"', text))
+    assert shown == {p.name for p in docs.glob("*.svg")}
+    assert len(shown) >= 3
+    for name in shown:
+        assert (built.out / "architecture" / name).read_bytes() == (docs / name).read_bytes()
+    assert "<h2>The system</h2>" in text and 'class="where"' in text
+
+
+def test_every_page_carries_the_same_menu_and_the_front_page_links_it_early(
+    built: site.Built,
+) -> None:
+    from boundary.server import chrome
+
+    for name, current in (("index.html", "/"), ("architecture.html", "/architecture.html")):
+        text = page(built, name)
+        nav = text.partition('<nav class="tabs"')[2].partition("</nav>")[0]
+        assert re.findall(r'href="([^"]+)"', nav) == [h for h, _ in chrome.MENU], name
+        assert f'href="{current}" aria-current="page"' in nav, name
+    assert chrome.menu("/demo").count("aria-current") == 1
+    hero = page(built).partition('<header class="hero">')[2].partition("</header>")[0]
+    assert 'href="/architecture.html"' in hero
+
+
 def test_a_missing_table_fails_the_build() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     broken = re.sub(r"<!-- audit:start -->.*?<!-- audit:end -->", "", readme, flags=re.S)
@@ -103,7 +132,7 @@ def test_the_residency_grid_is_the_policys() -> None:
 
 
 def test_plain_punctuation_in_the_site() -> None:
-    for name in ("index.html", "style.css", "app.js"):
+    for name in (*site.PAGES, "style.css", "app.js"):
         text = (ROOT / "web" / name).read_text(encoding="utf-8")
         assert not re.search("[\\u2013\\u2014\\u2018\\u2019\\u201c\\u201d]", text), name
 
@@ -112,7 +141,8 @@ def test_caddy_serves_exactly_the_site_with_its_headers() -> None:
     caddy = (ROOT / "deploy" / "Caddyfile").read_text(encoding="utf-8")
     m = re.search(r"@site path (.+)", caddy)
     assert m is not None
-    assert m.group(1).split() == ["/", "/index.html", *(f"/{a}" for a in site.ASSETS),
-                                  "/fonts/*", "/data/*"]  # fmt: skip
+    assert m.group(1).split() == ["/", *(f"/{p}" for p in site.PAGES),
+                                  *(f"/{a}" for a in site.ASSETS),
+                                  "/fonts/*", "/data/*", "/architecture/*"]  # fmt: skip
     for k, v in site.HEADERS.items():
         assert f'{k} "{v}"' in caddy, k

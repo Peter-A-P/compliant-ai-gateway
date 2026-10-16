@@ -5,6 +5,16 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+- **The website's architecture page**, `/architecture.html`: the four diagrams from
+  docs/architecture.md with its text, rendered from that file by `boundary.site` so the two
+  cannot differ, and the diagrams served from `/architecture/`. Caddy serves both as the
+  site's files. docs/architecture.md rewritten for a reader rather than a maintainer.
+- **One menu on every page of the host**: Overview, the demo, the dashboard and How it's
+  built, in the website's two pages and, through `boundary.server.chrome.menu`, in `/demo`
+  and `/dashboard`. The front page also links the architecture page from its first screen.
+- `site.Built.files` lists paths with forward slashes on every platform, so the site tests
+  pass on Windows too.
+
 ## 1.2.0 (2026-10-08)
 
 - The website: less space between the header and the first line of text, the hero's top

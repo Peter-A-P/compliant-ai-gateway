@@ -25,6 +25,15 @@ from committed files only:
 | The audit chain drawing | `anchors/gateway.jsonl`, and at run time `GET /audit/head`, the live chain's head, the one request the page makes to the proxy. Since 0.34 the browser also reads `anchors/gateway.jsonl` from the public repository on GitHub as the page loads, so the anchors drawn are the ones a stranger can check and are never a deploy behind; if GitHub cannot be reached the page draws the copy it was built with |
 | Tests, lines of code, releases | Counted from `tests/`, `boundary/` and the changelog |
 
+## The architecture page
+
+`/architecture.html` is `web/architecture.html` with one token, `{{architecture_sections}}`,
+filled by `boundary.site.architecture_sections` from docs/architecture.md: each `##` section
+becomes a heading, its diagram and its paragraphs, so the page and the document cannot tell
+different stories. The diagrams are copied from `docs/architecture/` into `architecture/`.
+Every page of the host, the proxy's two included, carries the same menu
+(`boundary.server.chrome.MENU`).
+
 ## How it is served
 
 Caddy serves it at the root of gateway.peterparker.ca, beside the proxy's own `/demo` and

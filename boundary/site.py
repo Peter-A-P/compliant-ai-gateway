@@ -58,6 +58,10 @@ HEADERS: dict[str, str] = {
 # names the same paths). Everything else on the host is the proxy's.
 ASSETS = ("style.css", "app.js")
 
+# The pages, each a template in `web/` with `{{tokens}}`. The second shows the architecture
+# diagrams, rendered from docs/architecture.md and served from `architecture/`.
+PAGES = ("index.html", "architecture.html")
+
 # The fictional request the redaction example runs on. Nobody here exists: a name from the
 # usual placeholder pair, the sample social insurance number the federal government
 # publishes for testing, a reserved 555 telephone number and an example.com address.
@@ -385,6 +389,46 @@ class Built:
     files: list[str]
 
 
+def _md_inline(text: str) -> str:
+    """`code` and [text](link) from the architecture document, as HTML. Links become their
+    words, because the document's links point inside the repository."""
+    text = html.escape(text, quote=False)
+    text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
+    return re.sub(r"`([^`]+)`", r"<code>\1</code>", text)
+
+
+def architecture_sections(root: Path) -> str:
+    """docs/architecture.md after its introduction, one section per diagram, as HTML. Rendered
+    from the document itself so the site and the repository cannot tell different stories."""
+    docs = root / "docs"
+    md = (docs / "architecture.md").read_text(encoding="utf-8")
+    out: list[str] = []
+    for section in re.split(r"^## ", md, flags=re.M)[1:]:
+        title, _, body = section.partition("\n")
+        blocks = [b.strip() for b in body.strip().split("\n\n") if b.strip()]
+        image = re.fullmatch(r"!\[(.*)\]\(architecture/([^)]+\.svg)\)", blocks[0], re.S)
+        if image is None:
+            raise SiteError(f"docs/architecture.md: {title!r} does not open with a diagram")
+        alt, name = image.groups()
+        svg = (docs / "architecture" / name).read_text(encoding="utf-8")
+        size = find(svg, r'width="(\d+)" height="(\d+)"', f"the size of {name}")
+        slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
+        paras = []
+        for block in blocks[1:]:
+            text = " ".join(line.strip() for line in block.splitlines())
+            where = ' class="where"' if text.startswith("Where it lives:") else ""
+            paras.append(f"      <p{where}>{_md_inline(text)}</p>")
+        out.append(
+            f'  <section class="section" id="{slug}">\n'
+            f"    <h2>{_md_inline(title.strip())}</h2>\n"
+            f'    <figure class="arch-figure"><a href="architecture/{name}">'
+            f'<img src="architecture/{name}" width="{size.group(1)}" height="{size.group(2)}" '
+            f'alt="{html.escape(alt)}"></a></figure>\n'
+            f'    <div class="prose">\n' + "\n".join(paras) + "\n    </div>\n  </section>\n"
+        )
+    return "\n".join(out)
+
+
 def build(root: Path, out: Path, *, today: dt.date | None = None) -> Built:
     """`web/` filled from the repository's results into `out`, and the JSON beside it."""
     web = root / "web"
@@ -419,19 +463,28 @@ def build(root: Path, out: Path, *, today: dt.date | None = None) -> Built:
             "providers": str(len(grid["rows"])),
             "anchors": str(len(published)),
             "first_anchor": published[0]["ts_utc"][:10] if published else "none yet",
+            "architecture_sections": architecture_sections(root),
         }
     )
-    page = (web / "index.html").read_text(encoding="utf-8")
-    used = set(re.findall(r"\{\{([a-z0-9_]+)\}\}", page))
-    missing = sorted(used - values.keys())
-    if missing:
-        raise SiteError(f"web/index.html asks for tokens nothing fills: {missing}")
-    page = re.sub(r"\{\{([a-z0-9_]+)\}\}", lambda m: values[m.group(1)], page)
+    rendered: dict[str, str] = {}
+    used: set[str] = set()
+    for name in PAGES:
+        template = (web / name).read_text(encoding="utf-8")
+        tokens = set(re.findall(r"\{\{([a-z0-9_]+)\}\}", template))
+        missing = sorted(tokens - values.keys())
+        if missing:
+            raise SiteError(f"web/{name} asks for tokens nothing fills: {missing}")
+        used |= tokens
+        rendered[name] = re.sub(r"\{\{([a-z0-9_]+)\}\}", lambda m: values[m.group(1)], template)
 
     if out.exists():
         shutil.rmtree(out)
     (out / "data").mkdir(parents=True)
-    (out / "index.html").write_text(page, encoding="utf-8")
+    for name, text in rendered.items():
+        (out / name).write_text(text, encoding="utf-8")
+    (out / "architecture").mkdir()
+    for svg in sorted((root / "docs" / "architecture").glob("*.svg")):
+        shutil.copyfile(svg, out / "architecture" / svg.name)
     for name in ASSETS:
         shutil.copyfile(web / name, out / name)
     shutil.copytree(web / "fonts", out / "fonts")
@@ -442,7 +495,7 @@ def build(root: Path, out: Path, *, today: dt.date | None = None) -> Built:
         "residency": grid,
     }
     (out / DATA).write_text(json.dumps(payload, indent=1) + "\n", encoding="utf-8")
-    files = sorted(str(p.relative_to(out)) for p in out.rglob("*") if p.is_file())
+    files = sorted(p.relative_to(out).as_posix() for p in out.rglob("*") if p.is_file())
     return Built(out, len(used), files)
 
 
@@ -468,8 +521,10 @@ __all__ = [
     "DATA",
     "EXAMPLE_REQUEST",
     "HEADERS",
+    "PAGES",
     "Built",
     "SiteError",
+    "architecture_sections",
     "build",
     "figures",
     "readme_tables",

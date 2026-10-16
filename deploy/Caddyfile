@@ -18,7 +18,7 @@ gateway.peterparker.ca {
 	# that allows nothing inline and nothing from another host. These paths are the site's
 	# files (boundary.site.ASSETS); every other path is the proxy's, /demo and /dashboard
 	# included, which set no such policy.
-	@site path / /index.html /style.css /app.js /fonts/* /data/*
+	@site path / /index.html /architecture.html /style.css /app.js /fonts/* /data/* /architecture/*
 	handle @site {
 		root * /srv/site/current
 		header {

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How it's built: Inside the Boundary, On the Record</title>
+<meta name="description" content="How the gateway at gateway.peterparker.ca is put together, in four diagrams: the gateway as a whole, one request through the proxy, the audit chain with its daily anchor, and how each published number is produced.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="top-inner">
+    <a class="brand" href="https://peterparker.ca"><span class="mono-mark" aria-hidden="true">P</span>Peter Parker</a>
+    <p class="top-nav"><a href="{{project_page}}">Project 04: Inside the Boundary, On the Record</a></p>
+  </div>
+</header>
+<nav class="tabs" aria-label="This site">
+  <div class="tabs-inner">
+    <a href="/">Overview</a>
+    <a href="/demo">Call it yourself</a>
+    <a href="/dashboard">Every call on the record</a>
+    <a href="/architecture.html" aria-current="page">How it's built</a>
+  </div>
+</nav>
+<main>
+
+  <header class="hero">
+    <p class="eyebrow">Architecture</p>
+    <h1>How it's built</h1>
+    <p class="lead">
+      How the gateway is put together, in four pictures: the gateway as a whole, one request's
+      path through the proxy, the audit chain with its daily anchor, and how each published
+      number is produced. Select a diagram to open it full size.
+    </p>
+    <p class="hero-note"><a href="/">Back to the overview</a></p>
+  </header>
+
+{{architecture_sections}}
+</main>
+<footer class="foot">
+  <div class="foot-inner">
+    <p>
+      The same four diagrams are in the repository's docs/architecture.md, rendered from the
+      same file. Source, methods and every measurement:
+      <a href="{{repository}}">github.com/Peter-A-P/compliant-ai-gateway</a>.
+    </p>
+    <ul>
+      <li>Type: Newsreader and Inter, SIL Open Font License, served from this host</li>
+      <li>boundary {{version}}, built {{built}}</li>
+    </ul>
+  </div>
+</footer>
+</body>
+</html>

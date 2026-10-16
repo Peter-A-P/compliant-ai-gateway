@@ -167,6 +167,60 @@ strong { font-weight: 600; }
 .top-nav a { color: var(--ink-soft); }
 .top-nav a:hover { color: var(--accent-ink); }
 
+/* ---------------------------------------------------------------- the menu */
+
+/* The site's pages, as pills, as on the other project pages (01, 02, 03). The proxy's
+   /demo and /dashboard carry the same menu through boundary.server.chrome. */
+.tabs { border-bottom: 1px solid var(--line); background: var(--paper-soft); }
+
+.tabs-inner {
+  max-width: var(--column);
+  margin: 0 auto;
+  padding: 0.55rem 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.tabs a {
+  font-size: 0.85rem;
+  padding: 0.2rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  color: var(--ink-soft);
+}
+
+.tabs a:hover { text-decoration: none; border-color: var(--line-2); color: var(--accent-ink); }
+
+.tabs a[aria-current] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+@media (max-width: 46rem) {
+  /* One row that scrolls sideways, rather than rows of pills above the page. */
+  .tabs-inner { padding: 0.5rem 1.1rem; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .tabs a { flex: none; }
+}
+
+/* ---------------------------------------------------------------- the architecture page */
+
+/* The diagrams are white-ground SVGs generated from a specification, so they sit on their own
+   card in both themes, and each opens full size for narrow screens. */
+.arch-figure { margin: 1.1rem 0 1.4rem; }
+.arch-figure a { display: block; }
+.arch-figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.prose .where { font-size: 0.86rem; color: var(--ink-faint); }
+
 /* ---------------------------------------------------------------- hero */
 
 .hero { position: relative; padding: 1.5rem 0 2.25rem; border-bottom: 1px solid var(--line); }

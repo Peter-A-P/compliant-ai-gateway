@@ -23,9 +23,27 @@ def e(v: object) -> str:
     return html.escape(str(v))
 
 
-def page(*, title: str, description: str, body: str, note: str = "") -> str:
-    """A whole page: the site's header, `body` inside `main`, and the site's footer, with
-    `note` as the footer's first line."""
+# The site's menu, the same on every page of the host: the website's two pages and these two.
+MENU = (
+    ("/", "Overview"),
+    ("/demo", "Call it yourself"),
+    ("/dashboard", "Every call on the record"),
+    ("/architecture.html", "How it's built"),
+)
+
+
+def menu(current: str) -> str:
+    """The menu as HTML, with the page the reader is on marked."""
+    links = "\n".join(
+        f'    <a href="{href}"{' aria-current="page"' if href == current else ""}>{e(label)}</a>'
+        for href, label in MENU
+    )
+    return f'<nav class="tabs" aria-label="This site">\n  <div class="tabs-inner">\n{links}\n  </div>\n</nav>'
+
+
+def page(*, title: str, description: str, body: str, note: str = "", current: str = "") -> str:
+    """A whole page: the site's header and menu, `body` inside `main`, and the site's
+    footer, with `note` as the footer's first line. `current` is this page's path."""
     first = f"<li>{note}</li>" if note else ""
     return f"""<!doctype html>
 <html lang="en">
@@ -43,6 +61,7 @@ def page(*, title: str, description: str, body: str, note: str = "") -> str:
     <p class="top-nav"><a href="/">Project 04: Inside the Boundary, On the Record</a></p>
   </div>
 </header>
+{menu(current)}
 <main>
 {body}
 </main>
@@ -65,4 +84,4 @@ def page(*, title: str, description: str, body: str, note: str = "") -> str:
 """
 
 
-__all__ = ["REPOSITORY", "WEB", "e", "page"]
+__all__ = ["MENU", "REPOSITORY", "WEB", "e", "menu", "page"]

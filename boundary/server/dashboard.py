@@ -238,6 +238,7 @@ def render(
         description="Every AI model call in Peter Parker's portfolio: calls, cost, errors and latency by project, model and day, and whether the record is complete.",
         body=body,
         note=note,
+        current="/dashboard",
     )
 
 

@@ -140,6 +140,7 @@ print(r.parse().choices[0].message.content)"""
         description="A public key for the gateway at gateway.peterparker.ca, its limits, and a call, a refusal and a cached repeat to copy.",
         body=body,
         note=f"Team <code>{_e(team)}</code>, US${t.monthly_usd:g} a month",
+        current="/demo",
     )
 
 
