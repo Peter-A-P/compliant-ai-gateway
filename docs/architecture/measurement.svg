@@ -1,0 +1,164 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1256" height="972" viewBox="0 0 1256 972" role="img" aria-label="Each table in the README is filled by one command over a stated input, against a mock upstream or the hosted gateway, into a stored run file, and written between markers in the README so a reader can rerun it." font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9 z" fill="#14201E"/></marker><marker id="arrow-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9 z" fill="#0E6E60"/></marker><marker id="arrow-signal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9 z" fill="#A64C1C"/></marker><marker id="arrow-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9 z" fill="#5C6B67"/></marker></defs>
+<rect width="1256" height="972" fill="#FFFFFF"/>
+<text x="28" y="42" font-size="16" font-weight="700" fill="#14201E">How the published numbers are produced: a command per table, a file per run</text>
+<path d="M 244.0 98.0 L 356.0 98.0" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 572.0 98.0 L 684.0 98.0" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 244.0 210.0 L 356.0 210.0" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 572.0 210.0 L 684.0 210.0" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 244.0 322.0 L 356.0 322.0" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 572.0 322.0 L 684.0 322.0" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 244.0 434.0 L 356.0 434.0" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 572.0 434.0 L 684.0 434.0" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 244.0 546.0 L 356.0 546.0" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 572.0 546.0 L 684.0 546.0" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 244.0 658.0 L 356.0 658.0" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 572.0 658.0 L 684.0 658.0" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 244.0 770.0 L 356.0 770.0" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 572.0 770.0 L 684.0 770.0" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 244.0 882.0 L 356.0 882.0" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 572.0 882.0 L 684.0 882.0" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 900.0 98.0 L 950.0 98.0 Q 956.0 98.0 956.0 104.0 L 956.0 350.2 Q 956.0 356.2 962.0 356.2 L 1012.0 356.2" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 900.0 210.0 L 950.0 210.0 Q 956.0 210.0 956.0 216.0 L 956.0 372.4 Q 956.0 378.4 962.0 378.4 L 1012.0 378.4" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 900.0 322.0 L 950.0 322.0 Q 956.0 322.0 956.0 328.0 L 956.0 394.7 Q 956.0 400.7 962.0 400.7 L 1012.0 400.7" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 900.0 428.4 L 1012.0 428.4" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 900.0 546.0 L 950.0 546.0 Q 956.0 546.0 956.0 540.0 L 956.0 451.1 Q 956.0 445.1 962.0 445.1 L 1012.0 445.1" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 900.0 658.0 L 950.0 658.0 Q 956.0 658.0 956.0 652.0 L 956.0 473.3 Q 956.0 467.3 962.0 467.3 L 1012.0 467.3" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 900.0 770.0 L 950.0 770.0 Q 956.0 770.0 956.0 764.0 L 956.0 495.6 Q 956.0 489.6 962.0 489.6 L 1012.0 489.6" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 900.0 882.0 L 950.0 882.0 Q 956.0 882.0 956.0 876.0 L 956.0 517.8 Q 956.0 511.8 962.0 511.8 L 1012.0 511.8" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<rect x="28.0" y="66.0" width="216.0" height="64.0" rx="4" fill="#F2F4F3" stroke="#5C6B67" stroke-width="1.1" stroke-dasharray="5 3"/>
+<text x="136.0" y="94.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">In-process mock upstream</text>
+<text x="136.0" y="110.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">ok, 500, 400, timeout, kill</text>
+<rect x="356.0" y="66.0" width="216.0" height="64.0" rx="4" fill="#FFFFFF" stroke="#14201E" stroke-width="1.1"/>
+<text x="464.0" y="95.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">boundary bench</text>
+<text x="464.0" y="112.0" font-size="11" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" text-anchor="middle" fill="#5C6B67">boundary.bench</text>
+<rect x="684.0" y="66.0" width="216.0" height="64.0" rx="4" fill="#FFFFFF" stroke="#A64C1C" stroke-width="1.6"/>
+<rect x="684.0" y="66.0" width="5" height="64.0" rx="2" fill="#A64C1C"/>
+<text x="792.0" y="87.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">Overhead, ledger completeness,</text>
+<text x="792.0" y="103.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">caps, pass-through fidelity</text>
+<text x="792.0" y="120.0" font-size="11" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" text-anchor="middle" fill="#5C6B67">bench/results.json</text>
+<rect x="28.0" y="178.0" width="216.0" height="64.0" rx="4" fill="#F2F4F3" stroke="#5C6B67" stroke-width="1.1" stroke-dasharray="5 3"/>
+<text x="136.0" y="206.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">200 generated pages</text>
+<text x="136.0" y="222.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">1,700 labelled entities</text>
+<rect x="356.0" y="178.0" width="216.0" height="64.0" rx="4" fill="#FFFFFF" stroke="#14201E" stroke-width="1.1"/>
+<text x="464.0" y="199.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">boundary redact eval</text>
+<text x="464.0" y="215.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">and the pages over the proxy</text>
+<text x="464.0" y="232.0" font-size="11" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" text-anchor="middle" fill="#5C6B67">boundary.redact.evaluate</text>
+<rect x="684.0" y="178.0" width="216.0" height="64.0" rx="4" fill="#FFFFFF" stroke="#A64C1C" stroke-width="1.6"/>
+<rect x="684.0" y="178.0" width="5" height="64.0" rx="2" fill="#A64C1C"/>
+<text x="792.0" y="199.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">Recall, precision, leak rate,</text>
+<text x="792.0" y="215.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">round trip, values on the wire</text>
+<text x="792.0" y="232.0" font-size="11" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" text-anchor="middle" fill="#5C6B67">bench/redact*.json</text>
+<rect x="28.0" y="290.0" width="216.0" height="64.0" rx="4" fill="#F2F4F3" stroke="#5C6B67" stroke-width="1.1" stroke-dasharray="5 3"/>
+<text x="136.0" y="318.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">Text Anonymization Benchmark</text>
+<text x="136.0" y="334.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">127 judgments, test split</text>
+<rect x="356.0" y="290.0" width="216.0" height="64.0" rx="4" fill="#FFFFFF" stroke="#14201E" stroke-width="1.1"/>
+<text x="464.0" y="311.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">boundary redact eval --tab</text>
+<text x="464.0" y="327.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">Presidio, train allow list</text>
+<text x="464.0" y="344.0" font-size="11" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" text-anchor="middle" fill="#5C6B67">boundary.redact.tab</text>
+<rect x="684.0" y="290.0" width="216.0" height="64.0" rx="4" fill="#FFFFFF" stroke="#A64C1C" stroke-width="1.6"/>
+<rect x="684.0" y="290.0" width="5" height="64.0" rx="2" fill="#A64C1C"/>
+<text x="792.0" y="311.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">Identifiers masked, precision,</text>
+<text x="792.0" y="327.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">safe spans touched</text>
+<text x="792.0" y="344.0" font-size="11" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" text-anchor="middle" fill="#5C6B67">bench/redact-tab.json</text>
+<rect x="28.0" y="402.0" width="216.0" height="64.0" rx="4" fill="#F2F4F3" stroke="#5C6B67" stroke-width="1.1" stroke-dasharray="5 3"/>
+<text x="136.0" y="430.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">A 500-record chain</text>
+<text x="136.0" y="446.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">2,400 corruptions of 12 kinds</text>
+<rect x="356.0" y="402.0" width="216.0" height="64.0" rx="4" fill="#FFFFFF" stroke="#14201E" stroke-width="1.1"/>
+<text x="464.0" y="431.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">boundary audit tamper-test</text>
+<text x="464.0" y="448.0" font-size="11" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" text-anchor="middle" fill="#5C6B67">boundary.audit.tamper</text>
+<rect x="684.0" y="402.0" width="216.0" height="64.0" rx="4" fill="#FFFFFF" stroke="#A64C1C" stroke-width="1.6"/>
+<rect x="684.0" y="402.0" width="5" height="64.0" rx="2" fill="#A64C1C"/>
+<text x="792.0" y="423.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">Corruptions detected,</text>
+<text x="792.0" y="439.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">false alarms, verify time</text>
+<text x="792.0" y="456.0" font-size="11" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" text-anchor="middle" fill="#5C6B67">bench/audit.json</text>
+<rect x="28.0" y="514.0" width="216.0" height="64.0" rx="4" fill="#F2F4F3" stroke="#5C6B67" stroke-width="1.1" stroke-dasharray="5 3"/>
+<text x="136.0" y="542.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">The adversarial policy suite</text>
+<text x="136.0" y="558.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">all routes, classes, malformed</text>
+<rect x="356.0" y="514.0" width="216.0" height="64.0" rx="4" fill="#FFFFFF" stroke="#14201E" stroke-width="1.1"/>
+<text x="464.0" y="535.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">boundary policy eval</text>
+<text x="464.0" y="551.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">library and proxy, five entries</text>
+<text x="464.0" y="568.0" font-size="11" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" text-anchor="middle" fill="#5C6B67">boundary.enforce_eval</text>
+<rect x="684.0" y="514.0" width="216.0" height="64.0" rx="4" fill="#FFFFFF" stroke="#A64C1C" stroke-width="1.6"/>
+<rect x="684.0" y="514.0" width="5" height="64.0" rx="2" fill="#A64C1C"/>
+<text x="792.0" y="535.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">Forbidden cases sent,</text>
+<text x="792.0" y="551.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">allowed cases refused</text>
+<text x="792.0" y="568.0" font-size="11" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" text-anchor="middle" fill="#5C6B67">upstream counts what arrives</text>
+<rect x="28.0" y="626.0" width="216.0" height="64.0" rx="4" fill="#F2F4F3" stroke="#5C6B67" stroke-width="1.1" stroke-dasharray="5 3"/>
+<text x="136.0" y="654.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">k6 against the hosted gateway</text>
+<text x="136.0" y="670.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">the VPS the README names</text>
+<rect x="356.0" y="626.0" width="216.0" height="64.0" rx="4" fill="#FFFFFF" stroke="#14201E" stroke-width="1.1"/>
+<text x="464.0" y="647.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">boundary loadtest --hosted</text>
+<text x="464.0" y="663.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">layered: routing, chain, cache</text>
+<text x="464.0" y="680.0" font-size="11" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" text-anchor="middle" fill="#5C6B67">boundary.loadtest</text>
+<rect x="684.0" y="626.0" width="216.0" height="64.0" rx="4" fill="#FFFFFF" stroke="#A64C1C" stroke-width="1.6"/>
+<rect x="684.0" y="626.0" width="5" height="64.0" rx="2" fill="#A64C1C"/>
+<text x="792.0" y="647.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">p99 by layer, requests</text>
+<text x="792.0" y="663.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">answered, up to 500 a second</text>
+<text x="792.0" y="680.0" font-size="11" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" text-anchor="middle" fill="#5C6B67">bench/loadtest-*.json</text>
+<rect x="28.0" y="738.0" width="216.0" height="64.0" rx="4" fill="#F2F4F3" stroke="#5C6B67" stroke-width="1.1" stroke-dasharray="5 3"/>
+<text x="136.0" y="766.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">Paraphrase bench, held out,</text>
+<text x="136.0" y="782.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">and replayed real traffic</text>
+<rect x="356.0" y="738.0" width="216.0" height="64.0" rx="4" fill="#FFFFFF" stroke="#14201E" stroke-width="1.1"/>
+<text x="464.0" y="759.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">boundary cache eval</text>
+<text x="464.0" y="775.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">and cache replay, offline</text>
+<text x="464.0" y="792.0" font-size="11" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" text-anchor="middle" fill="#5C6B67">boundary.semcache_eval</text>
+<rect x="684.0" y="738.0" width="216.0" height="64.0" rx="4" fill="#FFFFFF" stroke="#A64C1C" stroke-width="1.6"/>
+<rect x="684.0" y="738.0" width="5" height="64.0" rx="2" fill="#A64C1C"/>
+<text x="792.0" y="759.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">False-hit rate,</text>
+<text x="792.0" y="775.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">cost the cache would have saved</text>
+<text x="792.0" y="792.0" font-size="11" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" text-anchor="middle" fill="#5C6B67">bench/cache*.json</text>
+<rect x="28.0" y="850.0" width="216.0" height="64.0" rx="4" fill="#F2F4F3" stroke="#5C6B67" stroke-width="1.1" stroke-dasharray="5 3"/>
+<text x="136.0" y="886.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">The vendors&#x27; monthly invoices</text>
+<rect x="356.0" y="850.0" width="216.0" height="64.0" rx="4" fill="#FFFFFF" stroke="#14201E" stroke-width="1.1"/>
+<text x="464.0" y="871.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">The invoice check</text>
+<text x="464.0" y="887.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">ledger against the bills</text>
+<text x="464.0" y="904.0" font-size="11" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" text-anchor="middle" fill="#5C6B67">docs/invoice-check.md</text>
+<rect x="684.0" y="850.0" width="216.0" height="64.0" rx="4" fill="#FFFFFF" stroke="#A64C1C" stroke-width="1.6"/>
+<rect x="684.0" y="850.0" width="5" height="64.0" rx="2" fill="#A64C1C"/>
+<text x="792.0" y="878.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">Ledger vs invoice</text>
+<text x="792.0" y="894.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">every cent explained</text>
+<rect x="1012.0" y="334.0" width="216.0" height="200.0" rx="4" fill="#FFFFFF" stroke="#A64C1C" stroke-width="1.6"/>
+<rect x="1012.0" y="334.0" width="5" height="200.0" rx="2" fill="#A64C1C"/>
+<text x="1120.0" y="423.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">README tables</text>
+<text x="1120.0" y="439.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">between markers</text>
+<text x="1120.0" y="456.0" font-size="11" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" text-anchor="middle" fill="#5C6B67">--write-readme</text>
+<rect x="261.7" y="88.0" width="76.7" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="300.0" y="100.0" font-size="12" text-anchor="middle" fill="#14201E">1,000 calls</text>
+<rect x="604.4" y="88.0" width="47.3" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="628.0" y="100.0" font-size="12" text-anchor="middle" fill="#14201E">writes</text>
+<rect x="270.5" y="200.0" width="59.0" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="300.0" y="212.0" font-size="12" text-anchor="middle" fill="#14201E">no model</text>
+<rect x="604.4" y="200.0" width="47.3" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="628.0" y="212.0" font-size="12" text-anchor="middle" fill="#14201E">writes</text>
+<rect x="267.5" y="312.0" width="64.9" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="300.0" y="324.0" font-size="12" text-anchor="middle" fill="#14201E">real text</text>
+<rect x="604.4" y="312.0" width="47.3" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="628.0" y="324.0" font-size="12" text-anchor="middle" fill="#14201E">writes</text>
+<rect x="264.6" y="424.0" width="70.8" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="300.0" y="436.0" font-size="12" text-anchor="middle" fill="#14201E">corrupt it</text>
+<rect x="604.4" y="424.0" width="47.3" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="628.0" y="436.0" font-size="12" text-anchor="middle" fill="#14201E">writes</text>
+<rect x="267.5" y="536.0" width="64.9" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="300.0" y="548.0" font-size="12" text-anchor="middle" fill="#14201E">650 cases</text>
+<rect x="604.4" y="536.0" width="47.3" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="628.0" y="548.0" font-size="12" text-anchor="middle" fill="#14201E">counts</text>
+<rect x="261.7" y="648.0" width="76.7" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="300.0" y="660.0" font-size="12" text-anchor="middle" fill="#14201E">fixed rates</text>
+<rect x="604.4" y="648.0" width="47.3" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="628.0" y="660.0" font-size="12" text-anchor="middle" fill="#14201E">writes</text>
+<rect x="267.5" y="760.0" width="64.9" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="300.0" y="772.0" font-size="12" text-anchor="middle" fill="#14201E">bge-small</text>
+<rect x="604.4" y="760.0" width="47.3" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="628.0" y="772.0" font-size="12" text-anchor="middle" fill="#14201E">writes</text>
+<rect x="273.4" y="872.0" width="53.2" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="300.0" y="884.0" font-size="12" text-anchor="middle" fill="#14201E">monthly</text>
+<rect x="592.6" y="872.0" width="70.8" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="628.0" y="884.0" font-size="12" text-anchor="middle" fill="#14201E">reconciles</text>
+<text x="1120.0" y="546.0" font-size="11" text-anchor="middle" fill="#5C6B67" font-style="italic">every table: --write-readme,</text>
+<text x="1120.0" y="561.0" font-size="11" text-anchor="middle" fill="#5C6B67" font-style="italic">between markers in the README</text>
+<rect x="28" y="936" width="26" height="16" rx="3" fill="#FFFFFF" stroke="#A64C1C" stroke-width="1.6"/>
+<text x="62" y="948" font-size="11" fill="#5C6B67">a published number</text>
+<rect x="185.01999999999998" y="936" width="26" height="16" rx="3" fill="#F2F4F3" stroke="#5C6B67" stroke-dasharray="4 3"/>
+<text x="219.01999999999998" y="948" font-size="11" fill="#5C6B67">the input</text>
+</svg>

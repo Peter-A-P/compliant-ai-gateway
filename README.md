@@ -630,7 +630,8 @@ Part B: an OpenAI-compatible proxy on the same library with
 reversible PII redaction, residency routing by declared data class, a semantic cache with
 its false-hit rate measured, per-team budgets, a hash-chained audit log anchored daily in
 this repository, a layered load test, and a read-only dashboard of every project's calls
-and costs.
+and costs. Four architecture diagrams, the system, one request through the proxy, the audit chain and
+how the numbers are produced, are in [docs/architecture.md](docs/architecture.md).
 
 ## Part of a portfolio
 

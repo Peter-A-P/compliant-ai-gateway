@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1090" height="668" viewBox="0 0 1090 668" role="img" aria-label="Portfolio projects call the library directly and OpenAI-compatible clients call the proxy; both reach the same Gateway, which routes by configuration, checks the data policy and the caps, calls the vendor over raw HTTP, costs the call from a dated price file and writes one ledger row that the sealer chains and GitHub anchors daily." font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9 z" fill="#14201E"/></marker><marker id="arrow-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9 z" fill="#0E6E60"/></marker><marker id="arrow-signal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9 z" fill="#A64C1C"/></marker><marker id="arrow-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9 z" fill="#5C6B67"/></marker></defs>
+<rect width="1090" height="668" fill="#FFFFFF"/>
+<text x="28" y="42" font-size="16" font-weight="700" fill="#14201E">The gateway: a library every project calls, and a proxy on top of it</text>
+<path d="M 545.0 131.0 L 545.0 178.0" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 687.0 109.0 L 733.0 109.0 Q 739.0 109.0 739.0 115.0 L 739.0 321.3 Q 739.0 327.3 733.0 327.3 L 674.0 327.3" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 687.0 87.0 L 927.0 87.0 Q 933.0 87.0 933.0 93.0 L 933.0 186.0" fill="none" stroke="#14201E" stroke-width="1.4" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
+<path d="M 416.0 218.0 L 286.0 218.0" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
+<path d="M 545.0 258.0 L 545.0 306.0" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 416.0 332.7 L 286.0 332.7" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 674.0 343.3 L 804.0 343.3" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 545.0 370.0 L 545.0 426.0" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 286.0 458.0 L 345.0 458.0 Q 351.0 458.0 351.0 452.0 L 351.0 354.7 Q 351.0 348.7 357.0 348.7 L 416.0 348.7" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 545.0 490.0 L 545.0 546.0" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 933.0 301.0 L 933.0 250.0" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 933.0 375.0 L 933.0 421.0" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 933.0 495.0 L 933.0 546.0" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<rect x="403.0" y="65.0" width="284.0" height="66.0" rx="33.0" fill="#F2F4F3" stroke="#14201E" stroke-width="1.1"/>
+<text x="545.0" y="86.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">Callers</text>
+<text x="545.0" y="102.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">OpenAI clients and the demo visitor</text>
+<text x="545.0" y="118.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">by HTTPS; portfolio projects by import</text>
+<rect x="416.0" y="178.0" width="258.0" height="80.0" rx="4" fill="#FFFFFF" stroke="#0E6E60" stroke-width="1.6"/>
+<rect x="416.0" y="178.0" width="5" height="80.0" rx="2" fill="#0E6E60"/>
+<text x="545.0" y="199.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">boundary serve, the proxy</text>
+<text x="545.0" y="215.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">team keys and quotas, data class,</text>
+<text x="545.0" y="231.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">reversible redaction, semantic cache</text>
+<text x="545.0" y="248.0" font-size="11" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" text-anchor="middle" fill="#5C6B67">boundary.server</text>
+<path d="M 28.0 188.0 a 129.0 7 0 0 1 258.0 0 L 286.0 248.0 a 129.0 7 0 0 1 -258.0 0 Z" fill="#FFFFFF" stroke="#14201E" stroke-width="1.1"/><path d="M 28.0 188.0 a 129.0 7 0 0 0 258.0 0" fill="none" stroke="#14201E" stroke-width="1.1"/>
+<text x="157.0" y="211.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">Redaction vault</text>
+<text x="157.0" y="227.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">the values a caller sent</text>
+<text x="157.0" y="244.0" font-size="11" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" text-anchor="middle" fill="#5C6B67">boundary.redact</text>
+<rect x="804.0" y="186.0" width="258.0" height="64.0" rx="4" fill="#FFFFFF" stroke="#14201E" stroke-width="1.1"/>
+<text x="933.0" y="207.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">Central ledger and dashboard</text>
+<text x="933.0" y="223.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">every project&#x27;s calls and costs</text>
+<text x="933.0" y="240.0" font-size="11" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" text-anchor="middle" fill="#5C6B67">boundary.central, web/</text>
+<rect x="416.0" y="306.0" width="258.0" height="64.0" rx="4" fill="#FFFFFF" stroke="#0E6E60" stroke-width="1.6"/>
+<rect x="416.0" y="306.0" width="5" height="64.0" rx="2" fill="#0E6E60"/>
+<text x="545.0" y="327.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">The library: Gateway</text>
+<text x="545.0" y="343.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">routes, caps, pass-through mode</text>
+<text x="545.0" y="360.0" font-size="11" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" text-anchor="middle" fill="#5C6B67">boundary.gateway</text>
+<rect x="28.0" y="306.0" width="258.0" height="64.0" rx="4" fill="#FFFFFF" stroke="#14201E" stroke-width="1.1"/>
+<text x="157.0" y="327.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">Data policy</text>
+<text x="157.0" y="343.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">residency by data class, fails closed</text>
+<text x="157.0" y="360.0" font-size="11" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" text-anchor="middle" fill="#5C6B67">boundary.enforce, policy.yaml</text>
+<path d="M 804.0 308.0 a 129.0 7 0 0 1 258.0 0 L 1062.0 368.0 a 129.0 7 0 0 1 -258.0 0 Z" fill="#FFFFFF" stroke="#14201E" stroke-width="1.1"/><path d="M 804.0 308.0 a 129.0 7 0 0 0 258.0 0" fill="none" stroke="#14201E" stroke-width="1.1"/>
+<text x="933.0" y="331.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">Ledger</text>
+<text x="933.0" y="347.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">one row per call, costed, no content</text>
+<text x="933.0" y="364.0" font-size="11" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" text-anchor="middle" fill="#5C6B67">boundary.ledger</text>
+<path d="M 28.0 428.0 a 129.0 7 0 0 1 258.0 0 L 286.0 488.0 a 129.0 7 0 0 1 -258.0 0 Z" fill="#FFFFFF" stroke="#14201E" stroke-width="1.1"/><path d="M 28.0 428.0 a 129.0 7 0 0 0 258.0 0" fill="none" stroke="#14201E" stroke-width="1.1"/>
+<text x="157.0" y="451.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">Dated price files</text>
+<text x="157.0" y="467.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">never a guessed price</text>
+<text x="157.0" y="484.0" font-size="11" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" text-anchor="middle" fill="#5C6B67">boundary/prices/*.yaml</text>
+<rect x="416.0" y="426.0" width="258.0" height="64.0" rx="4" fill="#FFFFFF" stroke="#14201E" stroke-width="1.1"/>
+<text x="545.0" y="447.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">Provider adapters</text>
+<text x="545.0" y="463.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">raw HTTP, pinned client, no SDKs</text>
+<text x="545.0" y="480.0" font-size="11" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" text-anchor="middle" fill="#5C6B67">boundary.providers</text>
+<path d="M 804.0 428.0 a 129.0 7 0 0 1 258.0 0 L 1062.0 488.0 a 129.0 7 0 0 1 -258.0 0 Z" fill="#FFFFFF" stroke="#14201E" stroke-width="1.1"/><path d="M 804.0 428.0 a 129.0 7 0 0 0 258.0 0" fill="none" stroke="#14201E" stroke-width="1.1"/>
+<text x="933.0" y="451.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">Audit chain</text>
+<text x="933.0" y="467.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">sealer appends, hash-linked</text>
+<text x="933.0" y="484.0" font-size="11" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" text-anchor="middle" fill="#5C6B67">boundary.audit</text>
+<rect x="403.0" y="546.0" width="284.0" height="64.0" rx="4" fill="#F2F4F3" stroke="#5C6B67" stroke-width="1.1" stroke-dasharray="5 3"/>
+<text x="545.0" y="574.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">Anthropic, OpenAI, Google, Together,</text>
+<text x="545.0" y="590.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">Foundry, Bedrock, Vertex, a local model</text>
+<rect x="804.0" y="546.0" width="258.0" height="64.0" rx="4" fill="#F2F4F3" stroke="#5C6B67" stroke-width="1.1" stroke-dasharray="5 3"/>
+<text x="933.0" y="574.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">GitHub Actions anchor</text>
+<text x="933.0" y="590.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">anchors/gateway.jsonl, daily</text>
+<rect x="453.7" y="144.5" width="182.5" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="545.0" y="156.5" font-size="12" text-anchor="middle" fill="#14201E">HTTPS: team key, X-Data-Class</text>
+<rect x="688.9" y="208.2" width="100.2" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="739.0" y="220.2" font-size="12" text-anchor="middle" fill="#14201E">import and call</text>
+<rect x="751.1" y="77.0" width="117.8" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="810.0" y="89.0" font-size="12" text-anchor="middle" fill="#5C6B67">push their ledgers</text>
+<rect x="306.8" y="208.0" width="88.4" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="351.0" y="220.0" font-size="12" text-anchor="middle" fill="#14201E">swap, restore</text>
+<rect x="492.0" y="272.0" width="106.1" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="545.0" y="284.0" font-size="12" text-anchor="middle" fill="#14201E">the same Gateway</text>
+<rect x="315.6" y="322.7" width="70.8" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="351.0" y="334.7" font-size="12" text-anchor="middle" fill="#14201E">may it go?</text>
+<rect x="686.0" y="333.3" width="106.1" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="739.0" y="345.3" font-size="12" text-anchor="middle" fill="#14201E">one row per call</text>
+<rect x="492.0" y="388.0" width="106.1" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="545.0" y="400.0" font-size="12" text-anchor="middle" fill="#14201E">route, cap, call</text>
+<rect x="300.9" y="393.3" width="100.2" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="351.0" y="405.3" font-size="12" text-anchor="middle" fill="#14201E">cost from usage</text>
+<rect x="462.6" y="508.0" width="164.9" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="545.0" y="520.0" font-size="12" text-anchor="middle" fill="#14201E">pinned headers, raw bodies</text>
+<rect x="894.7" y="265.5" width="76.7" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="933.0" y="277.5" font-size="12" text-anchor="middle" fill="#14201E">merged rows</text>
+<rect x="874.1" y="388.0" width="117.8" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="933.0" y="400.0" font-size="12" text-anchor="middle" fill="#14201E">sealed every 50 ms</text>
+<rect x="874.1" y="510.5" width="117.8" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="933.0" y="522.5" font-size="12" text-anchor="middle" fill="#14201E">head, pulled daily</text>
+<rect x="28" y="632" width="26" height="16" rx="3" fill="#FFFFFF" stroke="#0E6E60" stroke-width="1.6"/>
+<text x="62" y="644" font-size="11" fill="#5C6B67">built here</text>
+<rect x="141.9" y="632" width="26" height="16" rx="3" fill="#F2F4F3" stroke="#5C6B67" stroke-dasharray="4 3"/>
+<text x="175.9" y="644" font-size="11" fill="#5C6B67">vendors and GitHub</text>
+<path d="M 298.9 639.0 a 13.0 7 0 0 1 26.0 0 L 324.9 641.0 a 13.0 7 0 0 1 -26.0 0 Z" fill="#FFFFFF" stroke="#14201E" stroke-width="1.1"/><path d="M 298.9 639.0 a 13.0 7 0 0 0 26.0 0" fill="none" stroke="#14201E" stroke-width="1.1"/>
+<text x="332.92" y="644" font-size="11" fill="#5C6B67">data at rest</text>
+</svg>

@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1190" height="1100" viewBox="0 0 1190 1100" role="img" aria-label="One sealer appends every completed ledger row to a hash chain in an append-only Postgres table; the proxy serves the chain&#x27;s head without a key, a GitHub Action pulls it every day into this repository, and the verifier checks the chain against those anchors." font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9 z" fill="#14201E"/></marker><marker id="arrow-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9 z" fill="#0E6E60"/></marker><marker id="arrow-signal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9 z" fill="#A64C1C"/></marker><marker id="arrow-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9 z" fill="#5C6B67"/></marker></defs>
+<rect width="1190" height="1100" fill="#FFFFFF"/>
+<text x="28" y="42" font-size="16" font-weight="700" fill="#14201E">The audit chain and the daily anchor: what is sealed, and what it proves</text>
+<path d="M 595.0 130.0 L 595.0 167.0" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 595.0 257.0 L 595.0 294.0" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 595.0 358.0 L 595.0 400.0" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 595.0 480.0 L 595.0 516.0" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 595.0 592.0 L 595.0 636.0" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 595.0 700.0 L 595.0 750.0" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 595.0 814.0 L 595.0 864.0" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 729.0 782.0 L 894.0 782.0" fill="none" stroke="#14201E" stroke-width="1.4" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
+<path d="M 595.0 928.0 L 595.0 978.0" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 296.0 1010.0 L 461.0 1010.0" fill="none" stroke="#14201E" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M 729.0 1010.0 L 894.0 1010.0" fill="none" stroke="#14201E" stroke-width="1.4" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
+<rect x="461.0" y="66.0" width="268.0" height="64.0" rx="4" fill="#FFFFFF" stroke="#14201E" stroke-width="1.1"/>
+<text x="595.0" y="94.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">Every call</text>
+<text x="595.0" y="110.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">through the proxy or the library</text>
+<path d="M 461.0 174.0 a 134.0 7 0 0 1 268.0 0 L 729.0 250.0 a 134.0 7 0 0 1 -268.0 0 Z" fill="#FFFFFF" stroke="#14201E" stroke-width="1.1"/><path d="M 461.0 174.0 a 134.0 7 0 0 0 268.0 0" fill="none" stroke="#14201E" stroke-width="1.1"/>
+<text x="595.0" y="197.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">A completed ledger row</text>
+<text x="595.0" y="213.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">identifiers, counts, hashes, class,</text>
+<text x="595.0" y="229.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">residency, price fingerprint, cost</text>
+<text x="595.0" y="246.0" font-size="11" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" text-anchor="middle" fill="#5C6B67">never content</text>
+<rect x="461.0" y="294.0" width="268.0" height="64.0" rx="4" fill="#FFFFFF" stroke="#0E6E60" stroke-width="1.6"/>
+<rect x="461.0" y="294.0" width="5" height="64.0" rx="2" fill="#0E6E60"/>
+<text x="595.0" y="315.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">The sealer</text>
+<text x="595.0" y="331.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">one process, every 50 ms</text>
+<text x="595.0" y="348.0" font-size="11" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" text-anchor="middle" fill="#5C6B67">boundary audit follow</text>
+<rect x="461.0" y="400.0" width="268.0" height="80.0" rx="4" fill="#FFFFFF" stroke="#14201E" stroke-width="1.1"/>
+<text x="595.0" y="421.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">A record</text>
+<text x="595.0" y="437.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">seq, prev_hash, body as canonical JSON</text>
+<text x="595.0" y="453.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">record_hash = sha256(prev_hash, body)</text>
+<text x="595.0" y="470.0" font-size="11" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" text-anchor="middle" fill="#5C6B67">boundary.audit.chain</text>
+<path d="M 461.0 523.0 a 134.0 7 0 0 1 268.0 0 L 729.0 585.0 a 134.0 7 0 0 1 -268.0 0 Z" fill="#FFFFFF" stroke="#14201E" stroke-width="1.1"/><path d="M 461.0 523.0 a 134.0 7 0 0 0 268.0 0" fill="none" stroke="#14201E" stroke-width="1.1"/>
+<text x="595.0" y="546.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">The audit table, Postgres</text>
+<text x="595.0" y="562.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">the app role cannot delete; a trigger</text>
+<text x="595.0" y="578.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">refuses UPDATE, DELETE, TRUNCATE</text>
+<rect x="461.0" y="636.0" width="268.0" height="64.0" rx="4" fill="#FFFFFF" stroke="#14201E" stroke-width="1.1"/>
+<text x="595.0" y="657.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">GET /audit/head</text>
+<text x="595.0" y="673.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">no key needed</text>
+<text x="595.0" y="690.0" font-size="11" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" text-anchor="middle" fill="#5C6B67">boundary.server</text>
+<rect x="461.0" y="750.0" width="268.0" height="64.0" rx="4" fill="#F2F4F3" stroke="#5C6B67" stroke-width="1.1" stroke-dasharray="5 3"/>
+<text x="595.0" y="771.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">GitHub Actions, 06:17 UTC</text>
+<text x="595.0" y="787.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">pulls the head; the host pushes nothing</text>
+<text x="595.0" y="804.0" font-size="11" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" text-anchor="middle" fill="#5C6B67">.github/workflows/anchor.yml</text>
+<path d="M 461.0 871.0 a 134.0 7 0 0 1 268.0 0 L 729.0 921.0 a 134.0 7 0 0 1 -268.0 0 Z" fill="#FFFFFF" stroke="#14201E" stroke-width="1.1"/><path d="M 461.0 871.0 a 134.0 7 0 0 0 268.0 0" fill="none" stroke="#14201E" stroke-width="1.1"/>
+<text x="595.0" y="896.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">anchors/gateway.jsonl</text>
+<text x="595.0" y="912.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">one line a day, in the commit history</text>
+<rect x="461.0" y="978.0" width="268.0" height="64.0" rx="4" fill="#FFFFFF" stroke="#A64C1C" stroke-width="1.6"/>
+<rect x="461.0" y="978.0" width="5" height="64.0" rx="2" fill="#A64C1C"/>
+<text x="595.0" y="999.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">The verifier</text>
+<text x="595.0" y="1015.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">chain against ledger and anchors</text>
+<text x="595.0" y="1032.0" font-size="11" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" text-anchor="middle" fill="#5C6B67">boundary audit verify --hosted</text>
+<rect x="894.0" y="749.0" width="268.0" height="66.0" rx="4" fill="#FFFFFF" stroke="#14201E" stroke-width="1.1"/>
+<text x="1028.0" y="770.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">Refuses, without committing</text>
+<text x="1028.0" y="786.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">seq backwards, or the same seq</text>
+<text x="1028.0" y="802.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">under a different hash</text>
+<rect x="28.0" y="978.0" width="268.0" height="64.0" rx="4" fill="#FFFFFF" stroke="#14201E" stroke-width="1.1"/>
+<text x="162.0" y="999.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">The tamper test, 500 records</text>
+<text x="162.0" y="1015.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">2,400 corruptions of 12 kinds</text>
+<text x="162.0" y="1032.0" font-size="11" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" text-anchor="middle" fill="#5C6B67">boundary audit tamper-test</text>
+<text x="1028.0" y="998.0" font-size="13" font-weight="400" text-anchor="middle" fill="#5C6B67" font-style="italic">What no chain can see</text>
+<text x="1028.0" y="1014.0" font-size="13" font-weight="400" text-anchor="middle" fill="#5C6B67" font-style="italic">a competent rewrite after the last</text>
+<text x="1028.0" y="1030.0" font-size="13" font-weight="400" text-anchor="middle" fill="#5C6B67" font-style="italic">anchor; 6 of 12 kinds, reported</text>
+<rect x="571.4" y="138.5" width="47.3" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="595.0" y="150.5" font-size="12" text-anchor="middle" fill="#14201E">writes</text>
+<rect x="533.1" y="265.5" width="123.7" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="595.0" y="277.5" font-size="12" text-anchor="middle" fill="#14201E">sealed columns only</text>
+<rect x="518.4" y="369.0" width="153.1" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="595.0" y="381.0" font-size="12" text-anchor="middle" fill="#14201E">hashes with the previous</text>
+<rect x="571.4" y="488.0" width="47.3" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="595.0" y="500.0" font-size="12" text-anchor="middle" fill="#14201E">append</text>
+<rect x="544.9" y="604.0" width="100.2" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="595.0" y="616.0" font-size="12" text-anchor="middle" fill="#14201E">the last record</text>
+<rect x="559.6" y="715.0" width="70.8" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="595.0" y="727.0" font-size="12" text-anchor="middle" fill="#14201E">read daily</text>
+<rect x="544.9" y="829.0" width="100.2" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="595.0" y="841.0" font-size="12" text-anchor="middle" fill="#14201E">commit one line</text>
+<rect x="758.5" y="772.0" width="106.1" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="811.5" y="784.0" font-size="12" text-anchor="middle" fill="#5C6B67">a dishonest move</text>
+<rect x="465.5" y="943.0" width="259.0" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="595.0" y="955.0" font-size="12" text-anchor="middle" fill="#14201E">the timestamps nobody on the host controls</text>
+<rect x="313.7" y="1000.0" width="129.6" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="378.5" y="1012.0" font-size="12" text-anchor="middle" fill="#14201E">2,400 of 2,400 found</text>
+<rect x="773.2" y="1000.0" width="76.7" height="20.0" rx="3" fill="#FFFFFF"/>
+<text x="811.5" y="1012.0" font-size="12" text-anchor="middle" fill="#5C6B67">and says so</text>
+<rect x="28" y="1064" width="26" height="16" rx="3" fill="#FFFFFF" stroke="#0E6E60" stroke-width="1.6"/>
+<text x="62" y="1076" font-size="11" fill="#5C6B67">built here</text>
+<rect x="141.9" y="1064" width="26" height="16" rx="3" fill="#FFFFFF" stroke="#A64C1C" stroke-width="1.6"/>
+<text x="175.9" y="1076" font-size="11" fill="#5C6B67">what a reader runs</text>
+<rect x="298.92" y="1064" width="26" height="16" rx="3" fill="#F2F4F3" stroke="#5C6B67" stroke-dasharray="4 3"/>
+<text x="332.92" y="1076" font-size="11" fill="#5C6B67">GitHub</text>
+<path d="M 391.3 1071.0 a 13.0 7 0 0 1 26.0 0 L 417.3 1073.0 a 13.0 7 0 0 1 -26.0 0 Z" fill="#FFFFFF" stroke="#14201E" stroke-width="1.1"/><path d="M 391.3 1071.0 a 13.0 7 0 0 0 26.0 0" fill="none" stroke="#14201E" stroke-width="1.1"/>
+<text x="425.26" y="1076" font-size="11" fill="#5C6B67">data at rest</text>
+</svg>
