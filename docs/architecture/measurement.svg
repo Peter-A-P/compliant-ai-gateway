@@ -123,37 +123,37 @@
 <text x="1120.0" y="423.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">README tables</text>
 <text x="1120.0" y="439.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">between markers</text>
 <text x="1120.0" y="456.0" font-size="11" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" text-anchor="middle" fill="#5C6B67">--write-readme</text>
-<rect x="261.7" y="88.0" width="76.7" height="20.0" rx="3" fill="#FFFFFF"/>
+<rect x="267.0" y="88.0" width="66.0" height="20.0" rx="3" fill="#FFFFFF"/>
 <text x="300.0" y="100.0" font-size="12" text-anchor="middle" fill="#14201E">1,000 calls</text>
-<rect x="604.4" y="88.0" width="47.3" height="20.0" rx="3" fill="#FFFFFF"/>
+<rect x="608.3" y="88.0" width="39.3" height="20.0" rx="3" fill="#FFFFFF"/>
 <text x="628.0" y="100.0" font-size="12" text-anchor="middle" fill="#14201E">writes</text>
-<rect x="270.5" y="200.0" width="59.0" height="20.0" rx="3" fill="#FFFFFF"/>
+<rect x="271.3" y="200.0" width="57.4" height="20.0" rx="3" fill="#FFFFFF"/>
 <text x="300.0" y="212.0" font-size="12" text-anchor="middle" fill="#14201E">no model</text>
-<rect x="604.4" y="200.0" width="47.3" height="20.0" rx="3" fill="#FFFFFF"/>
+<rect x="608.3" y="200.0" width="39.3" height="20.0" rx="3" fill="#FFFFFF"/>
 <text x="628.0" y="212.0" font-size="12" text-anchor="middle" fill="#14201E">writes</text>
-<rect x="267.5" y="312.0" width="64.9" height="20.0" rx="3" fill="#FFFFFF"/>
+<rect x="274.7" y="312.0" width="50.7" height="20.0" rx="3" fill="#FFFFFF"/>
 <text x="300.0" y="324.0" font-size="12" text-anchor="middle" fill="#14201E">real text</text>
-<rect x="604.4" y="312.0" width="47.3" height="20.0" rx="3" fill="#FFFFFF"/>
+<rect x="608.3" y="312.0" width="39.3" height="20.0" rx="3" fill="#FFFFFF"/>
 <text x="628.0" y="324.0" font-size="12" text-anchor="middle" fill="#14201E">writes</text>
-<rect x="264.6" y="424.0" width="70.8" height="20.0" rx="3" fill="#FFFFFF"/>
+<rect x="272.3" y="424.0" width="55.4" height="20.0" rx="3" fill="#FFFFFF"/>
 <text x="300.0" y="436.0" font-size="12" text-anchor="middle" fill="#14201E">corrupt it</text>
-<rect x="604.4" y="424.0" width="47.3" height="20.0" rx="3" fill="#FFFFFF"/>
+<rect x="608.3" y="424.0" width="39.3" height="20.0" rx="3" fill="#FFFFFF"/>
 <text x="628.0" y="436.0" font-size="12" text-anchor="middle" fill="#14201E">writes</text>
-<rect x="267.5" y="536.0" width="64.9" height="20.0" rx="3" fill="#FFFFFF"/>
+<rect x="268.3" y="536.0" width="63.4" height="20.0" rx="3" fill="#FFFFFF"/>
 <text x="300.0" y="548.0" font-size="12" text-anchor="middle" fill="#14201E">650 cases</text>
-<rect x="604.4" y="536.0" width="47.3" height="20.0" rx="3" fill="#FFFFFF"/>
+<rect x="606.0" y="536.0" width="44.0" height="20.0" rx="3" fill="#FFFFFF"/>
 <text x="628.0" y="548.0" font-size="12" text-anchor="middle" fill="#14201E">counts</text>
-<rect x="261.7" y="648.0" width="76.7" height="20.0" rx="3" fill="#FFFFFF"/>
+<rect x="268.3" y="648.0" width="63.4" height="20.0" rx="3" fill="#FFFFFF"/>
 <text x="300.0" y="660.0" font-size="12" text-anchor="middle" fill="#14201E">fixed rates</text>
-<rect x="604.4" y="648.0" width="47.3" height="20.0" rx="3" fill="#FFFFFF"/>
+<rect x="608.3" y="648.0" width="39.3" height="20.0" rx="3" fill="#FFFFFF"/>
 <text x="628.0" y="660.0" font-size="12" text-anchor="middle" fill="#14201E">writes</text>
-<rect x="267.5" y="760.0" width="64.9" height="20.0" rx="3" fill="#FFFFFF"/>
+<rect x="270.0" y="760.0" width="60.0" height="20.0" rx="3" fill="#FFFFFF"/>
 <text x="300.0" y="772.0" font-size="12" text-anchor="middle" fill="#14201E">bge-small</text>
-<rect x="604.4" y="760.0" width="47.3" height="20.0" rx="3" fill="#FFFFFF"/>
+<rect x="608.3" y="760.0" width="39.3" height="20.0" rx="3" fill="#FFFFFF"/>
 <text x="628.0" y="772.0" font-size="12" text-anchor="middle" fill="#14201E">writes</text>
-<rect x="273.4" y="872.0" width="53.2" height="20.0" rx="3" fill="#FFFFFF"/>
+<rect x="275.0" y="872.0" width="50.0" height="20.0" rx="3" fill="#FFFFFF"/>
 <text x="300.0" y="884.0" font-size="12" text-anchor="middle" fill="#14201E">monthly</text>
-<rect x="592.6" y="872.0" width="70.8" height="20.0" rx="3" fill="#FFFFFF"/>
+<rect x="596.3" y="872.0" width="63.4" height="20.0" rx="3" fill="#FFFFFF"/>
 <text x="628.0" y="884.0" font-size="12" text-anchor="middle" fill="#14201E">reconciles</text>
 <text x="1120.0" y="546.0" font-size="11" text-anchor="middle" fill="#5C6B67" font-style="italic">every table: --write-readme,</text>
 <text x="1120.0" y="561.0" font-size="11" text-anchor="middle" fill="#5C6B67" font-style="italic">between markers in the README</text>

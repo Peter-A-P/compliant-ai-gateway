@@ -94,43 +94,43 @@
 <text x="154.0" y="1113.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">Sealer</text>
 <text x="154.0" y="1129.0" font-size="13" font-weight="500" text-anchor="middle" fill="#14201E">appends to the audit chain</text>
 <text x="154.0" y="1146.0" font-size="11" font-family="Consolas, Menlo, 'DejaVu Sans Mono', monospace" text-anchor="middle" fill="#5C6B67">boundary audit follow, 50 ms</text>
-<rect x="505.9" y="145.0" width="100.2" height="20.0" rx="3" fill="#FFFFFF"/>
+<rect x="506.3" y="145.0" width="99.4" height="20.0" rx="3" fill="#FFFFFF"/>
 <text x="556.0" y="157.0" font-size="12" text-anchor="middle" fill="#14201E">HTTPS, port 443</text>
-<rect x="491.2" y="259.0" width="129.6" height="20.0" rx="3" fill="#FFFFFF"/>
+<rect x="489.7" y="259.0" width="132.7" height="20.0" rx="3" fill="#FFFFFF"/>
 <text x="556.0" y="271.0" font-size="12" text-anchor="middle" fill="#14201E">HTTP, inside Compose</text>
-<rect x="494.1" y="373.0" width="123.7" height="20.0" rx="3" fill="#FFFFFF"/>
+<rect x="504.0" y="373.0" width="104.0" height="20.0" rx="3" fill="#FFFFFF"/>
 <text x="556.0" y="385.0" font-size="12" text-anchor="middle" fill="#14201E">team and its limits</text>
-<rect x="505.9" y="487.0" width="100.2" height="20.0" rx="3" fill="#FFFFFF"/>
+<rect x="511.0" y="487.0" width="90.0" height="20.0" rx="3" fill="#FFFFFF"/>
 <text x="556.0" y="499.0" font-size="12" text-anchor="middle" fill="#14201E">class and route</text>
-<rect x="529.4" y="601.0" width="53.2" height="20.0" rx="3" fill="#FFFFFF"/>
+<rect x="531.7" y="601.0" width="48.7" height="20.0" rx="3" fill="#FFFFFF"/>
 <text x="556.0" y="613.0" font-size="12" text-anchor="middle" fill="#14201E">allowed</text>
-<rect x="325.5" y="544.0" width="59.0" height="20.0" rx="3" fill="#FFFFFF"/>
+<rect x="325.0" y="544.0" width="60.0" height="20.0" rx="3" fill="#FFFFFF"/>
 <text x="355.0" y="556.0" font-size="12" text-anchor="middle" fill="#5C6B67">mismatch</text>
-<rect x="736.3" y="544.0" width="41.4" height="20.0" rx="3" fill="#FFFFFF"/>
+<rect x="740.0" y="544.0" width="34.0" height="20.0" rx="3" fill="#FFFFFF"/>
 <text x="757.0" y="556.0" font-size="12" text-anchor="middle" fill="#14201E">rules</text>
-<rect x="514.7" y="715.0" width="82.6" height="20.0" rx="3" fill="#FFFFFF"/>
+<rect x="517.6" y="715.0" width="76.7" height="20.0" rx="3" fill="#FFFFFF"/>
 <text x="556.0" y="727.0" font-size="12" text-anchor="middle" fill="#14201E">placeholders</text>
-<rect x="331.4" y="658.0" width="47.3" height="20.0" rx="3" fill="#FFFFFF"/>
+<rect x="333.7" y="658.0" width="42.7" height="20.0" rx="3" fill="#FFFFFF"/>
 <text x="355.0" y="670.0" font-size="12" text-anchor="middle" fill="#14201E">values</text>
-<rect x="511.8" y="829.0" width="88.4" height="20.0" rx="3" fill="#FFFFFF"/>
+<rect x="521.3" y="829.0" width="69.3" height="20.0" rx="3" fill="#FFFFFF"/>
 <text x="556.0" y="841.0" font-size="12" text-anchor="middle" fill="#14201E">within limits</text>
-<rect x="736.3" y="772.0" width="41.4" height="20.0" rx="3" fill="#FFFFFF"/>
+<rect x="738.0" y="772.0" width="38.0" height="20.0" rx="3" fill="#FFFFFF"/>
 <text x="757.0" y="784.0" font-size="12" text-anchor="middle" fill="#14201E">count</text>
-<rect x="313.7" y="772.0" width="82.6" height="20.0" rx="3" fill="#FFFFFF"/>
+<rect x="322.0" y="772.0" width="66.0" height="20.0" rx="3" fill="#FFFFFF"/>
 <text x="355.0" y="784.0" font-size="12" text-anchor="middle" fill="#5C6B67">over a limit</text>
-<rect x="538.2" y="943.0" width="35.5" height="20.0" rx="3" fill="#FFFFFF"/>
+<rect x="539.7" y="943.0" width="32.7" height="20.0" rx="3" fill="#FFFFFF"/>
 <text x="556.0" y="955.0" font-size="12" text-anchor="middle" fill="#14201E">miss</text>
-<rect x="712.8" y="886.0" width="88.4" height="20.0" rx="3" fill="#FFFFFF"/>
+<rect x="718.6" y="886.0" width="76.7" height="20.0" rx="3" fill="#FFFFFF"/>
 <text x="757.0" y="898.0" font-size="12" text-anchor="middle" fill="#14201E">lookup, store</text>
-<rect x="701.0" y="1000.0" width="112.0" height="20.0" rx="3" fill="#FFFFFF"/>
+<rect x="705.0" y="1000.0" width="104.0" height="20.0" rx="3" fill="#FFFFFF"/>
 <text x="757.0" y="1012.0" font-size="12" text-anchor="middle" fill="#14201E">request, response</text>
-<rect x="328.4" y="1000.0" width="53.2" height="20.0" rx="3" fill="#FFFFFF"/>
+<rect x="329.7" y="1000.0" width="50.7" height="20.0" rx="3" fill="#FFFFFF"/>
 <text x="355.0" y="1012.0" font-size="12" text-anchor="middle" fill="#14201E">one row</text>
-<rect x="479.4" y="1057.0" width="153.1" height="20.0" rx="3" fill="#FFFFFF"/>
+<rect x="484.3" y="1057.0" width="143.4" height="20.0" rx="3" fill="#FFFFFF"/>
 <text x="556.0" y="1069.0" font-size="12" text-anchor="middle" fill="#14201E">answer with placeholders</text>
-<rect x="109.8" y="1057.0" width="88.4" height="20.0" rx="3" fill="#FFFFFF"/>
+<rect x="110.7" y="1057.0" width="86.7" height="20.0" rx="3" fill="#FFFFFF"/>
 <text x="154.0" y="1069.0" font-size="12" text-anchor="middle" fill="#14201E">completed row</text>
-<rect x="532.4" y="1171.0" width="47.3" height="20.0" rx="3" fill="#FFFFFF"/>
+<rect x="532.7" y="1171.0" width="46.7" height="20.0" rx="3" fill="#FFFFFF"/>
 <text x="556.0" y="1183.0" font-size="12" text-anchor="middle" fill="#14201E">answer</text>
 <path d="M 28 1300 L 56 1300" stroke="#14201E" stroke-width="1.4" fill="none" marker-end="url(#arrow)"/>
 <text x="64" y="1304" font-size="11" fill="#5C6B67">the request</text>
