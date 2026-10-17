@@ -142,6 +142,10 @@ claude-haiku-5-5:
   characters a token, which is pessimistic for the older tokenizers and not for the one Claude
   4.7 and later use (about 30% more tokens for the same text), so a prompt estimated just under
   100,000 can be over it. The caps refuse on the estimate, so it errs high.
+- **An inline image is estimated at 8,000 tokens** (1.4.2), not at its base64 characters, in
+  all three vendors' request shapes (`estimate_chars` in `boundary/ledger/prices.py`). Counted
+  as text, a 1,568-pixel page image reserved several hundred thousand tokens; the vendors bill
+  it at 800 to 1,800 (measured through the gateway, 2026-10-17), so 8,000 still errs high.
 - **An entry without the block is priced as before, and keeps its fingerprint.** `rates_sha256`
   leaves `long_prompt` out when it is not set, so no row costed before 1.2.0 cites a list whose
   fingerprint has since moved; `tests/test_long_prompt.py` pins 2026-10-01's.

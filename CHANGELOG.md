@@ -5,6 +5,16 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 1.4.2 (2026-10-17)
+
+- **The pre-call estimate counts an inline image as 8,000 tokens**, not as its base64
+  characters at 3.5 a token. A page image is a megabyte or more of base64, so a batch of 98
+  receipt photographs from project 16 was estimated at US$28.84 and refused against its US$25
+  run cap, where the vendors bill such an image at 800 to 1,800 tokens (measured through the
+  gateway that day on a 1,568-pixel page: Anthropic about 1,800, OpenAI about 1,000, Gemini
+  about 800). Images are found by their base64 payload in each vendor's shape
+  (`estimate_chars`); text is counted as before. Costs from returned usage are unchanged.
+
 ## 1.4.1 (2026-10-17)
 
 - The architecture page ends with a link back to the overview, after the last diagram, so a

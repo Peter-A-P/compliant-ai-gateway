@@ -6,6 +6,8 @@ is needed and the entry does not have it. The caller writes an uncosted row.
 
 from __future__ import annotations
 
+import re
+
 from boundary.config import PriceEntry
 from boundary.types import Usage
 
@@ -42,6 +44,31 @@ def cost_usd(usage: Usage, entry: PriceEntry, *, batch: bool = False) -> float |
             return None
         total *= entry.batch_multiplier
     return round(total, 10)
+
+
+# An inline image is estimated at this many input tokens, not at its base64 characters
+# (1.4.2). A page image is a megabyte or more of base64, which at 3.5 characters a token
+# reserved several hundred thousand tokens for what every vendor bills at a few thousand: one
+# batch of page images was refused against a US$25 run cap it would have cost a tenth of.
+# The vendors bill an image by its pixels, after scaling it to their own limit: about 1,600
+# tokens for Anthropic, about 1,100 for OpenAI at high detail, about 1,100 for Gemini at high
+# media resolution (measured on a 1,568-pixel page through this gateway, 2026-10-17, they
+# came to about 1,800, 1,000 and 800). 8,000 stays pessimistic above all three.
+IMAGE_ESTIMATE_TOKENS = 8_000
+# The base64 payload of an inline image in any of the three request shapes: Anthropic's and
+# Gemini's `"data": "..."`, and OpenAI's `data:image/...;base64,...` URL. Only long runs are
+# taken, so no ordinary string field is mistaken for one.
+_INLINE_IMAGE = re.compile(rb'(?:;base64,|"data"\s*:\s*")([A-Za-z0-9+/]{1000,}={0,2})')
+
+
+def estimate_chars(body: bytes) -> int:
+    """A request body's length for the estimate: its characters, with each inline base64
+    image counted as IMAGE_ESTIMATE_TOKENS tokens' worth of characters instead of its own."""
+    allowance = round(IMAGE_ESTIMATE_TOKENS * ESTIMATE_CHARS_PER_TOKEN)
+    total = len(body)
+    for match in _INLINE_IMAGE.finditer(body):
+        total += allowance - len(match.group(1))
+    return total
 
 
 def estimate_usd(request_chars: int, max_tokens: int, entry: PriceEntry) -> float:

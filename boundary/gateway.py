@@ -54,7 +54,7 @@ from boundary.errors import (
     ProviderError,
     UnknownPrice,
 )
-from boundary.ledger.prices import cost_usd, estimate_usd
+from boundary.ledger.prices import cost_usd, estimate_chars, estimate_usd
 from boundary.ledger.store import (
     Admission,
     LedgerBackend,
@@ -596,7 +596,9 @@ class Gateway:
             entry = self._price_for(pc, ref.provider, ref.model)
             estimate = 0.0
             if entry is not None:
-                estimate = estimate_usd(len(single.body), effective.max_tokens or 0, entry)
+                estimate = estimate_usd(
+                    estimate_chars(single.body), effective.max_tokens or 0, entry
+                )
                 # At the batch rate where the price list publishes one. Where it does not,
                 # the estimate stays at the full rate, which is the pessimistic way round
                 # and the only one that never under-reserves against a cap.
@@ -1170,7 +1172,11 @@ class Gateway:
         prices = self._prices_for(pc)
         entry = self._price_for(pc, ref.provider, ref.model)
         max_tokens = effective.max_tokens or 0
-        estimate = estimate_usd(len(built.body), max_tokens, entry) if entry is not None else 0.0
+        estimate = (
+            estimate_usd(estimate_chars(built.body), max_tokens, entry)
+            if entry is not None
+            else 0.0
+        )
         row = LedgerRow(
             ts_utc=utc_now(),
             boundary_version=__version__,

@@ -40,6 +40,7 @@ listed here; nothing any earlier version offered has changed shape.
 | 0.11.0 | 2026-09-23 | `Policy.released` and `RELEASABLE`: a caller's `allow` terms also release a detector's LOCATION or ORGANISATION span that is one of them. A caller who passes no `allow` sees no change |
 | 0.12.0 | 2026-09-23 | The data policy (section 14): `Gateway(..., policy=)`, the `policy` configuration key, `PolicyRefused`, `boundary.enforce` and `boundary policy eval`. Opt-in: a gateway with no policy behaves as before |
 | 0.13.0 | 2026-09-25 | The OpenAI-compatible proxy (section 15): `boundary.server`, the `server` extra, `boundary serve` and `boundary teams key`. `on_text` on `chat_stream` and `achat_stream`. Nothing a library caller already uses changed |
+| 1.4.2 | 2026-10-17 | The pre-call estimate counts an inline image at a fixed 8,000 tokens. No interface changed |
 | 1.4.1 | 2026-10-17 | No interface change: a link at the foot of the architecture page |
 | 1.4.0 | 2026-10-16 | `boundary/prices/2026-10-16.yaml`, adding `openai/gpt-6.1-sol`. No interface changed |
 | 1.3.0 | 2026-10-16 | `boundary.server.chrome.MENU` and `menu`, `page(..., current=)`; `boundary.site.PAGES` and `architecture_sections`; `/architecture.html` and `/architecture/` among the site's files. No library behaviour changed |
