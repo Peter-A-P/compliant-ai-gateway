@@ -348,6 +348,65 @@ def test_gemini_status_only_offers_results_when_it_actually_succeeded() -> None:
     assert po.ended and po.results_url == "batches/1"
 
 
+#: The operation the batch endpoint returned on 2026-10-17, ids and texts replaced: the state
+#: under `metadata` as BATCH_STATE_*, string counts, and the responses one level deeper.
+LIVE_OPERATION = {
+    "name": "batches/abc",
+    "metadata": {
+        "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.GenerateContentBatch",
+        "model": "models/gemini-3.8-flash",
+        "batchStats": {"requestCount": "2", "successfulRequestCount": "2"},
+        "state": "BATCH_STATE_SUCCEEDED",
+        "name": "batches/abc",
+    },
+    "done": True,
+    "response": {
+        "@type": "type.googleapis.com/google.ai.generativelanguage.v1main.GenerateContentBatchOutput",
+        "inlinedResponses": {
+            "inlinedResponses": [
+                {
+                    "response": {
+                        "candidates": [
+                            {"content": {"parts": [{"text": "one"}]}, "finishReason": "STOP"}
+                        ],
+                        "usageMetadata": {
+                            "promptTokenCount": 2525,
+                            "candidatesTokenCount": 170,
+                            "thoughtsTokenCount": 871,
+                        },
+                        "modelVersion": "gemini-3.8-flash",
+                    },
+                    "metadata": {"key": "uid-0"},
+                },
+                {
+                    "response": {
+                        "candidates": [
+                            {"content": {"parts": [{"text": "two"}]}, "finishReason": "STOP"}
+                        ],
+                        "usageMetadata": {"promptTokenCount": 10, "candidatesTokenCount": 2},
+                    },
+                    "metadata": {"key": "uid-1"},
+                },
+            ]
+        },
+    },
+}
+
+
+def test_gemini_reads_the_operation_the_endpoint_actually_returns() -> None:
+    a = GoogleBatchAdapter()
+    body = json.dumps(LIVE_OPERATION).encode()
+    progress = a.parse_batch_status(200, {}, body)
+    assert progress.ended and progress.results_url == "batches/abc"
+    assert progress.processing_status == "BATCH_STATE_SUCCEEDED"
+    assert progress.counts == {"requestCount": 2, "successfulRequestCount": 2}
+    out = {r.custom_id: r for r in a.parse_batch_results(200, {}, body)}
+    assert out["uid-0"].parsed is not None and out["uid-0"].parsed.text == "one"
+    assert out["uid-0"].parsed.usage.output_tokens == 170 + 871
+    running = {"name": "batches/abc", "metadata": {"state": "BATCH_STATE_RUNNING"}, "done": False}
+    assert not a.parse_batch_status(200, {}, json.dumps(running).encode()).ended
+
+
 def test_gemini_results_use_the_key_when_the_vendor_returns_it() -> None:
     a = GoogleBatchAdapter()
     body = json.dumps(

@@ -14,6 +14,12 @@ rather than as an uploaded file:
       -> {"name", "state": "JOB_STATE_SUCCEEDED",
           "response": {"inlinedResponses": [{"response": {...}}, ...]}}
 
+What the endpoint actually returned on 2026-10-17 (1.4.3) is a long-running operation, not
+the documented object: the state is under `metadata`, named `BATCH_STATE_*`, with `done: true`
+once it ends, `batchStats` counts are strings, and the responses are nested one level deeper,
+`{"response": {"inlinedResponses": {"inlinedResponses": [...]}}}`. Read as documented, every
+finished batch looked forever unfinished. Both shapes are read.
+
 Inline requests are capped at 20 MB for the whole batch, which is a real limit rather than a
 formality: the caller chunks, and a batch that exceeds it is refused here by name rather than
 by a 400 from the vendor.
@@ -58,8 +64,37 @@ from boundary.providers.base import (
 from boundary.providers.google import GoogleAdapter
 
 # Google's own words. Anything not running is terminal.
-_RUNNING_STATES = frozenset({"JOB_STATE_PENDING", "JOB_STATE_RUNNING", "JOB_STATE_QUEUED"})
-_SUCCEEDED = "JOB_STATE_SUCCEEDED"
+_RUNNING_STATES = frozenset(
+    {
+        "JOB_STATE_PENDING",
+        "JOB_STATE_RUNNING",
+        "JOB_STATE_QUEUED",
+        "BATCH_STATE_PENDING",
+        "BATCH_STATE_RUNNING",
+    }
+)
+_SUCCEEDED = frozenset({"JOB_STATE_SUCCEEDED", "BATCH_STATE_SUCCEEDED"})
+
+
+def _state(raw: Mapping[str, Any]) -> str:
+    """The batch's state, top level as documented or under the operation's `metadata`."""
+    state = raw.get("state")
+    meta = raw.get("metadata")
+    if not state and isinstance(meta, dict):
+        state = meta.get("state")
+    return str(state or "")
+
+
+def _inlined(raw: Mapping[str, Any]) -> Any:
+    """The response list, at `response.inlinedResponses` as documented or one level deeper."""
+    response = raw.get("response")
+    if not isinstance(response, dict):
+        return None
+    inlined = response.get("inlinedResponses")
+    if isinstance(inlined, dict):
+        inlined = inlined.get("inlinedResponses")
+    return inlined
+
 
 # The documented ceiling for inlined requests, in bytes.
 MAX_INLINE_BYTES = 20 * 1024 * 1024
@@ -131,7 +166,7 @@ class GoogleBatchAdapter(GoogleAdapter):
             raise ProviderError("google", status, "batch create returned no name", headers=headers)
         return BatchSubmitted(
             batch_id=name,
-            processing_status=str(raw.get("state", "JOB_STATE_PENDING")),
+            processing_status=_state(raw) or "JOB_STATE_PENDING",
             raw=raw,
         )
 
@@ -151,20 +186,27 @@ class GoogleBatchAdapter(GoogleAdapter):
         self, status: int, headers: Mapping[str, str], body: bytes
     ) -> BatchProgress:
         raw = self._object(status, headers, body)
-        state = str(raw.get("state", ""))
+        state = _state(raw)
         name = str(raw.get("name", ""))
-        ended = state not in _RUNNING_STATES and state != ""
+        ended = (state not in _RUNNING_STATES and state != "") or raw.get("done") is True
         counts: dict[str, int] = {}
-        stats = raw.get("batchStats")
+        meta = raw.get("metadata")
+        stats = raw.get("batchStats") or (
+            meta.get("batchStats") if isinstance(meta, dict) else None
+        )
         if isinstance(stats, dict):
-            counts = {k: int(v) for k, v in stats.items() if isinstance(v, int)}
+            counts = {
+                k: int(v)
+                for k, v in stats.items()
+                if isinstance(v, int) or (isinstance(v, str) and v.isdigit())
+            }
         # There is no results file. The name is what build_batch_results fetches, and only a
         # batch that actually succeeded has responses to read.
         return BatchProgress(
             batch_id=name,
             processing_status=state,
             ended=ended,
-            results_url=name if state == _SUCCEEDED and name else None,
+            results_url=name if state in _SUCCEEDED and name else None,
             counts=counts,
             raw=raw,
         )
@@ -185,15 +227,12 @@ class GoogleBatchAdapter(GoogleAdapter):
         self, status: int, headers: Mapping[str, str], body: bytes
     ) -> list[BatchItemResult]:
         raw = self._object(status, headers, body)
-        response = raw.get("response")
-        inlined: Any = None
-        if isinstance(response, dict):
-            inlined = response.get("inlinedResponses")
+        inlined = _inlined(raw)
         if not isinstance(inlined, list):
             raise ProviderError(
                 "google",
                 status,
-                f"batch {raw.get('name')!r} ended as {raw.get('state')!r} with no inlined "
+                f"batch {raw.get('name')!r} ended as {_state(raw)!r} with no inlined "
                 "responses to read",
                 headers=headers,
             )

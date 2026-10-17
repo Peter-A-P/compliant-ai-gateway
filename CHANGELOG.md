@@ -5,6 +5,15 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 1.4.3 (2026-10-17)
+
+- **Gemini batches are read as the endpoint actually returns them.** The batch GET answers with
+  a long-running operation: the state under `metadata`, named `BATCH_STATE_*`, `done: true`
+  once it ends, string counts in `batchStats`, and the responses nested at
+  `response.inlinedResponses.inlinedResponses`. Read as documented, a batch that had finished
+  in two minutes looked unfinished for hours (project 16's first Gemini batches). Both shapes
+  are read; a test holds the live one.
+
 ## 1.4.2 (2026-10-17)
 
 - **The pre-call estimate counts an inline image as 8,000 tokens**, not as its base64
