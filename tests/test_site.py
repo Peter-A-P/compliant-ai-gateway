@@ -89,6 +89,8 @@ def test_the_architecture_page_shows_every_diagram_as_committed(built: site.Buil
     for name in shown:
         assert (built.out / "architecture" / name).read_bytes() == (docs / name).read_bytes()
     assert "<h2>The system</h2>" in text and 'class="where"' in text
+    # A way back at the bottom, for a reader who has scrolled past every diagram.
+    assert text.rindex('<p class="arch-back"><a href="/">') > text.rindex("<img ")
 
 
 def test_every_page_carries_the_same_menu_and_the_front_page_links_it_early(
