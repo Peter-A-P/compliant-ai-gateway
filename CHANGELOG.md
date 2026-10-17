@@ -5,6 +5,12 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 1.4.1 (2026-10-17)
+
+- The architecture page ends with a link back to the overview, after the last diagram, so a
+  reader need not scroll to the top to return. The README links the live site in its opening
+  lines. No library change.
+
 ## 1.4.0 (2026-10-16)
 
 - **`boundary/prices/2026-10-16.yaml`** adds OpenAI's GPT-6.1 Sol, read from OpenAI's pricing

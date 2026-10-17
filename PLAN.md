@@ -445,6 +445,8 @@ from October the ledger-against-invoice difference is recorded there too (sectio
 | v1.1.0 | 2026-10-07 | An exact repeat found by the question's sha256 before anything is embedded (B2.5): answered while the cache sheds, never missed by the index |
 | v1.2.0 | 2026-10-08 | Prices by prompt length (`long_prompt`), Claude Haiku 5.5 in the price list, route-level vendor fields; the demo key moves to Haiku 5.5 at low effort |
 | v1.3.0 | 2026-10-16 | The website's architecture page, four diagrams rendered from docs/architecture.md, and one menu on every page of the host |
+| v1.4.0 | 2026-10-16 | Prices of 2026-10-16: OpenAI's GPT-6.1 Sol, for project 16 |
+| v1.4.1 | 2026-10-17 | A link back to the overview at the foot of the architecture page |
 
 03 pins `boundary>=0.1,<0.3` for Part A and moves to `>=1.0` when its Part B is built
 against the proxy's ledger ingestion. 02 pins `>=0.2,<1`. Interface changes are additive
