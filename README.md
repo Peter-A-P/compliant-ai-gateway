@@ -6,6 +6,8 @@ every call and a hard cap on every team's spend. The blocker most regulated orga
 cite for AI adoption, removed, with the latency overhead measured and published rather than
 promised.
 
+**Live at [gateway.peterparker.ca](https://gateway.peterparker.ca)**: call it yourself at [/demo](https://gateway.peterparker.ca/demo), and see every call on the record at [/dashboard](https://gateway.peterparker.ca/dashboard).
+
 **Status: Part A is released, and its interface is frozen**
 ([docs/interface.md](docs/interface.md)). `v0.1.0` on 2026-09-10, after one live call per
 provider; the library table below is measured. Everything since is additive: ledger merge
