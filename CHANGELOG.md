@@ -5,6 +5,11 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+- **The host serves a second site**: project 07's redaction demo at `redaction.peterparker.ca`,
+  a site block in `deploy/Caddyfile` proxying to a container 07 deploys onto this compose
+  network. `docs/deploy.md` no longer says the host runs nothing else, and says the published
+  load test predates the change. Nothing in the gateway changes.
+
 ## 1.4.3 (2026-10-17)
 
 - **Gemini batches are read as the endpoint actually returns them.** The batch GET answers with

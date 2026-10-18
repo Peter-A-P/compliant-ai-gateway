@@ -41,3 +41,26 @@ gateway.peterparker.ca {
 		format json
 	}
 }
+
+# Project 07's redaction demo (sever demo), a separate compose project on this host that
+# joins this one's network and publishes no port; 07's docs/deploy.md has its files. Its
+# screen's script and stylesheet are inline, which is why this policy allows inline and
+# nothing from another host. A decision is a small form post, so the body limit is small.
+redaction.peterparker.ca {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+		-Server
+	}
+	request_body {
+		max_size 64KB
+	}
+	reverse_proxy redaction:8000
+	log {
+		output stdout
+		format json
+	}
+}

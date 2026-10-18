@@ -13,7 +13,12 @@ The files are in `deploy/`. Stood up 2026-09-29.
 | OS | Ubuntu 24.04 LTS |
 | DNS | an A record in Cloudflare, **DNS only**, so the TLS certificate is this host's own and nothing sits between a caller and the proxy |
 
-The host is the machine the published load test names. It runs nothing else.
+The host is the machine the published load test names. Since 2026-10-18 it also runs
+one other container: project 07's redaction demo at `redaction.peterparker.ca`, behind
+the same Caddy, capped at one CPU and 2 GB, and idle almost all the time. The published
+load test was run before that, when the host ran nothing else; a load test run after it
+says that it shares the host. The demo's own files and commands are in 07's
+`docs/deploy.md`.
 
 ## What runs (since 0.28, 2026-09-30)
 
