@@ -48,7 +48,9 @@ version: 1
 # total to 550, and the cap keeps its US$10 of room. Confirmed by Peter 2026-10-11.
 # 650, from 560 on 2026-10-16: 16's line below (legible, US$90) takes the named total to
 # 640, and the cap keeps its US$10 of room. Approved by Peter 2026-10-16.
-portfolio_monthly_usd: 650
+# 670, from 650 on 2026-10-17: 16's line goes to 110 from 90, which takes the named total to
+# 660, and the cap keeps its US$10 of room. Approved by Peter 2026-10-17.
+portfolio_monthly_usd: 670
 
 projects:
   # 03 drift runs: about US$9 per full run; two dry runs plus the Sep 27 official run.
@@ -118,8 +120,12 @@ projects:
   # the per-run cap allows it with room for retries and stops a run going wrong well before
   # the line is gone; the per-day cap bounds a retry loop. Approved by Peter 2026-10-16.
   # Raise them here, deliberately, in a commit if they bind; never bypass a cap in code.
+  # Monthly 110, from 90 on 2026-10-17: the VRDU documents are multi-page (about 5,500 page
+  # calls an arm, not 4,100), NIST SD2 was added once its terms were confirmed, and the dev
+  # runs of every vision model came to about US$12, so the build's API spend is about US$105.
+  # Approved by Peter 2026-10-17.
   legible:
-    monthly_usd: 90
+    monthly_usd: 110
     per_run_usd: 25
     daily_usd: 40
 
