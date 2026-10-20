@@ -644,8 +644,14 @@ its redaction engine.
 
 ## How this was built
 
-Design, methodology, evaluation choices and judgement are Peter Parker's. AI coding
-assistants (Claude Code) were used for implementation and drafting, the way a senior
+The design, the methods, the evaluation and the judgement calls are mine. Two of them are
+worth naming. I kept the spend ledger local, one file per environment merged later, after
+measuring a central ledger through simulated network outages: it either stopped part way or
+lost the record of calls it had already paid for. And I changed the proxy to put back only the
+values the caller sent, after 03's red team showed that restoring everything could hand a
+model's refusal straight back as a disclosure.
+
+I used AI coding assistants (Claude Code) for implementation and drafting, the way a senior
 engineer uses them in 2026. Every number in the results tables is reproducible from this
 repository with one command, and that reproducibility is the evidence that matters.
 
