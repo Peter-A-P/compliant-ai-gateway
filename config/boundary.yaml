@@ -54,6 +54,38 @@ providers:
     region: localhost
     residency: single-region
 
+  # -- decision models (1.5) ------------------------------------------------------------
+  #
+  # A state and typed questions in, one probability per option out, no text. Both entries
+  # speak TypeSafe's System One interface through boundary/providers/decisions.py and differ
+  # only in where they listen.
+  #
+  # Jev, TypeSafe's model, through OpenRouter. The model id is `typesafe/jev-1.14`, so the
+  # explicit form is `openrouter/typesafe/jev-1.14`. Residency is not declared: OpenRouter
+  # publishes none for this endpoint, and inventing one is the failure that field exists to
+  # prevent. Priced in the dated vendor list (2026-10-20.yaml).
+  openrouter:
+    kind: decisions
+    base_url: https://openrouter.ai/api
+    decisions_path: /alpha/decisions
+    api_key_env: OPENROUTER_API_KEY
+
+  # Kev, an open-weights recreation of Jev on Qwen (github.com/jaredpalmer/kev, Apache-2.0),
+  # served on this machine by `python -m kev.serve --run jaredpalmer/kev-4b --port 8009`. No
+  # key unless the server was started with KEV_API_KEY, in which case name it here.
+  #
+  # Residency is deliberately left undeclared, although the request never leaves the machine
+  # and `single-region` would be true. `local` is the only single-region entry, and the
+  # residency policy (policy.yaml), the adversarial suite and the site's grid are all written
+  # and tested against that: a second one changes which hosts personal data may reach under
+  # the policy. That is a decision to make with the policy and its tests, not as a side effect
+  # of adding a host. Until then the policy treats Kev as it treats any undeclared host.
+  kev:
+    kind: decisions
+    base_url: http://127.0.0.1:8009
+    decisions_path: /v1/systemone
+    price_zero: true
+
   # -- hyperscaler platforms (v0.2; Foundry and Vertex 2026-09-14, Bedrock 2026-09-15) -----
   #
   # All three entries are inert until their credentials exist: nothing routes to them, and

@@ -5,6 +5,26 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 1.5.0 (2026-10-20)
+
+- **Decision models, through the gateway.** A new provider kind, `decisions`, for TypeSafe's
+  System One interface: a state and typed questions in, one probability per option out, no
+  text. One adapter (`boundary/providers/decisions.py`) serves **Jev** through OpenRouter
+  and **Kev**, its open-weights recreation, on a local server; the new `decisions_path`
+  provider field says where each listens. A decision is sent with `chat`, so caps, the
+  ledger row, retries, telemetry and the residency policy apply unchanged; the answers come
+  back as JSON in `ChatResponse.text`. Asked for by project 07, whose model layer needs
+  calibrated probabilities more than it needs text. Golden request, response and both error
+  shapes in `tests/test_decisions.py`.
+- **`boundary/prices/2026-10-20.yaml`**, `2026-10-16.yaml` verbatim plus
+  `openrouter/typesafe/jev-1.14` at US$0.042 a million input tokens and nothing for output,
+  from OpenRouter's Jev page read 2026-10-20. The response's own `cost` is not read.
+- **Two provider entries**: `openrouter` (key `OPENROUTER_API_KEY`) and `kev`
+  (`http://127.0.0.1:8009`, price zero). Kev's residency is left undeclared although it is
+  local: `local` is the only single-region entry, and the policy, the adversarial suite and
+  the site's grid are written against that. Declaring a second is a policy decision.
+- **The adversarial proxy suite leaves decision hosts out.** It sends chat requests, which a
+  decision host refuses by design; the policy reaches decision calls by the same step.
 - **The host serves a second site**: project 07's redaction demo at `redaction.peterparker.ca`,
   a site block in `deploy/Caddyfile` proxying to a container 07 deploys onto this compose
   network. `docs/deploy.md` no longer says the host runs nothing else, and says the published

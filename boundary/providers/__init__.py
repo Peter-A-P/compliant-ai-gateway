@@ -17,6 +17,7 @@ from boundary.providers.base import (
     UploadingBatchAdapter,
 )
 from boundary.providers.bedrock import BedrockAdapter
+from boundary.providers.decisions import DecisionsAdapter
 from boundary.providers.foundry import AzureFoundryAdapter
 from boundary.providers.google import GoogleAdapter
 from boundary.providers.google_batch import GoogleBatchAdapter
@@ -40,6 +41,7 @@ ADAPTERS: dict[ProviderKind, Adapter] = {
     ProviderKind.AZURE_FOUNDRY: AzureFoundryAdapter(),
     ProviderKind.AWS_BEDROCK: BedrockAdapter(),
     ProviderKind.GCP_VERTEX: VertexAdapter(),
+    ProviderKind.DECISIONS: DecisionsAdapter(),
 }
 
 # Only the providers whose batch endpoints are implemented. A kind that is absent is

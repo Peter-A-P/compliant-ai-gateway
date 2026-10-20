@@ -40,6 +40,7 @@ listed here; nothing any earlier version offered has changed shape.
 | 0.11.0 | 2026-09-23 | `Policy.released` and `RELEASABLE`: a caller's `allow` terms also release a detector's LOCATION or ORGANISATION span that is one of them. A caller who passes no `allow` sees no change |
 | 0.12.0 | 2026-09-23 | The data policy (section 14): `Gateway(..., policy=)`, the `policy` configuration key, `PolicyRefused`, `boundary.enforce` and `boundary policy eval`. Opt-in: a gateway with no policy behaves as before |
 | 0.13.0 | 2026-09-25 | The OpenAI-compatible proxy (section 15): `boundary.server`, the `server` extra, `boundary serve` and `boundary teams key`. `on_text` on `chat_stream` and `achat_stream`. Nothing a library caller already uses changed |
+| 1.5.0 | 2026-10-20 | The `decisions` provider kind and `decisions_path` provider field: decision models (Jev through OpenRouter, Kev locally) through `chat`; `boundary/prices/2026-10-20.yaml`, adding `openrouter/typesafe/jev-1.14` |
 | 1.4.3 | 2026-10-17 | Gemini batch status and results read from the operation the endpoint returns. No interface changed |
 | 1.4.2 | 2026-10-17 | The pre-call estimate counts an inline image at a fixed 8,000 tokens. No interface changed |
 | 1.4.1 | 2026-10-17 | No interface change: a link at the foot of the architecture page |
@@ -325,6 +326,17 @@ Azure key in `api-key` and keeps `model` in the body, where it names the deploym
 takes a Google OAuth bearer token, moves `model` into the URL and `anthropic_version` into the
 body, and needs `project` and a `region`. A Vertex `region` that disagrees with its `base_url`
 host is refused rather than sent, because the host is what decides the geography.
+
+**Decision models.** `decisions` since 1.5: TypeSafe's System One interface, a state and
+typed questions in and one probability per option out, with no text. One adapter serves Jev
+through OpenRouter (`/alpha/decisions` under `https://openrouter.ai/api`) and Kev on a local
+server (`/v1/systemone`); a provider entry's `decisions_path` says which. A decision goes
+through `chat` like any call, so it is capped, ledgered, retried and enforced the same way:
+the request's one user message is the state, verbatim, `extra["questions"]` are the
+questions, and `ChatResponse.text` is the `answers` object as canonical JSON. A system prompt,
+a temperature, stop sequences or a second message are refused with `ValueError` before a row
+is written, because the interface has nowhere to put them; `max_tokens` is accepted and not
+sent. The host's own `cost` field is not read: cost comes from the dated price file.
 
 **Batches.** Anthropic since 0.2; `openai_compat` and `google` since 0.2.1. A provider entry
 must also opt in with `batches: true` for `openai_compat`, because most OpenAI-compatible

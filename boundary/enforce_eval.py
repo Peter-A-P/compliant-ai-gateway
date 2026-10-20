@@ -45,7 +45,7 @@ from typing import Any
 import yaml
 
 from boundary._mock import MockUpstream, open_caps
-from boundary.config import BoundaryConfig
+from boundary.config import BoundaryConfig, ProviderKind
 from boundary.enforce import load_policy
 from boundary.errors import BoundaryError, PolicyRefused
 from boundary.gateway import POLICY_REFUSED, Gateway
@@ -195,6 +195,12 @@ class PolicyEvalResults:
 def targets(config: BoundaryConfig, models: dict[str, str]) -> list[Target]:
     out: list[Target] = []
     for name, pc in sorted(config.providers.items()):
+        # A decision host (1.5) answers no chat request: its adapter refuses one with no
+        # questions, so a chat case could never reach it and would read as a false refusal.
+        # The policy is applied to a decision call by the same `_enforce` step, before any
+        # adapter runs, so leaving these hosts out of a chat suite tests nothing less.
+        if pc.kind is ProviderKind.DECISIONS:
+            continue
         model = models.get(name, f"{name}/policy-eval-model")
         residency = pc.residency.value if pc.residency else None
         out.append(Target(model, name, pc.region, residency, alias=False))

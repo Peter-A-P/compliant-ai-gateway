@@ -33,6 +33,11 @@ class ProviderKind(StrEnum):
     AZURE_FOUNDRY = "azure_foundry"  # v0.2
     AWS_BEDROCK = "aws_bedrock"  # v0.2
     GCP_VERTEX = "gcp_vertex"  # v0.2
+    # Decision models (1.5): a state and typed questions in, one probability per option out,
+    # and no text. TypeSafe's System One interface, which OpenRouter serves for Jev at
+    # /api/alpha/decisions and Kev serves locally at /v1/systemone. See
+    # boundary/providers/decisions.py.
+    DECISIONS = "decisions"
 
 
 class CredentialSource(StrEnum):
@@ -151,6 +156,12 @@ class ProviderConfig(_Strict):
     # OpenAI-compatible hosts only: OpenAI's newer models take max_completion_tokens, every
     # other compatible host takes max_tokens. Ignored by other adapter kinds.
     max_tokens_field: Literal["max_tokens", "max_completion_tokens"] = "max_tokens"
+
+    # Decision hosts only (1.5): the path under `base_url` that answers a decision request.
+    # The body is the same everywhere and the path is not: OpenRouter serves Jev at
+    # `/alpha/decisions` under `https://openrouter.ai/api`, and a local Kev server serves the
+    # same interface at `/v1/systemone`. Ignored by other adapter kinds.
+    decisions_path: str = Field(default="/alpha/decisions", pattern=r"^/")
 
 
 class Route(_Strict):
