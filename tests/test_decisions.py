@@ -42,9 +42,9 @@ QUESTIONS = {
 }
 
 
-def _request(model: str = JEV, **kw: object) -> ChatRequest:
+def _request(**kw: object) -> ChatRequest:
     base: dict[str, object] = {
-        "model": model,
+        "model": JEV,
         "messages": [{"role": "user", "content": STATE}],
         "extra": {"questions": QUESTIONS},
     }
@@ -75,19 +75,23 @@ def _jev_response() -> httpx.Response:
 def test_the_jev_golden_request(repo_config: BoundaryConfig) -> None:
     ref = resolve(JEV, repo_config, Mode.STANDARD)
     assert (ref.provider, ref.model) == ("openrouter", "typesafe/jev-1.14")
-    built = DecisionsAdapter().build_request(ref, _request(max_tokens=1024), ref.provider_config, "k")
+    built = DecisionsAdapter().build_request(
+        ref, _request(max_tokens=1024), ref.provider_config, "k"
+    )
     assert built.method == "POST" and built.url == JEV_URL
     assert built.headers["authorization"] == "Bearer k"
     body = json.loads(built.body)
     # max_tokens is accepted and not sent: the interface has no such field.
     assert body == {"model": "typesafe/jev-1.14", "state": STATE, "questions": QUESTIONS}
-    again = DecisionsAdapter().build_request(ref, _request(max_tokens=1024), ref.provider_config, "k")
+    again = DecisionsAdapter().build_request(
+        ref, _request(max_tokens=1024), ref.provider_config, "k"
+    )
     assert again.body == built.body
 
 
 def test_kev_is_the_same_body_at_its_own_path_with_no_key(repo_config: BoundaryConfig) -> None:
     ref = resolve(KEV, repo_config, Mode.STANDARD)
-    built = DecisionsAdapter().build_request(ref, _request(KEV), ref.provider_config, None)
+    built = DecisionsAdapter().build_request(ref, _request(model=KEV), ref.provider_config, None)
     assert built.url == KEV_URL
     assert "authorization" not in {k.lower() for k in built.headers}
     assert json.loads(built.body)["model"] == "kev-latest"
@@ -99,7 +103,10 @@ def test_kev_is_the_same_body_at_its_own_path_with_no_key(repo_config: BoundaryC
     [
         ({"system": "Be careful."}, "system prompt"),
         ({"temperature": 0.0}, "temperature"),
-        ({"messages": [{"role": "user", "content": "a"}, {"role": "user", "content": "b"}]}, "one user message"),
+        (
+            {"messages": [{"role": "user", "content": "a"}, {"role": "user", "content": "b"}]},
+            "one user message",
+        ),
         ({"extra": {}}, "questions"),
     ],
 )
@@ -131,7 +138,10 @@ def test_both_error_shapes_say_what_was_wrong() -> None:
     )
     assert "criteria must not be empty" in str(openrouter)
     kev = DecisionsAdapter().parse_error(
-        "kev", 422, {}, b'{"detail": [{"loc": ["body", "state"], "msg": "too long", "type": "value_error"}]}'
+        "kev",
+        422,
+        {},
+        b'{"detail": [{"loc": ["body", "state"], "msg": "too long", "type": "value_error"}]}',
     )
     assert "body.state: too long" in str(kev)
 
