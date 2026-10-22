@@ -52,7 +52,9 @@ version: 1
 # 660, and the cap keeps its US$10 of room. Approved by Peter 2026-10-17.
 # 750, from 670 on 2026-10-20: 16's line goes to 190 from 110, which takes the named total to
 # 740, and the cap keeps its US$10 of room. Approved by Peter 2026-10-20.
-portfolio_monthly_usd: 750
+# 775, from 750 on 2026-10-22: 16's line goes to 215 from 190, which takes the named total to
+# 765, and the cap keeps its US$10 of room. Approved by Peter 2026-10-22.
+portfolio_monthly_usd: 775
 
 projects:
   # 03 drift runs: about US$9 per full run; two dry runs plus the Sep 27 official run.
@@ -129,8 +131,11 @@ projects:
   # Monthly 190, from 110 on 2026-10-20: the NIST SD2 test and curve reads for the four
   # frontier models and the OCR-text arm, with answers allowed 8,192 tokens since 3,072
   # truncated them on dev, do not fit what October had left. Approved by Peter 2026-10-20.
+  # Monthly 215, from 190 on 2026-10-22: the NIST curve came in above its estimate, and the
+  # repeat, VRDU-curve and Opus 5.5 ceiling subsets need about US$25 more to finish in October.
+  # Approved by Peter 2026-10-22.
   legible:
-    monthly_usd: 190
+    monthly_usd: 215
     per_run_usd: 25
     daily_usd: 40
 
