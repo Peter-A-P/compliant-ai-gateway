@@ -54,7 +54,9 @@ version: 1
 # 740, and the cap keeps its US$10 of room. Approved by Peter 2026-10-20.
 # 775, from 750 on 2026-10-22: 16's line goes to 215 from 190, which takes the named total to
 # 765, and the cap keeps its US$10 of room. Approved by Peter 2026-10-22.
-portfolio_monthly_usd: 775
+# 925, from 775 on 2026-10-24: 16's line goes to 365 from 215, which takes the named total to
+# 915, and the cap keeps its US$10 of room. Approved by Peter 2026-10-24.
+portfolio_monthly_usd: 925
 
 projects:
   # 03 drift runs: about US$9 per full run; two dry runs plus the Sep 27 official run.
@@ -134,10 +136,13 @@ projects:
   # Monthly 215, from 190 on 2026-10-22: the NIST curve came in above its estimate, and the
   # repeat, VRDU-curve and Opus 5.5 ceiling subsets need about US$25 more to finish in October.
   # Approved by Peter 2026-10-22.
+  # Monthly 365, from 215, and daily 80, from 40, on 2026-10-24: arm F, Azure Document
+  # Intelligence's custom and prebuilt models on the headline test sets and the NIST curve,
+  # about US$140. The per-run cap is unchanged. Approved by Peter 2026-10-24.
   legible:
-    monthly_usd: 215
+    monthly_usd: 365
     per_run_usd: 25
-    daily_usd: 40
+    daily_usd: 80
 
 default:
   monthly_usd: 10
