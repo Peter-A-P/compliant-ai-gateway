@@ -53,6 +53,7 @@ def keys(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OPENWEIGHTS_API_KEY", "test-openweights-key-000000000000")
     monkeypatch.setenv("AWS_BEARER_TOKEN_BEDROCK", "test-bedrock-key-000000000000")
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-openrouter-key-000000000000")
+    monkeypatch.setenv("AZURE_DOCINTEL_KEY", "test-docintel-key-000000000000")
 
 
 async def _no_sleep(_: float) -> None:

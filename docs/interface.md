@@ -41,6 +41,7 @@ listed here; nothing any earlier version offered has changed shape.
 | 0.12.0 | 2026-09-23 | The data policy (section 14): `Gateway(..., policy=)`, the `policy` configuration key, `PolicyRefused`, `boundary.enforce` and `boundary policy eval`. Opt-in: a gateway with no policy behaves as before |
 | 0.13.0 | 2026-09-25 | The OpenAI-compatible proxy (section 15): `boundary.server`, the `server` extra, `boundary serve` and `boundary teams key`. `on_text` on `chat_stream` and `achat_stream`. Nothing a library caller already uses changed |
 | 1.5.0 | 2026-10-20 | The `decisions` provider kind and `decisions_path` provider field: decision models (Jev through OpenRouter, Kev locally) through `chat`; `boundary/prices/2026-10-20.yaml`, adding `openrouter/typesafe/jev-1.14` |
+| 1.6.0 | 2026-10-24 | The `azure_docintel` provider kind: Azure AI Document Intelligence through `batch_submit` and `batch_results` as batches of one document, billed by the page; `chat` refuses it by name; `boundary/prices/2026-10-24.yaml`, adding `azure-docintel` per million pages by tier |
 | 1.4.3 | 2026-10-17 | Gemini batch status and results read from the operation the endpoint returns. No interface changed |
 | 1.4.2 | 2026-10-17 | The pre-call estimate counts an inline image at a fixed 8,000 tokens. No interface changed |
 | 1.4.1 | 2026-10-17 | No interface change: a link at the foot of the architecture page |
@@ -337,6 +338,17 @@ questions, and `ChatResponse.text` is the `answers` object as canonical JSON. A 
 a temperature, stop sequences or a second message are refused with `ValueError` before a row
 is written, because the interface has nowhere to put them; `max_tokens` is accepted and not
 sent. The host's own `cost` field is not read: cost comes from the dated price file.
+
+**Document services.** `azure_docintel` since 1.6: Azure AI Document Intelligence's analyze
+endpoint, a document in and its fields and words out. An analysis is asynchronous (a POST that
+returns an Operation-Location, then a GET), so it is served only by the batch path, one
+document a batch, the Operation-Location URL as the batch id; `chat` and its streaming and
+async forms raise `ConfigError` before a row is written. A request is one user message holding
+one document block (`{"type": "document", "source": {"type": "base64", "data"}}`) and
+`extra["pages"]`, the page count the pre-call estimate is made from. The model is
+`<tier>/<modelId>` (`prebuilt/prebuilt-receipt`, `custom/<a trained model>`), the tier is the
+price key, and the usage is pages as input tokens, so the dated list's rates for this
+provider are per million pages. `ChatResponse.text` is `analyzeResult` as canonical JSON.
 
 **Batches.** Anthropic since 0.2; `openai_compat` and `google` since 0.2.1. A provider entry
 must also opt in with `batches: true` for `openai_compat`, because most OpenAI-compatible

@@ -199,7 +199,9 @@ def targets(config: BoundaryConfig, models: dict[str, str]) -> list[Target]:
         # questions, so a chat case could never reach it and would read as a false refusal.
         # The policy is applied to a decision call by the same `_enforce` step, before any
         # adapter runs, so leaving these hosts out of a chat suite tests nothing less.
-        if pc.kind is ProviderKind.DECISIONS:
+        # Document Intelligence (1.6) is the same case: the single-call path refuses it by
+        # name, and its batch submit runs the same `_enforce` step first.
+        if pc.kind in {ProviderKind.DECISIONS, ProviderKind.AZURE_DOCINTEL}:
             continue
         model = models.get(name, f"{name}/policy-eval-model")
         residency = pc.residency.value if pc.residency else None

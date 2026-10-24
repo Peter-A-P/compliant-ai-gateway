@@ -5,6 +5,29 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+## 1.6.0 (2026-10-24)
+
+- **Azure AI Document Intelligence, through the gateway.** A new provider kind,
+  `azure_docintel` (`boundary/providers/docintel.py`), for project 16's arm F, which measures a
+  managed document service beside the vision models and wants its cost in the same ledger. An
+  analysis is asynchronous, so it rides the batch path as a batch of one document: the submit
+  writes the row in flight at a per-page estimate, the Operation-Location URL is the batch id,
+  and `batch_results` completes the row from the finished analysis. `chat` refuses the kind by
+  name before anything is sent, since the POST it would make is the billed one and its answer
+  arrives later. Golden request, the batch of one end to end, a failed and a running analysis,
+  and the refusals in `tests/test_docintel.py`.
+- **Three adapter hooks the gateway reads where an adapter has them**, all additive:
+  `estimate_usage` (a pre-call estimate in the unit the service bills, here pages),
+  `price_key` (the price list key, here the billing tier rather than the model) and
+  `results_at_batch_id` (the results are read at the batch id). And results named by position
+  (`#0`, `#1`, as google_batch.py already names them when Gemini drops the key) are now mapped
+  back to their calls, only when the counts agree.
+- **`boundary/prices/2026-10-24.yaml`**, `2026-10-21.yaml` verbatim plus `azure-docintel` per
+  million pages: read 1,500, layout and prebuilt 10,000, custom 30,000, from Azure's retail
+  prices API read 2026-10-24 (East US, S0, pay as you go).
+- **The `azure-docintel` provider entry**, project 16's resource in East US. Residency is left
+  undeclared, as for Kev. The adversarial chat suite leaves it out, as it does decision hosts.
+
 ## 1.5.0 (2026-10-20)
 
 - **Decision models, through the gateway.** A new provider kind, `decisions`, for TypeSafe's

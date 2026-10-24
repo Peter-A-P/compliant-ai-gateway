@@ -19,6 +19,7 @@ import asyncio
 import dataclasses
 import os
 import random
+import re
 import time
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
@@ -100,6 +101,8 @@ ZERO_PRICE = PriceEntry(
     input=0.0, output=0.0, cache_read=0.0, cache_write=0.0, batch_multiplier=1.0
 )
 MALFORMED = "MalformedResponse"
+# A batch result named by its position rather than its custom_id (1.6).
+_POSITION = re.compile(r"#\d+")
 
 
 @dataclass(frozen=True, slots=True)
@@ -595,7 +598,13 @@ class Gateway:
             single = adapter.build_request(ref, effective, pc, api_key)
             entry = self._price_for(pc, ref.provider, ref.model)
             estimate = 0.0
-            if entry is not None:
+            estimate_usage = getattr(adapter, "estimate_usage", None)
+            if entry is not None and estimate_usage is not None:
+                # A service billed by something other than tokens (Document Intelligence
+                # bills pages, 1.6) says what the request will be billed for; the body's
+                # length says nothing about it.
+                estimate = cost_usd(estimate_usage(effective), entry) or 0.0
+            elif entry is not None:
                 estimate = estimate_usd(
                     estimate_chars(single.body), effective.max_tokens or 0, entry
                 )
@@ -756,7 +765,12 @@ class Gateway:
             progress = self.batch_status(handle)
         if not progress.ended:
             raise BatchNotReady(handle.batch_id, progress.processing_status, progress.counts)
-        if progress.results_url is None:
+        results_url = progress.results_url
+        if results_url is None and getattr(batch_adapter, "results_at_batch_id", False):
+            # The batch id is itself where the results are read (Document Intelligence's
+            # Operation-Location, 1.6).
+            results_url = handle.batch_id
+        if results_url is None:
             raise ProviderError(
                 handle.provider,
                 "results_url",
@@ -765,15 +779,25 @@ class Gateway:
             )
 
         built = batch_adapter.build_batch_results(
-            progress.results_url, pc, self._api_key(handle.provider, pc)
+            results_url, pc, self._api_key(handle.provider, pc)
         )
         result = self._fetch(handle.provider, pc, built)
-        by_custom_id = {
-            item.custom_id: item
-            for item in batch_adapter.parse_batch_results(
-                result.status, result.headers, result.body
-            )
-        }
+        items = batch_adapter.parse_batch_results(result.status, result.headers, result.body)
+        by_custom_id = {item.custom_id: item for item in items}
+        positional = [item for item in items if _POSITION.fullmatch(item.custom_id)]
+        if positional:
+            # An adapter that could not read the caller's id back names results by position
+            # (`#0`, `#1`, ...). Trusted only when the counts agree, because a shifted mapping
+            # would put one call's usage on another call's row (google_batch.py).
+            if len(items) != len(handle.custom_ids):
+                raise ProviderError(
+                    handle.provider,
+                    "results_count",
+                    f"batch {handle.batch_id} returned {len(items)} results for "
+                    f"{len(handle.custom_ids)} requests, some by position only",
+                )
+            for item in positional:
+                by_custom_id[handle.custom_ids[int(item.custom_id[1:])]] = item
         records = {str(r["call_uid"]): r for r in self.ledger.rows_for_batch(handle.batch_id)}
 
         responses: list[ChatResponse] = []
@@ -1091,7 +1115,11 @@ class Gateway:
         if pc.price_zero:
             return ZERO_PRICE
         prices = self._prices_for(pc)
-        return prices.lookup(provider, model) if prices is not None else None
+        # An adapter whose service bills by tier rather than by model (Document
+        # Intelligence, 1.6) names the price key; every other adapter's key is the model.
+        price_key = getattr(self._adapter(pc), "price_key", None)
+        key = price_key(model) if price_key is not None else model
+        return prices.lookup(provider, key) if prices is not None else None
 
     @staticmethod
     def _stream_adapter(pc: ProviderConfig) -> StreamingAdapter:
@@ -1163,6 +1191,14 @@ class Gateway:
                 ref,
             )
         adapter = self._adapter(pc)
+        if getattr(adapter, "async_only", False):
+            # An asynchronous service (Document Intelligence, 1.6) bills the request that
+            # starts the work, and the single-call path would drop the answer that arrives
+            # later. Refused by name before anything is built or sent.
+            raise ConfigError(
+                f"provider {ref.provider!r} (kind {pc.kind.value!r}) answers asynchronously; "
+                "submit each request with batch_submit and collect it with batch_results"
+            )
         api_key = self._api_key(ref.provider, pc)
         if stream:
             built = self._stream_adapter(pc).build_stream_request(ref, effective, pc, api_key)

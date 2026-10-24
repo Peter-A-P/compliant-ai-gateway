@@ -18,6 +18,7 @@ from boundary.providers.base import (
 )
 from boundary.providers.bedrock import BedrockAdapter
 from boundary.providers.decisions import DecisionsAdapter
+from boundary.providers.docintel import AzureDocIntelAdapter
 from boundary.providers.foundry import AzureFoundryAdapter
 from boundary.providers.google import GoogleAdapter
 from boundary.providers.google_batch import GoogleBatchAdapter
@@ -33,6 +34,7 @@ from boundary.providers.vertex import VertexAdapter
 _ANTHROPIC = AnthropicAdapter()
 _OPENAI_COMPAT = OpenAICompatBatchAdapter()
 _GOOGLE = GoogleBatchAdapter()
+_DOCINTEL = AzureDocIntelAdapter()
 
 ADAPTERS: dict[ProviderKind, Adapter] = {
     ProviderKind.ANTHROPIC: _ANTHROPIC,
@@ -42,6 +44,7 @@ ADAPTERS: dict[ProviderKind, Adapter] = {
     ProviderKind.AWS_BEDROCK: BedrockAdapter(),
     ProviderKind.GCP_VERTEX: VertexAdapter(),
     ProviderKind.DECISIONS: DecisionsAdapter(),
+    ProviderKind.AZURE_DOCINTEL: _DOCINTEL,
 }
 
 # Only the providers whose batch endpoints are implemented. A kind that is absent is
@@ -63,6 +66,9 @@ BATCH_ADAPTERS: dict[ProviderKind, BatchAdapter] = {
     ProviderKind.ANTHROPIC: _ANTHROPIC,
     ProviderKind.OPENAI_COMPAT: _OPENAI_COMPAT,
     ProviderKind.GOOGLE: _GOOGLE,
+    # An analysis is asynchronous, so Document Intelligence is served only here, as batches
+    # of one document (1.6).
+    ProviderKind.AZURE_DOCINTEL: _DOCINTEL,
 }
 
 # Only the kinds whose streaming path is implemented (0.3). `openai_compat` is here because
@@ -80,6 +86,7 @@ __all__ = [
     "STREAM_ADAPTERS",
     "Adapter",
     "AnthropicAdapter",
+    "AzureDocIntelAdapter",
     "AzureFoundryAdapter",
     "BatchAdapter",
     "BatchItem",

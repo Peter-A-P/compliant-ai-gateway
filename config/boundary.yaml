@@ -86,6 +86,21 @@ providers:
     decisions_path: /v1/systemone
     price_zero: true
 
+  # -- document services (1.6) ------------------------------------------------------------
+  #
+  # Azure AI Document Intelligence, project 16's resource (`legible-docintel`, East US, S0,
+  # created 2026-10-24). A document in, its fields and words out, asynchronously, so it is
+  # served only through batch_submit and batch_results, one document a batch
+  # (boundary/providers/docintel.py). The model is `<tier>/<modelId>`, the explicit form
+  # `azure-docintel/custom/<modelId>`; priced per page by tier in 2026-10-24.yaml. Residency
+  # is left undeclared, as for Kev: a second single-region entry is a policy decision, and
+  # project 16 sends this host public pages only.
+  azure-docintel:
+    kind: azure_docintel
+    base_url: https://legible-docintel.cognitiveservices.azure.com
+    api_key_env: AZURE_DOCINTEL_KEY
+    api_version: "2024-11-30"
+
   # -- hyperscaler platforms (v0.2; Foundry and Vertex 2026-09-14, Bedrock 2026-09-15) -----
   #
   # All three entries are inert until their credentials exist: nothing routes to them, and

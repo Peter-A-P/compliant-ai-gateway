@@ -38,6 +38,10 @@ class ProviderKind(StrEnum):
     # /api/alpha/decisions and Kev serves locally at /v1/systemone. See
     # boundary/providers/decisions.py.
     DECISIONS = "decisions"
+    # Azure AI Document Intelligence (1.6): a document in, its fields and words out, read
+    # asynchronously, so served by the batch path as a batch of one. See
+    # boundary/providers/docintel.py.
+    AZURE_DOCINTEL = "azure_docintel"
 
 
 class CredentialSource(StrEnum):
@@ -72,7 +76,9 @@ class Residency(StrEnum):
 
 # Which provider kinds serve a batch endpoint unless a provider entry says otherwise. See
 # ProviderConfig.batches for why openai_compat is not in here.
-_BATCHES_BY_DEFAULT = frozenset({ProviderKind.ANTHROPIC, ProviderKind.GOOGLE})
+_BATCHES_BY_DEFAULT = frozenset(
+    {ProviderKind.ANTHROPIC, ProviderKind.GOOGLE, ProviderKind.AZURE_DOCINTEL}
+)
 
 
 class _Strict(BaseModel):
