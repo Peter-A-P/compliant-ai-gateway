@@ -139,10 +139,13 @@ projects:
   # Monthly 365, from 215, and daily 80, from 40, on 2026-10-24: arm F, Azure Document
   # Intelligence's custom and prebuilt models on the headline test sets and the NIST curve,
   # about US$140. The per-run cap is unchanged. Approved by Peter 2026-10-24.
+  # Closed 2026-10-28, at Peter's request: 16 shipped (v0.1.0) and makes no more calls. A cap
+  # must be above zero, so every cap is one cent, which October's spend is already past and which
+  # no page read fits under. Reopen it here, deliberately, in a commit if 16 ever reads again.
   legible:
-    monthly_usd: 365
-    per_run_usd: 25
-    daily_usd: 80
+    monthly_usd: 0.01
+    per_run_usd: 0.01
+    daily_usd: 0.01
 
 default:
   monthly_usd: 10
