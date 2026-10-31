@@ -5,6 +5,14 @@ major version are additive only; see docs/interface.md.
 
 ## Unreleased
 
+- **The Document Intelligence tests no longer run under legible's closed caps.** Since
+  8a8c91e closed project 16 at one cent, four tests in `tests/test_docintel.py` were refused
+  by its cap before reaching the adapter, and `ci` on main had failed since. They now run
+  under a test project on the default caps, and a new test holds the closure itself: legible
+  refuses a page read before any request is sent. No change to the library or the caps.
+  Found by project 10's live workflow on a demo pull request, whose suggested fix (raising
+  the cap) its reviewer rightly rejected.
+
 ## 1.6.0 (2026-10-24)
 
 - **Azure AI Document Intelligence, through the gateway.** A new provider kind,
