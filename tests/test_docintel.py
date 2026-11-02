@@ -12,7 +12,7 @@ import pytest
 import respx
 
 from boundary.config import BoundaryConfig
-from boundary.errors import ConfigError
+from boundary.errors import ConfigError, SpendCapExceeded
 from boundary.providers.docintel import AzureDocIntelAdapter, split_model
 from boundary.routes import resolve
 from boundary.types import ChatRequest, Mode
@@ -30,6 +30,12 @@ RESULT = (
     "r-1?api-version=2024-11-30"
 )
 PDF = base64.b64encode(b"%PDF-1.4 two pages").decode()
+
+# The adapter's tests run under a project with the default caps. 16's own project, legible,
+# was closed at one cent on 2026-10-28 (config/caps.yaml), which no page read fits under;
+# these tests are about the service, not about 16's budget, and that closure is tested
+# below as a closure.
+PROJECT = "docintel-tests"
 
 
 def _request(pages: int = 2, **kw: object) -> ChatRequest:
@@ -105,7 +111,7 @@ def test_what_the_service_cannot_carry_is_refused_not_dropped(
 def test_a_document_goes_through_the_batch_path_and_is_billed_by_the_page(
     repo_config: BoundaryConfig, tmp_path: Path, keys: None
 ) -> None:
-    gw = make_gateway(repo_config, tmp_path, project="legible")
+    gw = make_gateway(repo_config, tmp_path, project=PROJECT)
     try:
         with respx.mock(assert_all_called=True) as mock:
             mock.post(ANALYZE).mock(
@@ -132,7 +138,7 @@ def test_a_document_goes_through_the_batch_path_and_is_billed_by_the_page(
 def test_a_failed_analysis_completes_its_row_as_a_failure(
     repo_config: BoundaryConfig, tmp_path: Path, keys: None
 ) -> None:
-    gw = make_gateway(repo_config, tmp_path, project="legible")
+    gw = make_gateway(repo_config, tmp_path, project=PROJECT)
     try:
         with respx.mock() as mock:
             mock.post(ANALYZE).mock(
@@ -160,7 +166,7 @@ def test_a_running_analysis_is_not_ready(
 ) -> None:
     from boundary.errors import BatchNotReady
 
-    gw = make_gateway(repo_config, tmp_path, project="legible")
+    gw = make_gateway(repo_config, tmp_path, project=PROJECT)
     try:
         with respx.mock() as mock:
             mock.post(ANALYZE).mock(
@@ -177,7 +183,7 @@ def test_a_running_analysis_is_not_ready(
 def test_the_single_call_path_refuses_an_asynchronous_service(
     repo_config: BoundaryConfig, tmp_path: Path, keys: None
 ) -> None:
-    gw = make_gateway(repo_config, tmp_path, project="legible")
+    gw = make_gateway(repo_config, tmp_path, project=PROJECT)
     try:
         with respx.mock(assert_all_called=False) as mock:
             route = mock.post(ANALYZE)
@@ -192,7 +198,7 @@ def test_the_single_call_path_refuses_an_asynchronous_service(
 def test_two_documents_are_two_batches_not_one(
     repo_config: BoundaryConfig, tmp_path: Path, keys: None
 ) -> None:
-    gw = make_gateway(repo_config, tmp_path, project="legible")
+    gw = make_gateway(repo_config, tmp_path, project=PROJECT)
     try:
         with respx.mock(assert_all_called=False), pytest.raises(ValueError, match="one document"):
             gw.batch_submit([_request(), _request()], purpose="arm-f", data_class="public")
@@ -206,3 +212,17 @@ def test_the_key_goes_only_to_the_configured_host(repo_config: BoundaryConfig) -
         AzureDocIntelAdapter().build_batch_status(
             "https://elsewhere.example/analyzeResults/1", ref.provider_config, "k"
         )
+
+
+def test_legible_is_closed_and_refuses_a_page_read_before_any_request(
+    repo_config: BoundaryConfig, tmp_path: Path, keys: None
+) -> None:
+    gw = make_gateway(repo_config, tmp_path, project="legible")
+    try:
+        with respx.mock(assert_all_called=False) as mock:
+            route = mock.post(ANALYZE)
+            with pytest.raises(SpendCapExceeded, match="legible"):
+                gw.batch_submit([_request(pages=1)], purpose="arm-f", data_class="public")
+            assert not route.called
+    finally:
+        gw.close()

@@ -1,0 +1,34 @@
+name: mend-live
+
+# mend's live workflow for 04's gateway (Peter-A-P/failure-to-reviewed-fix, docs/live.md).
+# Copied into .github/workflows/ of Peter-A-P/compliant-ai-gateway; it has to be on the
+# default branch to run.
+#
+# When ci fails on a pull request from this repository (never a fork: GitHub gives a fork's
+# run no secrets, and the condition below skips it anyway), mend reruns the suite in a
+# sandbox, triages the failure and comments on the pull request. Comments only: it opens
+# no pull request, pushes nothing and merges nothing. Capped at US$1.00 an issue and
+# US$1.50 in all for this repository.
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  suggest:
+    if: >-
+      github.event.workflow_run.conclusion == 'failure' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    uses: Peter-A-P/failure-to-reviewed-fix/.github/workflows/live.yml@v0.1.1
+    with:
+      install: uv sync --frozen --extra server
+      markers: boundary/ tests/
+      mend_ref: v0.1.1
+    secrets:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
