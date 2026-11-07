@@ -56,7 +56,7 @@ HEADERS: dict[str, str] = {
 
 # The files the site is made of, which Caddy serves from the built folder (deploy/Caddyfile
 # names the same paths). Everything else on the host is the proxy's.
-ASSETS = ("style.css", "app.js")
+ASSETS = ("style.css", "app.js", "og.png")
 
 # The pages, each a template in `web/` with `{{tokens}}`. The second shows the architecture
 # diagrams, rendered from docs/architecture.md and served from `architecture/`.
