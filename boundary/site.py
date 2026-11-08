@@ -392,7 +392,7 @@ def _grid_html(grid: Mapping[str, Any]) -> str:
             for column, c in zip(grid["columns"], r["cells"], strict=True)
         )
         where = (
-            f'{r["region"] or "no region declared"}, {r["residency"] or "no residency declared"}'
+            f"{r['region'] or 'no region declared'}, {r['residency'] or 'no residency declared'}"
             if r["region"] or r["residency"]
             else "no residency declared"
         )
