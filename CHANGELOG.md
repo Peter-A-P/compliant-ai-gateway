@@ -3,8 +3,14 @@
 Versions follow the plan's handover table (PLAN.md section 7). Interface changes within a
 major version are additive only; see docs/interface.md.
 
-## Unreleased
+## 1.6.1 (2026-11-07)
 
+- **A link preview for gateway.peterparker.ca.** `web/og.png`, a 1200 x 630 card, is one of
+  the site's files (`boundary.site.ASSETS`) and one of the paths Caddy serves from the built
+  site (`deploy/Caddyfile`), and `index.html` names it in Open Graph and Twitter tags. The
+  Caddyfile changed, so this release needs `sudo docker compose restart caddy`.
+- **legible (16) closed at one cent** a month, run and day (`config/caps.yaml`, 8a8c91e),
+  since 16 shipped 2026-10-28 and makes no more calls.
 - **The Document Intelligence tests no longer run under legible's closed caps.** Since
   8a8c91e closed project 16 at one cent, four tests in `tests/test_docintel.py` were refused
   by its cap before reaching the adapter, and `ci` on main had failed since. They now run

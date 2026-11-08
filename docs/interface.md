@@ -42,6 +42,7 @@ listed here; nothing any earlier version offered has changed shape.
 | 0.13.0 | 2026-09-25 | The OpenAI-compatible proxy (section 15): `boundary.server`, the `server` extra, `boundary serve` and `boundary teams key`. `on_text` on `chat_stream` and `achat_stream`. Nothing a library caller already uses changed |
 | 1.5.0 | 2026-10-20 | The `decisions` provider kind and `decisions_path` provider field: decision models (Jev through OpenRouter, Kev locally) through `chat`; `boundary/prices/2026-10-20.yaml`, adding `openrouter/typesafe/jev-1.14` |
 | 1.6.0 | 2026-10-24 | The `azure_docintel` provider kind: Azure AI Document Intelligence through `batch_submit` and `batch_results` as batches of one document, billed by the page; `chat` refuses it by name; `boundary/prices/2026-10-24.yaml`, adding `azure-docintel` per million pages by tier |
+| 1.6.1 | 2026-11-07 | The site's link preview (`og.png`) and legible's caps closed. No interface changed |
 | 1.4.3 | 2026-10-17 | Gemini batch status and results read from the operation the endpoint returns. No interface changed |
 | 1.4.2 | 2026-10-17 | The pre-call estimate counts an inline image at a fixed 8,000 tokens. No interface changed |
 | 1.4.1 | 2026-10-17 | No interface change: a link at the foot of the architecture page |
