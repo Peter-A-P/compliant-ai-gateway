@@ -200,9 +200,23 @@ function describeLive(head, anchors) {
   );
 }
 
+/* The residency grid's reasons: written under the grid on hover, focus or tap, so a
+   keyboard and a phone reach them as well as a mouse. */
+function wireGrid() {
+  const out = document.getElementById("grid-readout");
+  if (!out) return;
+  for (const td of document.querySelectorAll("table.grid td[data-reason]")) {
+    const show = () => { out.textContent = td.dataset.reason; };
+    td.addEventListener("mouseenter", show);
+    td.addEventListener("focus", show);
+    td.addEventListener("click", show);
+  }
+}
+
 /* ------------------------------------------------------------------ start */
 
 async function main() {
+  wireGrid();
   let data;
   try {
     data = await getJson("data/site.json");

@@ -4,17 +4,19 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Inside the Boundary, On the Record: any AI model, without customer data leaving</title>
-<meta name="description" content="An AI gateway that lets any organisation holding customer data, from banks and insurers to retailers, hospitals and governments, use frontier AI models without that data leaving, with a tamper-evident record of every call and a hard cap on every team's spend. Every number measured and reproducible.">
+<meta name="description" content="An AI gateway that lets an organisation holding customer data use frontier AI models without that data leaving, with a tamper-evident record of every call and a hard cap on each team's spend. Every number is measured and reproducible.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Peter Parker">
 <meta property="og:url" content="https://gateway.peterparker.ca/">
 <meta property="og:title" content="Inside the Boundary, On the Record">
-<meta property="og:description" content="An AI gateway that lets any organisation holding customer data, from banks and insurers to retailers, hospitals and governments, use frontier AI models without that data leaving, with a tamper-evident record of every call and a hard cap on every team&#x27;s spend. Every number measured and reproducible.">
+<meta property="og:description" content="An AI gateway that lets an organisation holding customer data use frontier AI models without that data leaving, with a tamper-evident record of every call and a hard cap on each team&#x27;s spend. Every number is measured and reproducible.">
 <meta property="og:image" content="https://gateway.peterparker.ca/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="Frontier AI, inside the boundary and on the record.">
 <meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.png">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -44,7 +46,7 @@
       gateway answers all three in the one place every request passes through. It <strong>replaces personal details with
       placeholders before a request leaves</strong> and puts them back in the answer, it
       <strong>refuses to send data where the policy says it may not go</strong>, it
-      <strong>writes every call into a record that cannot be quietly changed</strong>, and it
+      <strong>writes every call into a record that cannot be changed without it showing</strong>, and it
       <strong>enforces each team's budget before the call, not after the invoice</strong>.
       Every one of those costs time, so the cost is measured and published too.
     </p>
@@ -97,6 +99,7 @@
       <li><a href="#quality">Does redaction make the answers worse?</a></li>
       <li><a href="#cache">Answers from memory, with the risk beside the saving</a></li>
       <li><a href="#rejected">What did not work</a></li>
+      <li><a href="#try">Try it yourself</a></li>
       <li><a href="#limits">What this does not do</a></li>
       <li><a href="#engineering">How it is engineered</a></li>
       <li><a href="#built">How this was built</a></li>
@@ -118,8 +121,8 @@
   <section class="section" id="meeting">
     <h2>The meeting that stops AI adoption</h2>
     <p class="section-lead">
-      The technology is rarely what stops a bank, an insurer, a retailer, a hospital or a
-      government department from using AI. A meeting is. Privacy, audit and finance each ask a question, and in most
+      What usually stops a bank, an insurer, a retailer, a hospital or a government department
+      from using AI is a meeting. Privacy, audit and finance each ask a question, and in most
       organisations nobody can answer, because the plumbing to answer it was never built.
     </p>
     <div class="table-wrap">
@@ -144,7 +147,7 @@
   <section class="section" id="picture">
     <h2>One request, in eight steps</h2>
     <p class="section-lead">
-      The order is the design. The record is written before anything leaves, so a call that
+      The order matters: the record is written before anything leaves, so a call that
       crashes halfway is still on the books, and every refusal happens before the network is
       touched.
     </p>
@@ -168,8 +171,7 @@
     <p class="lead">
       Each part starts in plain language. Where there is more to say for someone who builds
       these systems for a living, it is folded away under <strong>For the technical
-      reader</strong>, so a reader who only wants the idea can skip it and a reader who wants
-      the detail loses nothing.
+      reader</strong>, so you can skip it if you only want the idea.
     </p>
   </div>
 
@@ -207,13 +209,13 @@
       <div class="stat up"><span class="figure">{{wire_leaked}} of {{wire_values}}</span><span class="caption">planted personal details that reached the vendor through the proxy, 95% interval {{wire_ci}}</span></div>
       <div class="stat"><span class="figure">{{round_trip_pct}}</span><span class="caption">of documents came back to the caller exactly as sent ({{round_trip_ci}})</span></div>
       <div class="stat"><span class="figure">{{over_redaction}}</span><span class="caption">of ordinary words masked that did not need it, on the generated documents</span></div>
-      <div class="stat down"><span class="figure">{{tab_safe}}</span><span class="caption">of safe words touched on real court judgments: the honest limit, below</span></div>
+      <div class="stat down"><span class="figure">{{tab_safe}}</span><span class="caption">of safe words touched on real court judgments: the limit, explained below</span></div>
     </div>
     <div class="verdict">
-      <p><strong>It fails closed.</strong> Without a language model it recognises only
-      {{recall_rules}} of the details on its own, and still nothing leaks, because a second
-      pass masks whatever it cannot vouch for and the gateway refuses to send text it cannot
-      vouch for. The price is masking too much, and on real text that price is high.</p>
+      <p><strong>It fails closed.</strong> Without a language model the detectors recognise only
+      {{recall_rules}} of the details on their own, and still nothing leaks: a second pass
+      masks anything it cannot vouch for, and the gateway refuses to send text in which a
+      detail survives. The price is masking too much, and on real text that price is high.</p>
     </div>
     <details class="disclose">
       <summary>For the technical reader: two passes, three corpora, and the limitation measured</summary>
@@ -268,7 +270,7 @@
       running the gateway cannot rewrite its own history without it showing.
     </p>
     <figure class="chart-figure">
-      <div id="chain" class="chart"></div>
+      <div id="chain" class="chart wide-chart"></div>
       <figcaption id="chain-caption">The chain as it stands on this server now, and the anchors published so far ({{anchors}} since {{first_anchor}}).</figcaption>
     </figure>
     <div class="headline">
@@ -277,10 +279,11 @@
       <div class="stat"><span class="figure">{{verify_ms}}</span><span class="caption">to check a {{verify_records}}-record chain from end to end</span></div>
     </div>
     <div class="verdict">
-      <p><strong>After the last anchor, a competent forger wins, and the page says so.</strong>
-      Of rewrites made after the last published fingerprint, {{after_anchor}}. No hash chain
-      can do better: there is nothing yet to disagree with. That window is one day, which is
-      why the anchor is published daily.</p>
+      <p><strong>A forger who rewrites the record after the last anchor can win.</strong> Of
+      rewrites made after the last published fingerprint, {{after_n}} were caught
+      ({{after_rate}}, 95% interval {{after_ci}}), and {{after_never}} kinds never are. No hash
+      chain can catch them, because nothing published yet disagrees. The window is one day,
+      which is why the anchor is published daily.</p>
     </div>
     <details class="disclose">
       <summary>For the technical reader: what the chain proves, and what it cannot</summary>
@@ -307,13 +310,13 @@
       <div class="stat up"><span class="figure">{{fidelity_n}}</span><span class="caption">measurement calls sent byte for byte as built, with no retry, cache or rewrite</span></div>
       <div class="stat"><span class="figure">{{lib_p50}}</span><span class="caption">the library's own cost per call at the median ({{lib_p50_ci}}), against a vendor that answers instantly</span></div>
     </div>
-    <p class="note"><strong>The record survives a crash.</strong> {{complete_n}} calls left a ledger row under fault injection, {{complete_across}}.</p>
+    <p class="note"><strong>The record survives a crash.</strong> {{complete_n}} calls left a ledger row, in both modes, across normal replies, vendor errors (500 and 400), timeouts, malformed replies and the process killed mid-call. The {{complete_inflight}} rows the kills left in flight stay marked that way, as designed.</p>
     <details class="disclose">
       <summary>For the technical reader: why the row is written before the call</summary>
       <ul>
         <li><strong>The usual order loses exactly the calls that matter.</strong> Logging after the reply means the only calls that go unrecorded are the ones that crashed, timed out or were killed. Here the row is written before sending, holding its estimate against the budget, and completed after.</li>
         <li><strong>One step for every worker.</strong> The hosted gateway runs four processes; the cap check and the row it admits are one call to a function in Postgres under an advisory lock, so two workers cannot both pass a cap only one fits under. A test sends twelve calls at once at a cap that fits three, and three go through.</li>
-        <li><strong>The vendor's own console cap is the first line of defence</strong>, outside this code. A budget whose only enforcement is the code that might have the bug is not a budget.</li>
+        <li><strong>The vendor's own console cap is the first line of defence</strong>, outside this code, so a bug in the gateway cannot spend past it.</li>
       </ul>
     </details>
   </section>
@@ -371,21 +374,20 @@
   <section class="section" id="quality">
     <h2>Does redaction make the answers worse?</h2>
     <p class="section-lead">
-      The question a buyer asks second, and almost never hears answered. Measured with
-      project 03's release gate, the portfolio's measuring instrument: the same questions
+      Measured with project 03's release gate, the portfolio's measuring instrument: the same questions
       with and without redaction, paired, across three models, and judged by 03's own
       calibrated judge.
     </p>
     <div class="headline">
       <div class="stat"><span class="figure">{{quality_effect}}</span><span class="caption">points of complete answers, redacted against raw, over {{quality_pairs}} pairs; no loss on any answerable question</span></div>
-      <div class="stat down"><span class="figure">{{distractor_effect}}</span><span class="caption">points less often does a redacted request say "this page does not cover that" when handed the wrong page</span></div>
+      <div class="stat down"><span class="figure">{{distractor_effect}}</span><span class="caption">points: the change in how often a redacted request says "this page does not cover that" when handed the wrong page</span></div>
       <div class="stat up"><span class="figure">{{redteam_vendor}}</span><span class="caption">confidential values reaching the vendor under attack, where one model leaked {{redteam_llama_raw}} unredacted</span></div>
     </div>
     <p class="note">
-      <strong>The real cost is in retrieval.</strong> Given a page that cannot answer the
-      question, a redacted model is more likely to answer from memory than to say so. For a
-      pipeline that sometimes fetches the wrong document, that is the case that matters, and
-      it is reported as the result rather than averaged away.
+      <strong>The cost is in retrieval.</strong> Given a page that cannot answer the question,
+      a redacted model is more likely to answer from memory than to say so. For a pipeline that
+      sometimes fetches the wrong document, that is the case that matters, so it is reported on
+      its own instead of averaged in.
     </p>
   </section>
 
@@ -403,6 +405,15 @@
       <div class="stat down"><span class="figure">{{cache_retrieval_false}}</span><span class="caption">wrong hits when a question sits inside a long retrieved page, so those are never cached</span></div>
       <div class="stat down"><span class="figure">{{cache_redacted_false}}</span><span class="caption">wrong hits on redacted requests, whose placeholders make every customer look alike</span></div>
     </div>
+    <p class="note">
+      <strong>On real traffic, most of the saving is repeats, and the risk is in the rest.</strong>
+      Replaying every call of project 03's drift runs through the cache saved {{replay_saved}}
+      of the {{replay_cost}} those calls cost, almost all of it from questions asked again word
+      for word, which an exact-match cache would also catch. The hits only a semantic cache
+      makes saved {{replay_semantic_saved}}, and in {{replay_false_pairs}} distinct question
+      pairs (95% interval {{replay_false_pairs_ci}}) one question was answered with another's
+      answer.
+    </p>
     <details class="disclose">
       <summary>For the technical reader: what goes in, and the injection screen beside it</summary>
       <ul>
@@ -415,15 +426,27 @@
   <section class="section" id="rejected">
     <h2>What did not work</h2>
     <p class="section-lead">
-      <strong>Putting every value back into the answer.</strong> The first design restored
-      every placeholder in the vendor's reply, including values that came from the
-      application's own instructions rather than from the person asking. Under 03's red
-      team, one model refused every attempt to extract a confidential record, listing the
-      placeholders it would not share, and the gateway then helpfully filled them in:
-      {{redteam_haiku_full}} attacks succeeded through the gateway that had failed against
-      the model. Restoring only the values the caller sent took that to
-      {{redteam_haiku_scoped}}, and it is now the default.
+      Four designs the measurements refuted, each written up with its evidence in
+      <a href="{{repository}}/blob/main/docs/rejected.md">docs/rejected.md</a>.
     </p>
+    <div class="cards pairs">
+      <article class="card-note">
+        <h3>Putting every value back into the answer</h3>
+        <p>The first design restored every placeholder, including values from the application's own instructions. Under 03's red team one model refused to share a confidential record, listing the placeholders it would not reveal, and the gateway filled them in: {{redteam_haiku_full}} attacks succeeded. Restoring only what the caller sent took that to {{redteam_haiku_scoped}}, and it is now the default.</p>
+      </article>
+      <article class="card-note">
+        <h3>One central ledger over the network</h3>
+        <p>It would have removed the merge. Through simulated outages, not one of a hundred runs reached its last call, and the version that kept going lost the record of calls it had paid for. Each environment keeps its own ledger, merged later.</p>
+      </article>
+      <article class="card-note">
+        <h3>Costing a call from a token estimate</h3>
+        <p>Right for the month and wrong for each call: counting characters got a month's input to +0.1% and a typical call wrong by -31.2%. A cap and a ledger row are per call, so the gateway costs from what the vendor returns.</p>
+      </article>
+      <article class="card-note">
+        <h3>Judging the detector by recall alone</h3>
+        <p>Recall asks whether a name was found, not what it was called. On project 07's evidence, a surname typed as a place passed every recall table and was then released. Redaction is now reported with precision beside recall.</p>
+      </article>
+    </div>
   </section>
 
   <section class="section" id="try">
@@ -445,7 +468,7 @@
       <div class="card-note"><h3>Redaction over-masks on real text</h3><p>{{tab_safe}} of safe words touched on court judgments with its Canadian vocabulary. A deployment elsewhere supplies its own allow list.</p></div>
       <div class="card-note"><h3>Text only</h3><p>Images and audio cannot be redacted here, so they are refused for anything but public data.</p></div>
       <div class="card-note"><h3>One server, one region</h3><p>Residency here controls where requests may go, not where the gateway runs. It is one 4 vCPU host, and redaction at 500 a second is at its edge.</p></div>
-      <div class="card-note"><h3>The cache's saving is not yet measured</h3><p>What it saves depends on how often real traffic repeats, which needs a replay of real traffic with hand-labelled hits.</p></div>
+      <div class="card-note"><h3>The cache's threshold is tuned for customer questions</h3><p>On replayed real traffic, {{replay_false_pairs}} distinct semantic hits answered a different question, most of them mathematics, where one symbol changes the answer.</p></div>
     </div>
   </section>
 
@@ -479,11 +502,23 @@
   <section class="section" id="built">
     <h2>How this was built</h2>
     <p>
-      Design, methodology, evaluation choices and judgement are Peter Parker's, from years of
-      production machine learning in government, where the questions on this page are the
-      ones asked before anything ships. AI coding assistants (Claude Code) were used for
-      implementation and drafting, the way a senior engineer uses them in 2026. Every number
-      on this page is reproducible from <a href="{{repository}}">the repository</a>.
+      I designed this gateway and made the calls in it: what each control has to prove, how to
+      measure it, and what to change when a measurement came back wrong. I have spent years on
+      production machine learning in government, where the questions at the top of this page
+      are the ones asked before anything ships. Two of the calls are worth naming. I kept the
+      spend ledger local, one file per environment merged later, after measuring a central
+      ledger through simulated network outages: not one of a hundred runs reached its last
+      call, and the version that kept going lost the record of calls it had already paid for.
+      And I changed the proxy to put back only the values the caller sent, after project 03's
+      red team showed that putting everything back could hand a model's refusal straight to
+      the attacker: {{redteam_haiku_full}} attacks got through that way, and
+      {{redteam_haiku_scoped}} after the change.
+    </p>
+    <p>
+      I used an AI coding assistant (Claude Code) for implementation and drafting, which is now
+      standard practice in software, data science and machine learning work. Every number on
+      this page is a cell of a table in <a href="{{repository}}">the repository</a>'s README,
+      written by the command that measured it, so each one can be reproduced.
     </p>
     <details class="disclose">
       <summary>Glossary</summary>
@@ -491,9 +526,13 @@
         <dt>Anchor</dt><dd>The newest fingerprint of the audit chain, published somewhere the operator cannot edit, here a public repository, once a day.</dd>
         <dt>Confidence interval</dt><dd>The range a measured rate would plausibly fall in if the measurement were repeated. A bare number without one is treated as a defect here.</dd>
         <dt>Data class</dt><dd>What a request says it carries: public, internal, personal or sensitive. It decides where the request may go.</dd>
+        <dt>Fails closed</dt><dd>When the gateway cannot be sure a request is safe to send, it refuses it.</dd>
+        <dt>False hit</dt><dd>The cache answering a question with the stored answer to a different question that looks similar.</dd>
         <dt>Hash chain</dt><dd>A list of records in which each carries a fingerprint of the one before, so changing an old record breaks every later fingerprint.</dd>
         <dt>Percentile</dt><dd>The 99th percentile is the delay that 99 requests in 100 stay under: it describes the slow requests, which the median hides.</dd>
         <dt>Placeholder</dt><dd>A typed stand-in such as &lt;PHONE_1&gt; that replaces a personal detail on the way out and is swapped back on the way in.</dd>
+        <dt>Proxy</dt><dd>A server between an application and the AI vendor that handles every request on its way through.</dd>
+        <dt>Red team</dt><dd>A set of deliberate attacks, here 200 attempts to make a model reveal a confidential record, run to find what gets through.</dd>
         <dt>Residency</dt><dd>Where a provider declares it processes data: in one region, in a group of countries, or anywhere.</dd>
         <dt>SHA-256</dt><dd>A fingerprint of a piece of data. Change one character and the fingerprint changes completely.</dd>
       </dl>

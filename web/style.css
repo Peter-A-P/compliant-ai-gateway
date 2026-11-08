@@ -339,6 +339,7 @@ strong { font-weight: 600; }
   left: 0;
   top: calc(100% + 0.4rem);
   width: min(32rem, 100%);
+  box-sizing: border-box; /* padding inside the 100%, or the bubble pushes a phone page sideways */
   padding: 0.7rem 0.85rem;
   background: var(--paper-soft);
   color: var(--ink-soft);
@@ -1228,6 +1229,12 @@ table.grid thead th:not(:first-child) { text-align: center; }
 table.grid td { text-align: center; font-size: 0.85rem; font-weight: 600; }
 table.grid td.go { color: var(--good); }
 table.grid td.stop { color: var(--warn); }
+table.grid td[data-reason] { cursor: help; }
+table.grid td[data-reason]:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* Four cards as two rows of two, so none is left alone on a row. */
+@media (min-width: 48rem) { .cards.pairs { grid-template-columns: repeat(2, 1fr); } }
+/* No heading ends on one orphaned word. */
+h1, h2, .part-title { text-wrap: balance; }
 table.grid tbody th .where { display: block; font-weight: 400; font-size: 0.78rem; color: var(--ink-faint); }
 
 /* The load test chart: one line per layer. */

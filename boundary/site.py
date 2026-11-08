@@ -56,7 +56,7 @@ HEADERS: dict[str, str] = {
 
 # The files the site is made of, which Caddy serves from the built folder (deploy/Caddyfile
 # names the same paths). Everything else on the host is the proxy's.
-ASSETS = ("style.css", "app.js", "og.png")
+ASSETS = ("style.css", "app.js", "og.png", "favicon.svg", "icon.png")
 
 # The pages, each a template in `web/` with `{{tokens}}`. The second shows the architecture
 # diagrams, rendered from docs/architecture.md and served from `architecture/`.
@@ -152,7 +152,11 @@ def figures(tables: Mapping[str, Sequence[Sequence[str]]]) -> dict[str, str]:
     f["tamper_found"], f["tamper_tried"], f["tamper_kinds"] = m.group(1), m.group(2), m.group(6)
     f["tamper_ci"] = f"{m.group(4)} to {m.group(5)}"
     f["false_alarms"] = cell(tables, "audit", 0, 1)
-    f["after_anchor"] = cell(tables, "audit", 0, 2)
+    after = cell(tables, "audit", 0, 2)
+    m = find(after, r"^([\d,]+)/([\d,]+) = " + _INTERVAL + r"; (\d+ of \d+) kinds never", "after")
+    f["after_n"] = f"{m.group(1)} of {m.group(2)}"
+    f["after_rate"], f["after_ci"] = m.group(3), f"{m.group(4)} to {m.group(5)}"
+    f["after_never"] = m.group(6)
     f["verify_time"] = cell(tables, "audit", 0, 3)
 
     forbidden = cell(tables, "policy", 0, 0)
@@ -217,6 +221,15 @@ def figures(tables: Mapping[str, Sequence[Sequence[str]]]) -> dict[str, str]:
     f["cache_retrieval_false"] = find(
         cell(tables, "cache", 3, 4), r"([\d.]+%)", "cache retrieval"
     ).group(1)
+    # The replay of real traffic (README "The semantic cache on real traffic"): what the
+    # cache saved, and how often a semantic hit was a different question.
+    money = r"(US\$[\d,]+\.\d+)"
+    m = find(cell(tables, "cache-replay", 0, 7), rf"^{money} of {money}", "saved")
+    f["replay_saved"], f["replay_cost"] = m.group(1), m.group(2)
+    f["replay_semantic_saved"] = cell(tables, "cache-replay", 0, 8)
+    m = find(cell(tables, "cache-replay", 0, 6), r"^(\d+ of \d+), " + _INTERVAL, "pairs")
+    f["replay_false_pairs"] = m.group(1)
+    f["replay_false_pairs_ci"] = f"{m.group(3)} to {m.group(4)}"
     # Short forms for the big figures, the rest of the cell going into the caption.
     f["round_trip_pct"] = find(f["wire_round_trip"], r"^([\d.]+%)", "round trip").group(1)
     f["round_trip_ci"] = find(f["wire_round_trip"], r"\(([^)]*)\)", "round trip").group(1)
@@ -235,7 +248,9 @@ def figures(tables: Mapping[str, Sequence[Sequence[str]]]) -> dict[str, str]:
     f["lib_p50_ci"] = find(f["lib_overhead"], r"^[\d.]+ ms \(([^)]*)\)", "overhead").group(1)
     m = find(f["completeness"], r"^(\d+)/(\d+)", "completeness")
     f["complete_n"] = f"{m.group(1)} of {m.group(2)}"
-    f["complete_across"] = find(f["completeness"], r"(across .*)$", "completeness").group(1)
+    f["complete_inflight"] = find(
+        f["completeness"], r"\((\d+) rows left in flight", "completeness"
+    ).group(1)
     for key in ("cache_hits", "cache_false"):
         m = find(f[key], r"^(\d+ of \d+), (.*)$", key)
         f[f"{key}_n"], f[f"{key}_rest"] = m.group(1), m.group(2)
@@ -271,8 +286,8 @@ def residency_grid(root: Path) -> dict[str, Any]:
         rows.append(
             {
                 "provider": name,
-                "region": pc.region or "not declared",
-                "residency": pc.residency.value if pc.residency else "not declared",
+                "region": pc.region or "",
+                "residency": pc.residency.value if pc.residency else "",
                 "cells": cells,
             }
         )
@@ -366,19 +381,30 @@ def _grid_html(grid: Mapping[str, Any]) -> str:
     head = "".join(f'<th scope="col">{html.escape(c)}</th>' for c in grid["columns"])
     body = []
     for r in grid["rows"]:
+        # Each cell is focusable and carries its reason, which app.js writes into the readout
+        # under the grid on hover, focus or tap: a title tooltip reaches neither a keyboard
+        # nor a phone.
         cells = "".join(
-            f'<td class="{"go" if c["allowed"] else "stop"}" title="{html.escape(c["reason"])}">'
+            f'<td class="{"go" if c["allowed"] else "stop"}" tabindex="0" '
+            f'data-reason="{html.escape(r["provider"])}, {html.escape(column)}: '
+            f'{html.escape(c["reason"])}">'
             f"{'may go' if c['allowed'] else 'refused'}</td>"
-            for c in r["cells"]
+            for column, c in zip(grid["columns"], r["cells"], strict=True)
+        )
+        where = (
+            f'{r["region"] or "no region declared"}, {r["residency"] or "no residency declared"}'
+            if r["region"] or r["residency"]
+            else "no residency declared"
         )
         body.append(
             f'<tr><th scope="row">{html.escape(r["provider"])}'
-            f'<span class="where">{html.escape(r["region"])}, {html.escape(r["residency"])}'
-            f"</span></th>{cells}</tr>"
+            f'<span class="where">{html.escape(where)}</span></th>{cells}</tr>'
         )
     return (
         '<div class="table-wrap"><table class="grid"><thead><tr><th scope="col">Provider entry'
         f"</th>{head}</tr></thead><tbody>{''.join(body)}</tbody></table></div>"
+        '<p class="readout" id="grid-readout" aria-live="polite">'
+        "Point at a cell, or select it, for the reason.</p>"
     )
 
 

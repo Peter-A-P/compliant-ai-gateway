@@ -651,8 +651,8 @@ lost the record of calls it had already paid for. And I changed the proxy to put
 values the caller sent, after 03's red team showed that restoring everything could hand a
 model's refusal straight back as a disclosure.
 
-I used AI coding assistants (Claude Code) for implementation and drafting, the way a senior
-engineer uses them in 2026. Every number in the results tables is reproducible from this
+I used an AI coding assistant (Claude Code) for implementation and drafting, which is now
+standard practice in software, data science and machine learning work. Every number in the results tables is reproducible from this
 repository with one command, and that reproducibility is the evidence that matters.
 
 ## Licence

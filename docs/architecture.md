@@ -49,7 +49,7 @@ only. The team's limits are checked before the call, using the worst case the ca
 a per-minute rate, and daily and monthly budgets. A request over a limit is refused with a
 message naming the limit and when it resets.
 
-Only requests with public data may be answered from the cache of earlier answers. On a miss, the
+Only requests with public or internal data may be answered from the cache of earlier answers. On a miss, the
 gateway calls the vendor and writes the costed ledger row, which joins the audit chain within
 50 milliseconds. The answer comes back with only the values this caller sent put back in place.
 An earlier design put every value back, and a test showed that leaked, so it was rejected. The
