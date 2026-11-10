@@ -323,7 +323,7 @@ class PriceEntry(_Strict):
         """This entry, or its long-prompt rates when the prompt is over the threshold. The
         batch multiplier is the same at either length."""
         tier = self.long_prompt
-        if tier is None or prompt_tokens <= tier.above_tokens:
+        if tier is None or prompt_tokens < tier.above_tokens:
             return self
         return PriceEntry(
             input=tier.input,
